@@ -61,6 +61,9 @@ export function updatedTime(baseTime: string, diffTime: string): string {
  * @returns 間の日付を含んだ日付のリスト
  */
 export const getDatesBetween = (start: Date, end: Date) => {
+  if (!start || !end) {
+    return [];
+  }
   const startTime = start.getTime();
   const endTime = end.getTime();
 

@@ -173,19 +173,23 @@ const TravelPlanCreate = () => {
             </div>
 
             {/* 選択した日付分だけタブが生成されるようにする */}
-            <Tabs defaultValue={fields.startDate.toLocaleDateString('ja-JP')} defaultChecked={true}>
+            <Tabs defaultValue={fields.startDate && fields.startDate.toLocaleDateString('ja-JP')} defaultChecked={true}>
               <TabsList className="flex justify-start space-x-2">
-                {getDatesBetween(fields.startDate, fields.endDate).map((date) => (
-                  <TabsTrigger key={date} value={date}>
-                    {date}
-                  </TabsTrigger>
-                ))}
+                {fields.startDate &&
+                  fields.endDate &&
+                  getDatesBetween(fields.startDate, fields.endDate).map((date) => (
+                    <TabsTrigger key={date} value={date}>
+                      {date}
+                    </TabsTrigger>
+                  ))}
               </TabsList>
-              {getDatesBetween(fields.startDate, fields.endDate).map((date) => (
-                <TabsContent key={date} value={date}>
-                  <PlanningComp date={date} />
-                </TabsContent>
-              ))}
+              {fields.startDate &&
+                fields.endDate &&
+                getDatesBetween(fields.startDate, fields.endDate).map((date) => (
+                  <TabsContent key={date} value={date}>
+                    <PlanningComp date={date} />
+                  </TabsContent>
+                ))}
             </Tabs>
 
             {/* 作成ボタン */}
