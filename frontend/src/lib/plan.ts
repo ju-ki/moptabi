@@ -100,6 +100,8 @@ interface FormState {
   simulationStatus: { date: Date; status: number }[] | null;
   setSimulationStatus: (status: { date: Date; status: number }) => void;
   setSpots: (date: Date, spot: Spot, isDeleted: boolean) => void;
+  editSpots: (date: Date, spotId: string, updatedSpot: Partial<Spot>) => void;
+  getSortedSpots: (date: Date) => Spot[];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
   setTripInfoErrors: (date: Date, errors: Partial<Record<keyof TripInfo, string>>) => void;
@@ -166,9 +168,9 @@ export const useStoreForPlanning = create<FormState>()(
           } else if (type === TransportNodeType.DESTINATION) {
             return plansForDate[0].spots.filter((spot) => spot.transports?.toType === type);
           } else {
-            return plansForDate[0].spots.filter(
-              (spot) => spot.transports?.fromType === type && spot.transports?.toType === type,
-            );
+            return plansForDate[0].spots
+              .filter((spot) => spot.transports?.fromType === type && spot.transports?.toType === type)
+              .sort((a, b) => a.order - b.order);
           }
         }
         return [];
@@ -199,6 +201,7 @@ export const useStoreForPlanning = create<FormState>()(
           const existingPlansIndex = state.plans.findIndex(
             (info) => info.date.toLocaleDateString('ja-JP') === date.toLocaleDateString('ja-JP'),
           );
+
           const existingSpotIndex = state.plans[existingPlansIndex].spots.findIndex((info) => info.id === spot.id);
 
           if (existingSpotIndex >= 0 && !isDeleted) {
@@ -243,6 +246,27 @@ export const useStoreForPlanning = create<FormState>()(
           };
           return state;
         }),
+      editSpots: (date, spotId, updatedSpot) => {
+        set((state) => {
+          const plansForDateIndex = state.plans.findIndex(
+            (plan) => plan.date.toLocaleDateString('ja-JP') === date.toLocaleDateString('ja-JP'),
+          );
+
+          if (plansForDateIndex >= 0) {
+            const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === spotId);
+            if (spotIndex >= 0) {
+              state.plans[plansForDateIndex].spots[spotIndex] = {
+                ...state.plans[plansForDateIndex].spots[spotIndex],
+                ...updatedSpot,
+              };
+            } else {
+              console.warn(`Spot with id ${spotId} not found in plans for date ${date.toLocaleDateString('ja-JP')}`);
+            }
+          } else {
+            console.warn(`No plans found for date ${date.toLocaleDateString('ja-JP')}`);
+          }
+        });
+      },
       resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),
     })),

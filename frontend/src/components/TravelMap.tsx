@@ -40,21 +40,11 @@ const TravelMap = ({ travelPlan }: TravelMapProps) => {
   const [selectedMarker, setSelectedMarker] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
-  const departureData = fields.plans
-    .filter((val) => val.date.toLocaleDateString('ja-JP') == new Date(travelPlan.date).toLocaleDateString('ja-JP'))[0]
-    ?.spots.filter((spot) => spot.transports?.fromType === TransportNodeType.DEPARTURE)[0];
+  const departureData = fields.getSpotInfo(travelPlan.date, TransportNodeType.DEPARTURE)[0];
 
-  const destinationData = fields.plans
-    .filter((val) => val.date.toLocaleDateString('ja-JP') == new Date(travelPlan.date).toLocaleDateString('ja-JP'))[0]
-    ?.spots.filter((spot) => spot.transports?.toType === TransportNodeType.DESTINATION)[0];
+  const destinationData = fields.getSpotInfo(travelPlan.date, TransportNodeType.DESTINATION)[0];
 
-  const spots = fields.plans
-    .filter((val) => val.date.toLocaleDateString('ja-JP') == new Date(travelPlan.date).toLocaleDateString('ja-JP'))[0]
-    ?.spots.filter(
-      (spot) =>
-        spot.transports?.toType !== TransportNodeType.DESTINATION &&
-        spot.transports?.fromType !== TransportNodeType.DEPARTURE,
-    );
+  const spots = fields.getSpotInfo(travelPlan.date, TransportNodeType.SPOT);
 
   // ルートを計算
   useEffect(() => {

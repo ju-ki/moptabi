@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { useStoreForPlanning } from '@/lib/plan';
+import { sortSpotByStartTime } from '@/lib/algorithm';
 
 import { Button } from './ui/button';
 
@@ -68,6 +69,15 @@ const PlanningButton = ({ date }: { date: string }) => {
 
     fields.setSimulationStatus({ date: new Date(date), status: 1 });
     alert('プランニング中です');
+
+    // 開始時間を元にスポットをソートする
+    const sortedSpots = sortSpotByStartTime(targetPlans.spots);
+
+    // ソート後の順番を反映処理
+    sortedSpots.forEach((spot) => {
+      fields.editSpots(new Date(date), spot.spotId, { order: spot.order });
+    });
+
     //TODO: 非同期でプラン作成をシミュレーションする機能の追加
     setTimeout(() => {
       fields.setSimulationStatus({ date: new Date(date), status: 2 });

@@ -54,6 +54,8 @@ const Departure = ({ date }: { date: string }) => {
                           latitude: departure.latitude,
                           longitude: departure.longitude,
                         },
+                        stayStart: '00:00',
+                        stayEnd: '00:00',
                         order: 0,
                         transports: {
                           travelTime: '不明',
