@@ -1,4 +1,4 @@
-import { Spot } from '@/types/plan';
+import { Spot, TransportNodeType } from '@/types/plan';
 
 interface SortedSpot {
   order: number;
@@ -11,7 +11,10 @@ export const sortSpotByStartTime = (spots: Spot[]): SortedSpot[] => {
   }
 
   // 出発地と目的地は除外する
-  spots = spots.filter((spot) => spot.stayStart !== undefined && spot.stayEnd !== undefined);
+  spots = spots.filter(
+    (spot) =>
+      spot.transports?.fromType === TransportNodeType.SPOT && spot.transports?.toType === TransportNodeType.SPOT,
+  );
   //
   spots.sort((a, b) => {
     const startA = a.stayStart ?? '00:00';
