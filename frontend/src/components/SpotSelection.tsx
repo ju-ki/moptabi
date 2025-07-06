@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CheckIcon, Search } from 'lucide-react';
 
 import { searchSpots, useStoreForPlanning } from '@/lib/plan';
+import { setStartTimeAutomatically } from '@/lib/algorithm';
 import { PlaceTypeGroupKey, SortOption } from '@/types/plan';
 import { useMapStore } from '@/stores/mapStore';
 import { prefectureCenters, prefectures } from '@/data/dummyData';
@@ -170,6 +171,11 @@ const SpotSelection = ({ date }: { date: string }) => {
                       const isSelected = selectedSpots.some((s) => s.location.name === spot.location.name);
 
                       if (!isSelected) {
+                        // スポットの開始時間を前スポットの終了時間を基準に設定
+                        spot = setStartTimeAutomatically(
+                          spot,
+                          fields.plans.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]?.spots,
+                        );
                         fields.setSpots(new Date(date), spot, false);
                       } else {
                         fields.setSpots(new Date(date), spot, true);
