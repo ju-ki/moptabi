@@ -47,6 +47,12 @@ export const sortSpotByStartTime = (spots: Spot[]): SortedSpot[] => {
  */
 export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot => {
   const clonedNewSpot = { ...newSpot };
+  // 出発地と目的地は除外する
+  spots = spots.filter(
+    (spot) =>
+      spot.transports?.fromType === TransportNodeType.SPOT && spot.transports?.toType === TransportNodeType.SPOT,
+  );
+
   if (spots.length == 0) {
     // 最初のスポットの場合は09:00で設定
     // TODO: どこかで管理する
@@ -56,11 +62,6 @@ export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot =>
   }
 
   // 末尾に設定されている観光スポットの終了時間を元に開始時間を設定
-  // 出発地と目的地は除外する
-  spots = spots.filter(
-    (spot) =>
-      spot.transports?.fromType === TransportNodeType.SPOT && spot.transports?.toType === TransportNodeType.SPOT,
-  );
 
   // 前スポットの終了時間+1時間の幅で更新をかける
   const lastSpotEndTime = spots[spots.length - 1].stayEnd;
