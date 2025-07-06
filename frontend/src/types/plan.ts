@@ -39,10 +39,10 @@ export type TripInfo = {
 };
 
 export type Spot = {
-  id?: string;
+  id: string;
   location: Location;
-  stayStart?: string;
-  stayEnd?: string;
+  stayStart: string;
+  stayEnd: string;
   transports: Transport;
   url?: string;
   memo?: string;
