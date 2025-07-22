@@ -205,8 +205,12 @@ export const getTripHandler = {
                   planSpots: {
                     create: plan.spots.map((spot) => ({
                       spotId: spot.id,
-                      stayStart: new Date(plan.date),
-                      stayEnd: new Date(plan.date),
+                      stayStart: new Date(
+                        new Date(plan.date).toLocaleDateString('ja-JP').split(' ')[0] + ' ' + spot.stayStart,
+                      ),
+                      stayEnd: new Date(
+                        new Date(plan.date).toLocaleDateString('ja-JP').split(' ')[0] + ' ' + spot.stayEnd,
+                      ),
                       memo: spot.memo ?? null,
                       order: spot.order, // スポットの順序を設定
                     })),

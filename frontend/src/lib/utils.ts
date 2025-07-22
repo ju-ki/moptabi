@@ -111,8 +111,9 @@ export const formatToHHmm = (date: string): string => {
       console.error('Invalid date:', date);
       return '--:--';
     }
-    const hours = String(parsedDate.getHours()).padStart(2, '0');
-    const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+    // 現状世界標準時で定義しているためUTCを使用(もしかしたら今後変更するかもしれない)
+    const hours = String(parsedDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(parsedDate.getUTCMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
   } catch (error) {
     console.error('Error parsing date:', error);
