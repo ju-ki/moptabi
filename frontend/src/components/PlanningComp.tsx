@@ -23,10 +23,8 @@ const PlanningComp = ({ date }: { date: string }) => {
       <div className="space-y-2">
         <Label>旅行ジャンル</Label>
         <Select
-          onValueChange={(value) => fields.setTripInfo(new Date(date), 'genreId', Number.parseInt(value))}
-          value={
-            fields.tripInfo.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]?.genreId.toString() || ''
-          }
+          onValueChange={(value) => fields.setTripInfo(date, 'genreId', Number.parseInt(value))}
+          value={fields.tripInfo.filter((val) => val.date === date)[0]?.genreId.toString() || ''}
         >
           <SelectTrigger>
             <SelectValue placeholder="ジャンルを選択" />
@@ -61,8 +59,8 @@ const PlanningComp = ({ date }: { date: string }) => {
         <Label>備考</Label>
         <Textarea
           placeholder="メモや注意点を記載"
-          value={fields.tripInfo.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]?.memo || ''}
-          onChange={(e) => fields.setTripInfo(new Date(date), 'memo', e.target.value)}
+          value={fields.tripInfo.filter((val) => val.date === date)[0]?.memo || ''}
+          onChange={(e) => fields.setTripInfo(date, 'memo', e.target.value)}
         />
 
         {fields.tripInfoErrors && <span className="text-red-500">{fields.tripInfoErrors[date]?.memo}</span>}
@@ -87,7 +85,7 @@ const PlanningComp = ({ date }: { date: string }) => {
 
       {/* プランニング計画シート */}
       <div className="space-y-2 my-4">
-        <TravelPlan travelPlan={fields.plans.filter((plan) => plan.date.toLocaleDateString('ja-JP') == date)[0]} />
+        <TravelPlan travelPlan={fields.plans.filter((plan) => plan.date == date)[0]} />
       </div>
 
       {/* 作成ボタン */}

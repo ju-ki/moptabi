@@ -32,7 +32,7 @@ type NearestStation = {
 };
 
 export type TripInfo = {
-  date: Date;
+  date: string;
   genreId: number;
   transportationMethod: number[];
   memo?: string;
@@ -56,7 +56,7 @@ export type Spot = {
 };
 
 export type TravelPlanType = {
-  date: Date;
+  date: string;
   spots: Spot[];
 };
 
@@ -64,14 +64,14 @@ export type ResponseTripType = {
   id: number;
   title: string;
   imageUrl?: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string;
+  endDate: string;
   tripInfo: ResponseTripInfoType[];
   plans: ResponsePlanType[];
 };
 
 export type ResponseTripInfoType = {
-  date: Date;
+  date: string;
   genreId: number;
   transportationMethod: number[];
   memo?: string;
@@ -80,7 +80,7 @@ export type ResponseTripInfoType = {
 export type ResponsePlanType = {
   id: number;
   tripId: number;
-  date: Date;
+  date: string;
   planSpots: ResponsePlanSpotType[];
 };
 

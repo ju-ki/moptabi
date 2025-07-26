@@ -188,12 +188,12 @@ export const getTripHandler = {
             data: {
               title: tripData.title,
               imageUrl: tripData.imageUrl,
-              startDate: new Date(tripData.startDate),
-              endDate: new Date(tripData.endDate),
+              startDate: tripData.startDate,
+              endDate: tripData.endDate,
               userId,
               tripInfo: {
                 create: tripData.tripInfo.map((info) => ({
-                  date: new Date(info.date),
+                  date: info.date,
                   genreId: info.genreId,
                   transportationMethods: info.transportationMethod,
                   memo: info.memo ?? '',
@@ -201,16 +201,12 @@ export const getTripHandler = {
               },
               plans: {
                 create: tripData.plans.map((plan) => ({
-                  date: new Date(plan.date),
+                  date: plan.date,
                   planSpots: {
                     create: plan.spots.map((spot) => ({
                       spotId: spot.id,
-                      stayStart: new Date(
-                        new Date(plan.date).toLocaleDateString('ja-JP').split(' ')[0] + ' ' + spot.stayStart,
-                      ),
-                      stayEnd: new Date(
-                        new Date(plan.date).toLocaleDateString('ja-JP').split(' ')[0] + ' ' + spot.stayEnd,
-                      ),
+                      stayStart: spot.stayStart,
+                      stayEnd: spot.stayEnd,
                       memo: spot.memo ?? null,
                       order: spot.order, // スポットの順序を設定
                     })),
@@ -225,7 +221,7 @@ export const getTripHandler = {
             const createdPlan = await tx.plan.findFirst({
               where: {
                 tripId: newTrip.id,
-                date: new Date(planData.date),
+                date: planData.date,
               },
               include: {
                 planSpots: {

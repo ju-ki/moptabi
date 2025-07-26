@@ -12,19 +12,21 @@ datasource db {
 model Trip {
   id        Int        @id @default(autoincrement())
   title     String     @db.VarChar(50)
-  startDate DateTime
-  endDate   DateTime
+  startDate String     @db.VarChar(10)
+  endDate   String     @db.VarChar(10)
   userId    String     @db.VarChar(255)
-  imageUrl  String?     @db.VarChar(255)
+  imageUrl  String?    @db.VarChar(255)
   plans     Plan[]
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   tripInfo  TripInfo[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model TripInfo {
   id                    Int      @id @default(autoincrement())
   tripId                Int
-  date                  DateTime
+  date                  String @db.VarChar(10)
   genreId               Int
   transportationMethods Int[]
   memo                  String?
@@ -34,7 +36,7 @@ model TripInfo {
 model Plan {
   id            Int      @id @default(autoincrement())
   tripId        Int
-  date          DateTime
+  date          String @db.VarChar(10)
   trip          Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   planSpots   PlanSpot[]
   transports   Transport[]
@@ -54,8 +56,8 @@ model PlanSpot {
   planId     Int
   spot       Spot      @relation(fields: [spotId], references: [id], onDelete: Cascade)
   spotId     String
-  stayStart  DateTime?
-  stayEnd    DateTime?
+  stayStart  String @db.VarChar(5)
+  stayEnd    String @db.VarChar(5)
   memo       String?
   order      Int @default(0)
   fromLocation Transport[] @relation("FromLocation")
