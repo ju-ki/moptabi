@@ -18,6 +18,11 @@ export type Transport = {
   toType: TransportNodeType;
 };
 
+export type TransportMethods = {
+  id: number;
+  name: string; // 例: "電車" | "バス"
+};
+
 export enum TransportNodeType {
   DEPARTURE = 'DEPARTURE',
   DESTINATION = 'DESTINATION',

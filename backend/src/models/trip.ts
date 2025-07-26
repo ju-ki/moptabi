@@ -14,9 +14,7 @@ export const TripSchema = z.object({
     z.object({
       date: z.string(),
       genreId: z.number(),
-      transportationMethod: z.array(z.number()).refine((value) => value.some((item) => item), {
-        message: '移動手段は最低でも1つ以上選択してください',
-      }),
+      transportationMethod: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
       memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     }),
   ),

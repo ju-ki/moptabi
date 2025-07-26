@@ -3,7 +3,7 @@ import useSWR from 'swr';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { useFetcher } from '@/hooks/use-fetcher';
-import { Transport } from '@/types/plan';
+import { TransportMethods } from '@/types/plan';
 
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
@@ -24,7 +24,7 @@ const Transportation = ({ date }: { date: string }) => {
     <div className="my-4">
       <Label className="text-lg font-semibold">移動手段</Label>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(transportationMethods as Transport[]).map((method, idx) => (
+        {(transportationMethods as TransportMethods[]).map((method, idx) => (
           <div key={idx} className="flex items-center space-x-3">
             <div>
               <Checkbox
