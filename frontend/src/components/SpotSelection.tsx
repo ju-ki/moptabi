@@ -166,25 +166,24 @@ const SpotSelection = ({ date }: { date: string }) => {
                     className="flex item-start justify-between"
                     key={index}
                     onSelect={() => {
-                      const selectedSpots =
-                        fields.plans.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]?.spots || [];
+                      const selectedSpots = fields.plans.filter((val) => val.date === date)[0]?.spots || [];
                       const isSelected = selectedSpots.some((s) => s.location.name === spot.location.name);
 
                       if (!isSelected) {
                         // スポットの開始時間を前スポットの終了時間を基準に設定
                         spot = setStartTimeAutomatically(
                           spot,
-                          fields.plans.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]?.spots,
+                          fields.plans.filter((val) => val.date === date)[0]?.spots,
                         );
-                        fields.setSpots(new Date(date), spot, false);
+                        fields.setSpots(date, spot, false);
                       } else {
-                        fields.setSpots(new Date(date), spot, true);
+                        fields.setSpots(date, spot, true);
                       }
                     }}
                   >
                     {spot.location.name}
                     {fields.plans
-                      .filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]
+                      .filter((val) => val.date === date)[0]
                       ?.spots.some((s) => s.location.name === spot.location.name) && (
                       <CheckIcon className="mr-2 h-4 w-4" />
                     )}

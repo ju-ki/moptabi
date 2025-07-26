@@ -72,7 +72,7 @@ const TravelMap = ({ travelPlan }: TravelMapProps) => {
       );
 
       fields.setSpots(
-        new Date(travelPlan.date),
+        travelPlan.date,
         {
           ...departureData,
           transports: {
@@ -103,7 +103,7 @@ const TravelMap = ({ travelPlan }: TravelMapProps) => {
           );
           routeResults.push(lastRoute);
           fields.setSpots(
-            new Date(travelPlan.date),
+            travelPlan.date,
             {
               ...spots[i],
               transports: {
@@ -121,7 +121,7 @@ const TravelMap = ({ travelPlan }: TravelMapProps) => {
           orderNumber += 1;
           // 目的のスポットの情報更新
           fields.setSpots(
-            new Date(travelPlan.date),
+            travelPlan.date,
             {
               ...destinationData,
               transports: {
@@ -141,7 +141,7 @@ const TravelMap = ({ travelPlan }: TravelMapProps) => {
             { lat: spots[i + 1].location.latitude, lng: spots[i + 1].location.longitude },
           );
           fields.setSpots(
-            new Date(travelPlan.date),
+            travelPlan.date,
             {
               ...spots[i],
               transports: {

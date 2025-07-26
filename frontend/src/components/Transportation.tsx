@@ -28,21 +28,18 @@ const Transportation = ({ date }: { date: string }) => {
           <div key={idx} className="flex items-center space-x-3">
             <div>
               <Checkbox
-                checked={(
-                  fields.tripInfo.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]
-                    ?.transportationMethod || []
-                ).includes(method.id)}
+                checked={(fields.tripInfo.filter((val) => val.date === date)[0]?.transportationMethod || []).includes(
+                  method.id,
+                )}
                 className="h-5 w-5 text-blue-500 focus:ring-2 focus:ring-blue-400"
                 onCheckedChange={(checked) => {
-                  const targetList =
-                    fields.tripInfo.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0]
-                      ?.transportationMethod || [];
+                  const targetList = fields.tripInfo.filter((val) => val.date === date)[0]?.transportationMethod || [];
                   const isIncluded = targetList.includes(method.id);
                   if (checked && !isIncluded) {
-                    fields.setTripInfo(new Date(date), 'transportationMethod', [...targetList, method.id]);
+                    fields.setTripInfo(date, 'transportationMethod', [...targetList, method.id]);
                   } else if (!checked && isIncluded) {
                     fields.setTripInfo(
-                      new Date(date),
+                      date,
                       'transportationMethod',
                       targetList.filter((id) => id !== method.id),
                     );

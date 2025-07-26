@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ResponsePlanSpotType, ResponseSpotType } from '@/types/plan';
 
-import { formatToHHmm } from '../lib/utils';
 import { transportIcons } from './TravelPlan';
 interface SpotCardProps {
   spotInfo: ResponsePlanSpotType;
@@ -50,7 +49,7 @@ export function SpotCard({ spotInfo, spot, isLast }: SpotCardProps) {
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4" />
               <span>
-                {formatToHHmm(spotInfo.stayStart)} - {formatToHHmm(spotInfo.stayEnd)}
+                {spotInfo.stayStart} - {spotInfo.stayEnd}
               </span>
             </div>
 

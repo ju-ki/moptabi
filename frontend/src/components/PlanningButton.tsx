@@ -17,57 +17,57 @@ const PlanningButton = ({ date }: { date: string }) => {
       isError = true;
     }
 
-    const targetTripInfo = fields.tripInfo.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0];
-    const targetPlans = fields.plans.filter((val) => val.date.toLocaleDateString('ja-JP') === date)[0];
+    const targetTripInfo = fields.tripInfo.filter((val) => val.date === date)[0];
+    const targetPlans = fields.plans.filter((val) => val.date === date)[0];
 
     if (!targetTripInfo || !targetTripInfo.transportationMethod.length) {
-      fields.setTripInfoErrors(new Date(date), {
+      fields.setTripInfoErrors(date, {
         transportationMethod: '計画設定の移動手段を一つ以上チェックしてください',
       });
       isError = true;
     }
 
     if (!targetTripInfo || !targetTripInfo.genreId) {
-      fields.setTripInfoErrors(new Date(date), {
+      fields.setTripInfoErrors(date, {
         genreId: '計画設定のジャンルを選択してください',
       });
       isError = true;
     }
 
     if (targetTripInfo && targetTripInfo.memo && targetTripInfo.memo.length > 1000) {
-      fields.setTripInfoErrors(new Date(date), {
+      fields.setTripInfoErrors(date, {
         memo: 'メモは1000文字以内で入力してください。',
       });
       isError = true;
     }
 
     // if (!targetPlans || !targetPlans.departure.name) {
-    //   fields.setPlanErrors(new Date(date), {
+    //   fields.setPlanErrors(date, {
     //     departure: '出発地を選択してください',
     //   });
     //   isError = true;
     // }
 
     // if (!targetPlans || !targetPlans.destination.name) {
-    //   fields.setPlanErrors(new Date(date), {
+    //   fields.setPlanErrors(date, {
     //     destination: '目的地を選択してください',
     //   });
     //   isError = true;
     // }
 
     if (!targetPlans.spots.length) {
-      fields.setPlanErrors(new Date(date), {
+      fields.setPlanErrors(date, {
         spots: '観光地スポットは1つ以上選択してください',
       });
       isError = true;
     }
 
     if (isError) {
-      fields.setSimulationStatus({ date: new Date(date), status: 9 });
+      fields.setSimulationStatus({ date: date, status: 9 });
       return;
     }
 
-    fields.setSimulationStatus({ date: new Date(date), status: 1 });
+    fields.setSimulationStatus({ date: date, status: 1 });
     alert('プランニング中です');
 
     // 開始時間を元にスポットをソートする
@@ -75,12 +75,12 @@ const PlanningButton = ({ date }: { date: string }) => {
 
     // ソート後の順番を反映処理
     sortedSpots.forEach((spot) => {
-      fields.editSpots(new Date(date), spot.spotId, { order: spot.order });
+      fields.editSpots(date, spot.spotId, { order: spot.order });
     });
 
     //TODO: 非同期でプラン作成をシミュレーションする機能の追加
     setTimeout(() => {
-      fields.setSimulationStatus({ date: new Date(date), status: 2 });
+      fields.setSimulationStatus({ date: date, status: 2 });
     }, 2000); // 2秒後にシミュレーション完了状態に
   };
   return (

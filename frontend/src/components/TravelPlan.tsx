@@ -26,9 +26,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
   }
 
   const targetSimulationStatus = fields.simulationStatus
-    ? fields.simulationStatus.filter(
-        (val) => val.date.toLocaleDateString('ja-JP') == travelPlan.date.toLocaleDateString('ja-JP'),
-      )[0]?.status
+    ? fields.simulationStatus.filter((val) => val.date == travelPlan.date)[0]?.status
     : null;
 
   const departureData = fields.getSpotInfo(travelPlan.date, TransportNodeType.DEPARTURE);
@@ -37,7 +35,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
 
   const handleDeleteSpot = (id: string) => {
     const updatedSpots = spots.filter((spot) => spot.id == id)[0];
-    fields.setSpots(new Date(travelPlan.date), updatedSpots, true);
+    fields.setSpots(travelPlan.date, updatedSpots, true);
   };
 
   if (!targetSimulationStatus || targetSimulationStatus === 0 || targetSimulationStatus === 1) {
@@ -178,7 +176,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
               <Textarea
                 placeholder="この観光スポットに対するメモや注意点を記載"
                 value={spot.memo || ''}
-                onChange={(e) => fields.setSpots(new Date(travelPlan.date), { ...spot, memo: e.target.value }, false)}
+                onChange={(e) => fields.setSpots(travelPlan.date, { ...spot, memo: e.target.value }, false)}
               />
             </div>
           </div>

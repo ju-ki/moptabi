@@ -14,19 +14,17 @@ import {
 } from '@/types/plan';
 import { placeTypeGroups } from '@/data/dummyData';
 
-import { removeTimeFromDate } from './utils';
-
 export const schema = z.object({
   title: z
     .string()
     .min(1, { message: 'タイトルは必須です' })
     .max(50, { message: 'タイトルの上限を超えています。50文字以下で入力してください' }),
   imageUrl: z.string().url().optional(),
-  startDate: z.date({ message: '予定日の開始日を入力してください' }),
-  endDate: z.date({ message: '予定日の終了日を入力してください' }),
+  startDate: z.string().date('予定日の終了日を入力してください'),
+  endDate: z.string().date('予定日の終了日を入力してください'),
   tripInfo: z.array(
     z.object({
-      date: z.date(),
+      date: z.string(),
       genreId: z.number(),
       transportationMethod: z.array(z.number()).refine((value) => value.some((item) => item), {
         message: '移動手段は最低でも1つ以上選択してください',
@@ -36,7 +34,7 @@ export const schema = z.object({
   ),
   plans: z.array(
     z.object({
-      date: z.date(),
+      date: z.string().date(),
       spots: z.array(
         z.object({
           id: z.string(),
@@ -83,8 +81,8 @@ interface FormState {
   id?: string;
   title: string;
   imageUrl?: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string;
+  endDate: string;
   tripInfo: TripInfo[];
   plans: TravelPlanType[];
   errors: Partial<Record<keyof FormData, string>>;
@@ -92,21 +90,21 @@ interface FormState {
   planErrors: Partial<Record<string, Partial<Record<keyof TravelPlanType, string>>>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
   setTripInfo: (
-    date: Date,
+    date: string,
     name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
-    value: Date | number | number[] | string,
+    value: string | number | number[] | string,
   ) => void;
-  getSpotInfo: (date: Date, type: TransportNodeType) => Spot[];
-  simulationStatus: { date: Date; status: number }[] | null;
-  setSimulationStatus: (status: { date: Date; status: number }) => void;
-  setSpots: (date: Date, spot: Spot, isDeleted: boolean) => void;
-  editSpots: (date: Date, spotId: string, updatedSpot: Partial<Spot>) => void;
-  getSortedSpots: (date: Date) => Spot[];
+  getSpotInfo: (date: string, type: TransportNodeType) => Spot[];
+  simulationStatus: { date: string; status: number }[] | null;
+  setSimulationStatus: (status: { date: string; status: number }) => void;
+  setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
+  editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
+  getSortedSpots: (date: string) => Spot[];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
-  setTripInfoErrors: (date: Date, errors: Partial<Record<keyof TripInfo, string>>) => void;
-  setSpotErrors: (date: Date, errors: Partial<Record<keyof Spot, string>>) => void;
-  setPlanErrors: (date: Date, errors: Partial<Record<keyof TravelPlanType, string>>) => void;
+  setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
+  setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
+  setPlanErrors: (date: string, errors: Partial<Record<keyof TravelPlanType, string>>) => void;
   setRangeDate: (date: DateRange | undefined) => void;
   resetErrors: () => void;
   resetForm: () => void;
@@ -117,12 +115,12 @@ export const useStoreForPlanning = create<FormState>()(
     devtools((set, get) => ({
       title: '',
       imageUrl: '',
-      startDate: new Date(),
-      endDate: new Date(),
+      startDate: new Date().toLocaleDateString('ja-JP'),
+      endDate: new Date().toLocaleDateString('ja-JP'),
       tripInfo: [],
       plans: [
         {
-          date: new Date(),
+          date: new Date().toLocaleDateString('ja-JP'),
           spots: [],
         },
       ],
@@ -130,9 +128,7 @@ export const useStoreForPlanning = create<FormState>()(
       setSimulationStatus: (status) => {
         set((state) => {
           if (state.simulationStatus) {
-            const existingStatusIndex = state.simulationStatus.findIndex(
-              (info) => info.date.toLocaleDateString('ja-JP') === status.date.toLocaleDateString('ja-JP'),
-            );
+            const existingStatusIndex = state.simulationStatus.findIndex((info) => info.date === status.date);
             if (existingStatusIndex >= 0) {
               state.simulationStatus[existingStatusIndex] = {
                 ...state.simulationStatus[existingStatusIndex],
@@ -140,14 +136,14 @@ export const useStoreForPlanning = create<FormState>()(
               };
             } else {
               state.simulationStatus.push({
-                date: removeTimeFromDate(status.date),
+                date: status.date,
                 status: status.status,
               });
             }
           } else {
             state.simulationStatus = [
               {
-                date: removeTimeFromDate(status.date),
+                date: status.date,
                 status: status.status,
               },
             ];
@@ -159,9 +155,7 @@ export const useStoreForPlanning = create<FormState>()(
       spotErrors: {},
       planErrors: {},
       getSpotInfo: (date, type) => {
-        const plansForDate = get().plans.filter(
-          (plan) => plan.date.toLocaleDateString('ja-JP') === date.toLocaleDateString('ja-JP'),
-        );
+        const plansForDate = get().plans.filter((plan) => plan.date === date);
         if (plansForDate.length > 0) {
           if (type === TransportNodeType.DEPARTURE) {
             return plansForDate[0].spots.filter((spot) => spot.transports?.fromType === type);
@@ -177,9 +171,7 @@ export const useStoreForPlanning = create<FormState>()(
       },
       setTripInfo: (date, name, value) => {
         set((state) => {
-          const existingTripInfoIndex = state.tripInfo.findIndex(
-            (info) => info.date.toDateString() === date.toDateString(),
-          );
+          const existingTripInfoIndex = state.tripInfo.findIndex((info) => info.date === date);
 
           if (existingTripInfoIndex >= 0) {
             state.tripInfo[existingTripInfoIndex] = {
@@ -188,7 +180,7 @@ export const useStoreForPlanning = create<FormState>()(
             };
           } else {
             state.tripInfo.push({
-              date: removeTimeFromDate(date),
+              date: date,
               genreId: name === 'genreId' ? Number(value) : 0,
               transportationMethod: name === 'transportationMethod' ? (value as number[]) : [],
               memo: name === 'memo' ? (value as string) : '',
@@ -198,10 +190,14 @@ export const useStoreForPlanning = create<FormState>()(
       },
       setSpots: (date, spot, isDeleted = false) => {
         set((state) => {
-          const existingPlansIndex = state.plans.findIndex(
-            (info) => info.date.toLocaleDateString('ja-JP') === date.toLocaleDateString('ja-JP'),
-          );
-
+          const existingPlansIndex = state.plans.findIndex((info) => info.date === date);
+          if (existingPlansIndex < 0) {
+            state.plans.push({
+              date: date,
+              spots: [spot],
+            });
+            return;
+          }
           const existingSpotIndex = state.plans[existingPlansIndex].spots.findIndex((info) => info.id === spot.id);
 
           if (existingSpotIndex >= 0 && !isDeleted) {
@@ -221,7 +217,7 @@ export const useStoreForPlanning = create<FormState>()(
       setErrors: (errors) => set((state) => ({ ...state, errors })),
       setTripInfoErrors: (date, errors) =>
         set((state) => {
-          const dateKey = date.toLocaleDateString('ja-JP');
+          const dateKey = date;
           state.tripInfoErrors[dateKey] = {
             ...state.tripInfoErrors[dateKey],
             ...errors,
@@ -230,7 +226,7 @@ export const useStoreForPlanning = create<FormState>()(
         }),
       setPlanErrors: (date, errors) =>
         set((state) => {
-          const dateKey = date.toLocaleDateString('ja-JP');
+          const dateKey = date;
           state.planErrors[dateKey] = {
             ...state.planErrors[dateKey],
             ...errors,
@@ -239,7 +235,7 @@ export const useStoreForPlanning = create<FormState>()(
         }),
       setSpotErrors: (date, errors) =>
         set((state) => {
-          const dateKey = date.toLocaleDateString('ja-JP');
+          const dateKey = date;
           state.spotErrors[dateKey] = {
             ...state.spotErrors[dateKey],
             ...errors,
@@ -248,9 +244,9 @@ export const useStoreForPlanning = create<FormState>()(
         }),
       editSpots: (date, spotId, updatedSpot) => {
         set((state) => {
-          const plansForDateIndex = state.plans.findIndex(
-            (plan) => plan.date.toLocaleDateString('ja-JP') === date.toLocaleDateString('ja-JP'),
-          );
+          console.log(state.plans);
+          console.log(date);
+          const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
 
           if (plansForDateIndex >= 0) {
             const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === spotId);
@@ -260,10 +256,10 @@ export const useStoreForPlanning = create<FormState>()(
                 ...updatedSpot,
               };
             } else {
-              console.warn(`Spot with id ${spotId} not found in plans for date ${date.toLocaleDateString('ja-JP')}`);
+              console.warn(`Spot with id ${spotId} not found in plans for date ${date}`);
             }
           } else {
-            console.warn(`No plans found for date ${date.toLocaleDateString('ja-JP')}`);
+            console.warn(`No plans found for date ${date}`);
           }
         });
       },
@@ -315,8 +311,8 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     image: place.photos?.[0]?.getURI() ?? '',
     url: place.googleMapsURI ?? '',
     rating: place.rating ?? 0,
-    stayStart: '09:00', // TODO: 仮置き
-    stayEnd: '10:00', // TODO: 仮置き
+    stayStart: '09:00',
+    stayEnd: '10:00',
     category: place.types ?? [], // TODO: 日本語化
     transports: {
       transportMethodIds: [0],

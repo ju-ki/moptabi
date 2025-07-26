@@ -14,7 +14,7 @@ import { Command, CommandInput, CommandItem, CommandList } from './ui/command';
 const Destination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const destinationData = fields.plans
-    .filter((val) => val.date.toLocaleDateString('ja-JP') == date)[0]
+    .filter((val) => val.date == date)[0]
     ?.spots.filter((spot) => spot.transports?.toType === TransportNodeType.DESTINATION)[0];
   const [open, setOpen] = useState(false);
 
@@ -46,7 +46,7 @@ const Destination = ({ date }: { date: string }) => {
                   key={destination.name}
                   onSelect={() => {
                     fields.setSpots(
-                      new Date(date),
+                      date,
                       {
                         id: buildSpotId('destination', date, destination.latitude, destination.longitude),
                         location: {

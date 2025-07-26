@@ -25,7 +25,7 @@ const GanttChart = ({ date }: { date: string }) => {
   const [previewSpots, setPreviewSpots] = useState<Spot[] | []>([]);
 
   useEffect(() => {
-    const filteredSpots = fields.getSpotInfo(new Date(date), TransportNodeType.SPOT);
+    const filteredSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
     if (filteredSpots.length > 0) {
       setSpots(filteredSpots);
       setPreviewSpots(filteredSpots);
@@ -230,7 +230,7 @@ const GanttChart = ({ date }: { date: string }) => {
       }
 
       // 実際のデータを更新
-      fields.setSpots(new Date(date), { ...prevData, stayStart: newStartTime, stayEnd: newEndTime }, false);
+      fields.setSpots(date, { ...prevData, stayStart: newStartTime, stayEnd: newEndTime }, false);
     }
 
     // ドラッグ状態をリセット
@@ -241,11 +241,11 @@ const GanttChart = ({ date }: { date: string }) => {
   const handleDeleteSpot = (id: string) => {
     setSpots((prev) => prev.filter((spot) => spot.id !== id));
     setPreviewSpots((prev) => prev.filter((spot) => spot.id !== id));
-    const filteredPlan = fields.plans.find((plan) => plan.date.toLocaleDateString('ja-JP') === date);
+    const filteredPlan = fields.plans.find((plan) => plan.date === date);
     if (filteredPlan) {
       const spot = filteredPlan.spots.find((spot) => spot.id === id);
       if (spot) {
-        fields.setSpots(new Date(date), spot, true);
+        fields.setSpots(date, spot, true);
       }
     }
   };
