@@ -158,9 +158,11 @@ const TravelPlanCreate = () => {
                       to: new Date(fields.endDate),
                     }}
                     onSelect={(dateRange: DateRange | undefined) => {
+                      const fromDate = dateRange?.from && dateRange.from.toLocaleDateString('ja-JP');
+                      const toDate = dateRange?.to && dateRange.to.toLocaleDateString('ja-JP');
                       fields.setRangeDate({
-                        from: dateRange?.from,
-                        to: dateRange?.to,
+                        from: fromDate,
+                        to: toDate,
                       });
                     }}
                     numberOfMonths={2}
