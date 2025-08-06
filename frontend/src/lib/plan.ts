@@ -105,7 +105,7 @@ interface FormState {
   setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
   setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
   setPlanErrors: (date: string, errors: Partial<Record<keyof TravelPlanType, string>>) => void;
-  setRangeDate: (date: DateRange | undefined) => void;
+  setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
   resetErrors: () => void;
   resetForm: () => void;
 }
