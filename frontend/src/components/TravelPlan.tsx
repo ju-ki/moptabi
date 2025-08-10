@@ -73,7 +73,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
       {/* マップを追加 */}
       <div className="mb-10 bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">旅行ルート</h2>
-        <TravelMap travelPlan={travelPlan} />
+        <TravelMap date={travelPlan.date} />
       </div>
 
       {/* 出発地 */}

@@ -1,4 +1,6 @@
-import { Spot, TransportNodeType } from '@/types/plan';
+import { Coordination, Spot, TransportNodeType } from '@/types/plan';
+
+import { getRoute, RouteResult } from './plan';
 
 interface SortedSpot {
   order: number;
@@ -81,4 +83,22 @@ export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot =>
   clonedNewSpot.stayEnd = `${String(newEndHour).padStart(2, '0')}:${String(lastMinute % 60).padStart(2, '0')}`;
 
   return clonedNewSpot;
+};
+
+/**
+ * 座標からルート情報を取得する関数
+ * @param fromCoordination 出発地の座標
+ * @param toCoordination 目的地の座標
+ * @returns ルート情報
+ */
+export const calcRoutes = async (
+  fromCoordination: Coordination,
+  toCoordination: Coordination,
+): Promise<RouteResult> => {
+  const responseRoute = await getRoute(fromCoordination, toCoordination);
+  if (!responseRoute) {
+    throw new Error('ルートの取得に失敗しました。');
+  }
+
+  return responseRoute;
 };

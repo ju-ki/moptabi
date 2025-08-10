@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
 import { format } from 'date-fns';
 import { MapPin } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ResponsePlanType } from '@/types/plan';
+import { ResponsePlanType, Spot, TransportNodeType } from '@/types/plan';
+import { useStoreForPlanning } from '@/lib/plan';
 
 import { SpotCard } from './SpotCard2';
 import TravelMap from './TravelMap';
@@ -15,6 +17,34 @@ interface DayPlanProps {
 }
 
 export function DayPlan({ plan, dayNumber }: DayPlanProps) {
+  const fields = useStoreForPlanning();
+  useEffect(() => {
+    plan.planSpots.forEach((planSpot) => {
+      const type = planSpot.spot.id.split('_')[0];
+
+      const spot: Spot = {
+        id: planSpot.spot.id,
+        location: {
+          latitude: planSpot.spot.meta.latitude,
+          longitude: planSpot.spot.meta.longitude,
+          name: planSpot.spot.meta.name,
+        },
+        stayStart: planSpot.stayStart,
+        stayEnd: planSpot.stayEnd,
+        order: planSpot.order,
+        nearestStation: planSpot.spot.nearestStation,
+        transports: {
+          fromType: type === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.SPOT,
+          toType: type === 'destination' ? TransportNodeType.DESTINATION : TransportNodeType.SPOT,
+          transportMethodIds: [0],
+          name: 'WALKING',
+          travelTime: '0',
+        },
+      };
+
+      fields.setSpots(plan.date, spot, false);
+    });
+  }, [plan]);
   return (
     <Card>
       <CardHeader>
@@ -40,8 +70,7 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
           ))}
 
           <div>
-            {/* TODO 並び順が考慮できていないため一旦コメントアウト */}
-            {/* <TravelMap travelPlan={plan} /> */}
+            <TravelMap date={plan.date} />
           </div>
         </div>
       </CardContent>

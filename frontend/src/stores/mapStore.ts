@@ -11,7 +11,7 @@ interface MapState {
 
 export const useMapStore = create<MapState>((set) => ({
   spots: [],
-  coordinate: { lat: 35.0, lng: 135.0 },
+  coordinate: { id: '', lat: 35.0, lng: 135.0 },
   setSpots: (spots) => set({ spots }),
   setCoordinate: (coord) => set({ coordinate: coord }),
 }));
