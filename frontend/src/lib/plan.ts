@@ -1,4 +1,3 @@
-import { DateRange } from 'react-day-picker';
 import { z } from 'zod';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
@@ -106,6 +105,7 @@ interface FormState {
   setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
   setPlanErrors: (date: string, errors: Partial<Record<keyof TravelPlanType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
+  getSpotCoordination: (date: string) => Record<string, Spot>;
   resetErrors: () => void;
   resetForm: () => void;
 }
@@ -244,8 +244,6 @@ export const useStoreForPlanning = create<FormState>()(
         }),
       editSpots: (date, spotId, updatedSpot) => {
         set((state) => {
-          console.log(state.plans);
-          console.log(date);
           const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
 
           if (plansForDateIndex >= 0) {
@@ -262,6 +260,28 @@ export const useStoreForPlanning = create<FormState>()(
             console.warn(`No plans found for date ${date}`);
           }
         });
+      },
+      getSpotCoordination: (date: string) => {
+        const plansForDate = get().plans.find((plan) => plan.date === date);
+        if (plansForDate) {
+          const departureSpot = plansForDate.spots.find(
+            (spot) => spot.transports?.fromType === TransportNodeType.DEPARTURE,
+          );
+          const destinationSpot = plansForDate.spots.find(
+            (spot) => spot.transports?.toType === TransportNodeType.DESTINATION,
+          );
+          const spotCoordination = plansForDate.spots.filter(
+            (spot) =>
+              spot.transports?.fromType === TransportNodeType.SPOT &&
+              spot.transports?.toType === TransportNodeType.SPOT,
+          );
+
+          return {
+            departureCoordination: departureSpot,
+            destinationCoordination: destinationSpot,
+            spotCoordination: spotCoordination,
+          };
+        }
       },
       resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),

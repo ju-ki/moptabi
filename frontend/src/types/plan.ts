@@ -5,8 +5,10 @@ export type Location = {
 };
 
 export type Coordination = {
+  id: string;
   lat: number;
   lng: number;
+  name?: string;
 };
 
 export type Transport = {
@@ -98,6 +100,7 @@ export type ResponsePlanSpotType = {
   stayStart: string;
   stayEnd: string;
   memo?: string;
+  order: number;
 };
 
 export type ResponseSpotType = {
