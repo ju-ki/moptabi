@@ -2,9 +2,8 @@ import { useEffect } from 'react';
 import { GoogleMap, Marker, MarkerF, InfoWindow } from '@react-google-maps/api';
 import Image from 'next/image';
 
-import { useMapStore } from '@/stores/mapStore';
 import { useGoogleMap } from '@/hooks/use-google';
-import { Spot } from '@/types/plan';
+import { Coordination, Spot } from '@/types/plan';
 const INITIALIZE_ZOOM = 13; // ズームレベル
 
 const INITIALIZE_MAP_WIDTH = '100%'; // 地図の幅
@@ -18,16 +17,17 @@ const CONTAINER_STYLE = {
 interface GoogleMapCompProps {
   isSetCurrentLocation: boolean;
   searchedSpots?: Spot[];
+  extraCoordinate?: Coordination;
 }
 
 const GoogleMapComponent: React.FC<GoogleMapCompProps> = ({
   isSetCurrentLocation,
   searchedSpots,
+  extraCoordinate,
 }: GoogleMapCompProps) => {
-  const { coordinate } = useMapStore();
   const { map, mapCoordinate, selectedSpot, setSelectedSpot, handleMapClick, onLoad, onUnmount } = useGoogleMap(
-    coordinate,
     isSetCurrentLocation,
+    extraCoordinate,
   );
 
   useEffect(() => {

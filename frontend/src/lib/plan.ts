@@ -4,6 +4,7 @@ import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import {
+  Coordination,
   SearchSpotByCategoryParams,
   Spot,
   TransportNodeType,
@@ -84,10 +85,14 @@ interface FormState {
   endDate: string;
   tripInfo: TripInfo[];
   plans: TravelPlanType[];
+  departureHistory: Coordination[];
+  destinationHistory: Coordination[];
   errors: Partial<Record<keyof FormData, string>>;
   tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
   planErrors: Partial<Record<string, Partial<Record<keyof TravelPlanType, string>>>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
+  setDepartureHistory: (history: Coordination[]) => void;
+  setDestinationHistory: (history: Coordination[]) => void;
   setTripInfo: (
     date: string,
     name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
@@ -154,6 +159,10 @@ export const useStoreForPlanning = create<FormState>()(
       tripInfoErrors: {},
       spotErrors: {},
       planErrors: {},
+      departureHistory: [],
+      destinationHistory: [],
+      setDepartureHistory: (history) => set((state) => ({ ...state, departureHistory: history })),
+      setDestinationHistory: (history) => set((state) => ({ ...state, destinationHistory: history })),
       getSpotInfo: (date, type) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
         if (plansForDate.length > 0) {

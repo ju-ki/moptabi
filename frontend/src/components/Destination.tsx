@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { Check, MapPinIcon } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { destinations } from '@/data/dummyData';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { Coordination, Spot, TransportNodeType } from '@/types/plan';
 import { buildSpotId } from '@/lib/utils';
-import { useMapStore } from '@/stores/mapStore';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -17,7 +15,8 @@ import { Input } from './ui/input';
 
 const Destination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
-  const { coordinate } = useMapStore();
+  const destinations = fields.destinationHistory;
+  const [selectedMapCoordinate, setSelectedMapCoordinate] = useState<Coordination | undefined>(undefined);
   const [isCheckCurrentLocation, setIsCheckCurrentLocation] = useState<boolean>(false);
   const destinationData = fields.plans
     .filter((val) => val.date == date)[0]
@@ -28,8 +27,8 @@ const Destination = ({ date }: { date: string }) => {
     id: buildSpotId('destination', date),
     location: {
       name: destinationData?.location.name || '目的地',
-      latitude: coordinate.lat,
-      longitude: coordinate.lng,
+      latitude: selectedMapCoordinate?.lat || 0,
+      longitude: selectedMapCoordinate?.lng || 0,
     },
     order: 0,
     stayStart: '00:00',
@@ -71,10 +70,11 @@ const Destination = ({ date }: { date: string }) => {
                 <CommandItem
                   key={destination.name}
                   onSelect={() => {
-                    DESTINATION_DATA.location.name = destination.name;
-                    DESTINATION_DATA.location.latitude = destination.latitude;
-                    DESTINATION_DATA.location.longitude = destination.longitude;
+                    DESTINATION_DATA.location.name = destination.name || '目的地';
+                    DESTINATION_DATA.location.latitude = destination.lat;
+                    DESTINATION_DATA.location.longitude = destination.lng;
                     fields.setSpots(date, DESTINATION_DATA, false);
+                    setSelectedMapCoordinate(destination);
                     setOpen(false);
                   }}
                   className="flex items-center"
@@ -119,7 +119,10 @@ const Destination = ({ date }: { date: string }) => {
         </div>
 
         <div className="mt-4">
-          <GoogleMapComponent isSetCurrentLocation={isCheckCurrentLocation}></GoogleMapComponent>
+          <GoogleMapComponent
+            isSetCurrentLocation={isCheckCurrentLocation}
+            extraCoordinate={selectedMapCoordinate}
+          ></GoogleMapComponent>
         </div>
       </div>
     </div>

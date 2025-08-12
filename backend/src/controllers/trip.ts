@@ -376,4 +376,92 @@ export const getTripHandler = {
       );
     }
   },
+
+  /**
+   * ユーザーの出発地と目的地の取得
+   */
+  getDepartureAndDepartment: async (c: Context) => {
+    try {
+      const auth = getAuth(c);
+      if (!auth?.userId) {
+        return c.json({ error: 'Unauthorized' }, 401);
+      }
+
+      const userId = auth.userId;
+
+      const departureAndDestinationSpots = await prisma.planSpot.findMany({
+        where: {
+          // 1. スポットIDが出発地または目的地で始まるものをフィルタリング
+          spot: {
+            OR: [{ id: { startsWith: 'departure' } }, { id: { startsWith: 'destination' } }],
+          },
+          // 2. 関連するプランを通じて、特定のユーザーIDを持つ旅行に絞り込み
+          plan: {
+            trip: {
+              userId: userId,
+            },
+          },
+        },
+        // 3. スポットIDで重複を排除
+        distinct: ['spotId'],
+        select: {
+          // 4. 必要な情報のみを選択
+          spot: {
+            select: {
+              meta: {
+                select: {
+                  id: true,
+                  name: true,
+                  latitude: true,
+                  longitude: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const allDeparture: { id: string; name: string; lat: number; lng: number }[] = [];
+      const allDestination: { id: string; name: string; lat: number; lng: number }[] = [];
+
+      departureAndDestinationSpots.forEach((item) => {
+        const spotMeta = item.spot.meta;
+        if (!spotMeta) {
+          return;
+        }
+        if (
+          spotMeta.id.startsWith('departure') &&
+          allDeparture.filter((spot) => spot.name == spotMeta.name).length == 0
+        ) {
+          allDeparture.push({
+            id: spotMeta.id,
+            name: spotMeta.name,
+            lat: spotMeta.latitude,
+            lng: spotMeta.longitude,
+          });
+        }
+        if (
+          spotMeta.id.startsWith('destination') &&
+          allDestination.filter((spot) => spot.name == spotMeta.name).length == 0
+        ) {
+          allDestination.push({
+            id: spotMeta.id,
+            name: spotMeta.name,
+            lat: spotMeta.latitude,
+            lng: spotMeta.longitude,
+          });
+        }
+      });
+
+      const response = {
+        departure: allDeparture,
+        destination: allDestination,
+      };
+      return c.json(response, 200);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(errorMessage);
+      return c.json({ error: 'Internal Server Error', details: errorMessage }, 500);
+    }
+  },
 };

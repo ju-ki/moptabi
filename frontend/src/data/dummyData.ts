@@ -316,20 +316,6 @@ export const sapporoTravelPlan: TravelPlanType = {
   },
 };
 
-export const department = [
-  { name: '自宅', latitude: 34.7025, longitude: 135.4959 }, // 大阪
-  { name: 'ホテルA', latitude: 35.6895, longitude: 139.6917 }, // 東京
-  { name: '旅館B', latitude: 34.9858, longitude: 135.7587 }, // 京都
-  { name: 'ゲストハウスC', latitude: 43.0664, longitude: 141.3507 }, // 札幌
-];
-
-export const destinations = [
-  { name: 'ホテルA', latitude: 35.6895, longitude: 139.6917 }, // 東京
-  { name: '旅館B', latitude: 34.9858, longitude: 135.7587 }, // 京都
-  { name: 'ゲストハウスC', latitude: 43.0664, longitude: 141.3507 }, // 札幌
-  { name: '自宅', latitude: 34.7025, longitude: 135.4959 }, // 大阪
-];
-
 export const transportationMethods = [
   { id: 1, name: '徒歩' },
   { id: 2, name: '自転車' },

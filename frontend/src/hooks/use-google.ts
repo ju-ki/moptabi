@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 
 import { Coordination, Spot } from '@/types/plan';
 
-export const useGoogleMap = (initCoordinate: Coordination, isSetCurrentLocation: boolean) => {
+export const useGoogleMap = (isSetCurrentLocation: boolean, extraCoordinate?: Coordination) => {
+  const initCoordinate: Coordination = { id: '', lat: 35.6813, lng: 139.7671 }; // 初期座標（東京駅）
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [mapCoordinate, setMapCoordinate] = useState<Coordination>(initCoordinate);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
@@ -18,10 +19,24 @@ export const useGoogleMap = (initCoordinate: Coordination, isSetCurrentLocation:
   useEffect(() => {
     if (isSetCurrentLocation) {
       navigator.geolocation.getCurrentPosition((position) => {
-        setMapCoordinate({ id: '', lat: position.coords.latitude, lng: position.coords.longitude });
+        const newCoordinate = { id: '', lat: position.coords.latitude, lng: position.coords.longitude };
+        setMapCoordinate(newCoordinate);
+        if (map) {
+          map.panTo(newCoordinate);
+        }
       });
     }
-  }, [isSetCurrentLocation]);
+  }, [isSetCurrentLocation, map]);
+
+  useEffect(() => {
+    if (extraCoordinate) {
+      setMapCoordinate(extraCoordinate);
+      if (map) {
+        const newCoordinate = { id: '', lat: extraCoordinate.lat, lng: extraCoordinate.lng };
+        map.panTo(newCoordinate);
+      }
+    }
+  }, [extraCoordinate, map]);
 
   const handleMapClick = (event: google.maps.MapMouseEvent) => {
     if (event.latLng) {
