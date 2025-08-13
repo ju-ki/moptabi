@@ -48,7 +48,7 @@ const Departure = ({ date }: { date: string }) => {
                     fields.setSpots(
                       date,
                       {
-                        id: buildSpotId('departure', date, departure.latitude, departure.longitude),
+                        id: buildSpotId('departure', date),
                         location: {
                           name: departure.name,
                           latitude: departure.latitude,

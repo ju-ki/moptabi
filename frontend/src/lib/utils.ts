@@ -125,12 +125,10 @@ export const formatToHHmm = (date: string): string => {
  *
  * @param prefix departure | destination
  * @param date YYYY-MM-DD形式の日付
- * @param lat
- * @param lon
  * @returns
  */
-export const buildSpotId = (prefix: 'departure' | 'destination', date: string, lat: number, lon: number): string => {
-  return `${prefix}_${date}_${lat}_${lon}`.replace(/\./g, '_');
+export const buildSpotId = (prefix: 'departure' | 'destination', date: string): string => {
+  return `${prefix}_${date}`;
 };
 
 /**
