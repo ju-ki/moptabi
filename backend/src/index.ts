@@ -11,6 +11,7 @@ import {
   deleteTripRoute,
   uploadImageRoute,
   getTransportMethodsRoute,
+  getDepartureAndDepartment,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
 import { getHelloRoutes } from './routes/hello';
@@ -40,6 +41,7 @@ const helloApp = new OpenAPIHono();
 const tripApp = new OpenAPIHono();
 const imageApp = new OpenAPIHono();
 const transportApp = new OpenAPIHono();
+const spotApp = new OpenAPIHono();
 const authApp = new OpenAPIHono();
 
 tripApp.use(
@@ -51,6 +53,14 @@ tripApp.use(
 );
 
 transportApp.use(
+  '*',
+  clerkMiddleware({
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+  }),
+);
+
+spotApp.use(
   '*',
   clerkMiddleware({
     publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
@@ -82,6 +92,7 @@ tripApp.openapi(createTripRoute, getTripHandler.createTrip);
 tripApp.openapi(getTripDetailRoute, getTripHandler.getTripDetail);
 tripApp.openapi(deleteTripRoute, getTripHandler.deleteTrip);
 transportApp.openapi(getTransportMethodsRoute, getTripHandler.getTransportMethods);
+spotApp.openapi(getDepartureAndDepartment, getTripHandler.getDepartureAndDepartment);
 imageApp.openapi(uploadImageRoute, getImageHandler.uploadImage);
 imageApp.openapi(getImageRoute, getImageHandler.getImage);
 
@@ -91,6 +102,7 @@ app.route('/images', imageApp);
 app.route('/hello', helloApp);
 app.route('/trips', tripApp);
 app.route('/transport', transportApp);
+app.route('/spot', spotApp);
 app.route('/auth', authApp);
 
 // APIドキュメントの登録

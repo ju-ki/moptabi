@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
@@ -23,7 +24,7 @@ import { useFetcher } from '@/hooks/use-fetcher';
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
   const { toast } = useToast();
-  const { postFetcher } = useFetcher();
+  const { getFetcher, postFetcher } = useFetcher();
   const { trigger: createTripTrigger } = useSWRMutation(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/create`,
     postFetcher,
@@ -32,7 +33,31 @@ const TravelPlanCreate = () => {
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
     postFetcher,
   );
+
+  const { trigger: getDepartureAndDepartmentTrigger } = useSWRMutation(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/spot`,
+    getFetcher,
+  );
   const router = useRouter();
+
+  useEffect(() => {
+    const fetchDepartureAndDestination = async () => {
+      try {
+        const response = await getDepartureAndDepartmentTrigger();
+
+        fields.setDepartureHistory(response.departure);
+        fields.setDestinationHistory(response.destination);
+      } catch (error) {
+        console.error('Error fetching departure and destination:', error);
+        toast({
+          title: '出発地と目的地の取得に失敗しました',
+          description: 'もう一度お試しください。',
+          variant: 'destructive',
+        });
+      }
+    };
+    fetchDepartureAndDestination();
+  }, []);
 
   const onUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const formData = new FormData();

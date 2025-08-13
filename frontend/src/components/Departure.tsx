@@ -2,21 +2,46 @@ import React, { useState } from 'react';
 import { Check, MapPinIcon } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { department } from '@/data/dummyData';
-import { TransportNodeType } from '@/types/plan';
+import { Coordination, Spot, TransportNodeType } from '@/types/plan';
 import { buildSpotId } from '@/lib/utils';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
 import { Command, CommandInput, CommandItem, CommandList } from './ui/command';
+import GoogleMapComponent from './GoogleMap';
+import { Input } from './ui/input';
+import { Checkbox } from './ui/checkbox';
 
 const Departure = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
+  const department = fields.departureHistory;
+  const [selectedMapCoordinate, setSelectedMapCoordinate] = useState<Coordination | undefined>(undefined);
+  const [isCheckCurrentLocation, setIsCheckCurrentLocation] = useState<boolean>(false);
   const departureData = fields.plans
     .filter((val) => val.date == date)[0]
     ?.spots.filter((spot) => spot.transports?.fromType === TransportNodeType.DEPARTURE)[0];
   const [open, setOpen] = useState(false);
+
+  const DEPARTURE_DATA: Spot = {
+    id: buildSpotId('departure', date),
+    location: {
+      name: departureData?.location.name || '出発地',
+      latitude: selectedMapCoordinate?.lat || 0,
+      longitude: selectedMapCoordinate?.lng || 0,
+    },
+    stayStart: '00:00',
+    stayEnd: '00:00',
+    order: 0,
+    transports: {
+      travelTime: '不明',
+      cost: 0,
+      name: 'DEFAULT',
+      transportMethodIds: [0],
+      fromType: TransportNodeType.DEPARTURE,
+      toType: TransportNodeType.SPOT,
+    },
+  };
 
   return (
     <div>
@@ -45,29 +70,11 @@ const Departure = ({ date }: { date: string }) => {
                 <CommandItem
                   key={departure.name}
                   onSelect={() => {
-                    fields.setSpots(
-                      date,
-                      {
-                        id: buildSpotId('departure', date),
-                        location: {
-                          name: departure.name,
-                          latitude: departure.latitude,
-                          longitude: departure.longitude,
-                        },
-                        stayStart: '00:00',
-                        stayEnd: '00:00',
-                        order: 0,
-                        transports: {
-                          travelTime: '不明',
-                          cost: 0,
-                          name: 'DEFAULT',
-                          transportMethodIds: [0],
-                          fromType: TransportNodeType.DEPARTURE,
-                          toType: TransportNodeType.SPOT,
-                        },
-                      },
-                      false,
-                    );
+                    DEPARTURE_DATA.location.name = departure.name || '出発地';
+                    DEPARTURE_DATA.location.latitude = departure.lat;
+                    DEPARTURE_DATA.location.longitude = departure.lng;
+                    fields.setSpots(date, DEPARTURE_DATA, false);
+                    setSelectedMapCoordinate(departure);
                     setOpen(false);
                   }}
                   className="flex items-center"
@@ -80,6 +87,42 @@ const Departure = ({ date }: { date: string }) => {
           </Command>
         </PopoverContent>
       </Popover>
+      <div className="space-y-4 p-4">
+        <div>
+          <Label htmlFor="destination-input" className="block text-lg font-semibold text-gray-800">
+            出発地を地図から選択する
+          </Label>
+          <Input
+            id="destination-input"
+            type="text"
+            placeholder="出発地の名前を設定する"
+            className="mt-2 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onInput={(e) => {
+              DEPARTURE_DATA.location.name = e.currentTarget.value;
+              fields.setSpots(date, DEPARTURE_DATA, false);
+            }}
+          />
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="current-location-checkbox"
+            checked={isCheckCurrentLocation}
+            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            onCheckedChange={() => setIsCheckCurrentLocation((prev) => !prev)}
+          />
+          <label htmlFor="current-location-checkbox" className="cursor-pointer text-sm font-medium text-gray-700">
+            現在地を出発地に設定する
+          </label>
+        </div>
+
+        <div className="mt-4">
+          <GoogleMapComponent
+            isSetCurrentLocation={isCheckCurrentLocation}
+            extraCoordinate={selectedMapCoordinate}
+          ></GoogleMapComponent>
+        </div>
+      </div>
     </div>
   );
 };

@@ -3,7 +3,7 @@ import { CheckIcon, Search } from 'lucide-react';
 
 import { searchSpots, useStoreForPlanning } from '@/lib/plan';
 import { setStartTimeAutomatically } from '@/lib/algorithm';
-import { PlaceTypeGroupKey, SortOption } from '@/types/plan';
+import { PlaceTypeGroupKey, SortOption, Spot } from '@/types/plan';
 import { useMapStore } from '@/stores/mapStore';
 import { prefectureCenters, prefectures } from '@/data/dummyData';
 
@@ -24,7 +24,8 @@ const SpotSelection = ({ date }: { date: string }) => {
     { key: 'gourmet', name: 'グルメ' },
   ];
   const fields = useStoreForPlanning();
-  const { coordinate, setCoordinate, spots, setSpots } = useMapStore();
+  const { coordinate, setCoordinate } = useMapStore();
+  const [searchedSpots, setSearchedSpots] = useState<Spot[]>([]);
   const [radius, setRadius] = useState<number>(1);
   const [genreIds, setGenreIds] = useState<PlaceTypeGroupKey[]>([]);
   const [selectedPrefecture, setSelectedPrefecture] = useState<string>('');
@@ -37,7 +38,7 @@ const SpotSelection = ({ date }: { date: string }) => {
   const onSearchSpot = async () => {
     const searchCenter = selectedPrefecture ? prefectureCenters[selectedPrefecture] : coordinate;
 
-    const spots = await searchSpots({
+    const searchedSpots = await searchSpots({
       center: searchCenter,
       genreIds: genreIds,
       radius: radius,
@@ -48,7 +49,7 @@ const SpotSelection = ({ date }: { date: string }) => {
     if (selectedPrefecture) {
       setCoordinate(searchCenter);
     }
-    setSpots(spots);
+    setSearchedSpots(searchedSpots);
   };
 
   return (
@@ -160,8 +161,8 @@ const SpotSelection = ({ date }: { date: string }) => {
           <Command>
             <CommandInput placeholder="観光スポットを検索" />
             <CommandList>
-              {spots.length ? (
-                spots.map((spot, index) => (
+              {searchedSpots.length ? (
+                searchedSpots.map((spot, index) => (
                   <CommandItem
                     className="flex item-start justify-between"
                     key={index}
@@ -197,7 +198,7 @@ const SpotSelection = ({ date }: { date: string }) => {
             </CommandList>
           </Command>
           <Button onClick={onSearchSpot}>検索</Button>
-          <GoogleMapComponent isSetCurrentLocation={isCurrentPosition} />
+          <GoogleMapComponent isSetCurrentLocation={isCurrentPosition} searchedSpots={searchedSpots} />
         </DialogContent>
       </Dialog>
 

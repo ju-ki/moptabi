@@ -182,3 +182,30 @@ export const getTransportMethodsRoute = createRoute({
     },
   },
 });
+
+export const getDepartureAndDepartment = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['DepartureAndDestination'],
+  summary: 'ユーザーの出発地と目的地の履歴を取得',
+  responses: {
+    200: {
+      description: '出発地と目的地の履歴を返却',
+      content: {
+        'application/json': {
+          schema: z.array(
+            z.object({
+              id: z.number(),
+              name: z.string(),
+              latitude: z.number(),
+              longitude: z.number(),
+            }),
+          ),
+        },
+      },
+    },
+    500: {
+      description: '出発地と目的地の履歴取得時のエラー',
+    },
+  },
+});
