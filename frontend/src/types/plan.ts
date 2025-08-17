@@ -67,6 +67,8 @@ export type TravelPlanType = {
   spots: Spot[];
 };
 
+export type PlanErrorType = 'spots' | 'departure' | 'destination' | 'transportationMethod' | 'genreId' | 'memo';
+
 export type ResponseTripType = {
   id: number;
   title: string;

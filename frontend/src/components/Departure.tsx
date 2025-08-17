@@ -45,7 +45,10 @@ const Departure = ({ date }: { date: string }) => {
 
   return (
     <div>
-      <Label>出発地</Label>
+      <Label className="block text-lg font-semibold text-gray-800">出発地</Label>
+      {fields.planErrors[date]?.departure && (
+        <div className="mb-2 text-sm text-red-600">{fields.planErrors[date]?.departure}</div>
+      )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" className="w-full justify-start">

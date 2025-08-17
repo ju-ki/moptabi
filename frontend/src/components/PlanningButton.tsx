@@ -2,6 +2,7 @@ import React from 'react';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { sortSpotByStartTime } from '@/lib/algorithm';
+import { TransportNodeType } from '@/types/plan';
 
 import { Button } from './ui/button';
 
@@ -41,21 +42,25 @@ const PlanningButton = ({ date }: { date: string }) => {
       isError = true;
     }
 
-    // if (!targetPlans || !targetPlans.departure.name) {
-    //   fields.setPlanErrors(date, {
-    //     departure: '出発地を選択してください',
-    //   });
-    //   isError = true;
-    // }
+    const departureData = fields.getSpotInfo(date, TransportNodeType.DEPARTURE);
+    const destinationData = fields.getSpotInfo(date, TransportNodeType.DESTINATION);
+    const spotsData = fields.getSpotInfo(date, TransportNodeType.SPOT);
 
-    // if (!targetPlans || !targetPlans.destination.name) {
-    //   fields.setPlanErrors(date, {
-    //     destination: '目的地を選択してください',
-    //   });
-    //   isError = true;
-    // }
+    if (!departureData || departureData.length === 0) {
+      fields.setPlanErrors(date, {
+        departure: '出発地を選択してください。地図から選択する場合は出発地の名前を入力してください',
+      });
+      isError = true;
+    }
 
-    if (!targetPlans.spots.length) {
+    if (!destinationData || destinationData.length === 0) {
+      fields.setPlanErrors(date, {
+        destination: '目的地を選択してください。地図から選択する場合は目的地の名前を入力してください',
+      });
+      isError = true;
+    }
+
+    if (!spotsData || spotsData.length === 0) {
       fields.setPlanErrors(date, {
         spots: '観光地スポットは1つ以上選択してください',
       });
