@@ -197,8 +197,8 @@ export const getDepartureAndDepartment = createRoute({
             z.object({
               id: z.number(),
               name: z.string(),
-              latitude: z.number(),
-              longitude: z.number(),
+              lat: z.number(),
+              lng: z.number(),
             }),
           ),
         },
