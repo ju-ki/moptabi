@@ -53,9 +53,18 @@ const SpotSelection = ({ date }: { date: string }) => {
 
   return (
     <div className="space-y-4">
+      <Label className="block text-lg font-semibold text-gray-800">観光地を検索</Label>
+      {fields.planErrors[date]?.spots && (
+        <div className="mb-2 text-sm text-red-600">{fields.planErrors[date]?.spots}</div>
+      )}
       <Dialog>
         <DialogTrigger asChild>
-          <Label>観光地を検索</Label>
+          <div>
+            <Button variant="outline" className=" justify-start">
+              <span>観光地を検索</span>
+              <Search className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
         </DialogTrigger>
         <DialogContent className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -273,8 +282,6 @@ const SpotSelection = ({ date }: { date: string }) => {
           />
         </DialogContent>
       </Dialog>
-
-      {fields.planErrors && <span className="text-red-500">{fields.planErrors[date]?.spots}</span>}
     </div>
   );
 };

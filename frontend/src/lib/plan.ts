@@ -5,6 +5,7 @@ import { immer } from 'zustand/middleware/immer';
 
 import {
   Coordination,
+  PlanErrorType,
   SearchSpotByCategoryParams,
   Spot,
   TransportNodeType,
@@ -89,7 +90,7 @@ interface FormState {
   destinationHistory: Coordination[];
   errors: Partial<Record<keyof FormData, string>>;
   tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
-  planErrors: Partial<Record<string, Partial<Record<keyof TravelPlanType, string>>>>;
+  planErrors: Record<string, Record<PlanErrorType, string>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
   setDepartureHistory: (history: Coordination[]) => void;
   setDestinationHistory: (history: Coordination[]) => void;
@@ -108,7 +109,7 @@ interface FormState {
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
   setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
   setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
-  setPlanErrors: (date: string, errors: Partial<Record<keyof TravelPlanType, string>>) => void;
+  setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
   getSpotCoordination: (date: string) => Record<string, Spot>;
   resetErrors: () => void;
@@ -249,6 +250,7 @@ export const useStoreForPlanning = create<FormState>()(
             ...state.spotErrors[dateKey],
             ...errors,
           };
+
           return state;
         }),
       editSpots: (date, spotId, updatedSpot) => {

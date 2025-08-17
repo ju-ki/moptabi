@@ -21,7 +21,7 @@ const PlanningComp = ({ date }: { date: string }) => {
       <h1 className="text-2xl py-4">{date}の計画設定</h1>
       {/* 旅行ジャンル */}
       <div className="space-y-2">
-        <Label>旅行ジャンル</Label>
+        <Label className="block text-lg font-semibold text-gray-800">旅行ジャンル</Label>
         <Select
           onValueChange={(value) => fields.setTripInfo(date, 'genreId', Number.parseInt(value))}
           value={fields.tripInfo.filter((val) => val.date === date)[0]?.genreId.toString() || ''}
@@ -56,7 +56,7 @@ const PlanningComp = ({ date }: { date: string }) => {
       </div>
       {/* 備考 */}
       <div className="space-y-4">
-        <Label>備考</Label>
+        <Label className="block text-lg font-semibold text-gray-800">備考</Label>
         <Textarea
           placeholder="メモや注意点を記載"
           value={fields.tripInfo.filter((val) => val.date === date)[0]?.memo || ''}
@@ -68,7 +68,6 @@ const PlanningComp = ({ date }: { date: string }) => {
 
       {/* スポット選択 */}
       <div className="space-y-4">
-        <Label>観光地を検索</Label>
         <SpotSelection date={date} />
       </div>
       {/* タイムライン */}
