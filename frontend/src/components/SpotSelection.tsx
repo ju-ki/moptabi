@@ -3,8 +3,7 @@ import { CheckIcon, Search } from 'lucide-react';
 
 import { searchSpots, useStoreForPlanning } from '@/lib/plan';
 import { setStartTimeAutomatically } from '@/lib/algorithm';
-import { PlaceTypeGroupKey, SortOption, Spot } from '@/types/plan';
-import { useMapStore } from '@/stores/mapStore';
+import { Coordination, PlaceTypeGroupKey, SortOption, Spot } from '@/types/plan';
 import { prefectureCenters, prefectures } from '@/data/dummyData';
 
 import { Command, CommandInput, CommandList, CommandItem } from './ui/command';
@@ -24,7 +23,7 @@ const SpotSelection = ({ date }: { date: string }) => {
     { key: 'gourmet', name: 'グルメ' },
   ];
   const fields = useStoreForPlanning();
-  const { coordinate, setCoordinate } = useMapStore();
+  const [searchCenter, setSearchCenter] = useState<Coordination>({ id: '', lat: 35.6813, lng: 139.7671 });
   const [searchedSpots, setSearchedSpots] = useState<Spot[]>([]);
   const [radius, setRadius] = useState<number>(1);
   const [genreIds, setGenreIds] = useState<PlaceTypeGroupKey[]>([]);
@@ -34,10 +33,10 @@ const SpotSelection = ({ date }: { date: string }) => {
   const [sortOption, setSortOption] = useState<SortOption>('distance');
   const [maxResultLimit, setMaxResultLimit] = useState<number>(10);
   const [isCurrentPosition, setIsCurrentPosition] = useState<boolean>(false);
+  const [selectedDepartureOption, setSelectedDepartureOption] = useState<boolean>(false);
+  const [selectedDestinationOption, setSelectedDestinationOption] = useState<boolean>(false);
 
   const onSearchSpot = async () => {
-    const searchCenter = selectedPrefecture ? prefectureCenters[selectedPrefecture] : coordinate;
-
     const searchedSpots = await searchSpots({
       center: searchCenter,
       genreIds: genreIds,
@@ -47,7 +46,7 @@ const SpotSelection = ({ date }: { date: string }) => {
       searchWord,
     });
     if (selectedPrefecture) {
-      setCoordinate(searchCenter);
+      setSearchCenter(searchCenter);
     }
     setSearchedSpots(searchedSpots);
   };
@@ -67,7 +66,7 @@ const SpotSelection = ({ date }: { date: string }) => {
           </DialogHeader>
           <div>
             <Label>都道府県を選択</Label>
-            <Select onValueChange={(value) => setSelectedPrefecture(value)}>
+            <Select onValueChange={(value) => setSearchCenter(prefectureCenters[value])}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="都道府県を選択" />
               </SelectTrigger>
@@ -80,16 +79,85 @@ const SpotSelection = ({ date }: { date: string }) => {
               </SelectContent>
             </Select>
           </div>
-          <div>
-            <Label>現在地を使用</Label>
-            <Checkbox
-              id="current-location"
-              className="h-5 w-5 text-blue-500 focus:ring-2 focus:ring-blue-400"
-              checked={isCurrentPosition}
-              onCheckedChange={(checked) => {
-                setIsCurrentPosition(Boolean(checked));
-              }}
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <div>
+              <Label htmlFor="current-location">現在地周辺で検索</Label>
+              <Checkbox
+                id="current-location"
+                className="h-5 w-5 text-blue-500 focus:ring-2 focus:ring-blue-400"
+                checked={isCurrentPosition}
+                onCheckedChange={(checked) => {
+                  setIsCurrentPosition(Boolean(checked));
+                  if (checked) {
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        setSearchCenter({
+                          id: 'current-location',
+                          lat: position.coords.latitude,
+                          lng: position.coords.longitude,
+                        });
+                      },
+                      (error) => {
+                        console.error('Error getting current location:', error);
+                        setIsCurrentPosition(false);
+                      },
+                    );
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="departure-location">出発地周辺で検索</Label>
+              <Checkbox
+                id="departure-location"
+                className="h-5 w-5 text-blue-500 focus:ring-2 focus:ring-blue-400"
+                checked={selectedDepartureOption}
+                onCheckedChange={(checked) => {
+                  setSelectedDepartureOption(Boolean(checked));
+                  if (checked) {
+                    const result = fields.getSpotCoordination(date);
+                    if (!result) {
+                      return;
+                    }
+                    console.log(result);
+
+                    if (result.departureCoordination) {
+                      setSearchCenter({
+                        id: result.departureCoordination.id,
+                        lat: result.departureCoordination.location.latitude,
+                        lng: result.departureCoordination.location.longitude,
+                      });
+                    }
+                  }
+                }}
+              />
+            </div>
+            <div>
+              <Label htmlFor="destination-location">目的地周辺で検索</Label>
+              <Checkbox
+                id="destination-location"
+                className="h-5 w-5 text-blue-500 focus:ring-2 focus:ring-blue-400"
+                checked={selectedDestinationOption}
+                onCheckedChange={(checked) => {
+                  setSelectedDestinationOption(Boolean(checked));
+                  if (checked) {
+                    const result = fields.getSpotCoordination(date);
+                    if (!result) {
+                      return;
+                    }
+                    console.log(result);
+
+                    if (result.destinationCoordination) {
+                      setSearchCenter({
+                        id: result.destinationCoordination.id,
+                        lat: result.destinationCoordination.location.latitude,
+                        lng: result.destinationCoordination.location.longitude,
+                      });
+                    }
+                  }
+                }}
+              />
+            </div>
           </div>
           <Label>ジャンル</Label>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -198,7 +266,11 @@ const SpotSelection = ({ date }: { date: string }) => {
             </CommandList>
           </Command>
           <Button onClick={onSearchSpot}>検索</Button>
-          <GoogleMapComponent isSetCurrentLocation={isCurrentPosition} searchedSpots={searchedSpots} />
+          <GoogleMapComponent
+            isSetCurrentLocation={isCurrentPosition}
+            extraCoordinate={searchCenter}
+            searchedSpots={searchedSpots}
+          />
         </DialogContent>
       </Dialog>
 
