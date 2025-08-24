@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const isProtectedRoute = createRouteMatcher('/api(.*)');
 
-const isPlanAccessibleRoute = createRouteMatcher('/plan/(create|list|[0-9])(.*)');
+const isPlanAccessibleRoute = createRouteMatcher(['/plan/create(.*)', '/plan/list(.*)', '/plan/(\\d+)(.*)']);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { userId, redirectToSignIn } = await auth();
