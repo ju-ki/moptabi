@@ -18,17 +18,25 @@ interface GoogleMapCompProps {
   isSetCurrentLocation: boolean;
   searchedSpots?: Spot[];
   extraCoordinate?: Coordination;
+  setCoordinate?: (coordination: Coordination | undefined) => void;
 }
 
 const GoogleMapComponent: React.FC<GoogleMapCompProps> = ({
   isSetCurrentLocation,
   searchedSpots,
   extraCoordinate,
+  setCoordinate,
 }: GoogleMapCompProps) => {
   const { map, mapCoordinate, selectedSpot, setSelectedSpot, handleMapClick, onLoad, onUnmount } = useGoogleMap(
     isSetCurrentLocation,
     extraCoordinate,
   );
+
+  useEffect(() => {
+    if (setCoordinate && mapCoordinate) {
+      setCoordinate(mapCoordinate);
+    }
+  }, [mapCoordinate, setCoordinate]);
 
   useEffect(() => {
     if (!searchedSpots || searchedSpots.length === 0) return;

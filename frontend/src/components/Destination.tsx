@@ -16,6 +16,7 @@ import { Input } from './ui/input';
 const Destination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const destinations = fields.destinationHistory;
+  const [destinationName, setDestinationName] = useState<string>('');
   const [selectedMapCoordinate, setSelectedMapCoordinate] = useState<Coordination | undefined>(undefined);
   const [isCheckCurrentLocation, setIsCheckCurrentLocation] = useState<boolean>(false);
   const destinationData = fields.plans
@@ -100,11 +101,13 @@ const Destination = ({ date }: { date: string }) => {
           <Input
             id="destination-input"
             type="text"
+            value={destinationName}
             placeholder="目的地の名前を設定する"
             className="mt-2 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             onInput={(e) => {
               DESTINATION_DATA.location.name = e.currentTarget.value;
               fields.setSpots(date, DESTINATION_DATA, false);
+              setDestinationName(e.currentTarget.value);
             }}
           />
         </div>
@@ -114,7 +117,14 @@ const Destination = ({ date }: { date: string }) => {
             id="current-location-checkbox"
             checked={isCheckCurrentLocation}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            onCheckedChange={() => setIsCheckCurrentLocation((prev) => !prev)}
+            onCheckedChange={(checked) => {
+              setIsCheckCurrentLocation((prev) => !prev);
+              DESTINATION_DATA.location.name = checked ? '目的地(' + date + ')' : '';
+              DESTINATION_DATA.location.latitude = selectedMapCoordinate?.lat || 0;
+              DESTINATION_DATA.location.longitude = selectedMapCoordinate?.lng || 0;
+              fields.setSpots(date, DESTINATION_DATA, false);
+              setDestinationName(checked ? '目的地(' + date + ')' : '');
+            }}
           />
           <label htmlFor="current-location-checkbox" className="cursor-pointer text-sm font-medium text-gray-700">
             現在地を目的地に設定する
@@ -125,6 +135,7 @@ const Destination = ({ date }: { date: string }) => {
           <GoogleMapComponent
             isSetCurrentLocation={isCheckCurrentLocation}
             extraCoordinate={selectedMapCoordinate}
+            setCoordinate={setSelectedMapCoordinate}
           ></GoogleMapComponent>
         </div>
       </div>

@@ -128,7 +128,6 @@ const SpotSelection = ({ date }: { date: string }) => {
                     if (!result) {
                       return;
                     }
-                    console.log(result);
 
                     if (result.departureCoordination) {
                       setSearchCenter({
@@ -154,7 +153,6 @@ const SpotSelection = ({ date }: { date: string }) => {
                     if (!result) {
                       return;
                     }
-                    console.log(result);
 
                     if (result.destinationCoordination) {
                       setSearchCenter({
