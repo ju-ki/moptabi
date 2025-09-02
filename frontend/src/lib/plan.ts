@@ -13,7 +13,7 @@ import {
   TravelPlanType,
   TripInfo,
 } from '@/types/plan';
-import { placeTypeGroups } from '@/data/dummyData';
+import { placeTypeGroups } from '@/data/constants';
 
 export const schema = z.object({
   title: z
@@ -335,9 +335,10 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
   const placeToSpot = (place: google.maps.places.Place): Spot => ({
     id: place.id,
     location: {
+      id: place.id,
       name: place.displayName ?? '',
-      latitude: place.location?.lat() ?? 0,
-      longitude: place.location?.lng() ?? 0,
+      lat: place.location?.lat() ?? 0,
+      lng: place.location?.lng() ?? 0,
     },
     image: place.photos?.[0]?.getURI() ?? '',
     url: place.googleMapsURI ?? '',
@@ -401,6 +402,8 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       region: 'JP',
     };
     const { places } = await Place.searchNearby(request);
+    console.log(places);
+
     return places?.map(placeToSpot) ?? [];
   }
 }

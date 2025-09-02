@@ -47,7 +47,7 @@ export type TripInfo = {
 
 export type Spot = {
   id: string;
-  location: Location;
+  location: Coordination;
   stayStart: string;
   stayEnd: string;
   transports: Transport;

@@ -140,7 +140,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
               <div className="mt-4">
                 <Image
                   src={spot.image || 'scene.webp'}
-                  alt={spot.location.name}
+                  alt={spot.location.name || ''}
                   width={300}
                   height={200}
                   className="rounded-lg shadow-md"

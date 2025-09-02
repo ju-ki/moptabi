@@ -85,6 +85,24 @@ export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot =>
   return clonedNewSpot;
 };
 
+export const calcDistance = (baseCoordinate: Coordination, targetCoordination: Coordination): string => {
+  let distance = '';
+
+  const R = 6371; // km
+  const dLat = ((targetCoordination.lat - baseCoordinate.lat) * Math.PI) / 180;
+  const dLng = ((targetCoordination.lng - baseCoordinate.lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((baseCoordinate.lat * Math.PI) / 180) *
+      Math.cos((targetCoordination.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  distance = (R * c).toFixed(2) + 'km'; // km
+
+  return distance;
+};
+
 /**
  * 座標からルート情報を取得する関数
  * @param fromCoordination 出発地の座標

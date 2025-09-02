@@ -55,8 +55,8 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
       setDepartureCoordination({
         id: departure.id,
-        lat: departure.location.latitude,
-        lng: departure.location.longitude,
+        lat: departure.location.lat,
+        lng: departure.location.lng,
         name: departure.location.name,
       });
     }
@@ -65,8 +65,8 @@ const TravelMap = ({ date }: TravelMapProps) => {
       const destination = result.destinationCoordination;
       setDestinationCoordination({
         id: destination.id,
-        lat: destination.location.latitude,
-        lng: destination.location.longitude,
+        lat: destination.location.lat,
+        lng: destination.location.lng,
         name: destination.location.name,
       });
     }

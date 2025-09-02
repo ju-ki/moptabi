@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 
 import { Coordination, Spot } from '@/types/plan';
 
+import { defaultLocation } from '../data/constants';
+
 export const useGoogleMap = (isSetCurrentLocation: boolean, extraCoordinate?: Coordination) => {
-  const initCoordinate: Coordination = { id: '', lat: 35.6813, lng: 139.7671 }; // 初期座標（東京駅）
+  const initCoordinate: Coordination = defaultLocation; // 初期座標（東京駅）
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [mapCoordinate, setMapCoordinate] = useState<Coordination>(initCoordinate);
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
