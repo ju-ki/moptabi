@@ -13,6 +13,14 @@ export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {
   gourmet: ['restaurant', 'cafe', 'bar', 'bakery'],
 };
 
+export const JpTransportMethods: Record<string, string> = {
+  WALKING: '徒歩',
+  TRANSIT: '交通機関',
+  DRIVING: '車',
+  BICYCLING: '自転車',
+  OTHER: 'その他',
+};
+
 export const placeTypeMap: Record<string, string> = {
   car_dealer: '自動車販売店',
   car_rental: 'レンタカー店',

@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import { useStoreForPlanning } from '@/lib/plan';
 import { useFetcher } from '@/hooks/use-fetcher';
 import { TransportMethods } from '@/types/plan';
+import { JpTransportMethods } from '@/data/constants';
 
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
@@ -47,7 +48,7 @@ const Transportation = ({ date }: { date: string }) => {
                 }}
               />
             </div>
-            <Label className="text-sm">{method.name}</Label>
+            <Label className="text-sm">{JpTransportMethods[method.name]}</Label>
           </div>
         ))}
       </div>
