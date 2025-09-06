@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ResponsePlanSpotType, ResponseSpotType } from '@/types/plan';
 
 import { transportIcons } from './TravelPlan';
+import { placeTypeMap } from '../data/constants';
 interface SpotCardProps {
   spotInfo: ResponsePlanSpotType;
   spot: ResponseSpotType;
@@ -37,9 +38,9 @@ export function SpotCard({ spotInfo, spot, isLast }: SpotCardProps) {
               <p className="text-sm text-muted-foreground">{spot.meta.catchphrase}</p>
             </div>
             <div className="flex gap-1">
-              {spot.meta.categories?.map((cat) => (
+              {spot.meta.categories?.slice(0, 2).map((cat) => (
                 <Badge key={cat} variant="secondary">
-                  {cat}
+                  {placeTypeMap[cat] ?? 'その他'}
                 </Badge>
               ))}
             </div>

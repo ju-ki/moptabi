@@ -27,9 +27,10 @@ const Destination = ({ date }: { date: string }) => {
   const DESTINATION_DATA: Spot = {
     id: buildSpotId('destination', date),
     location: {
+      id: buildSpotId('destination', date),
       name: destinationData?.location.name || '目的地',
-      latitude: selectedMapCoordinate?.lat || 0,
-      longitude: selectedMapCoordinate?.lng || 0,
+      lat: selectedMapCoordinate?.lat || 0,
+      lng: selectedMapCoordinate?.lng || 0,
     },
     order: 0,
     stayStart: '00:00',
@@ -75,8 +76,8 @@ const Destination = ({ date }: { date: string }) => {
                   key={destination.name}
                   onSelect={() => {
                     DESTINATION_DATA.location.name = destination.name || '目的地';
-                    DESTINATION_DATA.location.latitude = destination.lat;
-                    DESTINATION_DATA.location.longitude = destination.lng;
+                    DESTINATION_DATA.location.lat = destination.lat;
+                    DESTINATION_DATA.location.lng = destination.lng;
                     fields.setSpots(date, DESTINATION_DATA, false);
                     setSelectedMapCoordinate(destination);
                     setOpen(false);
@@ -120,8 +121,8 @@ const Destination = ({ date }: { date: string }) => {
             onCheckedChange={(checked) => {
               setIsCheckCurrentLocation((prev) => !prev);
               DESTINATION_DATA.location.name = checked ? '目的地(' + date + ')' : '';
-              DESTINATION_DATA.location.latitude = selectedMapCoordinate?.lat || 0;
-              DESTINATION_DATA.location.longitude = selectedMapCoordinate?.lng || 0;
+              DESTINATION_DATA.location.lat = selectedMapCoordinate?.lat || 0;
+              DESTINATION_DATA.location.lng = selectedMapCoordinate?.lng || 0;
               fields.setSpots(date, DESTINATION_DATA, false);
               setDestinationName(checked ? '目的地(' + date + ')' : '');
             }}

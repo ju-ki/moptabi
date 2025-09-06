@@ -75,8 +75,8 @@ const TravelMap = ({ date }: TravelMapProps) => {
       setSpotCoordination(
         result.spotCoordination.map((spot) => ({
           id: spot.id,
-          lat: spot.location.latitude,
-          lng: spot.location.longitude,
+          lat: spot.location.lat,
+          lng: spot.location.lng,
           name: spot.location.name,
         })),
       );
@@ -163,6 +163,8 @@ const TravelMap = ({ date }: TravelMapProps) => {
           routeResults.push(route);
         }
       }
+
+      setRoutes(routeResults);
     };
 
     calculateRoutes();

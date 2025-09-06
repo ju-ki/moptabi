@@ -27,9 +27,10 @@ const Departure = ({ date }: { date: string }) => {
   const DEPARTURE_DATA: Spot = {
     id: buildSpotId('departure', date),
     location: {
+      id: buildSpotId('departure', date),
       name: departureData?.location.name || '出発地',
-      latitude: selectedMapCoordinate?.lat || 0,
-      longitude: selectedMapCoordinate?.lng || 0,
+      lat: selectedMapCoordinate?.lat || 0,
+      lng: selectedMapCoordinate?.lng || 0,
     },
     stayStart: '00:00',
     stayEnd: '00:00',
@@ -75,8 +76,8 @@ const Departure = ({ date }: { date: string }) => {
                   key={departure.name}
                   onSelect={() => {
                     DEPARTURE_DATA.location.name = departure.name || '出発地';
-                    DEPARTURE_DATA.location.latitude = departure.lat;
-                    DEPARTURE_DATA.location.longitude = departure.lng;
+                    DEPARTURE_DATA.location.lat = departure.lat;
+                    DEPARTURE_DATA.location.lng = departure.lng;
                     fields.setSpots(date, DEPARTURE_DATA, false);
                     setSelectedMapCoordinate(departure);
                     setOpen(false);
@@ -118,8 +119,8 @@ const Departure = ({ date }: { date: string }) => {
             onCheckedChange={(checked) => {
               setIsCheckCurrentLocation((prev) => !prev);
               DEPARTURE_DATA.location.name = checked ? '出発地(' + date + ')' : '';
-              DEPARTURE_DATA.location.latitude = selectedMapCoordinate?.lat || 0;
-              DEPARTURE_DATA.location.longitude = selectedMapCoordinate?.lng || 0;
+              DEPARTURE_DATA.location.lat = selectedMapCoordinate?.lat || 0;
+              DEPARTURE_DATA.location.lng = selectedMapCoordinate?.lng || 0;
               fields.setSpots(date, DEPARTURE_DATA, false);
               setDepartureName(checked ? '出発地(' + date + ')' : '');
             }}
