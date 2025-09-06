@@ -99,11 +99,17 @@ const TravelMap = ({ date }: TravelMapProps) => {
     path.forEach((point) => bounds.extend(point));
 
     const calculateRoutes = async () => {
+      const tripInfo = fields.getTripInfo(date);
+      const masterTransport = fields.getTransportMaster();
+      const transportMethods = tripInfo.transportationMethod;
+      // 現状一つの移動手段のみ
+      const targetTransportMethod = masterTransport.find((val) => val.id == transportMethods[0])?.name || 'DEFAULT';
+
       const routeResults: RouteResult[] = [];
       let orderNumber = 0;
 
       // 出発地から最初の観光地
-      const firstRoute = await calcRoutes(departureCoordination, spotCoordination[0]);
+      const firstRoute = await calcRoutes(departureCoordination, spotCoordination[0], targetTransportMethod);
 
       fields.editSpots(date, departureCoordination.id, {
         transports: {
@@ -123,7 +129,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
         orderNumber += 1;
         // 最後の観光地は目的地のルートを生成する
         if (i == spotCoordination.length - 1) {
-          const lastRoute = await calcRoutes(spotCoordination[i], destinationCoordination);
+          const lastRoute = await calcRoutes(spotCoordination[i], destinationCoordination, targetTransportMethod);
           routeResults.push(lastRoute);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
@@ -149,7 +155,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
             order: orderNumber,
           });
         } else {
-          const route = await calcRoutes(spotCoordination[i], spotCoordination[i + 1]);
+          const route = await calcRoutes(spotCoordination[i], spotCoordination[i + 1], targetTransportMethod);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
               transportMethodIds: [convertToTransportNameToId(route.travelMode)],

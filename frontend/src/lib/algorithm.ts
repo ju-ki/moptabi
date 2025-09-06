@@ -1,4 +1,4 @@
-import { Coordination, Spot, TransportNodeType } from '@/types/plan';
+import { Coordination, Spot, TransportNodeType, TravelModeType } from '@/types/plan';
 
 import { getRoute, RouteResult } from './plan';
 
@@ -107,13 +107,15 @@ export const calcDistance = (baseCoordinate: Coordination, targetCoordination: C
  * 座標からルート情報を取得する関数
  * @param fromCoordination 出発地の座標
  * @param toCoordination 目的地の座標
+ * @param transportMethod 移動手段
  * @returns ルート情報
  */
 export const calcRoutes = async (
   fromCoordination: Coordination,
   toCoordination: Coordination,
+  transportMethod: TravelModeType,
 ): Promise<RouteResult> => {
-  const responseRoute = await getRoute(fromCoordination, toCoordination);
+  const responseRoute = await getRoute(fromCoordination, toCoordination, transportMethod);
   if (!responseRoute) {
     throw new Error('ルートの取得に失敗しました。');
   }

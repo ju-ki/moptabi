@@ -38,6 +38,12 @@ const TravelPlanCreate = () => {
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/spot`,
     getFetcher,
   );
+
+  const { trigger: getTransportMasterTrigger } = useSWRMutation(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/transport`,
+    getFetcher,
+  );
+
   const router = useRouter();
 
   useEffect(() => {
@@ -57,6 +63,23 @@ const TravelPlanCreate = () => {
       }
     };
     fetchDepartureAndDestination();
+  }, []);
+
+  useEffect(() => {
+    const fetchTransportMaster = async () => {
+      try {
+        const response = await getTransportMasterTrigger();
+        fields.setTransportMaster(response);
+      } catch (error) {
+        console.error('Error fetching departure and destination:', error);
+        toast({
+          title: '移動手段のマスタの取得に失敗しました',
+          description: 'もう一度お試しください。',
+          variant: 'destructive',
+        });
+      }
+    };
+    fetchTransportMaster();
   }, []);
 
   const onUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {

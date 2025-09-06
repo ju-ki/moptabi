@@ -8,6 +8,7 @@ import {
   PlanErrorType,
   SearchSpotByCategoryParams,
   Spot,
+  TransportMethods,
   TransportNodeType,
   TravelModeType,
   TravelPlanType,
@@ -85,6 +86,7 @@ interface FormState {
   startDate: string;
   endDate: string;
   tripInfo: TripInfo[];
+  transportMaster: TransportMethods[];
   plans: TravelPlanType[];
   departureHistory: Coordination[];
   destinationHistory: Coordination[];
@@ -94,11 +96,14 @@ interface FormState {
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
   setDepartureHistory: (history: Coordination[]) => void;
   setDestinationHistory: (history: Coordination[]) => void;
+  getTripInfo: (date: string) => TripInfo;
   setTripInfo: (
     date: string,
     name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
     value: string | number | number[] | string,
   ) => void;
+  getTransportMaster: () => TransportMethods[];
+  setTransportMaster: (transportMaster: TransportMethods[]) => void;
   getSpotInfo: (date: string, type: TransportNodeType) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
@@ -179,6 +184,9 @@ export const useStoreForPlanning = create<FormState>()(
         }
         return [];
       },
+      getTripInfo: (date) => {
+        return get().tripInfo.find((info) => info.date == date);
+      },
       setTripInfo: (date, name, value) => {
         set((state) => {
           const existingTripInfoIndex = state.tripInfo.findIndex((info) => info.date === date);
@@ -196,6 +204,14 @@ export const useStoreForPlanning = create<FormState>()(
               memo: name === 'memo' ? (value as string) : '',
             });
           }
+        });
+      },
+      getTransportMaster() {
+        return get().transportMaster;
+      },
+      setTransportMaster(transportMaster) {
+        set((state) => {
+          state.transportMaster = transportMaster;
         });
       },
       setSpots: (date, spot, isDeleted = false) => {
@@ -402,7 +418,6 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       region: 'JP',
     };
     const { places } = await Place.searchNearby(request);
-    console.log(places);
 
     return places?.map(placeToSpot) ?? [];
   }

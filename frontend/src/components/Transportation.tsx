@@ -1,8 +1,6 @@
 import React from 'react';
-import useSWR from 'swr';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { useFetcher } from '@/hooks/use-fetcher';
 import { TransportMethods } from '@/types/plan';
 import { JpTransportMethods } from '@/data/constants';
 
@@ -11,16 +9,10 @@ import { Checkbox } from './ui/checkbox';
 
 const Transportation = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
-  const { getFetcher } = useFetcher();
-  const {
-    data: transportationMethods,
-    error,
-    isLoading,
-  } = useSWR(`${process.env.NEXT_PUBLIC_API_BASE_URL}/transport`, getFetcher);
+  const transportationMethods = fields.getTransportMaster();
 
-  if (error) return <div className="container mx-auto py-8 text-center">エラーが発生しました</div>;
-  if (isLoading || !transportationMethods)
-    return <div className="container mx-auto py-8 text-center">読み込み中...</div>;
+  if (!transportationMethods) return <div className="container mx-auto py-8 text-center">読み込み中...</div>;
+
   return (
     <div className="my-4">
       <Label className="text-lg font-semibold">移動手段</Label>
