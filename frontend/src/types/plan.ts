@@ -22,7 +22,7 @@ export type Transport = {
 
 export type TransportMethods = {
   id: number;
-  name: string; // 例: "電車" | "バス"
+  name: TravelModeType; // 例: "電車" | "バス"
 };
 
 export enum TransportNodeType {
