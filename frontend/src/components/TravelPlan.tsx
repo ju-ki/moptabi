@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import TravelMap from './TravelMap';
 import { Button } from './ui/button';
+import { placeTypeMap } from '../data/constants';
 
 export const transportIcons: TravelModeTypeForDisplay = {
   WALKING: { icon: <FootprintsIcon className="w-5 h-5 text-yellow-500" />, label: '徒歩' },
@@ -156,9 +157,9 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
 
             {/* カテゴリ */}
             <div className="mt-2 flex flex-wrap gap-2">
-              {spot?.category?.map((cat, idx) => (
+              {spot?.category?.slice(0, 2).map((cat, idx) => (
                 <span key={idx} className="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded">
-                  {cat}
+                  {placeTypeMap[cat] ?? 'その他'}
                 </span>
               ))}
             </div>

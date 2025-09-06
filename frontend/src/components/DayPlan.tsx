@@ -25,8 +25,9 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
       const spot: Spot = {
         id: planSpot.spot.id,
         location: {
-          latitude: planSpot.spot.meta.latitude,
-          longitude: planSpot.spot.meta.longitude,
+          id: planSpot.spot.id,
+          lat: planSpot.spot.meta.latitude,
+          lng: planSpot.spot.meta.longitude,
           name: planSpot.spot.meta.name,
         },
         stayStart: planSpot.stayStart,

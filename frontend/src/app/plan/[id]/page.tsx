@@ -98,7 +98,6 @@ const PageDetail = () => {
           ))}
         </Tabs>
       </div>
-      {/* </LoadScript> */}
     </div>
   );
 };
