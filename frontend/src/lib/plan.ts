@@ -129,6 +129,7 @@ export const useStoreForPlanning = create<FormState>()(
       startDate: new Date().toLocaleDateString('ja-JP'),
       endDate: new Date().toLocaleDateString('ja-JP'),
       tripInfo: [],
+      transportMaster: [],
       plans: [
         {
           date: new Date().toLocaleDateString('ja-JP'),
