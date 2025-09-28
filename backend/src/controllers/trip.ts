@@ -170,8 +170,8 @@ export const getTripHandler = {
                   create: {
                     id: spot.id,
                     name: spot.location.name,
-                    latitude: spot.location.latitude,
-                    longitude: spot.location.longitude,
+                    latitude: spot.location.lat,
+                    longitude: spot.location.lng,
                     image: spot.image ?? '',
                     rating: spot.rating ?? 0,
                     categories: spot.category,

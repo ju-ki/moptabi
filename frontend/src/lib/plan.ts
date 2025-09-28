@@ -27,7 +27,7 @@ export const schema = z.object({
   tripInfo: z.array(
     z.object({
       date: z.string(),
-      genreId: z.number(),
+      genreId: z.number().default(1),
       transportationMethod: z.array(z.number()).refine((value) => value.some((item) => item), {
         message: '移動手段は最低でも1つ以上選択してください',
       }),

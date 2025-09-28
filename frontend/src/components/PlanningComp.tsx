@@ -3,7 +3,6 @@ import React from 'react';
 import { useStoreForPlanning } from '@/lib/plan';
 
 import { Label } from './ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import Transportation from './Transportation';
 import Departure from './Departure';
 import { Textarea } from './ui/textarea';
@@ -19,27 +18,7 @@ const PlanningComp = ({ date }: { date: string }) => {
   return (
     <div>
       <h1 className="text-2xl py-4">{date}の計画設定</h1>
-      {/* 旅行ジャンル */}
-      <div className="space-y-2">
-        <Label className="block text-lg font-semibold text-gray-800">旅行ジャンル</Label>
-        <Select
-          onValueChange={(value) => fields.setTripInfo(date, 'genreId', Number.parseInt(value))}
-          value={fields.tripInfo.filter((val) => val.date === date)[0]?.genreId.toString() || ''}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="ジャンルを選択" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">観光</SelectItem>
-            <SelectItem value="2">リラクゼーション</SelectItem>
-            <SelectItem value="3">冒険</SelectItem>
-            <SelectItem value="4">文化</SelectItem>
-            <SelectItem value="5">食べ歩き</SelectItem>
-          </SelectContent>
-        </Select>
 
-        {fields.tripInfoErrors && <span className="text-red-500">{fields.tripInfoErrors[date]?.genreId}</span>}
-      </div>
       {/* メインとなる移動手段 */}
       <div className="space-y-4">
         <Transportation date={date} />
