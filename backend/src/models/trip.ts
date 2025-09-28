@@ -13,7 +13,7 @@ export const TripSchema = z.object({
   tripInfo: z.array(
     z.object({
       date: z.string(),
-      genreId: z.number(),
+      genreId: z.number().default(1),
       transportationMethod: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
       memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     }),
@@ -26,8 +26,8 @@ export const TripSchema = z.object({
           id: z.string(),
           location: z.object({
             name: z.string().min(1, { message: '観光地名は必須です' }),
-            latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-            longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
+            lat: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
+            lng: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
           }),
           stayStart: z.string(),
           stayEnd: z.string(),
@@ -49,8 +49,8 @@ export const TripSchema = z.object({
             .object({
               name: z.string(),
               walkingTime: z.number(),
-              latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-              longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
+              lat: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
+              lng: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
             })
             .optional(),
         }),

@@ -106,9 +106,9 @@ const TravelMap = ({ date }: TravelMapProps) => {
     const calculateRoutes = async () => {
       const tripInfo = fields.getTripInfo(date);
       const masterTransport = fields.getTransportMaster();
-      const transportMethods = tripInfo.transportationMethod;
+      const transportMethods = tripInfo?.transportationMethod || [];
       // 現状一つの移動手段のみ
-      const targetTransportMethod = masterTransport.find((val) => val.id == transportMethods[0])?.name || 'DEFAULT';
+      const targetTransportMethod = masterTransport.find((val) => transportMethods.includes(val.id))?.name || 'DEFAULT';
 
       const routeResults: RouteResult[] = [];
       let orderNumber = 0;

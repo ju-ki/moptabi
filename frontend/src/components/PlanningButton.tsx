@@ -21,19 +21,19 @@ const PlanningButton = ({ date }: { date: string }) => {
     const targetTripInfo = fields.tripInfo.filter((val) => val.date === date)[0];
     const targetPlans = fields.plans.filter((val) => val.date === date)[0];
 
-    if (!targetTripInfo || !targetTripInfo.transportationMethod.length) {
-      fields.setTripInfoErrors(date, {
-        transportationMethod: '計画設定の移動手段を一つ以上チェックしてください',
-      });
-      isError = true;
-    }
+    // if (!targetTripInfo || !targetTripInfo.transportationMethod.length) {
+    //   fields.setTripInfoErrors(date, {
+    //     transportationMethod: '計画設定の移動手段を一つ以上チェックしてください',
+    //   });
+    //   isError = true;
+    // }
 
-    if (!targetTripInfo || !targetTripInfo.genreId) {
-      fields.setTripInfoErrors(date, {
-        genreId: '計画設定のジャンルを選択してください',
-      });
-      isError = true;
-    }
+    // if (!targetTripInfo || !targetTripInfo.genreId) {
+    //   fields.setTripInfoErrors(date, {
+    //     genreId: '計画設定のジャンルを選択してください',
+    //   });
+    //   isError = true;
+    // }
 
     if (targetTripInfo && targetTripInfo.memo && targetTripInfo.memo.length > 1000) {
       fields.setTripInfoErrors(date, {
@@ -42,23 +42,7 @@ const PlanningButton = ({ date }: { date: string }) => {
       isError = true;
     }
 
-    const departureData = fields.getSpotInfo(date, TransportNodeType.DEPARTURE);
-    const destinationData = fields.getSpotInfo(date, TransportNodeType.DESTINATION);
     const spotsData = fields.getSpotInfo(date, TransportNodeType.SPOT);
-
-    if (!departureData || departureData.length === 0) {
-      fields.setPlanErrors(date, {
-        departure: '出発地を選択してください。地図から選択する場合は出発地の名前を入力してください',
-      });
-      isError = true;
-    }
-
-    if (!destinationData || destinationData.length === 0) {
-      fields.setPlanErrors(date, {
-        destination: '目的地を選択してください。地図から選択する場合は目的地の名前を入力してください',
-      });
-      isError = true;
-    }
 
     if (!spotsData || spotsData.length === 0) {
       fields.setPlanErrors(date, {
