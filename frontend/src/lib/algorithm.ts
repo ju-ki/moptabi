@@ -85,6 +85,12 @@ export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot =>
   return clonedNewSpot;
 };
 
+/**
+ * 座標から距離を計算する処理
+ * @param baseCoordinate - 元となる座標
+ * @param targetCoordination - 対象となる座標
+ * @returns km換算された文字列
+ */
 export const calcDistance = (baseCoordinate: Coordination, targetCoordination: Coordination): string => {
   let distance = '';
 
@@ -101,6 +107,68 @@ export const calcDistance = (baseCoordinate: Coordination, targetCoordination: C
   distance = (R * c).toFixed(2) + 'km'; // km
 
   return distance;
+};
+
+/**
+ * 所要時間の合計値を計算する処理
+ * @param spots - スポット一覧
+ * @returns 文字列化した合計値
+ */
+export const calcTotalTransportTime = (spots: Spot[]): string => {
+  let totalMinutes = 0;
+
+  // 1. 正規表現: HH hours mm minutes から数値と単位を抽出
+  const regex = /(?:(\d+)\s*hours?)?\s*(?:(\d+)\s*mins?)?/;
+
+  spots.forEach((spot) => {
+    if (!spot.transports) {
+      return;
+    }
+    const rawTime = spot.transports.travelTime;
+
+    // travelTimeが文字列で存在しない場合はスキップ
+    if (!rawTime) return;
+
+    const match = rawTime.match(regex);
+
+    if (match) {
+      // 正規表現のキャプチャグループから時間と分を取得
+      const hours = parseInt(match[1] || '0', 10);
+      const minutes = parseInt(match[2] || '0', 10);
+
+      // 2.すべて分に換算して合計に追加
+      totalMinutes += hours * 60 + minutes;
+    }
+  });
+
+  // 3. 合計分を "HH hours mm minutes" 形式に変換
+
+  // 合計分から時間と分を算出
+  const finalHours = Math.floor(totalMinutes / 60);
+  const finalMinutes = totalMinutes % 60;
+
+  // 4. 結果の整形
+  const resultParts: string[] = [];
+
+  if (finalHours > 0) {
+    // 1時間以上の場合、"hours" を追加
+    resultParts.push(`${finalHours} hour${finalHours > 1 ? 's' : ''}`);
+  }
+
+  if (finalMinutes > 0 || totalMinutes === 0) {
+    // 0分ではない、または合計時間が0（初期値）の場合に分を追加
+    // totalMinutesが0のときに '0 minutes' と表示されるようにする
+    const minuteLabel = finalMinutes === 1 ? 'min' : 'mins';
+    resultParts.push(`${finalMinutes} ${minuteLabel}`);
+  }
+
+  // 時間も分もなかった場合（データ不正）のフォールバック
+  if (resultParts.length === 0) {
+    return '0 mins';
+  }
+
+  // 最終的な文字列をスペースで結合して返す
+  return resultParts.join(' ');
 };
 
 /**

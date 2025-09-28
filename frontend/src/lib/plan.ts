@@ -177,10 +177,12 @@ export const useStoreForPlanning = create<FormState>()(
             return plansForDate[0].spots.filter((spot) => spot.transports?.fromType === type);
           } else if (type === TransportNodeType.DESTINATION) {
             return plansForDate[0].spots.filter((spot) => spot.transports?.toType === type);
-          } else {
+          } else if (type === TransportNodeType.SPOT) {
             return plansForDate[0].spots
               .filter((spot) => spot.transports?.fromType === type && spot.transports?.toType === type)
               .sort((a, b) => a.order - b.order);
+          } else {
+            return [...plansForDate[0].spots].sort((a, b) => a.order - b.order);
           }
         }
         return [];

@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { GoogleMap, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
+import { createPortal } from 'react-dom';
 
 import { Coordination, TransportNodeType, TravelModeType } from '@/types/plan';
 import { RouteResult, useStoreForPlanning } from '@/lib/plan';
 import { calcRoutes } from '@/lib/algorithm';
+
+import DistanceInfo from './DistanceInfo';
 
 const containerStyle = {
   width: '100%',
@@ -43,6 +46,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
   const [departureCoordination, setDepartureCoordination] = useState<Coordination>({ id: '0', lat: 0, lng: 0 });
   const [destinationCoordination, setDestinationCoordination] = useState<Coordination>({ id: '0', lat: 0, lng: 0 });
   const [spotCoordination, setSpotCoordination] = useState<Coordination[]>([]);
+  const controlDivRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const result = fields.getSpotCoordination(date);
@@ -176,6 +180,23 @@ const TravelMap = ({ date }: TravelMapProps) => {
     calculateRoutes();
   }, [map]);
 
+  useEffect(() => {
+    if (!map || !controlDivRef.current) {
+      return;
+    }
+
+    const controls = map.controls[google.maps.ControlPosition.TOP_RIGHT];
+    const controlDiv = controlDivRef.current;
+    controls.push(controlDiv);
+
+    return () => {
+      const index = controls.getArray().indexOf(controlDiv);
+      if (index > -1) {
+        controls.removeAt(index);
+      }
+    };
+  }, [controlDivRef, map]);
+
   // カスタムマーカーアイコン
   const createCustomMarker = (color: string, label: string) => ({
     path: 2,
@@ -218,6 +239,10 @@ const TravelMap = ({ date }: TravelMapProps) => {
           // map.panToBounds(bounds);
         }}
       >
+        {createPortal(
+          <DistanceInfo spots={fields.getSpotInfo(date, TransportNodeType.ALL)} />,
+          controlDivRef.current || (controlDivRef.current = document.createElement('div')),
+        )}
         {/* 出発地のマーカー */}
         <Marker
           position={{ lat: departureCoordination.lat, lng: departureCoordination.lng }}
