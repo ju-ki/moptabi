@@ -46,6 +46,7 @@ const Destination = ({ date }: { date: string }) => {
   };
 
   useEffect(() => {
+    if (!selectedMapCoordinate) return;
     fields.setSpots(date, DESTINATION_DATA, false);
   }, [selectedMapCoordinate]);
 
