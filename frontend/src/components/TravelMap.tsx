@@ -5,6 +5,7 @@ import { GoogleMap, Marker, Polyline, InfoWindow } from '@react-google-maps/api'
 import { createPortal } from 'react-dom';
 
 import { Coordination, TransportNodeType, TravelModeType } from '@/types/plan';
+import { SpotMakerColors } from '@/data/constants';
 import { RouteResult, useStoreForPlanning } from '@/lib/plan';
 import { calcRoutes } from '@/lib/algorithm';
 
@@ -246,7 +247,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
         {/* 出発地のマーカー */}
         <Marker
           position={{ lat: departureCoordination.lat, lng: departureCoordination.lng }}
-          icon={createCustomMarker('#FF0000', '出発')}
+          icon={createCustomMarker(SpotMakerColors.DEPARTURE, '出発')}
           onClick={() =>
             setSelectedMarker({
               lat: departureCoordination.lat,
@@ -261,7 +262,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           <Marker
             key={spot.id}
             position={{ lat: spot.lat, lng: spot.lng }}
-            icon={createCustomMarker('#4285F4', `${index + 1}`)}
+            icon={createCustomMarker(SpotMakerColors.SPOT, `${index + 1}`)}
             onClick={() =>
               setSelectedMarker({ lat: spot.lat, lng: spot.lng, name: spot?.name || `スポット ${index + 1}` })
             }
@@ -270,7 +271,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
         {/* 目的地のマーカー */}
         <Marker
           position={{ lat: destinationCoordination.lat, lng: destinationCoordination.lng }}
-          icon={createCustomMarker('#34A853', '到着')}
+          icon={createCustomMarker(SpotMakerColors.DESTINATION, '到着')}
           onClick={() =>
             setSelectedMarker({
               lat: destinationCoordination.lat,
