@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check, MapPinIcon } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
@@ -45,6 +45,11 @@ const Destination = ({ date }: { date: string }) => {
     },
   };
 
+  useEffect(() => {
+    if (!selectedMapCoordinate) return;
+    fields.setSpots(date, DESTINATION_DATA, false);
+  }, [selectedMapCoordinate]);
+
   return (
     <div>
       <Label className="block text-lg font-semibold text-gray-800">目的地</Label>
@@ -76,8 +81,6 @@ const Destination = ({ date }: { date: string }) => {
                   key={destination.name}
                   onSelect={() => {
                     DESTINATION_DATA.location.name = destination.name || '目的地';
-                    DESTINATION_DATA.location.lat = destination.lat;
-                    DESTINATION_DATA.location.lng = destination.lng;
                     fields.setSpots(date, DESTINATION_DATA, false);
                     setSelectedMapCoordinate(destination);
                     setOpen(false);
@@ -115,7 +118,7 @@ const Destination = ({ date }: { date: string }) => {
 
         <div className="flex items-center space-x-2">
           <Checkbox
-            id="current-location-checkbox"
+            id="current-location-checkbox-for-destination"
             checked={isCheckCurrentLocation}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             onCheckedChange={(checked) => {
@@ -127,9 +130,12 @@ const Destination = ({ date }: { date: string }) => {
               setDestinationName(checked ? '目的地(' + date + ')' : '');
             }}
           />
-          <label htmlFor="current-location-checkbox" className="cursor-pointer text-sm font-medium text-gray-700">
+          <Label
+            htmlFor="current-location-checkbox-for-destination"
+            className="cursor-pointer text-sm font-medium text-gray-700"
+          >
             現在地を目的地に設定する
-          </label>
+          </Label>
         </div>
 
         <div className="mt-4">

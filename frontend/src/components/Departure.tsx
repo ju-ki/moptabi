@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Check, MapPinIcon } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
@@ -44,6 +44,11 @@ const Departure = ({ date }: { date: string }) => {
       toType: TransportNodeType.SPOT,
     },
   };
+
+  useEffect(() => {
+    if (!selectedMapCoordinate) return;
+    fields.setSpots(date, DEPARTURE_DATA, false);
+  }, [selectedMapCoordinate]);
 
   return (
     <div>
@@ -113,21 +118,22 @@ const Departure = ({ date }: { date: string }) => {
 
         <div className="flex items-center space-x-2">
           <Checkbox
-            id="current-location-checkbox"
+            id="current-location-checkbox-for-departure"
             checked={isCheckCurrentLocation}
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             onCheckedChange={(checked) => {
               setIsCheckCurrentLocation((prev) => !prev);
               DEPARTURE_DATA.location.name = checked ? '出発地(' + date + ')' : '';
-              DEPARTURE_DATA.location.lat = selectedMapCoordinate?.lat || 0;
-              DEPARTURE_DATA.location.lng = selectedMapCoordinate?.lng || 0;
               fields.setSpots(date, DEPARTURE_DATA, false);
               setDepartureName(checked ? '出発地(' + date + ')' : '');
             }}
           />
-          <label htmlFor="current-location-checkbox" className="cursor-pointer text-sm font-medium text-gray-700">
+          <Label
+            htmlFor="current-location-checkbox-for-departure"
+            className="cursor-pointer text-sm font-medium text-gray-700"
+          >
             現在地を出発地に設定する
-          </label>
+          </Label>
         </div>
 
         <div className="mt-4">
