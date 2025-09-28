@@ -1,3 +1,5 @@
+import React from 'react';
+
 export type Location = {
   name: string;
   latitude: number;
@@ -29,6 +31,7 @@ export enum TransportNodeType {
   DEPARTURE = 'DEPARTURE',
   DESTINATION = 'DESTINATION',
   SPOT = 'SPOT',
+  ALL = 'ALL',
 }
 
 type NearestStation = {
@@ -147,9 +150,9 @@ export type Notification = {
 
 export type TravelModeType = 'DRIVING' | 'TRANSIT' | 'WALKING' | 'BICYCLING' | 'DEFAULT';
 
-export type TravelModeTypeForDisplay = {
+export type TravelModeTypeForDisplay = Partial<{
   [key in TravelModeType]: {
-    icon: JSX.Element;
+    icon: React.ReactNode;
     label: string;
   };
-};
+}>;
