@@ -1,4 +1,4 @@
-import { Coordination, PlaceTypeGroupKey } from '@/types/plan';
+import { Coordination, PlaceTypeGroupKey, TransportNodeType } from '@/types/plan';
 
 export const defaultLocation: Coordination = {
   id: 'default-location',
@@ -19,6 +19,13 @@ export const JpTransportMethods: Record<string, string> = {
   DRIVING: '車',
   BICYCLING: '自転車',
   OTHER: 'その他',
+};
+
+export const SpotMakerColors: Record<TransportNodeType, string> = {
+  DEPARTURE: '#34A853',
+  SPOT: '#4285F4',
+  DESTINATION: '#FF0000',
+  ALL: '#ffffff',
 };
 
 export const placeTypeMap: Record<string, string> = {
