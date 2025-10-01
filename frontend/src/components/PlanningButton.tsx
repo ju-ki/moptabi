@@ -18,7 +18,6 @@ const PlanningButton = ({ date }: { date: string }) => {
       isError = true;
     }
 
-    const targetTripInfo = fields.tripInfo.filter((val) => val.date === date)[0];
     const targetPlans = fields.plans.filter((val) => val.date === date)[0];
 
     // if (!targetTripInfo || !targetTripInfo.transportationMethod.length) {
@@ -34,13 +33,6 @@ const PlanningButton = ({ date }: { date: string }) => {
     //   });
     //   isError = true;
     // }
-
-    if (targetTripInfo && targetTripInfo.memo && targetTripInfo.memo.length > 1000) {
-      fields.setTripInfoErrors(date, {
-        memo: 'メモは1000文字以内で入力してください。',
-      });
-      isError = true;
-    }
 
     const spotsData = fields.getSpotInfo(date, TransportNodeType.SPOT);
 

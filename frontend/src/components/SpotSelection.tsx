@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CheckIcon, Search, X } from 'lucide-react';
+import { Asterisk, CheckIcon, Search, X } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from 'lib/utils';
 
@@ -95,14 +95,20 @@ const SpotSelection = ({ date }: { date: string }) => {
 
   return (
     <div className="space-y-4">
-      <Label className="block text-lg font-semibold text-gray-800">観光地を検索</Label>
+      <div className="flex items-center gap-1">
+        <div className="text-lg font-semibold text-gray-800 my-2 flex items-center space-x-2">
+          <span>観光地を検索</span>
+          <Asterisk className="text-red-500 h-4 w-4" />
+        </div>
+      </div>
+
       {fields.planErrors[date]?.spots && (
         <div className="mb-2 text-sm text-red-600">{fields.planErrors[date]?.spots}</div>
       )}
       <Dialog>
         <DialogTrigger asChild>
           <div>
-            <Button variant="outline" className=" justify-start">
+            <Button variant="outline" className=" justify-start" id="spot-search">
               <span>観光地を検索</span>
               <Search className="ml-2 h-4 w-4" />
             </Button>
