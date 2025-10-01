@@ -1,9 +1,8 @@
 'use client';
 import { useEffect } from 'react';
-import { CalendarIcon } from 'lucide-react';
+import { Asterisk, CalendarIcon } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { useRouter } from 'next/navigation';
 import useSWRMutation from 'swr/mutation';
 import Image from 'next/image';
 
@@ -15,20 +14,16 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, getDatesBetween } from '@/lib/utils';
 import { useStoreForPlanning } from '@/lib/plan';
-import type { FormData as formType } from '@/lib/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import { useToast } from '@/hooks/use-toast';
 import { useFetcher } from '@/hooks/use-fetcher';
+import CreatePlanButton from '@/components/CreatePlanButton';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
   const { toast } = useToast();
   const { getFetcher, postFetcher } = useFetcher();
-  const { trigger: createTripTrigger } = useSWRMutation(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/create`,
-    postFetcher,
-  );
   const { trigger: uploadImageTrigger } = useSWRMutation(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
     postFetcher,
@@ -43,8 +38,6 @@ const TravelPlanCreate = () => {
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/transport`,
     getFetcher,
   );
-
-  const router = useRouter();
 
   useEffect(() => {
     const fetchDepartureAndDestination = async () => {
@@ -103,25 +96,6 @@ const TravelPlanCreate = () => {
     }
   };
 
-  const handleCreatePlan = async () => {
-    try {
-      const newData: formType = {
-        title: fields.title,
-        imageUrl: fields.imageUrl,
-        startDate: fields.startDate,
-        endDate: fields.endDate,
-        tripInfo: fields.tripInfo,
-        plans: fields.plans,
-      };
-      const result = await createTripTrigger({ data: newData, isMulti: false });
-      toast({ title: '旅行計画が作成されました', description: '旅行計画の作成に成功しました。', variant: 'success' });
-      router.push(`/plan/${result.id}`);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast({ title: '旅行計画の作成に失敗しました', description: errorMessage, variant: 'destructive' });
-    }
-  };
-
   return (
     <div>
       <div className="container mx-auto p-4">
@@ -132,15 +106,18 @@ const TravelPlanCreate = () => {
           <CardContent className="space-y-4">
             {/* タイトル */}
             <div className="space-y-2">
-              <Label htmlFor="title">タイトル</Label>
+              <div className="flex items-center gap-1">
+                <Label className="block text-lg font-semibold text-gray-800" htmlFor="title">
+                  タイトル
+                </Label>
+                <Asterisk className="text-red-500 text-sm" />
+              </div>
               <Input
                 id="title"
                 placeholder="旅行プランのタイトルを入力"
                 onChange={(e) => fields.setFields('title', e.target.value)}
               />
-              {/* {methods.formState.errors.title && (
-                <span className="text-red-500">{methods.formState.errors.title.message}</span>
-              )} */}
+              {fields.errors.title && <span className="text-red-500">{fields.errors.title.toString()}</span>}
             </div>
             {/* イメージ画像 */}
             <div className="space-y-2">
@@ -171,7 +148,12 @@ const TravelPlanCreate = () => {
             </div>
             {/* 予定日 */}
             <div className="space-y-2">
-              <Label>予定日</Label>
+              <div className="flex items-center gap-1 text-xs">
+                <Label className="block text-lg font-semibold text-gray-800" htmlFor="date">
+                  予定日
+                </Label>
+                <Asterisk className="text-red-500" />
+              </div>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -243,11 +225,7 @@ const TravelPlanCreate = () => {
             </Tabs>
 
             {/* 作成ボタン */}
-            <div className="space-y-2">
-              <Button onClick={() => handleCreatePlan()} type="button" role="button" className="w-full">
-                旅行計画を作成
-              </Button>
-            </div>
+            <CreatePlanButton />
           </CardContent>
         </Card>
       </div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, MapPinIcon } from 'lucide-react';
+import { Check, Info, MapPinIcon } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { Coordination, Spot, TransportNodeType } from '@/types/plan';
@@ -52,13 +52,19 @@ const Departure = ({ date }: { date: string }) => {
 
   return (
     <div>
-      <Label className="block text-lg font-semibold text-gray-800">出発地</Label>
+      <Label className="text-lg font-semibold text-gray-800 my-2 flex space-x-2">
+        <span>出発地</span>
+        <div className="flex items-center space-x-1">
+          <Info className="w-3 h-3" />
+          <span className="text-sm font-normal">未選択の場合は地図で選択されている場所が選択されます</span>
+        </div>
+      </Label>
       {fields.planErrors[date]?.departure && (
         <div className="mb-2 text-sm text-red-600">{fields.planErrors[date]?.departure}</div>
       )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="w-full justify-start">
+          <Button variant="outline" className="w-full justify-start" id="departure-select-box">
             {departureData ? (
               <>
                 <MapPinIcon className="mr-2 h-4 w-4" />
