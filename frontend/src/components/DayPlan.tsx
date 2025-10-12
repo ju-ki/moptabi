@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
 import { format } from 'date-fns';
 import { MapPin } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ResponsePlanType, Spot, TransportNodeType } from '@/types/plan';
+import { ResponsePlanType, TransportNodeType } from '@/types/plan';
 import { useStoreForPlanning } from '@/lib/plan';
 
-import { SpotCard } from './SpotCard2';
-import TravelMap from './TravelMap';
+import { SpotInfoCard } from './SpotInfoCard';
+import RouteSummary from './RouteSummary';
+import SpotSummary from './SpotSummary';
 
 interface DayPlanProps {
   plan: ResponsePlanType;
@@ -18,61 +18,30 @@ interface DayPlanProps {
 
 export function DayPlan({ plan, dayNumber }: DayPlanProps) {
   const fields = useStoreForPlanning();
-  useEffect(() => {
-    plan.planSpots.forEach((planSpot) => {
-      const type = planSpot.spot.id.split('_')[0];
+  const allSpots = fields.getSpotInfo(plan.date, TransportNodeType.ALL);
 
-      const spot: Spot = {
-        id: planSpot.spot.id,
-        location: {
-          id: planSpot.spot.id,
-          lat: planSpot.spot.meta.latitude,
-          lng: planSpot.spot.meta.longitude,
-          name: planSpot.spot.meta.name,
-        },
-        stayStart: planSpot.stayStart,
-        stayEnd: planSpot.stayEnd,
-        order: planSpot.order,
-        nearestStation: planSpot.spot.nearestStation,
-        transports: {
-          fromType: type === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.SPOT,
-          toType: type === 'destination' ? TransportNodeType.DESTINATION : TransportNodeType.SPOT,
-          transportMethodIds: [0],
-          name: 'WALKING',
-          travelTime: '0',
-        },
-      };
-
-      fields.setSpots(plan.date, spot, false);
-    });
-  }, [plan]);
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>
-            Day {dayNumber} - {format(plan.date, 'yyyy年MM月dd日')}
+            {dayNumber}日目 - {format(plan.date, 'yyyy年MM月dd日')}
           </span>
         </CardTitle>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-          <MapPin className="w-4 h-4" />
-          <span></span>
-        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2"></div>
       </CardHeader>
       <CardContent>
         <div className="relative">
-          {plan.planSpots.map((planSpot, index) => (
-            <SpotCard
-              key={planSpot.id}
-              spot={planSpot.spot}
-              spotInfo={planSpot}
-              isLast={index === plan.planSpots.length - 1}
-            />
+          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-blue-500" />
+            タイムライン
+          </h2>
+          {allSpots.map((planSpot) => (
+            <SpotInfoCard key={planSpot.id} spot={planSpot} />
           ))}
+          <RouteSummary date={plan.date} />
 
-          <div>
-            <TravelMap date={plan.date} />
-          </div>
+          <SpotSummary date={plan.date} />
         </div>
       </CardContent>
     </Card>

@@ -104,6 +104,8 @@ export type ResponsePlanSpotType = {
   spotId: string;
   stayStart: string;
   stayEnd: string;
+  fromLocation: Transport[];
+  toLocation: Transport[];
   memo?: string;
   order: number;
 };

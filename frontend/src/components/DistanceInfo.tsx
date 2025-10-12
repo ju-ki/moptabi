@@ -4,6 +4,7 @@ import { Spot } from '@/types/plan';
 import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
 
 import { transportIcons } from './TravelPlan';
+import { convertHHmmToJpFormat } from '../lib/utils';
 
 interface SpotProps {
   spots: Spot[];
@@ -48,7 +49,7 @@ const DistanceInfo = ({ spots }: SpotProps) => {
                     {transportIcons[spot.transports.name]?.icon || 'ℹ️'}
                   </div>
                   <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-                    {spot.transports.travelTime}
+                    {convertHHmmToJpFormat(spot.transports.travelTime)}
                   </div>
                   <div className="text-xs text-gray-500 flex-shrink-0">
                     {calcDistance(spot.location, spots[idx + 1].location)}
@@ -74,11 +75,11 @@ const DistanceInfo = ({ spots }: SpotProps) => {
           </span>
           <span className="text-xl font-bold text-gray-900 mt-0.5">
             {isExpanded ? (
-              totalDuration
+              convertHHmmToJpFormat(totalDuration)
             ) : (
               <span className="flex items-center gap-x-3">
                 {transportIcons[spots[0].transports.name]?.icon || 'ℹ️'}
-                {spots[0].transports.travelTime}
+                {convertHHmmToJpFormat(spots[0].transports.travelTime)}
               </span>
             )}
           </span>
