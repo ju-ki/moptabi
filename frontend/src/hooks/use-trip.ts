@@ -7,14 +7,11 @@ import { useFetcher } from './use-fetcher';
 export const useFetchTripDetail = (tripId?: string) => {
   const { getFetcher } = useFetcher();
 
-  if (!tripId) {
-    throw new Error('IDが無効です');
-  }
   const {
     data: trip,
     isLoading,
     error,
-  } = useSWR<ResponseTripType>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${tripId}`, getFetcher);
+  } = useSWR<ResponseTripType>(tripId ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${tripId}` : null, getFetcher);
 
   return { trip, isLoading, error };
 };
