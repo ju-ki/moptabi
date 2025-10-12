@@ -171,6 +171,46 @@ export const calcTotalTransportTime = (spots: Spot[]): string => {
   return resultParts.join(' ');
 };
 
+interface DurationProps {
+  start: string;
+  end: string;
+}
+
+/**
+ * 滞在時間を算出するロジック
+ * @param durationProps - 開始時刻と終了時刻を含むオブジェクト
+ * @param durationProps.start - 開始時刻（"HH:MM" 形式）
+ * @param durationProps.end - 終了時刻（"HH:MM" 形式）
+ * @returns 滞在時間の日本語表示（例: "2時間30分"、"1時間", "45分"
+ */
+export function calculateDuration(durationProps: DurationProps) {
+  const start = durationProps.start;
+  const end = durationProps.end;
+  const timeRegex = /^\d{2}:\d{2}$/;
+  if (!timeRegex.test(start) || !timeRegex.test(end)) {
+    throw new Error('時刻は "HH:MM" 形式で指定してください');
+  }
+
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+
+  if (isNaN(startH) || isNaN(startM) || isNaN(endH) || isNaN(endM)) {
+    throw new Error('無効な時刻が指定されました');
+  }
+
+  const totalMinutes = endH * 60 + endM - (startH * 60 + startM);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours}時間${minutes}分`;
+  } else if (hours > 0) {
+    return `${hours}時間`;
+  } else {
+    return `${minutes}分`;
+  }
+}
+
 /**
  * 座標からルート情報を取得する関数
  * @param fromCoordination 出発地の座標

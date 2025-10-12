@@ -61,6 +61,8 @@ export const getTripHandler = {
             planSpots: {
               orderBy: { order: 'asc' },
               include: {
+                fromLocation: true,
+                toLocation: true,
                 spot: {
                   include: {
                     meta: true,

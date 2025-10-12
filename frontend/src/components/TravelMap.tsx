@@ -41,6 +41,7 @@ interface TravelMapProps {
 
 const TravelMap = ({ date }: TravelMapProps) => {
   const fields = useStoreForPlanning();
+  const allSpots = fields.getSpotInfo(date, TransportNodeType.ALL);
   const [routes, setRoutes] = useState<RouteResult[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -241,7 +242,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
         }}
       >
         {createPortal(
-          <DistanceInfo spots={fields.getSpotInfo(date, TransportNodeType.ALL)} />,
+          <DistanceInfo spots={allSpots} />,
           controlDivRef.current || (controlDivRef.current = document.createElement('div')),
         )}
         {/* 出発地のマーカー */}

@@ -200,3 +200,22 @@ export function updateTimeByMinutes(baseTime: string, diffMinutes: number): stri
   // HH:mm 形式に整形
   return `${String(updatedHours).padStart(2, '0')}:${String(updatedMinutes).padStart(2, '0')}`;
 }
+
+/**
+ * 英語形式になっている時間を日本語形式に変換するための関数
+ * @param travelTime string 英語形式の時間
+ * @returns 日本語形式の時間
+ */
+export function convertHHmmToJpFormat(travelTime: string): string {
+  const regex = /(?:(\d+)\s*hours?)?\s*(?:(\d+)\s*mins?)?/;
+  return travelTime.replace(regex, (match, hours, mins) => {
+    let result = '';
+    if (hours) {
+      result += `${hours}時間`;
+    }
+    if (mins) {
+      result += `${mins}分`;
+    }
+    return result || match; // マッチしなかった場合は元の文字列を返す
+  });
+}
