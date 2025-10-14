@@ -360,10 +360,11 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       lng: place.location?.lng() ?? 0,
     },
     image: place.photos?.[0]?.getURI() ?? '',
-    url: place.googleMapsURI ?? '',
+    url: place.websiteURI ?? '',
     rating: place.rating ?? 0,
     stayStart: '09:00',
     stayEnd: '10:00',
+    description: place.editorialSummary ?? '説明なし',
     category: place.types ?? [], // TODO: 日本語化
     transports: {
       transportMethodIds: [0],
@@ -387,6 +388,8 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     'primaryTypeDisplayName',
     'attributions',
     'regularOpeningHours',
+    'editorialSummary',
+    'websiteURI',
   ];
 
   if (params.searchWord) {
@@ -421,6 +424,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       region: 'JP',
     };
     const { places } = await Place.searchNearby(request);
+    console.log(places);
 
     return places?.map(placeToSpot) ?? [];
   }
