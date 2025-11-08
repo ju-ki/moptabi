@@ -20,6 +20,8 @@ import { findExistingUserRoute } from './routes/auth';
 import { getAuthHandler } from './controllers/auth';
 import { getImageHandler } from './controllers/image';
 import { getImageRoute } from './routes/trip';
+import { createWishlistRoute, deleteWishlistRoute, getWishlistRoute, updateWishlistRoute } from './routes/wishlist';
+import { wishListHandler } from './controllers/wishlist';
 
 const app = new OpenAPIHono().basePath('/api');
 
@@ -29,7 +31,7 @@ app.use(
   '*',
   cors({
     origin: 'http://localhost:3000',
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Clerk-Auth'],
     credentials: true,
     maxAge: 600,
@@ -43,6 +45,7 @@ const imageApp = new OpenAPIHono();
 const transportApp = new OpenAPIHono();
 const spotApp = new OpenAPIHono();
 const authApp = new OpenAPIHono();
+const wishListApp = new OpenAPIHono();
 
 tripApp.use(
   '*',
@@ -84,6 +87,14 @@ authApp.use(
   }),
 );
 
+wishListApp.use(
+  '*',
+  clerkMiddleware({
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+  }),
+);
+
 helloApp.openapi(getHelloRoutes, getHelloHandler);
 
 // トリップルートの登録
@@ -98,12 +109,18 @@ imageApp.openapi(getImageRoute, getImageHandler.getImage);
 
 authApp.openapi(findExistingUserRoute, getAuthHandler);
 
+wishListApp.openapi(getWishlistRoute, wishListHandler.getWishList);
+wishListApp.openapi(createWishlistRoute, wishListHandler.createWishList);
+wishListApp.openapi(updateWishlistRoute, wishListHandler.updateWishList);
+wishListApp.openapi(deleteWishlistRoute, wishListHandler.deleteWishList);
+
 app.route('/images', imageApp);
 app.route('/hello', helloApp);
 app.route('/trips', tripApp);
 app.route('/transport', transportApp);
 app.route('/spot', spotApp);
 app.route('/auth', authApp);
+app.route('/wishlist', wishListApp);
 
 // APIドキュメントの登録
 app

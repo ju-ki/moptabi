@@ -4,11 +4,16 @@ import { NextRequest, NextResponse } from 'next/server';
 const isProtectedRoute = createRouteMatcher('/api(.*)');
 
 const isPlanAccessibleRoute = createRouteMatcher(['/plan/create(.*)', '/plan/list(.*)', '/plan/(\\d+)(.*)']);
+const isWishlistAccessibleRoute = createRouteMatcher(['/wishlist']);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { userId, redirectToSignIn } = await auth();
 
   if ((!userId && isPlanAccessibleRoute(req)) || isProtectedRoute(req)) {
+    return redirectToSignIn({ returnBackUrl: '/' });
+  }
+
+  if (!userId && isWishlistAccessibleRoute(req)) {
     return redirectToSignIn({ returnBackUrl: '/' });
   }
 

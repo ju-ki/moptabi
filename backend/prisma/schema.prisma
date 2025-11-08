@@ -48,6 +48,7 @@ model Spot {
   meta       SpotMeta?
   planSpots  PlanSpot[]
   nearestStations NearestStation[]
+  wishlists       Wishlist[]
 }
 
 model PlanSpot {
@@ -124,7 +125,26 @@ model NearestStation {
   spot        Spot?   @relation(fields: [spotId], references: [id])
 }
 
+model Wishlist {
+  id         Int       @id @default(autoincrement())
+  spotId     String    @db.VarChar(255)
+  userId     String    @db.VarChar(255)
+  memo       String?
+  priority   Int       @default(1)
+  visited    Int       @default(0)
+  visitedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spot Spot @relation(fields: [spotId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, spotId])
+}
+
+
 model User {
   id   String @id @db.VarChar(255)
   trip Trip[]
+  wishlists Wishlist[]
 }

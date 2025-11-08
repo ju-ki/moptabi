@@ -1,4 +1,4 @@
-import React from 'react';
+import { placeTypeMap } from '@/data/constants';
 
 export type Location = {
   name: string;
@@ -56,11 +56,14 @@ export type Spot = {
   transports: Transport;
   url?: string;
   memo?: string;
-  image?: string; // 画像URL (省略可能)
+  image?: string; // 画像URL(省略可能)
   rating?: number; // 例: 4.7
   category?: string[]; // 例: ["文化", "歴史"]
   catchphrase?: string; // キャッチコピー
   description?: string; // 説明文
+  address?: string;
+  ratingCount?: number;
+  regularOpeningHours?: google.maps.places.OpeningHours | null;
   nearestStation?: NearestStation; // 最寄駅
   order: number;
 };
@@ -129,13 +132,13 @@ export type ResponseSpotMetaType = {
   description?: string;
 };
 
-export type PlaceTypeGroupKey = 'culture' | 'nature' | 'leisure' | 'gourmet';
+export type PlaceTypeGroupKey = keyof typeof placeTypeMap;
 
 export type SortOption = 'popularity' | 'distance';
 
 export type SearchSpotByCategoryParams = {
   genreIds?: PlaceTypeGroupKey[]; //ジャンルリスト
-  center: Coordination; //基準となる地点
+  center?: Coordination; //基準となる地点
   radius: number; //半径
   sortOption: SortOption; //ソートオプション
   maxResultLimit: number; //最大取得件数

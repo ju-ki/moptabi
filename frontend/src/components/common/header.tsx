@@ -26,6 +26,9 @@ const Header = () => {
 
       <div className="hidden lg:flex items-center space-x-6">
         <SignedIn>
+          <Link href="/wishlist" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            行きたいリスト
+          </Link>
           <Link href="/plan/create" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             プラン作成
           </Link>
@@ -57,6 +60,13 @@ const Header = () => {
             </SheetTrigger>
             <SheetContent side="right">
               <div className="grid gap-6 p-6">
+                <Link
+                  href="/wishlist"
+                  className="text-sm font-medium hover:underline underline-offset-4"
+                  prefetch={false}
+                >
+                  行きたいリスト
+                </Link>
                 <Link href="#" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
                   トップへ
                 </Link>

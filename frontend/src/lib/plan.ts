@@ -14,7 +14,6 @@ import {
   TravelPlanType,
   TripInfo,
 } from '@/types/plan';
-import { placeTypeGroups } from '@/data/constants';
 
 export const schema = z.object({
   title: z
@@ -342,14 +341,10 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
   )) as google.maps.PlacesLibrary;
 
   // Restrict within the map viewport.
-  const center = new google.maps.LatLng(params.center.lat, params.center.lng);
 
   // 複数ジャンルを指定した場合にgoogle docsのtypeを使用
   //https://developers.google.com/maps/documentation/places/web-service/place-types?hl=ja&_gl=1*tofb5y*_up*MQ..*_ga*MTQ4MDA4MDA0Mi4xNzQzODkxMDQ4*_ga_NRWSTWS78N*MTc0Mzg5MTA0Ny4xLjEuMTc0Mzg5MTMxNy4wLjAuMA..
-  const searchCategoryList: string[] = [];
-  params.genreIds?.forEach((genreId) => {
-    searchCategoryList.push(...placeTypeGroups[genreId]);
-  });
+  const searchCategoryList: string[] = params.genreIds ?? [];
 
   const placeToSpot = (place: google.maps.places.Place): Spot => ({
     id: place.id,
@@ -365,7 +360,10 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     stayStart: '09:00',
     stayEnd: '10:00',
     description: place.editorialSummary ?? '説明なし',
-    category: place.types ?? [], // TODO: 日本語化
+    category: place.types, // TODO: 日本語化
+    address: place.formattedAddress ?? '',
+    ratingCount: place.userRatingCount ?? 0,
+    regularOpeningHours: place.regularOpeningHours,
     transports: {
       transportMethodIds: [0],
       name: 'DEFAULT',
@@ -390,12 +388,17 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     'regularOpeningHours',
     'editorialSummary',
     'websiteURI',
+    'priceLevel',
+    'regularOpeningHours',
+    'userRatingCount',
+    'formattedAddress',
   ];
 
   if (params.searchWord) {
     const request: google.maps.places.SearchByTextRequest = {
       textQuery: params.searchWord,
       fields: fields,
+      locationRestriction: params.center ? new google.maps.LatLngBounds(params.center) : undefined,
       maxResultCount: params.maxResultLimit,
       rankPreference:
         params.sortOption === 'distance' ? SearchByTextRankPreference.DISTANCE : SearchByTextRankPreference.RELEVANCE,
@@ -406,6 +409,11 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
 
     return places?.map(placeToSpot) ?? [];
   } else {
+    // TODO: 一旦保留
+    if (!params.center) {
+      return [];
+    }
+    const center = new google.maps.LatLng(params.center.lat, params.center.lng);
     const request: google.maps.places.SearchNearbyRequest = {
       // required parameters
       fields: fields,
@@ -424,7 +432,6 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       region: 'JP',
     };
     const { places } = await Place.searchNearby(request);
-    console.log(places);
 
     return places?.map(placeToSpot) ?? [];
   }
