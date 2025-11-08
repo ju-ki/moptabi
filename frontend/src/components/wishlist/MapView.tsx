@@ -1,29 +1,30 @@
 import React from 'react';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
+
 import { useWishlistStore } from '@/store/wishlist/wishlistStore';
-import { Button } from '../ui/button';
 import { WishlistType } from '@/types/wishlist';
 import { useFetchWishlist } from '@/hooks/use-wishlist';
+
+import { Button } from '../ui/button';
 
 const MAP_CENTER = { lat: 35.6762, lng: 139.6503 };
 const MAP_ZOOM = 5;
 const MAP_CONTAINER_STYLE = { width: '100%', height: '600px' };
 
-const getPinColor = (visited: number) => visited ? '#4ade80' : '#3b82f6'; // green for visited, blue for unvisited
+const getPinColor = (visited: number) => (visited ? '#4ade80' : '#3b82f6'); // green for visited, blue for unvisited
 
 const MapView = () => {
   const wishlistStore = useWishlistStore();
   const wishlist = wishlistStore.getSortAndFilteredWishlist();
   const selectedWishlist = wishlistStore.getSelectedWishlist();
-  const {updateWishlist, deleteWishlist} = useFetchWishlist();
-
+  const { updateWishlist, deleteWishlist } = useFetchWishlist();
 
   // Edit actions
-  const handleToggleVisited = async(item: WishlistType) => {
+  const handleToggleVisited = async (item: WishlistType) => {
     wishlistStore.updateWishlist({ ...item, visited: item.visited ? 0 : 1 });
     await updateWishlist({ ...item, visited: item.visited ? 0 : 1 });
   };
-  const handleDelete = async(id: number) => {
+  const handleDelete = async (id: number) => {
     wishlistStore.setWishlist(wishlistStore.getSortAndFilteredWishlist().filter((val) => val.id !== id));
     await deleteWishlist(id);
   };
@@ -33,11 +34,7 @@ const MapView = () => {
       <h2 className="text-2xl font-bold text-gray-900 mb-4">マップビュー</h2>
 
       {/* Google Map */}
-      <GoogleMap
-        mapContainerStyle={MAP_CONTAINER_STYLE}
-        center={MAP_CENTER}
-        zoom={MAP_ZOOM}
-      >
+      <GoogleMap mapContainerStyle={MAP_CONTAINER_STYLE} center={MAP_CENTER} zoom={MAP_ZOOM}>
         {wishlist.map((item) => (
           <Marker
             key={item.spotId}

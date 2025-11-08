@@ -1,19 +1,24 @@
-import useSWR from "swr";
-import { useFetcher } from "./use-fetcher"
-import { WishlistType } from "@/types/wishlist";
-import { useAuth } from "@clerk/nextjs";
+import useSWR from 'swr';
+import { useAuth } from '@clerk/nextjs';
+
+import { WishlistType } from '@/types/wishlist';
+
+import { useFetcher } from './use-fetcher';
 
 export const useFetchWishlist = () => {
-  const { getToken} = useAuth();
+  const { getToken } = useAuth();
   const getWishlist = () => {
-    const {getFetcher} = useFetcher();
+    const { getFetcher } = useFetcher();
 
-    const {data, isLoading, error} = useSWR<WishlistType[]>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`, getFetcher);
+    const { data, isLoading, error } = useSWR<WishlistType[]>(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`,
+      getFetcher,
+    );
 
-    return {data, isLoading, error};
-  }
+    return { data, isLoading, error };
+  };
 
-  const postWishlist = async(targetWishlist: WishlistType) => {
+  const postWishlist = async (targetWishlist: WishlistType) => {
     const token = await getToken();
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`, {
       method: 'POST',
@@ -24,10 +29,9 @@ export const useFetchWishlist = () => {
       body: JSON.stringify(targetWishlist),
     });
     return response;
+  };
 
-  }
-
-  const updateWishlist = async(updatedWishlist: WishlistType) => {
+  const updateWishlist = async (updatedWishlist: WishlistType) => {
     const token = await getToken();
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist/${updatedWishlist.id}`, {
       method: 'PATCH',
@@ -38,8 +42,8 @@ export const useFetchWishlist = () => {
       body: JSON.stringify(updatedWishlist),
     });
     return response;
-  }
-  const deleteWishlist = async(id: number) => {
+  };
+  const deleteWishlist = async (id: number) => {
     const token = await getToken();
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist/${id}`, {
       method: 'DELETE',
@@ -49,6 +53,6 @@ export const useFetchWishlist = () => {
       },
     });
     return response;
-  }
-return {getWishlist, postWishlist, updateWishlist, deleteWishlist}
-}
+  };
+  return { getWishlist, postWishlist, updateWishlist, deleteWishlist };
+};

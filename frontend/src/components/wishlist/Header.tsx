@@ -42,7 +42,7 @@ const WishlistHeader = () => {
 
         {/* 検索条件 */}
         <div className="flex flex-wrap gap-3 items-center mb-2">
-            {/* 都道府県は値を保持していないため、コメントアウト */}
+          {/* 都道府県は値を保持していないため、コメントアウト */}
           {/* <div>
             <label className="text-sm mr-2">都道府県</label>
             <select
@@ -60,12 +60,14 @@ const WishlistHeader = () => {
             <label className="text-sm mr-2">優先度</label>
             <select
               value={wishlistStore.priorityFilter ?? ''}
-              onChange={e => wishlistStore.setPriorityFilter(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => wishlistStore.setPriorityFilter(e.target.value ? Number(e.target.value) : null)}
               className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm text-gray-700"
             >
               <option value="">全て</option>
-              {[1,2,3,4,5].map((n) => (
-                <option key={n} value={n}>{n}</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </div>
@@ -73,12 +75,14 @@ const WishlistHeader = () => {
             <label className="text-sm mr-2">評価</label>
             <select
               value={wishlistStore.ratingFilter ?? ''}
-              onChange={e => wishlistStore.setRatingFilter(e.target.value ? Number(e.target.value) : null)}
+              onChange={(e) => wishlistStore.setRatingFilter(e.target.value ? Number(e.target.value) : null)}
               className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm text-gray-700"
             >
               <option value="">全て</option>
-              {[1,2,3,4,5].map((n) => (
-                <option key={n} value={n}>{n}</option>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </div>

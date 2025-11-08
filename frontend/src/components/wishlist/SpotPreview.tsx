@@ -4,14 +4,14 @@ import Image from 'next/image';
 
 import { useWishlistStore } from '@/store/wishlist/wishlistStore';
 import { placeTypeMap } from '@/data/constants';
+import { useToast } from '@/hooks/use-toast';
+import { WishlistType } from '@/types/wishlist';
+import { useFetchWishlist } from '@/hooks/use-wishlist';
 
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { WishlistType } from '@/types/wishlist';
-import { useFetchWishlist } from '@/hooks/use-wishlist';
 
 interface SpotPreviewProps {
   onBack: () => void;

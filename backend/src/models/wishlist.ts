@@ -1,6 +1,6 @@
-import { z } from "@hono/zod-openapi";
+import { z } from '@hono/zod-openapi';
 
-import { SpotSchema } from "@/models/spot";
+import { SpotSchema } from '@/models/spot';
 
 export const WishlistSchema = z.object({
   id: z.number().openapi({ example: 1 }),
