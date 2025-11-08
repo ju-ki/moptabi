@@ -21,10 +21,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './
 
 const SpotSelection = ({ date }: { date: string }) => {
   const genreList: { key: PlaceTypeGroupKey; name: string }[] = [
-    { key: 'culture', name: '歴史文化' },
-    { key: 'nature', name: '自然' },
-    { key: 'leisure', name: 'レジャー' },
-    { key: 'gourmet', name: 'グルメ' },
+    { key: 'historical_place', name: '歴史文化' },
+    { key: 'park', name: '自然' },
+    { key: 'amusement_park', name: 'レジャー' },
+    { key: 'restaurant', name: 'グルメ' },
   ];
   const fields = useStoreForPlanning();
   const [searchCenter, setSearchCenter] = useState<Coordination>(defaultLocation);

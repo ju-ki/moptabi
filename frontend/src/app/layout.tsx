@@ -17,17 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ja">
       <title>AI旅行計画プランナー</title>
       <body>
-        {!isLoaded ? (
-          <div>Loading...</div>
-        ) : (
-          <>
-            <ClerkProvider>
-              <Header />
-              <main>{children}</main>
-            </ClerkProvider>
-            <Toaster />
-          </>
-        )}
+        <>
+          <ClerkProvider>
+            <Header />
+            {!isLoaded ? <div>Loading...</div> : <main>{children}</main>}
+          </ClerkProvider>
+          <Toaster />
+        </>
       </body>
     </html>
   );

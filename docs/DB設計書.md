@@ -11,13 +11,20 @@ AI旅行計画プランナーのデータベース設計書です。PostgreSQL�
 ## ER図
 
 ```
-User (1) ----< Trip (1) ----< TripInfo
-                    |
-                    +----< Plan (1) ----< PlanSpot (N) ----< Spot (1) ----< SpotMeta
-                    |                           |
-                    +----< Transport (N) ----< TransportMethodOnTransport (N) ----< TransportMethod
-                    |                           |
-                    +----< NearestStation (N) ----< Spot
+User (1)
+ ├─< Trip (1)
+ │    ├─< TripInfo
+ │    ├─< Plan (1)
+ │    │    ├─< PlanSpot (N)
+ │    │    │    └─< Spot (1)
+ │    │    │         ├─< SpotMeta
+ │    │    │         ├─< NearestStation (N)
+ │    │    │         └─< Wishlist (N) >─ User (1)
+ │    │    └─< Transport (N)
+ │    │         └─< TransportMethodOnTransport (N)
+ │    │              └─< TransportMethod
+ └─< Wishlist (N) >─ Spot (1)
+
 ```
 
 ## テーブル詳細
@@ -29,7 +36,7 @@ User (1) ----< Trip (1) ----< TripInfo
 |---------|---------|------|------|
 | id | VARCHAR(255) | PRIMARY KEY | ユーザーID（Clerkから取得） |
 
-**関連**:
+**リレーション**:
 - Trip (1:N)
 
 ### 2. Trip（旅行）
@@ -46,7 +53,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | createdAt | TIMESTAMP | DEFAULT NOW() | 作成日時 |
 | updatedAt | TIMESTAMP | DEFAULT NOW() | 更新日時 |
 
-**関連**:
+**リレーション**:
 - User (N:1)
 - TripInfo (1:N)
 - Plan (1:N)
@@ -63,7 +70,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | transportationMethods | INTEGER[] | NOT NULL | 移動手段ID配列 |
 | memo | TEXT | NULL | メモ |
 
-**関連**:
+**リレーション**:
 - Trip (N:1)
 
 ### 4. Plan（プラン）
@@ -75,7 +82,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | tripId | INTEGER | NOT NULL, FK | 旅行ID |
 | date | VARCHAR(10) | NOT NULL | 日付 |
 
-**関連**:
+**リレーション**:
 - Trip (N:1)
 - PlanSpot (1:N)
 - Transport (1:N)
@@ -87,7 +94,7 @@ User (1) ----< Trip (1) ----< TripInfo
 |---------|---------|------|------|
 | id | VARCHAR(255) | PRIMARY KEY | スポットID（Google Places API） |
 
-**関連**:
+**リレーション**:
 - SpotMeta (1:1)
 - PlanSpot (1:N)
 - NearestStation (1:N)
@@ -108,7 +115,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | catchphrase | TEXT | NULL | キャッチフレーズ |
 | description | TEXT | NULL | 説明 |
 
-**関連**:
+**リレーション**:
 - Spot (1:1)
 
 ### 7. PlanSpot（プランスポット）
@@ -124,7 +131,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | memo | TEXT | NULL | メモ |
 | order | INTEGER | DEFAULT 0 | 順序 |
 
-**関連**:
+**リレーション**:
 - Plan (N:1)
 - Spot (N:1)
 - Transport (1:N) - FromLocation
@@ -138,7 +145,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | id | SERIAL | PRIMARY KEY | 移動手段ID |
 | name | VARCHAR(50) | NOT NULL | 移動手段名 |
 
-**関連**:
+**リレーション**:
 - TransportMethodOnTransport (1:N)
 
 ### 9. Transport（移動）
@@ -155,7 +162,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | fromSpotId | INTEGER | NULL, FK | 出発スポットID |
 | toSpotId | INTEGER | NULL, FK | 到着スポットID |
 
-**関連**:
+**リレーション**:
 - Plan (N:1)
 - PlanSpot (N:1) - FromLocation
 - PlanSpot (N:1) - ToLocation
@@ -169,7 +176,7 @@ User (1) ----< Trip (1) ----< TripInfo
 | transportId | INTEGER | NOT NULL, FK | 移動ID |
 | transportMethodId | INTEGER | NOT NULL, FK | 移動手段ID |
 
-**関連**:
+**リレーション**:
 - Transport (N:1)
 - TransportMethod (N:1)
 
@@ -185,8 +192,29 @@ User (1) ----< Trip (1) ----< TripInfo
 | latitude | DOUBLE PRECISION | NOT NULL | 緯度 |
 | longitude | DOUBLE PRECISION | NOT NULL | 経度 |
 
-**関連**:
+**リレーション**:
 - Spot (N:1)
+
+
+### 12. Wishlist(行きたいリスト)
+**目的**: ユーザーのスポットの行きたいリストを管理
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | 行きたいリストID |
+| spotId | VARCHAR(255) | NOT NULL, FK | スポットID |
+| userId | VARCHAR(255) | NOT NULL, FK | ユーザーID |
+| memo | TEXT | NULL | メモ |
+| priority | INT | NOT NULL | 優先度 |
+| visited | INT | NOT NULL | 訪問済みフラグ |
+| visitedAt | TIMESTAMP | NULL | 訪問時期 |
+| createdAt | TIMESTAMP | DEFAULT NOW() | 作成日時 |
+| updatedAt | TIMESTAMP | DEFAULT NOW() | 更新日時 |
+
+**リレーション**:
+- Spot (N:1)
+- User (N:1)
+
 
 ## 列挙型
 
@@ -215,4 +243,4 @@ User (1) ----< Trip (1) ----< TripInfo
 2. **柔軟性**: 配列型を使用して複数の移動手段やカテゴリをサポート
 3. **拡張性**: 将来の機能追加に対応できる設計
 4. **パフォーマンス**: 適切なインデックスと外部キー制約の設定
-5. **データ整合性**: CASCADE DELETEによる関連データの自動削除
+5. **データ整合性**: CASCADE DELETEによるリレーションデータの自動削除

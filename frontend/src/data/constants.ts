@@ -340,7 +340,7 @@ export const placeTypeMap: Record<string, string> = {
   playground: '遊び場',
 };
 
-export const prefectureCenters: Record<string, { id: string; lat: number; lng: number }> = {
+export const prefectureCenters: Record<string, Coordination> = {
   北海道: { id: '1', lat: 43.06417, lng: 141.34694 },
   青森県: { id: '2', lat: 40.82444, lng: 140.74 },
   岩手県: { id: '3', lat: 39.70361, lng: 141.1525 },
