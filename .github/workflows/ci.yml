@@ -209,8 +209,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const core = require('@actions/core')
-            const fd = require('fs')
+            const fs = require('fs')
 
             const f_pass = '${{ needs.frontend.outputs.tests_passed }}'
             const f_cov = '${{ needs.frontend.outputs.coverage }}'
