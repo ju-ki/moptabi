@@ -45,8 +45,10 @@ jobs:
         run: |
           set -o pipefail
           if npm run test:coverage; then
+            TESTS_PASSED=true
             echo "tests_passed=true" >> $GITHUB_OUTPUT
           else
+            TESTS_PASSED=false
             echo "tests_passed=false" >> $GITHUB_OUTPUT
           fi
 
@@ -68,8 +70,10 @@ jobs:
 
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
 
-          # write a small summary file for artifacts
-          node -e "const fs=require('fs'); fs.writeFileSync('test-summary.json', JSON.stringify({testsPassed: process.env.TESTS_PASSED || '${{ steps.run-tests.outputs.tests_passed }}', coverage: process.env.COVERAGE || '$COVERAGE'}))"
+          # write a small summary file for artifacts (use env vars to avoid YAML context interpolation)
+          export TESTS_PASSED="${TESTS_PASSED}"
+          export COVERAGE="${COVERAGE}"
+          node -e "const fs=require('fs'); fs.writeFileSync('test-summary.json', JSON.stringify({testsPassed: process.env.TESTS_PASSED, coverage: process.env.COVERAGE}));"
 
       - name: Upload coverage artifact
         if: always()
@@ -115,10 +119,22 @@ jobs:
         id: run-tests
         run: |
           set -o pipefail
-          if bun run test:coverage; then
+
+          # Run coverage and capture stdout/stderr to a log for debugging
+          if bun run test:coverage 2>&1 | tee backend-test.log; then
+            TESTS_PASSED=true
             echo "tests_passed=true" >> $GITHUB_OUTPUT
           else
+            TESTS_PASSED=false
             echo "tests_passed=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Attempt to generate JUnit report as well (script exists in package.json)
+          # This may run tests again; that's acceptable for debugging builds
+          if bun run test:report 2>&1 | tee backend-test-report.log; then
+            echo "junit_generated=true" >> $GITHUB_OUTPUT
+          else
+            echo "junit_generated=false" >> $GITHUB_OUTPUT
           fi
 
           COVERAGE='unknown'
@@ -136,7 +152,11 @@ jobs:
           fi
 
           echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-          node -e "const fs=require('fs'); fs.writeFileSync('test-summary.json', JSON.stringify({testsPassed: process.env.TESTS_PASSED || '${{ steps.run-tests.outputs.tests_passed }}', coverage: process.env.COVERAGE || '$COVERAGE'}))"
+
+          # write a small summary file for artifacts (use env vars so YAML interpolation is avoided)
+          export TESTS_PASSED="${TESTS_PASSED}"
+          export COVERAGE="${COVERAGE}"
+          node -e "const fs=require('fs'); fs.writeFileSync('test-summary.json', JSON.stringify({testsPassed: process.env.TESTS_PASSED, coverage: process.env.COVERAGE}));"
 
       - name: Upload backend coverage artifact
         if: always()
@@ -146,6 +166,9 @@ jobs:
           path: |
             coverage/**
             test-summary.json
+            backend-test.log
+            backend-test-report.log
+            junit-report.xml
 
       - name: Build
         run: bun run build
