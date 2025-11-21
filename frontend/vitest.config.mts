@@ -33,7 +33,7 @@ export default defineConfig({
     },
     outputFile: {
       json: './coverage/coverage-final-frontend.json',
-      jsonSummary: './coverage/coverage-summary-frontend.json',
+      'json-summary': './coverage/coverage-summary-frontend.json',
     },
   },
 });
