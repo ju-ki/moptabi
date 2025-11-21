@@ -10,7 +10,7 @@ export default defineConfig({
     setupFiles: './src/tests/setup.ts',
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary', 'json'],
+      reporter: ['json-summary', 'json'],
       reportOnFailure: true,
       // Exclude configuration files and UI helper components (e.g., shadcn/ui 'ui' folder)
       exclude: [
@@ -30,6 +30,10 @@ export default defineConfig({
         '**/eslintrc.*',
         '**/*.d.ts',
       ],
+    },
+    outputFile: {
+      json: './coverage/coverage-final-frontend.json',
+      jsonSummary: './coverage/coverage-summary-frontend.json',
     },
   },
 });
