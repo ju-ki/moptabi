@@ -43,13 +43,16 @@ jobs:
       - name: Run Tests
         run: npm run test:coverage
 
+      - name: Debug coverage files
+        run: ls -R ./coverage
+
       - name: 'Report Coverage'
         if: always()
         uses:  davelosert/vitest-coverage-report-action@v2
         with:
           working-directory: ./frontend
-          json-summary-path: './coverage/coverage-summary-frontend.json'
-          json-final-path: './coverage/coverage-final-frontend.json'
+          json-summary-path: './coverage/coverage-summary.json'
+          json-final-path: './coverage/coverage-final.json'
           name: 'Frontend'
   backend:
     runs-on: ubuntu-latest
