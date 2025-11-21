@@ -10,7 +10,7 @@ export default defineConfig({
     setupFiles: './src/tests/setup.ts',
     coverage: {
       provider: 'v8',
-      reporter: ['json-summary', 'json'],
+      reporter: ['text', 'json-summary', 'json'],
       reportOnFailure: true,
       // Exclude configuration files and UI helper components (e.g., shadcn/ui 'ui' folder)
       exclude: [
