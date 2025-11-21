@@ -40,6 +40,9 @@ jobs:
       - name: Run Prettier check
         run: npm run format:check
 
+      - name: Run Tests
+        run: npm run test:coverage
+
       - name: 'Report Coverage'
         if: always()
         uses:  davelosert/vitest-coverage-report-action@v2
@@ -72,6 +75,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+
+      - name: Run Tests
+        run: bun run test:coverage
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
