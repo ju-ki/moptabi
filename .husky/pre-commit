@@ -1,0 +1,22 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running repository linters before commit..."
+
+echo "-> Frontend lint"
+npm --prefix frontend run lint
+FRONTEND_STATUS=$?
+if [ $FRONTEND_STATUS -ne 0 ]; then
+  echo "Frontend lint failed (status $FRONTEND_STATUS). Commit aborted."
+  exit $FRONTEND_STATUS
+fi
+
+echo "-> Backend lint"
+npm --prefix backend run lint
+BACKEND_STATUS=$?
+if [ $BACKEND_STATUS -ne 0 ]; then
+  echo "Backend lint failed (status $BACKEND_STATUS). Commit aborted."
+  exit $BACKEND_STATUS
+fi
+
+echo "All linters passed. Proceeding with commit."

@@ -1,0 +1,5 @@
+[test]
+preload = ["./vitest.setup.ts"]
+
+[test.reporter]
+junit = "./junit.xml"
