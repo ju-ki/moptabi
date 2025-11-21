@@ -207,7 +207,7 @@ jobs:
       - name: Post combined test summary to PR
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.ACTION_TOKEN }}
           script: |
             const fs = require('fs')
 
