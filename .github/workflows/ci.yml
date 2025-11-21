@@ -45,8 +45,6 @@ jobs:
         uses:  davelosert/vitest-coverage-report-action@v2
         with:
           name: 'Frontend'
-          json-summary-path: './coverage/coverage-summary-frontend.json'
-          json-final-path: './coverage/coverage-final-frontend.json'
   backend:
     runs-on: ubuntu-latest
     defaults:
@@ -62,7 +60,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun ci
+        run: bun install
 
       - name: Run ESLint
         run: bun run lint
