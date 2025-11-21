@@ -14,9 +14,9 @@ on:
 jobs:
   frontend:
     runs-on: ubuntu-latest
-    outputs:
-      tests_passed: ${{ steps.run-tests.outputs.tests_passed }}
-      coverage: ${{ steps.run-tests.outputs.coverage }}
+    permissions:
+      contents: read
+      pull-requests: write
     defaults:
       run:
         working-directory: ./frontend
@@ -40,55 +40,15 @@ jobs:
       - name: Run Prettier check
         run: npm run format:check
 
-      - name: Run Tests and capture results
-        id: run-tests
-        run: |
-          set -o pipefail
-          if npm run test:coverage; then
-            TESTS_PASSED=true
-            echo "tests_passed=true" >> $GITHUB_OUTPUT
-          else
-            TESTS_PASSED=false
-            echo "tests_passed=false" >> $GITHUB_OUTPUT
-          fi
-
-          # read coverage summary if present
-          COVERAGE='unknown'
-          if [ -f coverage/coverage-summary.json ]; then
-            COVERAGE_JSON=$(cat coverage/coverage-summary.json)
-            # try lines pct first, then statements
-            LINES_PCT=$(node -e "const s=JSON.parse(process.argv[1]); console.log(s.total?.lines?.pct ?? '');" "$COVERAGE_JSON")
-            if [ -n "$LINES_PCT" ] && [ "$LINES_PCT" != "" ]; then
-              COVERAGE="$LINES_PCT% lines"
-            else
-              STMT_PCT=$(node -e "const s=JSON.parse(process.argv[1]); console.log(s.total?.statements?.pct ?? '');" "$COVERAGE_JSON")
-              if [ -n "$STMT_PCT" ] && [ "$STMT_PCT" != "" ]; then
-                COVERAGE="$STMT_PCT% statements"
-              fi
-            fi
-          fi
-
-          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-
-          # write a small summary file for artifacts (use env vars to avoid YAML context interpolation)
-          export TESTS_PASSED="${TESTS_PASSED}"
-          export COVERAGE="${COVERAGE}"
-          node -e "const fs=require('fs'); fs.writeFileSync('test-summary.json', JSON.stringify({testsPassed: process.env.TESTS_PASSED, coverage: process.env.COVERAGE}));"
-
-      - name: Upload coverage artifact
+      - name: 'Report Coverage'
         if: always()
-        uses: actions/upload-artifact@v4
+        uses:  davelosert/vitest-coverage-report-action@v2
         with:
-          name: frontend-coverage
-          path: |
-            coverage/**
-            test-summary.json
-
+          name: 'Frontend'
+          json-summary-path: './coverage/coverage-summary-frontend.json'
+          json-final-path: './coverage/coverage-final-frontend.json'
   backend:
     runs-on: ubuntu-latest
-    outputs:
-      tests_passed: ${{ steps.run-tests.outputs.tests_passed }}
-      coverage: ${{ steps.run-tests.outputs.coverage }}
     defaults:
       run:
         working-directory: ./backend
@@ -102,7 +62,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
+        run: bun ci
 
       - name: Run ESLint
         run: bun run lint
@@ -115,60 +75,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run Tests and capture results
-        id: run-tests
-        run: |
-          set -o pipefail
-
-          # Run coverage and capture stdout/stderr to a log for debugging
-          if bun run test:coverage 2>&1 | tee backend-test.log; then
-            TESTS_PASSED=true
-            echo "tests_passed=true" >> $GITHUB_OUTPUT
-          else
-            TESTS_PASSED=false
-            echo "tests_passed=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Attempt to generate JUnit report as well (script exists in package.json)
-          # This may run tests again; that's acceptable for debugging builds
-          if bun run test:report 2>&1 | tee backend-test-report.log; then
-            echo "junit_generated=true" >> $GITHUB_OUTPUT
-          else
-            echo "junit_generated=false" >> $GITHUB_OUTPUT
-          fi
-
-          COVERAGE='unknown'
-          if [ -f coverage/coverage-summary.json ]; then
-            COVERAGE_JSON=$(cat coverage/coverage-summary.json)
-            LINES_PCT=$(node -e "const s=JSON.parse(process.argv[1]); console.log(s.total?.lines?.pct ?? '');" "$COVERAGE_JSON")
-            if [ -n "$LINES_PCT" ] && [ "$LINES_PCT" != "" ]; then
-              COVERAGE="$LINES_PCT% lines"
-            else
-              STMT_PCT=$(node -e "const s=JSON.parse(process.argv[1]); console.log(s.total?.statements?.pct ?? '');" "$COVERAGE_JSON")
-              if [ -n "$STMT_PCT" ] && [ "$STMT_PCT" != "" ]; then
-                COVERAGE="$STMT_PCT% statements"
-              fi
-            fi
-          fi
-
-          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
-
-          # write a small summary file for artifacts (use env vars so YAML interpolation is avoided)
-          export TESTS_PASSED="${TESTS_PASSED}"
-          export COVERAGE="${COVERAGE}"
-          node -e "const fs=require('fs'); fs.writeFileSync('test-summary.json', JSON.stringify({testsPassed: process.env.TESTS_PASSED, coverage: process.env.COVERAGE}));"
-
-      - name: Upload backend coverage artifact
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v2
         if: always()
-        uses: actions/upload-artifact@v4
         with:
-          name: backend-coverage
-          path: |
-            coverage/**
-            test-summary.json
-            backend-test.log
-            backend-test-report.log
-            junit-report.xml
+          github_token: ${{ secrets.ACTION_TOKEN }}
+          report_paths: '**/coverage/junit.xml'
 
       - name: Build
         run: bun run build
@@ -218,58 +130,3 @@ jobs:
             echo "pr_url=" >> $GITHUB_OUTPUT
             echo "No changes to create a PR for."
           fi
-
-  post-summary:
-    if: github.event_name == 'pull_request'
-    needs: [frontend, backend]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Post combined test summary to PR
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.ACTION_TOKEN }}
-          script: |
-            const fs = require('fs')
-
-            const f_pass = '${{ needs.frontend.outputs.tests_passed }}'
-            const f_cov = '${{ needs.frontend.outputs.coverage }}'
-            const b_pass = '${{ needs.backend.outputs.tests_passed }}'
-            const b_cov = '${{ needs.backend.outputs.coverage }}'
-
-            const prNumber = context.payload.pull_request ? context.payload.pull_request.number : null
-            if (!prNumber) {
-              console.log('No pull_request found in context; skipping comment')
-              return
-            }
-
-            const overallPassed = (f_pass === 'true' && b_pass === 'true') ? '✅ All tests passed' : '❌ Some tests failed'
-
-            const body = `Auto test summary\n\n${overallPassed}\n- Frontend: ${f_pass === 'true' ? '✅' : '❌'} (coverage: ${f_cov})\n- Backend: ${b_pass === 'true' ? '✅' : '❌'} (coverage: ${b_cov})\n\nArtifacts: see workflow run artifacts for detailed coverage reports.`
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-            })
-
-            const botCommentHeader = 'Auto-test summary (combined)'
-            const existing = comments.find(c => c.user && c.user.type === 'Bot' && c.body && c.body.startsWith(botCommentHeader))
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existing.id,
-                body: `${botCommentHeader}\n\n${body}`,
-              })
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: `${botCommentHeader}\n\n${body}`,
-              })
-            }
