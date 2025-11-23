@@ -83,6 +83,9 @@ jobs:
           if [ -n "${{ secrets.CLERK_SECRET_KEY }}" ]; then
             echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}" >> .env.test
           fi
+          if [ -n "${{ secrets.CLERK_PUBLISHABLE_KEY }}" ]; then
+            echo "CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}" >> .env.test
+          fi
           echo "NODE_ENV=test" >> .env.test
 
       - name: Install dependencies
@@ -122,6 +125,8 @@ jobs:
       - name: Generate Prisma Client for test DB
         run: bun run migrate:test:dev
 
+      - name: Create Coverage Directory
+        run: mkdir -p ./coverage
       - name: Run Tests
         run: bun run test:coverage
 
@@ -133,7 +138,7 @@ jobs:
         if: always()
         with:
           github_token: ${{ secrets.ACTION_TOKEN }}
-          report_paths: './junit.xml'
+          report_paths: './coverage/junit.xml'
 
       - name: Build
         run: bun run build
