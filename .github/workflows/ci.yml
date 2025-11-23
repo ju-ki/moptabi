@@ -75,16 +75,25 @@ jobs:
           bun-version: latest
 
       - name: Create test env
+        env:
+          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: |
-          # Create a .env.test only if TEST_DATABASE_URL secret is provided, otherwise will be created later
-          if [ -n "${{ secrets.TEST_DATABASE_URL }}" ]; then
-            echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" > .env.test
+          # Create base .env.test if TEST_DATABASE_URL provided
+          if [ -n "$TEST_DATABASE_URL" ]; then
+            echo "DATABASE_URL=$TEST_DATABASE_URL" > .env.test
           fi
-          if [ -n "${{ secrets.CLERK_SECRET_KEY }}" ]; then
-            echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}" >> .env.test
+          # Always write Clerk keys; use placeholder if secret not set so app/tests that expect the keys won't crash
+          if [ -n "$CLERK_SECRET_KEY" ]; then
+            echo "CLERK_SECRET_KEY=$CLERK_SECRET_KEY" >> .env.test
+          else
+            echo "CLERK_SECRET_KEY=__DUMMY_CLERK_SECRET__" >> .env.test
           fi
-          if [ -n "${{ secrets.CLERK_PUBLISHABLE_KEY }}" ]; then
-            echo "CLERK_PUBLISHABLE_KEY=${{ secrets.CLERK_PUBLISHABLE_KEY }}" >> .env.test
+          if [ -n "$CLERK_PUBLISHABLE_KEY" ]; then
+            echo "CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY" >> .env.test
+          else
+            echo "CLERK_PUBLISHABLE_KEY=__DUMMY_CLERK_PUBLISHABLE__" >> .env.test
           fi
           echo "NODE_ENV=test" >> .env.test
 
@@ -103,9 +112,23 @@ jobs:
           node-version: '20'
 
       - name: Create test env (override for service host)
+        env:
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
         run: |
           # When using GitHub Actions services, the DB is reachable at localhost on the mapped port (5433)
           echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@localhost:5433/ai_travel_test?schema=public" > .env.test
+          # Preserve or set Clerk keys so tests depending on them do not crash
+          if [ -n "$CLERK_SECRET_KEY" ]; then
+            echo "CLERK_SECRET_KEY=$CLERK_SECRET_KEY" >> .env.test
+          else
+            echo "CLERK_SECRET_KEY=__DUMMY_CLERK_SECRET__" >> .env.test
+          fi
+          if [ -n "$CLERK_PUBLISHABLE_KEY" ]; then
+            echo "CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY" >> .env.test
+          else
+            echo "CLERK_PUBLISHABLE_KEY=__DUMMY_CLERK_PUBLISHABLE__" >> .env.test
+          fi
           echo "NODE_ENV=test" >> .env.test
 
       - name: Wait for Postgres to be ready
@@ -127,8 +150,15 @@ jobs:
 
       - name: Create Coverage Directory
         run: mkdir -p ./coverage
-      - name: Run Tests
-        run: bun run test:coverage
+      - name: Run Tests (capture exit code)
+        run: |
+          set -o pipefail
+          # Run tests with junit reporter and capture output; ensure junit file is produced under ./junit-report.xml
+          bun run test:report 2>&1 | tee backend-test.log
+          TEST_EXIT=${PIPESTATUS[0]}
+          echo "TEST_EXIT=$TEST_EXIT" > test-exit-code.txt
+          # propagate original test exit code so job still fails when tests fail
+          exit $TEST_EXIT
 
       - name: Debug coverage files
         run: ls -R ./coverage
