@@ -92,9 +92,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-      - name: Set DATABASE_URL for CI
+
+      - name: Create test env
         run: |
-          echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" >> .env.test
+          echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@test-db:5432/ai_travel_test" > .env.test
           echo "NODE_ENV=test" >> .env.test
 
       - name: Wait for DB
