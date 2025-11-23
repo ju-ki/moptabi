@@ -43,9 +43,6 @@ jobs:
       - name: Run Tests
         run: npm run test:coverage
 
-      - name: Debug coverage files
-        run: ls -R ./coverage
-
       - name: 'Report Coverage'
         if: always()
         uses:  davelosert/vitest-coverage-report-action@v2
@@ -81,6 +78,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
+
+      - name: Generate Prisma Client
+        run: bun run migrate:test:dev
 
       - name: Run Tests
         run: bun run test:coverage
