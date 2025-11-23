@@ -80,6 +80,9 @@ jobs:
           if [ -n "${{ secrets.TEST_DATABASE_URL }}" ]; then
             echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" > .env.test
           fi
+          if [ -n "${{ secrets.CLERK_SECRET_KEY }}" ]; then
+            echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}" >> .env.test
+          fi
           echo "NODE_ENV=test" >> .env.test
 
       - name: Install dependencies
@@ -121,6 +124,9 @@ jobs:
 
       - name: Run Tests
         run: bun run test:coverage
+
+      - name: Debug coverage files
+        run: ls -R ./coverage
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@v2
