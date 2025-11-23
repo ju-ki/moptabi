@@ -59,20 +59,12 @@ jobs:
     services:
       test-db:
         image: postgres:15
-        ports:
-          - 5433:5432
         env:
           POSTGRES_USER: travel_user_test
           POSTGRES_PASSWORD: travel_admin_test
           POSTGRES_DB: ai_travel_test
-        options: >-
-          --hostname test-db
-          --health-cmd="pg_isready -U travel_user_test -d ai_travel_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-        volumes:
-          - postgres-test-data:/var/lib/postgresql
+        ports:
+          - 5433:5432
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
