@@ -102,10 +102,6 @@ jobs:
           echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@localhost:5433/ai_travel_test?schema=public" > .env.test
           echo "NODE_ENV=test" >> .env.test
 
-      - name: Install netcat (for port probing)
-        run: |
-          sudo apt-get update && sudo apt-get install -y netcat
-
       - name: Wait for Postgres to be ready
         run: |
           echo "Waiting for Postgres on localhost:5433..."
