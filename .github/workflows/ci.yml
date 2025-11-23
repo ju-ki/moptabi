@@ -95,17 +95,8 @@ jobs:
 
       - name: Create test env
         run: |
-          echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@test-db:5432/ai_travel_test" > .env.test
+          echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@host.docker.internal:5433" > .env.test
           echo "NODE_ENV=test" >> .env.test
-
-      - name: Wait for DB
-        run: |
-          echo "Waiting for PostgreSQL to be ready..."
-          for i in {1..20}; do
-            pg_isready -h test-db -p 5432 -U travel_user_test && break
-            echo "Postgres not ready yet..."
-            sleep 3
-          done
 
       - name: Generate Prisma Client for test DB
         run: bun run migrate:test:dev
