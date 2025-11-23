@@ -117,7 +117,7 @@ jobs:
           exit 1
 
       - name: Generate Prisma Client for test DB
-        run: bun run migrate:test:deploy
+        run: bun run migrate:test:dev
 
       - name: Run Tests
         run: bun run test:coverage
