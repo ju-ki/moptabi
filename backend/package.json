@@ -13,8 +13,6 @@
     "test:coverage": "bun test --coverage",
     "prisma:generate": "prisma generate",
     "migrate:dev": "prisma migrate dev",
-    "migrate:deploy": "prisma migrate deploy",
-    "migrate:test:deploy": "dotenv -e .env.test -- prisma migrate deploy && dotenv -e .env.test -- prisma generate",
     "migrate:test:dev": "dotenv -e .env.test -- prisma migrate dev --name test_init && dotenv -e .env.test -- prisma generate",
     "prepare": "husky"
   },

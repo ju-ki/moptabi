@@ -64,10 +64,10 @@ jobs:
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-      
+
       - name: Create test env
         run: |
-          echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" >> .env.test
+          echo "DATABASE_URL=file:./test.db" >> .env.test
           echo "NODE_ENV=test" >> .env.test
 
       - name: Install dependencies
@@ -84,9 +84,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Generate Prisma Client for test DB
+      - name: Setup test SQLite DB
         run: |
-          npx dotenv -e .env.test -- prisma migrate reset --force --skip-seed
+          rm -f test.db
+          npx dotenv -e .env.test -- prisma db push
           npx dotenv -e .env.test -- prisma generate
 
       - name: Run Tests
