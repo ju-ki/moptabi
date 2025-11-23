@@ -76,7 +76,10 @@ jobs:
 
       - name: Create test env
         run: |
-          echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" >> .env.test
+          # Create a .env.test only if TEST_DATABASE_URL secret is provided, otherwise will be created later
+          if [ -n "${{ secrets.TEST_DATABASE_URL }}" ]; then
+            echo "DATABASE_URL=${{ secrets.TEST_DATABASE_URL }}" > .env.test
+          fi
           echo "NODE_ENV=test" >> .env.test
 
       - name: Install dependencies
@@ -93,13 +96,32 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Create test env
+      - name: Create test env (override for service host)
         run: |
-          echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@host.docker.internal:5433" > .env.test
+          # When using GitHub Actions services, the DB is reachable at localhost on the mapped port (5433)
+          echo "DATABASE_URL=postgresql://travel_user_test:travel_admin_test@localhost:5433/ai_travel_test?schema=public" > .env.test
           echo "NODE_ENV=test" >> .env.test
 
+      - name: Install netcat (for port probing)
+        run: |
+          sudo apt-get update && sudo apt-get install -y netcat
+
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres on localhost:5433..."
+          for i in {1..30}; do
+            if nc -z localhost 5433; then
+              echo "Postgres is up"
+              exit 0
+            fi
+            echo "Postgres not ready yet, retrying... ($i)"
+            sleep 2
+          done
+          echo "Postgres did not become ready in time" >&2
+          exit 1
+
       - name: Generate Prisma Client for test DB
-        run: bun run migrate:test:dev
+        run: bun run migrate:test:deploy
 
       - name: Run Tests
         run: bun run test:coverage
