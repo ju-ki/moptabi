@@ -159,13 +159,11 @@ jobs:
           echo "TEST_EXIT=$TEST_EXIT" > test-exit-code.txt
           # propagate original test exit code so job still fails when tests fail
           exit $TEST_EXIT
-
-      - name: Debug coverage files
-        run: ls -R ./coverage
+        continue-on-error: true
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v2
-        if: always()
+        uses: mikepenz/action-junit-report@v5
+        if: success() || failure()
         with:
           github_token: ${{ secrets.ACTION_TOKEN }}
           report_paths: './coverage/junit.xml'
