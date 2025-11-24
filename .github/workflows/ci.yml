@@ -167,7 +167,7 @@ jobs:
         with:
           name: Coverage Report
           path: ./coverage/junit.xml
-          reporter: junit
+          reporter: jest-junit
 
       - name: Build
         run: bun run build
