@@ -192,9 +192,101 @@ jobs:
               testExit = 1;
             }
 
-            const passed = testExit === 0;
+            // Parse junit XML (backend/coverage/junit.xml) for totals
+            let totals = { tests: 0, failures: 0, errors: 0, skipped: 0, time: 0 };
+            try {
+              const junitPath = 'backend/coverage/junit.xml';
+              if (fs.existsSync(junitPath)) {
+                const xml = fs.readFileSync(junitPath, 'utf8');
+                // Sum attributes from <testsuite ...> entries
+                const suiteRe = /<testsuite\b([^>]*)>/g;
+                let m;
+                while ((m = suiteRe.exec(xml)) !== null) {
+                  const attrs = m[1];
+                  const getAttr = (name) => {
+                    const r = new RegExp(name + '="([0-9.]+)"');
+                    const mm = attrs.match(r);
+                    return mm ? Number(mm[1]) : 0;
+                  };
+                  totals.tests += getAttr('tests');
+                  totals.failures += getAttr('failures');
+                  totals.errors += getAttr('errors');
+                  totals.skipped += getAttr('skipped');
+                  totals.time += getAttr('time');
+                }
+                // Fallback: look for top-level <testsuites ...>
+                if (totals.tests === 0) {
+                  const topRe = /<testsuites\b([^>]*)>/;
+                  const top = xml.match(topRe);
+                  if (top) {
+                    const attrs = top[1];
+                    const getAttrTop = (name) => {
+                      const r = new RegExp(name + '="([0-9.]+)"');
+                      const mm = attrs.match(r);
+                      return mm ? Number(mm[1]) : 0;
+                    };
+                    totals.tests = getAttrTop('tests');
+                    totals.failures = getAttrTop('failures');
+                    totals.errors = getAttrTop('errors');
+                    totals.skipped = getAttrTop('skipped');
+                    totals.time = getAttrTop('time');
+                  }
+                }
+              }
+            } catch (e) {
+              // ignore parse errors
+            }
 
-            const body = [`## Backend Test Report`,``, `**Status:** ${passed ? '✅ Passed' : '❌ Failed'}`, '', `- junit artifact: backend-junit (attached to workflow run; path: ./coverage/junit.xml)`, '', `*This comment is auto-generated.*`, `<!-- ai-travel-planner-test-report -->`].join('\n');
+            // Try to read coverage summary if present
+            let coverageSummary = null;
+            try {
+              const covPath = 'backend/coverage/coverage-summary.json';
+              if (fs.existsSync(covPath)) {
+                const cov = JSON.parse(fs.readFileSync(covPath, 'utf8'));
+                // extract lines pct
+                if (cov.total && cov.total.lines) {
+                  coverageSummary = {
+                    lines: cov.total.lines.pct,
+                    statements: cov.total.statements ? cov.total.statements.pct : null,
+                    functions: cov.total.functions ? cov.total.functions.pct : null,
+                    branches: cov.total.branches ? cov.total.branches.pct : null,
+                  };
+                }
+              }
+            } catch (e) {
+              // ignore
+            }
+
+            const passed = testExit === 0 && totals.failures === 0 && totals.errors === 0;
+
+            const lines = [];
+            lines.push('## Backend Test Report');
+            lines.push('');
+            lines.push(`**Status:** ${passed ? '✅ Passed' : '❌ Failed'}`);
+            lines.push('');
+            if (totals.tests || totals.failures || totals.errors || totals.skipped) {
+              lines.push(`- tests: **${totals.tests}**, failures: **${totals.failures}**, errors: **${totals.errors}**, skipped: **${totals.skipped}**, time: **${totals.time}s**`);
+            } else {
+              lines.push('- No junit results found at `backend/coverage/junit.xml`.');
+            }
+            if (coverageSummary) {
+              lines.push('');
+              lines.push(`### Coverage`);
+              lines.push(`- lines: **${coverageSummary.lines}%**`);
+              if (coverageSummary.statements != null) lines.push(`- statements: **${coverageSummary.statements}%**`);
+              if (coverageSummary.functions != null) lines.push(`- functions: **${coverageSummary.functions}%**`);
+              if (coverageSummary.branches != null) lines.push(`- branches: **${coverageSummary.branches}%**`);
+            } else {
+              lines.push('');
+              lines.push('- No coverage summary found at `backend/coverage/coverage-summary.json`.');
+            }
+            lines.push('');
+            lines.push('- junit artifact: backend-junit (attached to workflow run; path: backend/coverage/junit.xml)');
+            lines.push('');
+            lines.push('*This comment is auto-generated.*');
+            lines.push('<!-- ai-travel-planner-test-report -->');
+
+            const body = lines.join('\n');
 
             // Find existing bot comment
             const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber });
