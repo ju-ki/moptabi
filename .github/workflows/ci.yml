@@ -161,12 +161,13 @@ jobs:
           exit $TEST_EXIT
         continue-on-error: true
 
-      - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v5
+      - name: Coverage Report
+        uses: dorny/test-reporter@v2
         if: success() || failure()
         with:
-          github_token: ${{ secrets.ACTION_TOKEN }}
-          report_paths: './coverage/junit.xml'
+          name: Coverage Report
+          path: ./coverage/junit.xml
+          reporter: junit
 
       - name: Build
         run: bun run build
