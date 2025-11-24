@@ -154,7 +154,7 @@ jobs:
         run: |
           set -o pipefail
           # Run tests with junit reporter and capture output; ensure junit file is produced under ./junit-report.xml
-          bun test --report=junit --reporter-outfile=./coverage/junit.xml 2>&1 | tee backend-test.log
+          bun run test:coverage 2>&1 | tee backend-test.log
           TEST_EXIT=${PIPESTATUS[0]}
           echo "TEST_EXIT=$TEST_EXIT" > test-exit-code.txt
           # propagate original test exit code so job still fails when tests fail
