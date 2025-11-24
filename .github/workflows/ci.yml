@@ -166,7 +166,7 @@ jobs:
         if: success() || failure()
         with:
           name: Coverage Report
-          path: ./coverage/junit.xml
+          path: '*.xml'
           reporter: jest-junit
 
       - name: Build

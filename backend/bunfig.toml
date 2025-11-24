@@ -2,4 +2,4 @@
 preload = ["./vitest.setup.ts"]
 
 [test.reporter]
-junit = "./coverage/junit.xml"
+junit = "./junit.xml"
