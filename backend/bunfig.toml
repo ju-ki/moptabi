@@ -1,5 +1,6 @@
 [test]
 preload = ["./vitest.setup.ts"]
+coverageReporter = ["text", "lcov"]
 
 [test.reporter]
 junit = "./coverage/junit.xml"

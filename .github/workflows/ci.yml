@@ -160,8 +160,6 @@ jobs:
           # propagate original test exit code so job still fails when tests fail
           exit $TEST_EXIT
         continue-on-error: true
-      - name: Debug Junit File
-        run: cat ./coverage/junit.xml
 
       - name: Upload junit artifact
         if: always()
@@ -169,6 +167,13 @@ jobs:
         with:
           name: backend-junit
           path: backend/coverage/junit.xml
+
+      - name: 'Report Coverage'
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: romeovs/lcov-reporter-action@v0.2.16
+        with:
+          github-token: ${{ secrets.ACTION_TOKEN }}
+          lcov-file: ./coverage/lcov.info
 
       - name: Post or update PR comment with test summary
         if: ${{ github.event_name == 'pull_request' }}
