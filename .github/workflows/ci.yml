@@ -173,7 +173,7 @@ jobs:
         uses: romeovs/lcov-reporter-action@v0.2.16
         with:
           github-token: ${{ secrets.ACTION_TOKEN }}
-          lcov-file: ./coverage/lcov.info
+          lcov-file: backend/coverage/lcov.info
 
       - name: Post or update PR comment with test summary
         if: ${{ github.event_name == 'pull_request' }}
