@@ -168,7 +168,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-junit
-          path: ./coverage/junit.xml
+          path: backend/coverage/junit.xml
 
       - name: Post or update PR comment with test summary
         if: ${{ github.event_name == 'pull_request' }}
@@ -181,11 +181,12 @@ jobs:
             const repo = context.repo.repo;
             const prNumber = context.payload.pull_request.number;
 
-            // Read test exit code if available
+            // Read test exit code if available (file lives under backend/)
             let testExit = 0;
             try {
-              if (fs.existsSync('test-exit-code.txt')) {
-                testExit = Number(fs.readFileSync('test-exit-code.txt', 'utf8').trim()) || 0;
+              const exitPath = 'backend/test-exit-code.txt';
+              if (fs.existsSync(exitPath)) {
+                testExit = Number(fs.readFileSync(exitPath, 'utf8').trim()) || 0;
               }
             } catch (e) {
               testExit = 1;
