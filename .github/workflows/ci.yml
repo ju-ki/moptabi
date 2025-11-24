@@ -166,7 +166,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: backend-junit
-          path: ./junit-report.xml
+          path: ./coverage/junit.xml
 
       - name: Post or update PR comment with test summary
         if: ${{ github.event_name == 'pull_request' }}
@@ -191,7 +191,7 @@ jobs:
 
             const passed = testExit === 0;
 
-            const body = [`## Backend Test Report`,``, `**Status:** ${passed ? '✅ Passed' : '❌ Failed'}`, '', `- junit artifact: backend-junit (attached to workflow run)`, '', `*This comment is auto-generated.*`, `<!-- ai-travel-planner-test-report -->`].join('\n');
+            const body = [`## Backend Test Report`,``, `**Status:** ${passed ? '✅ Passed' : '❌ Failed'}`, '', `- junit artifact: backend-junit (attached to workflow run; path: ./coverage/junit.xml)`, '', `*This comment is auto-generated.*`, `<!-- ai-travel-planner-test-report -->`].join('\n');
 
             // Find existing bot comment
             const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber });
