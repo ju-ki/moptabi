@@ -7,7 +7,14 @@
     "lint": "eslint .",
     "fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,ts}\"",
-    "format:check": "prettier --check \"src/**/*.{js,ts}\""
+    "format:check": "prettier --check \"src/**/*.{js,ts}\"",
+    "test": "bun test",
+    "test:report": "bun test --report=junit --reporter-outfile=./coverage/junit.xml",
+    "test:coverage": "bun test --coverage",
+    "prisma:generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:test:dev": "dotenv -e .env.test -- prisma migrate dev --name test_init && dotenv -e .env.test -- prisma generate",
+    "prepare": "husky"
   },
   "dependencies": {
     "@clerk/backend": "^1.25.5",
@@ -18,15 +25,22 @@
     "@prisma/client": "^6.6.0",
     "@types/bun": "^1.2.9",
     "bun": "^1.2.9",
+    "dotenv": "^17.2.3",
     "hono": "^3.10.0",
     "prisma": "^6.6.0"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.30.1",
     "@typescript-eslint/parser": "^8.30.1",
+    "@vitest/coverage-v8": "^4.0.8",
+    "dotenv-cli": "^11.0.0",
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-import": "^2.31.0",
+    "husky": "^8.0.0",
     "prettier": "3.5.3",
-    "typescript-eslint": "^8.30.1"
+    "typescript-eslint": "^8.30.1",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.0.8",
+    "vitest-mock-extended": "^3.1.0"
   }
 }

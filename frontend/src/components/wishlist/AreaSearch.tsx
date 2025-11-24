@@ -74,7 +74,7 @@ const AreaSearch = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>場所を選択</Label>
+        <Label data-testid="test-location-label">場所を選択</Label>
         <Select onValueChange={(selectedPref) => setSearchCenter(prefectureCenters[selectedPref as string])}>
           <SelectTrigger>
             <SelectValue placeholder="都道府県を選択する" />
@@ -92,8 +92,16 @@ const AreaSearch = () => {
       </div>
 
       <div className="space-y-2">
-        <Label>検索範囲: {searchRadius[0]}km</Label>
-        <Slider value={searchRadius} onValueChange={setSearchRadius} max={10} min={1} step={1} className="w-full" />
+        <Label data-testid="test-search-range">検索範囲: {searchRadius[0]}km</Label>
+        <Slider
+          data-testid="test-search-range-slider"
+          value={searchRadius}
+          onValueChange={setSearchRadius}
+          max={10}
+          min={1}
+          step={1}
+          className="w-full"
+        />
         <div className="flex justify-between text-xs text-gray-500">
           <span>1km</span>
           <span>10km</span>
@@ -102,8 +110,8 @@ const AreaSearch = () => {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>検索位置を調整（オプション）</Label>
-          <Button variant="ghost" size="sm" onClick={() => setMapSelectOpen(true)}>
+          <Label data-testid="test-adjust-label">検索位置を調整（オプション）</Label>
+          <Button data-testid="map-adjust-button" variant="ghost" size="sm" onClick={() => setMapSelectOpen(true)}>
             {mapSelectOpen ? '地図を閉じる' : '地図で調整'}
             <MapPin size={14} className="ml-2" />
           </Button>
@@ -112,11 +120,12 @@ const AreaSearch = () => {
       </div>
 
       <div className="space-y-2">
-        <Label>カテゴリ（複数選択可）</Label>
+        <Label data-testid="test-categories-label">カテゴリ（複数選択可）</Label>
         <div className="grid grid-cols-2 sm:grid-cols-2 gap-2">
           {categories.map((cat) => (
             <div
               key={cat.id}
+              data-testid={`category-${cat.id}`}
               onClick={() => setSearchCategories(cat.id)}
               className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 border rounded-lg cursor-pointer transition-colors ${
                 searchCategories.includes(cat.id)
@@ -132,6 +141,7 @@ const AreaSearch = () => {
       </div>
 
       <button
+        data-testid="detail-button"
         onClick={() => setShowAdvanced(!showAdvanced)}
         className="flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700"
       >
@@ -143,15 +153,26 @@ const AreaSearch = () => {
       {showAdvanced && (
         <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
           <div className="flex items-center gap-2">
-            <Checkbox id="high-rating" checked={highRating} onCheckedChange={() => setHighRating(!highRating)} />
-            <Label htmlFor="high-rating" className="text-sm cursor-pointer">
+            <Checkbox
+              data-testid="high-rating-checkbox"
+              id="high-rating"
+              checked={highRating}
+              onCheckedChange={() => setHighRating(!highRating)}
+            />
+            <Label data-testid="test-high-rating-label" htmlFor="high-rating" className="text-sm cursor-pointer">
               評価4.0以上
             </Label>
           </div>
         </div>
       )}
 
-      <Button onClick={handleSearch} className="w-full" size="lg" disabled={!searchCenter}>
+      <Button
+        data-testid="search-button"
+        onClick={handleSearch}
+        className="w-full"
+        size="lg"
+        disabled={!searchCenter || isSearching}
+      >
         <Search className="mr-2" size={18} />
         検索する
       </Button>

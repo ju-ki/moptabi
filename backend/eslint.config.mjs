@@ -24,6 +24,8 @@ const config = [
       '**/.next/',
       '**/.vscode/',
       '**/generated/',
+      '**/dist/',
+      '**/node_modules/',
     ],
   },
   {
@@ -57,6 +59,14 @@ const config = [
           'newlines-between': 'always',
         },
       ],
+    },
+  },
+  {
+    name: 'test-files',
+    files: ['**/tests/**/*.{ts,tsx,js,jsx}', '**/*.test.{ts,tsx,js,jsx}', '**/*.spec.{ts,tsx,js,jsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off', // anyを許可
+      'no-console': 'off', // console.logを許可
     },
   },
 ];

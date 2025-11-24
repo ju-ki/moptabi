@@ -18,6 +18,9 @@ const WishlistHeader = () => {
           <div className="flex gap-2">
             <WishlistCreateModal />
             <button
+              role="button"
+              name="list-view"
+              aria-label="リストビューに切り替え"
               onClick={() => wishlistStore.setViewMode('list')}
               className={`p-2 rounded-md transition-colors ${
                 wishlistStore.getViewMode() === 'list'
@@ -25,9 +28,12 @@ const WishlistHeader = () => {
                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <List size={20} />
+              <List role="img" size={20} />
             </button>
             <button
+              role="button"
+              name="map-view"
+              aria-label="マップビューに切り替え"
               onClick={() => wishlistStore.setViewMode('map')}
               className={`p-2 rounded-md transition-colors ${
                 wishlistStore.getViewMode() === 'map'
@@ -35,7 +41,7 @@ const WishlistHeader = () => {
                   : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <Map size={20} />
+              <Map role="img" size={20} />
             </button>
           </div>
         </div>
@@ -59,6 +65,7 @@ const WishlistHeader = () => {
           <div>
             <label className="text-sm mr-2">優先度</label>
             <select
+              aria-label="優先度"
               value={wishlistStore.priorityFilter ?? ''}
               onChange={(e) => wishlistStore.setPriorityFilter(e.target.value ? Number(e.target.value) : null)}
               className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm text-gray-700"
@@ -74,6 +81,7 @@ const WishlistHeader = () => {
           <div>
             <label className="text-sm mr-2">評価</label>
             <select
+              aria-label="評価"
               value={wishlistStore.ratingFilter ?? ''}
               onChange={(e) => wishlistStore.setRatingFilter(e.target.value ? Number(e.target.value) : null)}
               className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm text-gray-700"
@@ -96,6 +104,8 @@ const WishlistHeader = () => {
               全て
             </button>
             <button
+              role="button"
+              aria-label="未訪問フィルター"
               onClick={() => wishlistStore.setFilteredType('unvisited')}
               className={`px-4 py-2 text-sm font-medium transition-colors border-x border-gray-300 ${
                 wishlistStore.getFilteredType() === 'unvisited'
@@ -106,6 +116,8 @@ const WishlistHeader = () => {
               未訪問
             </button>
             <button
+              role="button"
+              aria-label="訪問済みフィルター"
               onClick={() => wishlistStore.setFilteredType('visited')}
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 wishlistStore.getFilteredType() === 'visited'

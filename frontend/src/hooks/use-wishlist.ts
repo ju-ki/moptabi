@@ -7,16 +7,12 @@ import { useFetcher } from './use-fetcher';
 
 export const useFetchWishlist = () => {
   const { getToken } = useAuth();
-  const getWishlist = () => {
-    const { getFetcher } = useFetcher();
+  const { getFetcher } = useFetcher();
 
-    const { data, isLoading, error } = useSWR<WishlistType[]>(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`,
-      getFetcher,
-    );
-
-    return { data, isLoading, error };
-  };
+  const { data, isLoading, error } = useSWR<WishlistType[]>(
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`,
+    getFetcher,
+  );
 
   const postWishlist = async (targetWishlist: WishlistType) => {
     const token = await getToken();
@@ -54,5 +50,5 @@ export const useFetchWishlist = () => {
     });
     return response;
   };
-  return { getWishlist, postWishlist, updateWishlist, deleteWishlist };
+  return { data, isLoading, error, postWishlist, updateWishlist, deleteWishlist };
 };

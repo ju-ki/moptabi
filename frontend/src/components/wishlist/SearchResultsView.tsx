@@ -52,9 +52,14 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({
     const isSelected = selectedSpot?.id === place.id;
     const isHovered = hoveredPlaceId === place.id;
 
+    const circlePath =
+      typeof google !== 'undefined' && google.maps && google.maps.SymbolPath
+        ? google.maps.SymbolPath.CIRCLE
+        : undefined;
+
     if (isSelected) {
       return {
-        path: google.maps.SymbolPath.CIRCLE,
+        path: circlePath,
         fillColor: '#3B82F6',
         fillOpacity: 1,
         strokeColor: '#ffffff',
@@ -65,7 +70,7 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 
     if (isAdded) {
       return {
-        path: google.maps.SymbolPath.CIRCLE,
+        path: circlePath,
         fillColor: '#10B981',
         fillOpacity: 1,
         strokeColor: '#ffffff',
@@ -76,7 +81,7 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 
     if (isHovered) {
       return {
-        path: google.maps.SymbolPath.CIRCLE,
+        path: circlePath,
         fillColor: '#3B82F6',
         fillOpacity: 1,
         strokeColor: '#ffffff',
@@ -86,7 +91,7 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({
     }
 
     return {
-      path: google.maps.SymbolPath.CIRCLE,
+      path: circlePath,
       fillColor: '#EF4444',
       fillOpacity: 1,
       strokeColor: '#ffffff',
@@ -237,7 +242,9 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({
                       onCloseClick={() => setSelectedSpot(null)}
                     >
                       <div className="p-2 max-w-xs">
-                        <h3 className="font-semibold text-sm mb-2">{selectedSpot.location.name}</h3>
+                        <h3 className="font-semibold text-sm mb-2" data-testid="info-window-spot-name">
+                          {selectedSpot.location.name}
+                        </h3>
                         {selectedSpot.rating && (
                           <div className="flex items-center gap-2 mb-2">
                             <Star size={14} className="fill-yellow-400 text-yellow-400" />

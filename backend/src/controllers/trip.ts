@@ -132,15 +132,15 @@ export const getTripHandler = {
 
       const result = TripSchema.safeParse(body);
       if (!result.success) {
-        const formattedErrors = result.error.errors.map((err) => ({
-          path: err.path.join('.'),
-          message: err.message,
-          received: err.code === 'invalid_type' ? err.received : undefined,
-          expected: err.code === 'invalid_type' ? err.expected : undefined,
-        }));
+        // const formattedErrors = result.error.errors.map((err) => ({
+        //   path: err.path.join('.'),
+        //   message: err.message,
+        //   received: err.code === 'invalid_type' ? err.received : undefined,
+        //   expected: err.code === 'invalid_type' ? err.expected : undefined,
+        // }));
 
-        console.error('Validation failed:', formattedErrors);
-        return c.json({ error: 'Invalid request body', details: formattedErrors }, 400);
+        // console.error('Validation failed:', formattedErrors);
+        return c.json({ error: 'Invalid request body', details: 'Invalid data provided' }, 400);
       }
 
       const tripData = result.data;
