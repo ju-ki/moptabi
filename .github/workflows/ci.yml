@@ -242,6 +242,17 @@ jobs:
               // ignore parse errors
             }
 
+
+            const passed = testExit === 0 && totals.failures === 0 && totals.errors === 0;
+
+            const lines = [];
+            lines.push('## Backend Test Report');
+            lines.push('');
+            lines.push(`**Status:** ${passed ? '✅ Passed' : '❌ Failed'}`);
+            lines.push('');
+
+            const body = lines.join('\n');
+
             // Find existing bot comment
             const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber });
             const marker = '<!-- ai-travel-planner-test-report -->';
