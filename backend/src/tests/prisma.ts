@@ -61,6 +61,24 @@ export async function clearTestData(): Promise<void> {
   }
 }
 
+/** 旅行計画作成用に、あらかじめ交通手段を作成するユーティリティ */
+export async function createTransportMethodsIfNotExist() {
+  const transportMethods = [
+    { id: 0, name: 'WALKING' },
+    { id: 1, name: 'DRIVING' },
+    { id: 2, name: 'TRANSIT' },
+    { id: 3, name: 'BICYCLING' },
+    { id: 4, name: 'DEFAULT' },
+  ];
+
+  for (const method of transportMethods) {
+    const existing = await prismaClient.transportMethod.findUnique({ where: { id: method.id } });
+    if (!existing) {
+      await prismaClient.transportMethod.create({ data: method });
+    }
+  }
+}
+
 /**
  * テストユーザーを作成するユーティリティ（重複時は既存レコードを返す）
  * @param userId 作成するユーザーのID

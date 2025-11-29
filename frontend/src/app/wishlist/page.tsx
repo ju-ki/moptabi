@@ -10,7 +10,7 @@ import WishlistHeader from '@/components/wishlist/Header';
 import { useFetchWishlist } from '@/hooks/use-wishlist';
 
 const TravelWishlistApp = () => {
-  const { data: wishlist, isLoading, error } = useFetchWishlist().getWishlist();
+  const { data: wishlist, isLoading, error } = useFetchWishlist();
   const wishlistStore = useWishlistStore();
   const sortedWishlist = wishlistStore.getSortAndFilteredWishlist();
 

@@ -14,6 +14,7 @@ import {
   TravelPlanType,
   TripInfo,
 } from '@/types/plan';
+import { formatOpeningHours } from './google-maps';
 
 export const schema = z.object({
   title: z
@@ -363,7 +364,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     category: place.types, // TODO: 日本語化
     address: place.formattedAddress ?? '',
     ratingCount: place.userRatingCount ?? 0,
-    regularOpeningHours: place.regularOpeningHours,
+    regularOpeningHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
     transports: {
       transportMethodIds: [0],
       name: 'DEFAULT',

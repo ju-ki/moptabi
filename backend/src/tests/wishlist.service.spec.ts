@@ -58,6 +58,12 @@ const mockSpotMeta = {
   categories: ['park'],
   catchphrase: '夜景が綺麗な場所です',
   description: '家族連れにおすすめです',
+  openingHours: [
+    {
+      day: '月',
+      hours: '9:00-18:00',
+    },
+  ],
 };
 
 const mockSpotPayload = {
@@ -95,6 +101,7 @@ describe('🧾 行きたいリストサービス', () => {
               image: mockSpotMeta.image,
               rating: mockSpotMeta.rating,
               catchphrase: mockSpotMeta.catchphrase,
+              openingHours: mockSpotMeta.openingHours,
             },
           },
         },
@@ -133,6 +140,12 @@ describe('🧾 行きたいリストサービス', () => {
               image: 'https://example.com/image2.jpg',
               rating: 4.5,
               catchphrase: '歴史を感じる場所です',
+              openingHours: [
+                {
+                  day: '月',
+                  hours: '9:00-18:00',
+                },
+              ],
             },
           },
         },
@@ -211,6 +224,12 @@ describe('🧾 行きたいリストサービス', () => {
               image: 'https://example.com/image2.jpg',
               rating: 4.5,
               catchphrase: '歴史を感じる場所です',
+              openingHours: [
+                {
+                  day: '月',
+                  hours: '9:00-18:00',
+                },
+              ],
             },
           },
         },
@@ -338,6 +357,12 @@ describe('🧾 行きたいリストサービス', () => {
             image: 'https://example.com/image2.jpg',
             rating: 4.5,
             catchphrase: '歴史を感じる場所です',
+            openingHours: [
+              {
+                day: '月',
+                hours: '9:00-18:00',
+              },
+            ],
           },
         },
         memo: 'ここに行きたい',
@@ -488,6 +513,12 @@ describe('🧾 行きたいリストサービス', () => {
               image: 'https://example.com/image_delete.jpg',
               rating: 4.0,
               catchphrase: 'デリート用キャッチフレーズ',
+              openingHours: [
+                {
+                  day: '月',
+                  hours: '9:00-18:00',
+                },
+              ],
             },
           },
         },
@@ -522,6 +553,139 @@ describe('🧾 行きたいリストサービス', () => {
       const res = await client.api.wishlist['non_existent_id'].$delete();
 
       expect(res.status).toBe(400);
+    });
+  });
+
+  // -- 営業時間を含むスポット作成テスト --
+  describe('営業時間を含むスポット作成', () => {
+    it('営業時間を含むスポットを作成し、wishlist に登録できること', async () => {
+      const spotWithHoursId = 'spot_with_hours_001';
+      const openingHoursData = [
+        {
+          day: '月',
+          hours: '9:00-18:00',
+        },
+      ];
+
+      // 営業時間を含むスポットを作成
+      const spotWithHours = await prismaClient.prisma.spot.create({
+        data: {
+          id: spotWithHoursId,
+          meta: {
+            create: {
+              id: spotWithHoursId,
+              name: '営業時間ありカフェ',
+              description: '美味しいコーヒーが飲めるカフェ',
+              latitude: 35.6895,
+              longitude: 139.6917,
+              categories: ['cafe', 'restaurant'],
+              image: 'https://example.com/cafe.jpg',
+              rating: 4.5,
+              catchphrase: '落ち着いた雰囲気',
+              openingHours: openingHoursData,
+            },
+          },
+        },
+        include: { meta: true },
+      });
+
+      // 営業時間が正しく保存されているか確認
+      expect(spotWithHours.meta?.openingHours).toBeDefined();
+      expect(spotWithHours.meta?.openingHours).toMatchObject(openingHoursData);
+
+      // wishlist に追加
+      const createPayload = {
+        spotId: spotWithHoursId,
+        spot: {
+          id: spotWithHoursId,
+          meta: {
+            id: spotWithHoursId,
+            spotId: spotWithHoursId,
+            name: '営業時間ありカフェ',
+            latitude: 35.6895,
+            longitude: 139.6917,
+            rating: 4.5,
+            categories: ['cafe'],
+            openingHours: openingHoursData,
+          },
+        },
+        memo: '営業時間を確認したい',
+        priority: 4,
+        visited: 0,
+        visitedAt: null,
+      };
+
+      const createResult = WishlistCreateSchema.safeParse(createPayload);
+      expect(createResult.success).toBe(true);
+
+      const res = await client.api.wishlist.$post({
+        json: createPayload,
+      });
+
+      expect(res.status).toBe(201);
+      const json = await res.json();
+      expect(json.spotId).toBe(spotWithHoursId);
+      expect(json.memo).toBe('営業時間を確認したい');
+
+      // 取得してopeningHoursが含まれているか確認
+      const getRes = await client.api.wishlist.$get();
+      const wishlists = await getRes.json();
+
+      const addedWishlist = (wishlists as any[]).find((w) => w.spotId === spotWithHoursId);
+      expect(addedWishlist).toBeDefined();
+      expect(addedWishlist.spot.meta.openingHours).toBeDefined();
+    });
+
+    it('営業時間が null のスポットも正しく作成できること', async () => {
+      const spotNoHoursId = 'spot_no_hours_001';
+
+      const spotNoHours = await prismaClient.prisma.spot.create({
+        data: {
+          id: spotNoHoursId,
+          meta: {
+            create: {
+              id: spotNoHoursId,
+              name: '営業時間なし公園',
+              description: '24時間オープンの公園',
+              latitude: 35.6805,
+              longitude: 139.769,
+              categories: ['park'],
+              rating: 4.0,
+              // openingHours を省略（null の代わり）
+            },
+          },
+        },
+        include: { meta: true },
+      });
+
+      // JSON フィールドが省略された場合は null として扱われる
+      expect(spotNoHours.meta?.openingHours).toBeNull();
+    });
+
+    it('営業時間が省略されたスポットも正しく作成できること', async () => {
+      const spotOmittedId = 'spot_omitted_hours_001';
+
+      const spotOmitted = await prismaClient.prisma.spot.create({
+        data: {
+          id: spotOmittedId,
+          meta: {
+            create: {
+              id: spotOmittedId,
+              name: '営業時間省略スポット',
+              description: '営業時間データがないスポット',
+              latitude: 35.6805,
+              longitude: 139.769,
+              categories: ['landmark'],
+              rating: 3.8,
+              // openingHours は意図的に省略
+            },
+          },
+        },
+        include: { meta: true },
+      });
+
+      // JSON フィールドが省略された場合は null として扱われる
+      expect(spotOmitted.meta?.openingHours).toBeNull();
     });
   });
 });

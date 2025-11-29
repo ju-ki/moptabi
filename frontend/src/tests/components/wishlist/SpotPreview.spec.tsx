@@ -62,7 +62,7 @@ describe('SpotPreview', () => {
       category: ['restaurant'],
       address: '東京都千代田区',
       url: 'https://example.com',
-    } as any;
+    };
 
     getSelectedSpot.mockReturnValue(spot);
     isAlreadyAddedWishlist.mockReturnValue(false);
