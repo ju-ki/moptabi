@@ -73,6 +73,7 @@ export const createWishList = async (c: Context) => {
             image: wishListResult.spot.meta.image,
             rating: wishListResult.spot.meta.rating,
             catchphrase: wishListResult.spot.meta.catchphrase,
+            openingHours: wishListResult.spot.meta.openingHours ? wishListResult.spot.meta.openingHours : undefined,
           },
         },
       },

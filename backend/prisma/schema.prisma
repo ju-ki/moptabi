@@ -77,6 +77,7 @@ model SpotMeta {
   categories   String[]
   catchphrase  String?
   description  String?
+  openingHours Json?
 }
 
 model TransportMethod {

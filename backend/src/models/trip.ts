@@ -1,6 +1,7 @@
 import { z } from '@hono/zod-openapi';
 
 import { TransportNodeType } from '../generated/prisma';
+import { OpeningHoursSchema } from './spot';
 
 export const TripSchema = z.object({
   title: z
@@ -32,17 +33,18 @@ export const TripSchema = z.object({
           stayStart: z.string(),
           stayEnd: z.string(),
           memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-          image: z.string().url().optional(),
+          image: z.string().optional(),
           rating: z.number().optional(),
           category: z.array(z.string()).optional(),
           catchphrase: z.string().optional(),
           description: z.string().optional(),
+          regularOpeningHours: OpeningHoursSchema.optional(),
           transports: z.object({
             transportMethodIds: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
             travelTime: z.string().optional(),
             cost: z.number().optional(),
-            fromType: z.nativeEnum(TransportNodeType),
-            toType: z.nativeEnum(TransportNodeType),
+            fromType: z.enum(TransportNodeType),
+            toType: z.enum(TransportNodeType),
           }),
           order: z.number().default(0),
           nearestStation: z

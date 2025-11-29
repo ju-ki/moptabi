@@ -1,5 +1,13 @@
 import z from 'zod';
 
+// Google Map から取得した営業時間を変換したスキーマ
+export const OpeningHoursSchema = z.array(
+  z.object({
+    day: z.string(),
+    hours: z.string(),
+  }),
+);
+
 export const SpotMetaSchema = z.object({
   id: z.string().optional(),
   spotId: z.string(),
@@ -11,6 +19,7 @@ export const SpotMetaSchema = z.object({
   categories: z.array(z.string()).optional(),
   catchphrase: z.string().optional(),
   description: z.string().optional(),
+  openingHours: OpeningHoursSchema.optional(),
 });
 
 export const PlanSpotSchema = z.object({});

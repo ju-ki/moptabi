@@ -30,45 +30,7 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
     if (spot?.id) {
       setIsAlreadyAdded(wishlistStore.isAlreadyAddedWishlist(spot.id));
     }
-  });
-
-  const getDayName = (day: number): string => {
-    const days = ['日', '月', '火', '水', '木', '金', '土'];
-    return days[day];
-  };
-
-  const formatTime = (hour: number, minute: number): string => {
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-  };
-
-  const formatOpeningHours = (
-    periods: google.maps.places.OpeningHoursPeriod[] | null,
-  ): string | { day: string; hours: string }[] => {
-    if (!periods || periods.length === 0) return '営業時間情報なし';
-
-    if (periods.length === 1 && !periods[0].close) {
-      return '24時間営業';
-    }
-
-    const hoursByDay: Record<number, string[]> = {};
-    periods.forEach((period) => {
-      const day = period.open.day;
-      const openTime = formatTime(period.open.hour, period.open.minute);
-      const closeTime = period.close ? formatTime(period.close.hour, period.close.minute) : '24:00';
-
-      if (!hoursByDay[day]) {
-        hoursByDay[day] = [];
-      }
-      hoursByDay[day].push(`${openTime}-${closeTime}`);
-    });
-
-    const sortedDays = Object.keys(hoursByDay).sort((a, b) => Number(a) - Number(b));
-
-    return sortedDays.map((day) => ({
-      day: getDayName(Number(day)),
-      hours: hoursByDay[Number(day)].join(', '),
-    }));
-  };
+  }, [spot, wishlistStore]);
 
   if (!spot) {
     return (
@@ -99,6 +61,7 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
             rating: spot.rating ?? 0,
             categories: spot.category,
             description: spot.description,
+            openingHours: spot.regularOpeningHours,
           },
         },
         memo: memo,
@@ -187,21 +150,16 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
                 <div className="flex-1">
                   <span className="font-semibold text-gray-900 text-sm">営業時間</span>
                   <div className="mt-2 space-y-1">
-                    {(() => {
-                      const hours = formatOpeningHours(spot.regularOpeningHours.periods);
-                      if (typeof hours === 'string') {
-                        return <div className="text-sm text-gray-600">{hours}</div>;
-                      } else {
-                        return (hours as { day: string; hours: string }[]).map(
-                          (item: { day: string; hours: string }, idx: number) => (
-                            <div key={idx} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
-                              <span className="font-medium text-gray-700 w-5 sm:w-6">{item.day}</span>
-                              <span className="text-gray-600 text-xs sm:text-sm">{item.hours}</span>
-                            </div>
-                          ),
-                        );
-                      }
-                    })()}
+                    {spot.regularOpeningHours.map((item, idx) => (
+                      <div key={idx} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
+                        {item.day != '不明' && item.day != '全' && (
+                          <>
+                            <span className="font-medium text-gray-700 w-5 sm:w-6">{item.day}</span>
+                          </>
+                        )}
+                        <span className="text-gray-600 text-xs sm:text-sm">{item.hours}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>

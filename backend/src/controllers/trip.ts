@@ -1,5 +1,6 @@
 import { Context } from 'hono';
 import { getAuth } from '@hono/clerk-auth';
+import { HTTPException } from 'hono/http-exception';
 
 import { TripSchema } from '../models/trip';
 import { Prisma, PrismaClient } from '../generated/prisma';
@@ -9,33 +10,23 @@ const prisma = new PrismaClient();
 export const getTripHandler = {
   // 全ての旅行計画を取得
   getTrips: async (c: Context) => {
-    try {
-      const auth = getAuth(c);
+    const auth = getAuth(c);
 
-      if (!auth?.userId) {
-        return c.json({ error: 'Unauthorized error' }, 401);
-      }
-
-      const userId = auth.userId;
-
-      const tripInfo = await prisma.trip.findMany({
-        where: { userId: userId },
-        include: {
-          tripInfo: true,
-          plans: true,
-        },
-      });
-
-      if (!tripInfo.length) {
-        return c.json([], 200);
-      }
-
-      return c.json(tripInfo, 200);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error(errorMessage);
-      return c.json({ error: 'Internal Server Error', details: errorMessage }, 500);
+    if (!auth?.userId) {
+      throw new HTTPException(401, { message: 'Unauthorized error' });
     }
+
+    const userId = auth.userId;
+
+    const tripInfo = await prisma.trip.findMany({
+      where: { userId: userId },
+      include: {
+        tripInfo: true,
+        plans: true,
+      },
+    });
+
+    return c.json(tripInfo, 200);
   },
 
   // 特定の旅行計画を取得
@@ -43,10 +34,13 @@ export const getTripHandler = {
   getTripDetail: async (c: Context) => {
     const auth = getAuth(c);
     if (!auth?.userId) {
-      return c.json({ error: 'Unauthorized' }, 401);
+      throw new HTTPException(401, { message: 'Unauthorized error' });
     }
 
     const tripId = parseInt(c.req.param('id'));
+    if (isNaN(tripId)) {
+      throw new HTTPException(400, { message: 'Invalid trip ID' });
+    }
 
     const targetTrip = await prisma.trip.findFirst({
       where: {
@@ -77,7 +71,7 @@ export const getTripHandler = {
     });
 
     if (!targetTrip) {
-      return c.json({ error: 'No trip found' }, 404);
+      throw new HTTPException(404, { message: 'No trip found' });
     }
 
     return c.json(targetTrip, 200);
@@ -119,219 +113,192 @@ export const getTripHandler = {
 
   // 新しい旅行計画を登録
   createTrip: async (c: Context) => {
-    try {
-      const auth = getAuth(c);
-      if (!auth?.userId) {
-        return c.json({ error: 'Unauthorized' }, 401);
-      }
+    const auth = getAuth(c);
+    if (!auth?.userId) {
+      throw new HTTPException(401, { message: 'Unauthorized error' });
+    }
 
-      const body = await c.req.json();
-      if (!body) {
-        return c.json({ error: 'Request body is required' }, 400);
-      }
+    const body = await c.req.json();
+    if (!body) {
+      throw new HTTPException(400, { message: 'Request body is required' });
+    }
 
-      const result = TripSchema.safeParse(body);
-      if (!result.success) {
-        // const formattedErrors = result.error.errors.map((err) => ({
-        //   path: err.path.join('.'),
-        //   message: err.message,
-        //   received: err.code === 'invalid_type' ? err.received : undefined,
-        //   expected: err.code === 'invalid_type' ? err.expected : undefined,
-        // }));
+    const result = TripSchema.safeParse(body);
+    if (!result.success) {
+      throw new HTTPException(400, { message: 'Invalid request body' });
+    }
 
-        // console.error('Validation failed:', formattedErrors);
-        return c.json({ error: 'Invalid request body', details: 'Invalid data provided' }, 400);
-      }
+    const tripData = result.data;
+    const userId = auth.userId;
 
-      const tripData = result.data;
-      const userId = auth.userId;
+    // レスポンス用変数を定義
+    let createdTrip;
 
-      // レスポンス用変数を定義
-      let createdTrip;
+    await prisma.$transaction(async (tx) => {
+      const allSpotsList = await tx.spot.findMany({
+        select: { id: true },
+        where: {
+          id: {
+            notIn: ['departure', 'destination'],
+          },
+        },
+      });
 
-      try {
-        await prisma.$transaction(async (tx) => {
-          const allSpotsList = await tx.spot.findMany({
-            select: { id: true },
-            where: {
-              id: {
-                notIn: ['departure', 'destination'],
-              },
-            },
-          });
+      const nonExistingSpot = tripData.plans.flatMap((plan) =>
+        plan.spots.filter((spot) => !allSpotsList.some((existingSpot) => existingSpot.id === spot.id)),
+      );
 
-          const nonExistingSpot = tripData.plans.flatMap((plan) =>
-            plan.spots.filter((spot) => !allSpotsList.some((existingSpot) => existingSpot.id === spot.id)),
-          );
-
-          for (const spot of nonExistingSpot) {
-            await tx.spot.create({
-              data: {
+      for (const spot of nonExistingSpot) {
+        await tx.spot.create({
+          data: {
+            id: spot.id,
+            meta: {
+              create: {
                 id: spot.id,
-                meta: {
-                  create: {
-                    id: spot.id,
-                    name: spot.location.name,
-                    latitude: spot.location.lat,
-                    longitude: spot.location.lng,
-                    image: spot.image ?? '',
-                    rating: spot.rating ?? 0,
-                    categories: spot.category,
-                    catchphrase: spot.catchphrase ?? '',
-                    description: spot.description ?? '',
-                  },
-                },
-              },
-            });
-          }
-
-          // TODO: TripInfoいらないかもしれない
-          const newTrip = await tx.trip.create({
-            data: {
-              title: tripData.title,
-              imageUrl: tripData.imageUrl,
-              startDate: tripData.startDate,
-              endDate: tripData.endDate,
-              userId,
-              tripInfo: {
-                create: tripData.tripInfo.map((info) => ({
-                  date: info.date,
-                  genreId: info.genreId,
-                  transportationMethods: info.transportationMethod,
-                  memo: info.memo ?? '',
-                })),
-              },
-              plans: {
-                create: tripData.plans.map((plan) => ({
-                  date: plan.date,
-                  planSpots: {
-                    create: plan.spots.map((spot) => ({
-                      spotId: spot.id,
-                      stayStart: spot.stayStart,
-                      stayEnd: spot.stayEnd,
-                      memo: spot.memo ?? null,
-                      order: spot.order, // スポットの順序を設定
-                    })),
-                  },
-                })),
+                name: spot.location.name,
+                latitude: spot.location.lat,
+                longitude: spot.location.lng,
+                image: spot.image ?? '',
+                rating: spot.rating ?? 0,
+                categories: spot.category,
+                catchphrase: spot.catchphrase ?? '',
+                description: spot.description ?? '',
+                openingHours: spot.regularOpeningHours ? spot.regularOpeningHours : undefined,
               },
             },
-          });
+          },
+        });
+      }
 
-          // 交通手段は別途作成（PlanSpotが作成された後）
-          for (const planData of tripData.plans) {
-            const createdPlan = await tx.plan.findFirst({
-              where: {
-                tripId: newTrip.id,
-                date: planData.date,
+      // TODO: TripInfoいらないかもしれない
+      const newTrip = await tx.trip.create({
+        data: {
+          title: tripData.title,
+          imageUrl: tripData.imageUrl,
+          startDate: tripData.startDate,
+          endDate: tripData.endDate,
+          userId,
+          tripInfo: {
+            create: tripData.tripInfo.map((info) => ({
+              date: info.date,
+              genreId: info.genreId,
+              transportationMethods: info.transportationMethod,
+              memo: info.memo ?? '',
+            })),
+          },
+          plans: {
+            create: tripData.plans.map((plan) => ({
+              date: plan.date,
+              planSpots: {
+                create: plan.spots.map((spot) => ({
+                  spotId: spot.id,
+                  stayStart: spot.stayStart,
+                  stayEnd: spot.stayEnd,
+                  memo: spot.memo ?? null,
+                  order: spot.order, // スポットの順序を設定
+                })),
               },
-              include: {
-                planSpots: {
-                  orderBy: { order: 'asc' },
-                },
-              },
-            });
+            })),
+          },
+        },
+      });
 
-            if (createdPlan) {
-              // スポット間の交通手段を作成
-              for (let i = 0; i < createdPlan.planSpots.length - 1; i++) {
-                const fromSpot = createdPlan.planSpots[i];
-                const toSpot = createdPlan.planSpots[i + 1];
-
-                const transportData = planData.spots[i].transports; // 対応する交通手段データ
-
-                await tx.transport.create({
-                  data: {
-                    planId: createdPlan.id,
-                    fromType: 'SPOT',
-                    toType: 'SPOT',
-                    fromSpotId: fromSpot.id,
-                    toSpotId: toSpot.id,
-                    cost: transportData.cost ?? 0,
-                    travelTime: transportData.travelTime ?? '不明',
-                    transportMethods: {
-                      create:
-                        transportData.transportMethodIds?.map((methodId: number) => ({
-                          transportMethodId: methodId,
-                        })) ?? [],
-                    },
-                  },
-                });
-              }
-
-              // 最初のスポットへの交通手段（出発地から）
-              if (createdPlan.planSpots.length > 0) {
-                const firstSpot = createdPlan.planSpots[0];
-                await tx.transport.create({
-                  data: {
-                    planId: createdPlan.id,
-                    fromType: 'DEPARTURE',
-                    toType: 'SPOT',
-                    toSpotId: firstSpot.id,
-                    cost: 0,
-                    travelTime: '出発',
-                  },
-                });
-              }
-
-              // 最後のスポットからの交通手段（目的地へ）
-              if (createdPlan.planSpots.length > 0) {
-                const lastSpot = createdPlan.planSpots[createdPlan.planSpots.length - 1];
-                await tx.transport.create({
-                  data: {
-                    planId: createdPlan.id,
-                    fromType: 'SPOT',
-                    toType: 'DESTINATION',
-                    fromSpotId: lastSpot.id,
-                    cost: 0,
-                    travelTime: '帰宅',
-                  },
-                });
-              }
-            }
-          }
-
-          createdTrip = await tx.trip.findFirst({
-            where: { id: newTrip.id, userId: userId },
-            include: {
-              tripInfo: true,
-              plans: {
-                include: {
-                  planSpots: {
-                    include: {
-                      spot: {
-                        include: {
-                          meta: true,
-                          nearestStations: true,
-                        },
-                      },
-                    },
-                  },
-                },
-              },
+      // 交通手段は別途作成（PlanSpotが作成された後）
+      for (const planData of tripData.plans) {
+        const createdPlan = await tx.plan.findFirst({
+          where: {
+            tripId: newTrip.id,
+            date: planData.date,
+          },
+          include: {
+            planSpots: {
+              orderBy: { order: 'asc' },
             },
-          });
+          },
         });
 
-        return c.json(createdTrip, 201);
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError) {
-          console.error(`Prisma error code: ${error.code}`);
-          console.log(error);
-          return c.json({ error: 'Internal Server Error', details: error.code }, 500);
-        } else if (error instanceof Prisma.PrismaClientValidationError) {
-          console.error(error);
-          return c.json({ error: 'Validation error' }, 500);
-        } else {
-          console.error(error);
-          return c.json({ error: 'Unexpected error occurred' }, 500);
+        if (createdPlan) {
+          // スポット間の交通手段を作成
+          for (let i = 0; i < createdPlan.planSpots.length - 1; i++) {
+            const fromSpot = createdPlan.planSpots[i];
+            const toSpot = createdPlan.planSpots[i + 1];
+
+            const transportData = planData.spots[i].transports; // 対応する交通手段データ
+
+            await tx.transport.create({
+              data: {
+                planId: createdPlan.id,
+                fromType: 'SPOT',
+                toType: 'SPOT',
+                fromSpotId: fromSpot.id,
+                toSpotId: toSpot.id,
+                cost: transportData.cost ?? 0,
+                travelTime: transportData.travelTime ?? '不明',
+                transportMethods: {
+                  create:
+                    transportData.transportMethodIds?.map((methodId: number) => ({
+                      transportMethodId: methodId,
+                    })) ?? [],
+                },
+              },
+            });
+          }
+
+          // 最初のスポットへの交通手段（出発地から）
+          if (createdPlan.planSpots.length > 0) {
+            const firstSpot = createdPlan.planSpots[0];
+            await tx.transport.create({
+              data: {
+                planId: createdPlan.id,
+                fromType: 'DEPARTURE',
+                toType: 'SPOT',
+                toSpotId: firstSpot.id,
+                cost: 0,
+                travelTime: '出発',
+              },
+            });
+          }
+
+          // 最後のスポットからの交通手段（目的地へ）
+          if (createdPlan.planSpots.length > 0) {
+            const lastSpot = createdPlan.planSpots[createdPlan.planSpots.length - 1];
+            await tx.transport.create({
+              data: {
+                planId: createdPlan.id,
+                fromType: 'SPOT',
+                toType: 'DESTINATION',
+                fromSpotId: lastSpot.id,
+                cost: 0,
+                travelTime: '帰宅',
+              },
+            });
+          }
         }
       }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error(errorMessage);
-      return c.json({ error: 'Internal Server Error', details: errorMessage }, 500);
-    }
+
+      createdTrip = await tx.trip.findFirst({
+        where: { id: newTrip.id, userId: userId },
+        include: {
+          tripInfo: true,
+          plans: {
+            include: {
+              planSpots: {
+                include: {
+                  spot: {
+                    include: {
+                      meta: true,
+                      nearestStations: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    return c.json(createdTrip, 201);
   },
 
   // 交通手段を取得

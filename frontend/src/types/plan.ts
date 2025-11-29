@@ -1,4 +1,7 @@
+import z from 'zod';
+
 import { placeTypeMap } from '@/data/constants';
+import { OpeningHoursSchema } from '@/models/spot';
 
 export type Location = {
   name: string;
@@ -63,7 +66,7 @@ export type Spot = {
   description?: string; // 説明文
   address?: string;
   ratingCount?: number;
-  regularOpeningHours?: google.maps.places.OpeningHours | null;
+  regularOpeningHours?: OpeningHoursType;
   nearestStation?: NearestStation; // 最寄駅
   order: number;
 };
@@ -133,6 +136,8 @@ export type ResponseSpotMetaType = {
 };
 
 export type PlaceTypeGroupKey = keyof typeof placeTypeMap;
+
+export type OpeningHoursType = z.infer<typeof OpeningHoursSchema>;
 
 export type SortOption = 'popularity' | 'distance';
 
