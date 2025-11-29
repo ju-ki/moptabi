@@ -1,9 +1,9 @@
 import { Context } from 'hono';
 import { getAuth } from '@hono/clerk-auth';
+import { HTTPException } from 'hono/http-exception';
 
 import { TripSchema } from '../models/trip';
 import { Prisma, PrismaClient } from '../generated/prisma';
-import { HTTPException } from 'hono/http-exception';
 
 const prisma = new PrismaClient();
 
@@ -163,7 +163,7 @@ export const getTripHandler = {
                 categories: spot.category,
                 catchphrase: spot.catchphrase ?? '',
                 description: spot.description ?? '',
-                openingHours: spot.regularOpeningHours ? (spot.regularOpeningHours as any) : undefined,
+                openingHours: spot.regularOpeningHours ? spot.regularOpeningHours : undefined,
               },
             },
           },

@@ -14,6 +14,7 @@ import {
   TravelPlanType,
   TripInfo,
 } from '@/types/plan';
+
 import { formatOpeningHours } from './google-maps';
 
 export const schema = z.object({

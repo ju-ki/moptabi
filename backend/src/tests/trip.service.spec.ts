@@ -3,15 +3,16 @@ import { testClient } from 'hono/testing';
 import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
 
+import { TripSchema } from '@/models/trip';
+
 import app from '..';
-import prismaClient, {
+import {
   clearTestData,
   connectPrisma,
   createTestUser,
   createTransportMethodsIfNotExist,
   disconnectPrisma,
 } from './prisma';
-import { TripSchema } from '@/models/trip';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_id';

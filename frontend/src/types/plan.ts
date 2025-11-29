@@ -1,6 +1,7 @@
+import z from 'zod';
+
 import { placeTypeMap } from '@/data/constants';
 import { OpeningHoursSchema } from '@/models/spot';
-import z from 'zod';
 
 export type Location = {
   name: string;

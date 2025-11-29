@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { SpotMetaSchema } from '@/models/spot';
 
 describe('スポット情報のスキーマ検証', () => {
