@@ -56,6 +56,9 @@ const mockSpotMeta = {
   image: 'https://example.com/image.jpg',
   rating: 4.2,
   categories: ['park'],
+  url: 'https://example.com',
+  prefecture: '東京都',
+  address: '東京都千代田区千代田1-1',
   catchphrase: '夜景が綺麗な場所です',
   description: '家族連れにおすすめです',
   openingHours: [
@@ -100,6 +103,9 @@ describe('🧾 行きたいリストサービス', () => {
               categories: mockSpotMeta.categories,
               image: mockSpotMeta.image,
               rating: mockSpotMeta.rating,
+              url: mockSpotMeta.url,
+              prefecture: mockSpotMeta.prefecture,
+              address: mockSpotMeta.address,
               catchphrase: mockSpotMeta.catchphrase,
               openingHours: mockSpotMeta.openingHours,
             },
@@ -138,6 +144,9 @@ describe('🧾 行きたいリストサービス', () => {
               longitude: 135.6622,
               categories: ['museum'],
               image: 'https://example.com/image2.jpg',
+              url: 'https://example.com',
+              prefecture: '東京都',
+              address: '東京都千代田区千代田1-1',
               rating: 4.5,
               catchphrase: '歴史を感じる場所です',
               openingHours: [
@@ -223,6 +232,9 @@ describe('🧾 行きたいリストサービス', () => {
               categories: ['museum'],
               image: 'https://example.com/image2.jpg',
               rating: 4.5,
+              url: 'https://example.com',
+              prefecture: '東京都',
+              address: '東京都千代田区千代田1-1',
               catchphrase: '歴史を感じる場所です',
               openingHours: [
                 {
@@ -355,6 +367,9 @@ describe('🧾 行きたいリストサービス', () => {
             longitude: 135.6622,
             categories: ['museum'],
             image: 'https://example.com/image2.jpg',
+            url: 'https://example.com',
+            prefecture: '東京都',
+            address: '東京都千代田区千代田1-1',
             rating: 4.5,
             catchphrase: '歴史を感じる場所です',
             openingHours: [
@@ -395,6 +410,9 @@ describe('🧾 行きたいリストサービス', () => {
               latitude: 34.6622,
               longitude: 133.6622,
               categories: ['temple'],
+              url: 'https://example.com',
+              prefecture: '東京都',
+              address: '東京都千代田区千代田1-1',
               image: 'https://example.com/image_patch.jpg',
               rating: 4.0,
               catchphrase: 'パッチ用キャッチフレーズ',
@@ -513,6 +531,9 @@ describe('🧾 行きたいリストサービス', () => {
               image: 'https://example.com/image_delete.jpg',
               rating: 4.0,
               catchphrase: 'デリート用キャッチフレーズ',
+              url: 'https://example.com',
+              prefecture: '東京都',
+              address: '東京都千代田区千代田1-1',
               openingHours: [
                 {
                   day: '月',

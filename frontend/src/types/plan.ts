@@ -64,6 +64,7 @@ export type Spot = {
   category?: string[]; // 例: ["文化", "歴史"]
   catchphrase?: string; // キャッチコピー
   description?: string; // 説明文
+  prefecture?: string | null;
   address?: string;
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;

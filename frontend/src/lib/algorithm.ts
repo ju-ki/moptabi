@@ -230,3 +230,20 @@ export const calcRoutes = async (
 
   return responseRoute;
 };
+/**
+ * Google Maps APIのAddressComponentから都道府県を取得する
+ * @param addressComponents google Map Apiから提供された住所コンポーネント配列
+ * @returns マッチした都道府県、見つからない場合はnull
+ */
+export function getPrefectures(addressComponents: google.maps.places.AddressComponent[] | undefined): string | null {
+  if (!addressComponents || addressComponents.length === 0) {
+    return null;
+  }
+
+  // administrative_area_level_1 タイプが都道府県を示す
+  const prefectureComponent = addressComponents.find((component) =>
+    component.types.includes('administrative_area_level_1'),
+  );
+
+  return prefectureComponent?.longText ?? null;
+}
