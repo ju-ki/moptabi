@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
     return config;
   },
   images: {
-    domains: ['places.googleapis.com'],
+    // 画像の読み込みで、課金が増大しているので、一旦画像は表示しないようにする
+    // domains: ['places.googleapis.com'],
   },
 };
 
