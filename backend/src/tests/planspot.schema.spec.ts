@@ -16,6 +16,6 @@ describe('プランに対するスポット情報のスキーマ検証', () => {
     it('正しいプランスポット情報がスキーマに一致する', () => {
       const result = PlanSpotSchema.safeParse(mockPlanSpot);
       expect(result.success).toBe(true);
-  });
+    });
   });
 });
