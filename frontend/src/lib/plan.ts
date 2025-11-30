@@ -16,6 +16,7 @@ import {
 } from '@/types/plan';
 
 import { formatOpeningHours } from './google-maps';
+import { getPrefectures } from './algorithm';
 
 export const schema = z.object({
   title: z
@@ -365,6 +366,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     stayEnd: '10:00',
     description: place.editorialSummary ?? '説明なし',
     category: place.types, // TODO: 日本語化
+    prefecture: getPrefectures(place.addressComponents),
     address: place.formattedAddress ?? '',
     ratingCount: place.userRatingCount ?? 0,
     regularOpeningHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
@@ -393,9 +395,9 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     'editorialSummary',
     'websiteURI',
     'priceLevel',
-    'regularOpeningHours',
     'userRatingCount',
     'formattedAddress',
+    'addressComponents',
   ];
 
   if (params.searchWord) {

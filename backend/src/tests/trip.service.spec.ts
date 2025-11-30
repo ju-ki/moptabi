@@ -96,6 +96,7 @@ const mockPlanData = [
           fromType: 'DEPARTURE',
           toType: 'SPOT',
         },
+        memo: '出発地のメモ',
         stayStart: '08:00',
         stayEnd: '08:15',
         order: 0,
@@ -109,6 +110,9 @@ const mockPlanData = [
         },
         spotId: 'spot1',
         image: 'https://example.com/spot1.jpg',
+        url: 'https://example.com/cafe',
+        prefecture: '東京都',
+        address: '東京都渋谷区神南1-19-11',
         rating: 4.5,
         categories: ['museum', 'historical'],
         catchphrase: '歴史ある素晴らしい場所です',
@@ -143,6 +147,9 @@ const mockPlanData = [
         },
         spotId: 'spot2',
         image: 'https://example.com/spot2.jpg',
+        url: 'https://example.com/cafe',
+        prefecture: '東京都',
+        address: '東京都渋谷区神南1-19-11',
         rating: 4.0,
         categories: ['park'],
         catchphrase: '自然を満喫できるスポットです',
@@ -186,6 +193,7 @@ const mockPlanData = [
         },
         stayStart: '18:00',
         stayEnd: '18:15',
+        memo: '目的地のメモ',
         order: 3,
       },
     ],
@@ -211,6 +219,7 @@ const mockPlanData = [
         },
         stayStart: '08:00',
         stayEnd: '08:15',
+        memo: '出発地のメモ',
         order: 0,
       },
       {
@@ -222,6 +231,9 @@ const mockPlanData = [
         },
         spotId: 'spot3',
         image: 'https://example.com/spot3.jpg',
+        url: 'https://example.com/cafe',
+        prefecture: '東京都',
+        address: '東京都渋谷区神南1-19-11',
         rating: 4.8,
         categories: ['aquarium'],
         catchphrase: '海の生き物たちと触れ合える場所です',
@@ -265,6 +277,7 @@ const mockPlanData = [
         },
         stayStart: '18:00',
         stayEnd: '18:15',
+        memo: '目的地のメモ',
         order: 2,
       },
     ],
@@ -297,6 +310,40 @@ describe('旅行計画サービス', () => {
         expect(createdTrip).toHaveProperty('title', mockTripData.title);
         expect(Array.isArray(createdTrip.tripInfo)).toBe(true);
         expect(Array.isArray(createdTrip.plans)).toBe(true);
+
+        // 詳細情報の確認
+        createdTrip.plans.forEach((currentPlan: any) => {
+          expect(currentPlan).toHaveProperty('date');
+          expect(Array.isArray(currentPlan.planSpots)).toBe(true);
+          currentPlan.planSpots.forEach((planSpot: any) => {
+            expect(planSpot).toHaveProperty('id');
+            expect(planSpot).toHaveProperty('stayStart');
+            expect(planSpot).toHaveProperty('stayEnd');
+            expect(planSpot).toHaveProperty('order');
+            expect(planSpot).toHaveProperty('memo');
+            // スポットのmeta情報も確認
+            const spot = planSpot.spot.meta;
+            // 追加のプロパティも確認可能
+            expect(spot).toHaveProperty('url');
+            expect(spot).toHaveProperty('prefecture');
+            expect(spot).toHaveProperty('address');
+            expect(spot).toHaveProperty('rating');
+            expect(spot).toHaveProperty('categories');
+            expect(spot).toHaveProperty('catchphrase');
+            expect(spot).toHaveProperty('description');
+
+            // 登録した内容が得られているかの確認
+            const mockSpotData = mockPlanData.flatMap((plan) => plan.spots).find((s) => s.spotId === planSpot.spotId);
+            if (mockSpotData) {
+              expect(spot.url).toBe(mockSpotData.url);
+              expect(spot.prefecture).toBe(mockSpotData.prefecture);
+              expect(spot.address).toBe(mockSpotData.address);
+              expect(spot.rating).toBe(mockSpotData.rating);
+              expect(spot.catchphrase).toBe(mockSpotData.catchphrase);
+              expect(spot.description).toBe(mockSpotData.description);
+            }
+          });
+        });
       }
     });
   });

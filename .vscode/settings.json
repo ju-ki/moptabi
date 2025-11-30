@@ -8,5 +8,6 @@
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "github.copilot.chat.codeGeneration.useInstructionFiles": true
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true,
+  "prisma.pinToPrisma6": true
 }

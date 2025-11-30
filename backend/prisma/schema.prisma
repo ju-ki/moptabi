@@ -73,6 +73,9 @@ model SpotMeta {
   latitude     Float
   longitude    Float
   image        String?
+  url          String?
+  prefecture   String?   @db.VarChar(50)
+  address      String?   @db.VarChar(255)
   rating       Float?
   categories   String[]
   catchphrase  String?
