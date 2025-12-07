@@ -45,8 +45,18 @@ const TravelMap = ({ date }: TravelMapProps) => {
   const [routes, setRoutes] = useState<RouteResult[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [departureCoordination, setDepartureCoordination] = useState<Coordination>({ id: '0', lat: 0, lng: 0 });
-  const [destinationCoordination, setDestinationCoordination] = useState<Coordination>({ id: '0', lat: 0, lng: 0 });
+  const [departureCoordination, setDepartureCoordination] = useState<Coordination>({
+    id: '0',
+    lat: 0,
+    lng: 0,
+    name: '',
+  });
+  const [destinationCoordination, setDestinationCoordination] = useState<Coordination>({
+    id: '0',
+    lat: 0,
+    lng: 0,
+    name: '',
+  });
   const [spotCoordination, setSpotCoordination] = useState<Coordination[]>([]);
   const controlDivRef = useRef<HTMLDivElement | null>(null);
 

@@ -15,8 +15,6 @@ import {
   getDepartureAndDepartment,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
-import { getHelloRoutes } from './routes/hello';
-import { getHelloHandler } from './controllers/hello';
 import { findExistingUserRoute } from './routes/auth';
 import { getAuthHandler } from './controllers/auth';
 import { getImageHandler } from './controllers/image';
@@ -40,7 +38,6 @@ app.use(
 );
 
 //ルートの登録
-const helloApp = new OpenAPIHono();
 const tripApp = new OpenAPIHono();
 const imageApp = new OpenAPIHono();
 const transportApp = new OpenAPIHono();
@@ -96,8 +93,6 @@ wishListApp.use(
   }),
 );
 
-helloApp.openapi(getHelloRoutes, getHelloHandler);
-
 // トリップルートの登録
 tripApp.openapi(getTripsRoute, getTripHandler.getTrips);
 tripApp.openapi(createTripRoute, getTripHandler.createTrip);
@@ -116,7 +111,6 @@ wishListApp.openapi(updateWishlistRoute, wishListHandler.updateWishList);
 wishListApp.openapi(deleteWishlistRoute, wishListHandler.deleteWishList);
 
 app.route('/images', imageApp);
-app.route('/hello', helloApp);
 app.route('/trips', tripApp);
 app.route('/transport', transportApp);
 app.route('/spot', spotApp);

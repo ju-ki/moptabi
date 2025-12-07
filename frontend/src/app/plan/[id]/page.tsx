@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React, { useEffect } from 'react';
+import React, { use, useEffect } from 'react';
 import { Calendar, Clock, Pencil, Printer, Share, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -17,8 +17,8 @@ import { useFetchTripDetail } from '@/hooks/use-trip';
 import { useStoreForPlanning } from '@/lib/plan';
 import { Spot, TransportNodeType } from '@/types/plan';
 
-const PageDetail = ({ params }: { params: { id: string } }) => {
-  const { id } = params;
+const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = use(params);
   const router = useRouter();
   const fields = useStoreForPlanning();
   const { toast } = useToast();

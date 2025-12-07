@@ -49,6 +49,7 @@ const SpotSelection = ({ date }: { date: string }) => {
             id: 'current-location',
             lat: position.coords.latitude,
             lng: position.coords.longitude,
+            name: '現在地',
           });
         },
         () => {
@@ -67,12 +68,14 @@ const SpotSelection = ({ date }: { date: string }) => {
           id: result.departureCoordination.id,
           lat: result.departureCoordination.location.lat,
           lng: result.departureCoordination.location.lng,
+          name: result.departureCoordination.location.name,
         });
       } else if (searchBaseLocation == 'destination' && result.destinationCoordination) {
         setSearchCenter({
           id: result.destinationCoordination.id,
           lat: result.destinationCoordination.location.lat,
           lng: result.destinationCoordination.location.lng,
+          name: result.destinationCoordination.location.name,
         });
       }
     }
