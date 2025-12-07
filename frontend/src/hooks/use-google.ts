@@ -21,7 +21,7 @@ export const useGoogleMap = (isSetCurrentLocation: boolean, extraCoordinate?: Co
   useEffect(() => {
     if (isSetCurrentLocation) {
       navigator.geolocation.getCurrentPosition((position) => {
-        const newCoordinate = { id: '', lat: position.coords.latitude, lng: position.coords.longitude };
+        const newCoordinate = { id: '', lat: position.coords.latitude, lng: position.coords.longitude, name: '' };
         setMapCoordinate(newCoordinate);
         if (map) {
           map.panTo(newCoordinate);
@@ -44,7 +44,7 @@ export const useGoogleMap = (isSetCurrentLocation: boolean, extraCoordinate?: Co
     if (event.latLng) {
       const lat = event.latLng.lat();
       const lng = event.latLng.lng();
-      setMapCoordinate({ id: '', lat, lng });
+      setMapCoordinate({ id: '', lat, lng, name: '' });
     }
   };
 

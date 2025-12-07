@@ -13,7 +13,7 @@ export type Coordination = {
   id: string;
   lat: number;
   lng: number;
-  name?: string;
+  name: string;
 };
 
 export type Transport = {

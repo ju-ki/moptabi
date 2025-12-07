@@ -6,6 +6,7 @@ import { TripCard } from '@/components/TripCard';
 import { TripSearchForm } from '@/components/TripSearchForm';
 import { FormData } from '@/lib/plan';
 import { useFetcher } from '@/hooks/use-fetcher';
+import { ResponseTripType } from '@/types/plan';
 
 export default function TripsPage() {
   const { getFetcher } = useFetcher();
@@ -22,7 +23,7 @@ export default function TripsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(trips as FormData[]).map((trip, idx) => (
+        {(trips as ResponseTripType[]).map((trip, idx) => (
           <TripCard
             key={trip.id}
             id={trip.id}

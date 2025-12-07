@@ -26,6 +26,7 @@ export const TripSchema = z.object({
         z.object({
           id: z.string(),
           location: z.object({
+            id: z.string().optional(),
             name: z.string().min(1, { message: '観光地名は必須です' }),
             lat: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
             lng: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
@@ -54,8 +55,8 @@ export const TripSchema = z.object({
             .object({
               name: z.string(),
               walkingTime: z.number(),
-              lat: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-              lng: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
+              latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
+              longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
             })
             .optional(),
         }),

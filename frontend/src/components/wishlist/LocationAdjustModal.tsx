@@ -76,7 +76,12 @@ const LocationAdjustModal = ({ onConfirm }: LocationAdjustModalProps) => {
               onClick={(e) =>
                 e.latLng?.lat &&
                 e.latLng?.lng &&
-                setSearchCenter({ id: 'clicked-center', lat: e.latLng.lat(), lng: e.latLng.lng() })
+                setSearchCenter({
+                  id: 'clicked-center',
+                  lat: e.latLng.lat(),
+                  lng: e.latLng.lng(),
+                  name: 'クリックした位置',
+                })
               }
               onLoad={(map) => {
                 setMap(map);
@@ -85,7 +90,14 @@ const LocationAdjustModal = ({ onConfirm }: LocationAdjustModalProps) => {
             >
               <Marker
                 position={searchCenter}
-                onClick={() => setSearchCenter({ id: searchCenter.id, lat: searchCenter.lat, lng: searchCenter.lng })}
+                onClick={() =>
+                  setSearchCenter({
+                    id: searchCenter.id,
+                    lat: searchCenter.lat,
+                    lng: searchCenter.lng,
+                    name: searchCenter.name,
+                  })
+                }
               />
               <Circle center={searchCenter} radius={searchRadius[0] * 1000} options={circleOptions} />
             </GoogleMap>
