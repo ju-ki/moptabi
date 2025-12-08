@@ -1,10 +1,11 @@
-import { Heart, List, Map, Search } from 'lucide-react';
-import React, { useState } from 'react';
+import { Heart, List, Map } from 'lucide-react';
+import React from 'react';
 
 import { useWishlistStore } from '@/store/wishlist/wishlistStore';
+import { prefectures } from '@/data/constants';
 
 import WishlistCreateModal from './WishlistCreateModal';
-// import { prefectures } from '@/data/constants';
+
 const WishlistHeader = () => {
   const wishlistStore = useWishlistStore();
   return (
@@ -49,19 +50,25 @@ const WishlistHeader = () => {
         {/* 検索条件 */}
         <div className="flex flex-wrap gap-3 items-center mb-2">
           {/* 都道府県は値を保持していないため、コメントアウト */}
-          {/* <div>
-            <label className="text-sm mr-2">都道府県</label>
+          <div>
+            <label aria-label="prefecture-label" htmlFor="prefecture-filter" className="text-sm mr-2">
+              都道府県
+            </label>
             <select
-              value={wishlistStore.prefectureFilter || ''}
-              onChange={e => wishlistStore.setPrefectureFilter(e.target.value || null)}
+              id="prefecture-filter"
+              aria-label="都道府県"
+              value={wishlistStore.prefectureFilter ?? ''}
+              onChange={(e) => wishlistStore.setPrefectureFilter(e.target.value ? e.target.value : null)}
               className="px-3 py-2 rounded-md border border-gray-300 bg-white text-sm text-gray-700"
             >
               <option value="">全て</option>
-              {prefectures.filter(p => p).map((p) => (
-                <option key={p} value={p}>{p}</option>
+              {prefectures.map((pref) => (
+                <option key={pref} value={pref}>
+                  {pref}
+                </option>
               ))}
             </select>
-          </div> */}
+          </div>
           <div>
             <label className="text-sm mr-2">優先度</label>
             <select
