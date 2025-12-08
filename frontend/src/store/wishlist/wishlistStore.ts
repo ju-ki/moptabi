@@ -23,7 +23,7 @@ interface WishlistState {
   searchCategories: string[];
   showAdvanced: boolean;
   highRating: boolean;
-  // prefectureFilter: string | null;
+  prefectureFilter: string | null;
   priorityFilter: number | null;
   ratingFilter: number | null;
   getWishlist: () => WishlistType[];
@@ -64,7 +64,7 @@ interface WishlistState {
   setShowAdvanced: (check: boolean) => void;
   getHighRating: () => boolean;
   setHighRating: (check: boolean) => void;
-  // setPrefectureFilter: (pref: string | null) => void;
+  setPrefectureFilter: (pref: string | null) => void;
   setPriorityFilter: (val: number | null) => void;
   setRatingFilter: (val: number | null) => void;
 }
@@ -73,7 +73,7 @@ export const useWishlistStore = create<WishlistState>()(
   immer(
     devtools((set, get) => ({
       wishlist: [],
-      // prefectureFilter: null,
+      prefectureFilter: null,
       priorityFilter: null,
       ratingFilter: null,
       viewMode: 'list',
@@ -126,10 +126,12 @@ export const useWishlistStore = create<WishlistState>()(
       getSortAndFilteredWishlist() {
         let list = get().wishlist;
         // 都道府県フィルター
-        // TODO:: 現状住所を保持していないため未実装
-        // if (get().prefectureFilter) {
-        //   list = list.filter((item) => (item.spot.meta as { prefecture?: string }).prefecture === get().prefectureFilter);
-        // }
+        if (get().prefectureFilter) {
+          list = list.filter((item) => {
+            const prefecture = (item.spot.meta as { prefecture?: string }).prefecture;
+            return prefecture === undefined || prefecture === get().prefectureFilter;
+          });
+        }
         // 訪問未訪問フィルター
         if (get().filteredType === 'visited') {
           list = list.filter((item) => item.visited);
@@ -148,9 +150,11 @@ export const useWishlistStore = create<WishlistState>()(
         }
         return list;
       },
-      // setPrefectureFilter(pref: string | null) {
-      //   set((state) => { state.prefectureFilter = pref; });
-      // },
+      setPrefectureFilter(pref: string | null) {
+        set((state) => {
+          state.prefectureFilter = pref;
+        });
+      },
       setPriorityFilter(val: number | null) {
         set((state) => {
           state.priorityFilter = val;

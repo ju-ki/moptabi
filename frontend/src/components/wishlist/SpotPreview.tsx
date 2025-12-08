@@ -112,7 +112,9 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
 
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <div>
-            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{spot.location.name}</h3>
+            <h3 data-testid="spot-preview-name" className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+              {spot.location.name}
+            </h3>
             <div className="flex items-center flex-wrap gap-2 sm:gap-3 mb-3">
               <div className="flex items-center gap-2">
                 <Star size={18} className="fill-yellow-400 text-yellow-400 sm:w-5 sm:h-5" />
@@ -204,7 +206,12 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
               行きたいリストから削除する
             </Button>
           ) : (
-            <Button onClick={handleAddWishlist} size="lg" className="w-full text-sm sm:text-base">
+            <Button
+              data-testid="add-to-wishlist-button"
+              onClick={handleAddWishlist}
+              size="lg"
+              className="w-full text-sm sm:text-base"
+            >
               <Plus className="mr-2" size={20} />
               行きたいリストに追加
             </Button>

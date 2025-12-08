@@ -75,14 +75,17 @@ const AreaSearch = () => {
     <div className="space-y-4">
       <div className="space-y-2">
         <Label data-testid="test-location-label">場所を選択</Label>
-        <Select onValueChange={(selectedPref) => setSearchCenter(prefectureCenters[selectedPref as string])}>
+        <Select
+          data-testid="test-prefecture-select"
+          onValueChange={(selectedPref) => setSearchCenter(prefectureCenters[selectedPref as string])}
+        >
           <SelectTrigger>
-            <SelectValue placeholder="都道府県を選択する" />
+            <SelectValue data-testid="test-prefecture-select-value" placeholder="都道府県を選択する" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
               {prefectures.map((pref) => (
-                <SelectItem value={pref} key={pref}>
+                <SelectItem data-testid={`test-prefecture-select-item-${pref}`} value={pref} key={pref}>
                   {pref}
                 </SelectItem>
               ))}
