@@ -90,7 +90,7 @@ export const getDatesBetween = (start: Date, end: Date) => {
 
   return Array.from({ length: days }, (_, i) => {
     const date = new Date(startTime + i * (1000 * 60 * 60 * 24));
-    return date.toLocaleDateString('ja-JP'); // YYYY/MM/DD 形式
+    return date.toLocaleDateString('sv-SE'); // YYYY-MM-DD 形式（ISO形式）
   });
 };
 

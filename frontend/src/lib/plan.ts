@@ -128,13 +128,13 @@ export const useStoreForPlanning = create<FormState>()(
     devtools((set, get) => ({
       title: '',
       imageUrl: '',
-      startDate: new Date().toLocaleDateString('ja-JP'),
-      endDate: new Date().toLocaleDateString('ja-JP'),
+      startDate: new Date().toLocaleDateString('sv-SE'),
+      endDate: new Date().toLocaleDateString('sv-SE'),
       tripInfo: [],
       transportMaster: [],
       plans: [
         {
-          date: new Date().toLocaleDateString('ja-JP'),
+          date: new Date().toLocaleDateString('sv-SE'),
           spots: [],
         },
       ],

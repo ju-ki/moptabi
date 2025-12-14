@@ -120,6 +120,8 @@ export async function createSpotWithMeta(
     image?: string | null;
     rating?: number | null;
     categories?: string[];
+    prefecture?: string | null;
+    address?: string | null;
     catchphrase?: string | null;
     description?: string | null;
   },
@@ -142,6 +144,8 @@ export async function createSpotWithMeta(
           image: meta?.image ?? null,
           rating: meta?.rating ?? null,
           categories,
+          prefecture: meta?.prefecture ?? null,
+          address: meta?.address ?? null,
           catchphrase: meta?.catchphrase ?? null,
           description: meta?.description ?? null,
         },

@@ -21,6 +21,8 @@ import { getImageHandler } from './controllers/image';
 import { getImageRoute } from './routes/trip';
 import { createWishlistRoute, deleteWishlistRoute, getWishlistRoute, updateWishlistRoute } from './routes/wishlist';
 import { wishListHandler } from './controllers/wishlist';
+import { getUnvisitedSpotsRoute, getVisitedSpotsRoute } from './routes/spot';
+import { spotHandler } from './controllers/spot';
 
 const app = new OpenAPIHono().basePath('/api');
 
@@ -110,10 +112,13 @@ wishListApp.openapi(createWishlistRoute, wishListHandler.createWishList);
 wishListApp.openapi(updateWishlistRoute, wishListHandler.updateWishList);
 wishListApp.openapi(deleteWishlistRoute, wishListHandler.deleteWishList);
 
+spotApp.openapi(getUnvisitedSpotsRoute, spotHandler.getUnvisitedSpots);
+spotApp.openapi(getVisitedSpotsRoute, spotHandler.getVisitedSpots);
+
 app.route('/images', imageApp);
 app.route('/trips', tripApp);
 app.route('/transport', transportApp);
-app.route('/spot', spotApp);
+app.route('/spots', spotApp);
 app.route('/auth', authApp);
 app.route('/wishlist', wishListApp);
 
