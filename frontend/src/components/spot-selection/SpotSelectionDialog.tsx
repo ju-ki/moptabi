@@ -34,7 +34,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
     <div>
       <div className="flex items-center gap-1">
         <div className="text-lg font-semibold text-gray-800 my-2 flex items-center space-x-2">
-          <span>観光地を検索</span>
+          <span>計画に追加するスポットを探す</span>
           <Asterisk className="text-red-500 h-4 w-4" />
         </div>
       </div>
