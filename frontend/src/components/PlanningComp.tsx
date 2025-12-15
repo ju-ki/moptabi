@@ -11,7 +11,7 @@ import GanttChart from './GanttChart';
 import { Button } from './ui/button';
 import PlanningButton from './PlanningButton';
 import TravelPlan from './TravelPlan';
-import SpotSelection from './SpotSelection';
+import SpotSelectionDialog from './spot-selection/SpotSelectionDialog';
 
 const PlanningComp = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
@@ -47,7 +47,7 @@ const PlanningComp = ({ date }: { date: string }) => {
 
       {/* スポット選択 */}
       <div className="space-y-4">
-        <SpotSelection date={date} />
+        <SpotSelectionDialog date={date} />
       </div>
       {/* タイムライン */}
       <div className="space-y-4">

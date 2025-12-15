@@ -12,22 +12,7 @@
 - コンテンツタイプ: application/json
 - 認証: 一部エンドポイントは認証が必要（Clerk などを利用）。認証が必要な場合は `Authorization: Bearer <token>` ヘッダを付与してください。
 
----
 
-## Hello
-
-- GET /
-  - 概要: Hello World API
-  - レスポンス 200:
-    - { message: string }
-  - 例:
-    - リクエスト: GET /api/
-    - レスポンス:
-      {
-        "message": "Hello World"
-      }
-
----
 
 ## Auth
 
@@ -133,6 +118,21 @@ Image 関連
 
 ---
 
+
+## Spot
+ベースパス: `/api/spot`（実際の prefix はアプリ側ルーティングに依存）
+---
+ - GET /{wishlist}
+  - 概要: ユーザーが行きたいリストに登録しているスポットの一覧を取得
+  - レスポンス 200 {`WishlistSchema[]`}: 行きたいリストに登録している未訪問のスポット情報といきたいリストのプロパティ情報
+- GET /{visited}
+  - 概要: ユーザーが訪問済みまたは過去に計画に追加したスポットの一覧を取得
+  - レスポンス 200 {`WishlistSchema[]`}: いきたいリストに登録している訪問済みのスポット情報と過去に計画に追加したスポット情報
+  - レスポンス 200 {`WishlistSchema[] + `}: いきたいリストに登録している訪問済みのスポット情報と過去に計画に追加したスポット情報
+
+
+---
+
 ## スキーマ参照（モデルファイル）
 - Spot: `backend/src/models/spot.ts`
 - Trip: `backend/src/models/trip.ts`
@@ -149,17 +149,5 @@ Image 関連
 - 404: リソースが見つからない
 - 500: サーバー内部エラー
 
----
-
-## 開発者向け：Swagger 復旧のヒント
-- Swagger が開けない原因は複数考えられます。簡単な確認項目:
- 1. `backend/src/index.ts` や Hono の swagger ミドルウェア登録が正しく行われているか確認する（パスや CORS、環境変数の影響）
- 2. `zod-openapi` / `@hono/zod-openapi` のバージョン差による互換性破壊がないか package.json を確認
- 3. ローカルで API サーバーを起動して `/openapi.json`（または Swagger JSON の登録パス）にアクセスできるか確認
- 4. CI で生成した OpenAPI JSON を `swagger-ui` に渡して表示できるか試す
-
-もし必要なら、私が `backend/src/index.ts` を読んで swagger の登録箇所を調査し、問題点を修正するパッチを作成します。
-
----
 
 作成者: 自動生成（リポジトリ内の route/model 定義を元に要約作成）

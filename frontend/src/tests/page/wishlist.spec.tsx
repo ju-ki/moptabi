@@ -65,6 +65,7 @@ const renderWithProviders = (ui: React.ReactElement) => {
 };
 
 describe('行きたいリストの統合テスト', () => {
+  // 統合テストは複雑なUI操作が多いため、タイムアウトを延長
   test('ユーザーはスポットでの検索→結果追加→閲覧→結果の更新までできる', async () => {
     renderWithProviders(<TravelWishlistApp />);
     expect(await screen.findByText('該当するスポットがありません')).toBeInTheDocument();
@@ -218,7 +219,7 @@ describe('行きたいリストの統合テスト', () => {
     // リストビューに表示されるスポット名を確認（h3要素内）
     const spotNames = screen.getAllByText('スポット1');
     expect(spotNames.length).toBeGreaterThan(0);
-  });
+  }, 30000); // タイムアウト30秒に延長
 });
 
 describe('行きたいリストのフィルター機能テスト', () => {

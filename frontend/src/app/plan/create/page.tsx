@@ -19,6 +19,7 @@ import PlanningComp from '@/components/PlanningComp';
 import { useToast } from '@/hooks/use-toast';
 import { useFetcher } from '@/hooks/use-fetcher';
 import CreatePlanButton from '@/components/CreatePlanButton';
+import { useWishlistSpots } from '@/hooks/spot-search/use-wishlist-spots';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
@@ -30,7 +31,7 @@ const TravelPlanCreate = () => {
   );
 
   const { trigger: getDepartureAndDepartmentTrigger } = useSWRMutation(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/spot`,
+    `${process.env.NEXT_PUBLIC_API_BASE_URL}/spots`,
     getFetcher,
   );
 
@@ -188,8 +189,9 @@ const TravelPlanCreate = () => {
                       to: new Date(fields.endDate),
                     }}
                     onSelect={(dateRange: DateRange | undefined) => {
-                      const fromDate = dateRange?.from && dateRange.from.toLocaleDateString('ja-JP');
-                      const toDate = dateRange?.to && dateRange.to.toLocaleDateString('ja-JP');
+                      // 日付をYYYY-MM-DD形式に変換（DBとの整合性のためISO形式を使用）
+                      const fromDate = dateRange?.from && dateRange.from.toLocaleDateString('sv-SE');
+                      const toDate = dateRange?.to && dateRange.to.toLocaleDateString('sv-SE');
                       fields.setRangeDate({
                         from: fromDate,
                         to: toDate,
