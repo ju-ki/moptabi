@@ -262,9 +262,9 @@ export async function getVisitedSpots(
   if (sortBy === 'planDate') {
     const combined = [...filteredVisitedByCount, ...filteredPlanSpotsByCount];
     combined.sort((a, b) => {
-      const dateA = (('planDate' in a && a.planDate ? a.planDate : a.visitedAt?.toISOString().split('T')[0]) ||
+      const dateA = (('planDate' in a && a.planDate ? a.planDate : a.visitedAt?.toString().split('T')[0]) ||
         '') as string;
-      const dateB = (('planDate' in b && b.planDate ? b.planDate : b.visitedAt?.toISOString().split('T')[0]) ||
+      const dateB = (('planDate' in b && b.planDate ? b.planDate : b.visitedAt?.toString().split('T')[0]) ||
         '') as string;
       if (sortOrder === 'desc') {
         return dateB.localeCompare(dateA);
