@@ -46,8 +46,14 @@ export type WishlistSpotsQueryOptions = {
 };
 
 /**
- * 未訪問の行きたいリストを取得するカスタムフック
- * @param options フィルター・ソートオプション
+ * Fetches unvisited wishlist spots with optional filtering and sorting.
+ *
+ * @param options - Optional filters and sort settings (prefecture, priority, sortBy, sortOrder)
+ * @returns An object containing:
+ * - `spots`: an array of `Spot` objects mapped from the backend unvisited wishlist items
+ * - `isLoading`: boolean indicating whether the data is being loaded
+ * - `error`: any fetch error encountered
+ * - `refresh`: function to revalidate and refresh the fetched data
  */
 export function useWishlistSpots(options?: WishlistSpotsQueryOptions) {
   const { getFetcher } = useFetcher();

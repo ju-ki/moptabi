@@ -17,6 +17,17 @@ type WishlistSpotSearchProps = {
   onSpotSelect: (spot: Spot, isDeleted: boolean) => void;
 };
 
+/**
+ * Render a wishlist spot search UI with filters and a results list.
+ *
+ * Renders controls for filtering and sorting wishlist spots (prefecture, priority, sort key, sort direction),
+ * displays a loading or error state as appropriate, and shows search results with selection handling.
+ *
+ * @param date - Contextual date string passed into the component
+ * @param selectedSpotIds - Array of spot IDs that are currently selected
+ * @param onSpotSelect - Callback invoked when a spot is clicked. Receives the `Spot` and a boolean that is `true` if the spot was previously selected (handler should remove it), `false` otherwise (handler should add it)
+ * @returns The React element for the wishlist spot search UI
+ */
 export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: WishlistSpotSearchProps) {
   const spotSearchStore = useSpotSearchStore();
   const { spots, isLoading, error } = useWishlistSpots({

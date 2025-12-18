@@ -41,23 +41,18 @@ interface SpotDetailCardProps {
 }
 
 /**
- * スポット詳細カードコンポーネント
+ * Render a detailed card for a travel-plan spot used in the preview UI.
  *
- * 旅行計画プレビュー画面で各スポットの詳細情報を表示します。
+ * Renders spot metadata (name, stay window, image, rating, categories, description, URL, opening hours, address),
+ * a memo editor, optional transport info between spots, and an optional delete control for regular spots.
  *
- * 表示内容（画面設計書より）:
- * - 各スポットの名称
- * - 各スポットの滞在時間
- * - 各スポットのイメージ画像(仮画像)
- * - 評価
- * - カテゴリ(3つまで)
- * - 各スポットの説明
- * - 各スポットの外部URL
- * - 各スポットの営業時間
- * - 各スポットのメモ機能
- * - 各スポットの住所
- * - 各スポットの間の移動時間と交通手段表示
- * - 各スポットの個別削除機能
+ * @param spot - Spot data to display in the card
+ * @param index - Zero-based position used for the visible numeric badge
+ * @param onDelete - Callback invoked with the spot `id` when the delete action is triggered
+ * @param onMemoChange - Callback invoked with the updated memo text when the memo changes
+ * @param showTransport - If `true` (default), displays transport icon/label and travel time to the next spot
+ * @param showDeleteButton - If `true` (default), shows the delete button for regular (non-departure/destination) spots
+ * @returns The rendered spot detail card element
  */
 export default function SpotDetailCard({
   spot,

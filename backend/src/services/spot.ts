@@ -52,13 +52,13 @@ export async function getUnvisitedWishlistSpots(
 }
 
 /**
- * 訪問済みの行きたいリストと過去に計画で登録したスポットを取得
- * - 訪問済みスポット
- * - 計画として登録したスポット（出発地・目的地は除外）
- * - 重複は除外（訪問済み優先、計画内の重複も除外）
- * - フィルター・ソートに対応
- * @param userId ユーザーID
- * @param query フィルター・ソートパラメータ
+ * Fetches a merged list of a user's visited wishlist entries and past plan-derived spots, applying filters, de-duplication, and sorting.
+ *
+ * The result contains wishlist-like records where plan-derived spots are converted to the same shape and include a `planDate`, and every record includes a `visitCount`. Duplicate spots are removed with visited wishlist entries taking precedence; spots used as departure/destination are excluded.
+ *
+ * @param userId - The ID of the user whose spots to retrieve
+ * @param query - Filtering and sorting options (may include `prefecture`, `dateFrom`, `dateTo`, `minVisitCount`, `sortBy`, `sortOrder`)
+ * @returns An array of wishlist-shaped records combining visited wishlist entries and plan-derived spots. Each record includes `visitCount`, plan-derived records include `planDate`, and the collection is filtered, de-duplicated, and ordered according to `query`
  */
 export async function getVisitedSpots(
   userId: string,

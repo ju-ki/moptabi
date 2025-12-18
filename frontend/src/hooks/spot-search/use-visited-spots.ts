@@ -57,8 +57,14 @@ export type VisitedSpotsQueryOptions = {
 };
 
 /**
- * 訪問済み＋過去の計画に含まれたスポットを取得するカスタムフック
- * @param options フィルター・ソートオプション
+ * Fetches visited spots (including spots that were part of past plans) using optional filters and sorting.
+ *
+ * @param options - Query options to filter and sort results (prefecture, date range, minimum visit count, sort field, and sort order)
+ * @returns An object containing:
+ *  - `spots`: the list of spots transformed from the backend response,
+ *  - `isLoading`: `true` while the request is in flight, `false` otherwise,
+ *  - `error`: any error returned by the fetcher,
+ *  - `refresh`: a function to revalidate and reload the data
  */
 export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
   const { getFetcher } = useFetcher();

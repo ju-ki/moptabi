@@ -14,6 +14,13 @@ interface SpotCardProps {
   spot: Spot;
 }
 
+/**
+ * Render a spot information card with different layouts for departure, destination, and regular spots.
+ *
+ * @param spot - Spot data used to populate the card (location, transports, stay times, image, rating, category, address, opening hours, memo, url, etc.)
+ * @param onDelete - Optional callback invoked when a delete action for this spot is triggered (if provided by the parent)
+ * @returns A React element that displays the spot's timeline badge, thumbnail, name, metadata (duration, nearest station, categories, rating), and optional sections such as address, external link, opening hours, and memo.
+ */
 export function SpotInfoCard({ spot, onDelete }: SpotCardProps) {
   const isDeparture = spot.transports.fromType === TransportNodeType.DEPARTURE;
   const isDestination = spot.transports.toType === TransportNodeType.DESTINATION;

@@ -18,6 +18,17 @@ type VisitedSpotSearchProps = {
   onSpotSelect: (spot: Spot, isDeleted: boolean) => void;
 };
 
+/**
+ * Render a filterable list of previously visited or planned spots.
+ *
+ * Renders UI controls for filtering by prefecture, visit count, date range, and sort options,
+ * fetches matching visited spots, and displays them with selection handling.
+ *
+ * @param date - Current reference date (ISO string) used by the parent; not directly modified by this component
+ * @param selectedSpotIds - Array of spot IDs that are currently selected; used to determine toggle/delete state when a spot is clicked
+ * @param onSpotSelect - Called when a spot is clicked. Receives the `spot` and a boolean indicating whether the spot was already selected (true if it was selected and will be removed)
+ * @returns The rendered VisitedSpotSearch React element
+ */
 export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: VisitedSpotSearchProps) {
   const spotSearchStore = useSpotSearchStore();
   const { spots, isLoading, error } = useVisitedSpots({
