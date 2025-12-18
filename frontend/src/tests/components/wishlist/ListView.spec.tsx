@@ -79,9 +79,7 @@ describe('ListView', () => {
     render(<ListView />);
 
     // find the textarea for the item
-    const card = screen.getByText('店C').closest('div');
-    expect(card).toBeTruthy();
-    const textarea = within(card as HTMLElement).getByRole('textbox') as HTMLTextAreaElement;
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
     // change value and blur
     fireEvent.change(textarea, { target: { value: 'new memo' } });
@@ -107,12 +105,9 @@ describe('ListView', () => {
 
     render(<ListView />);
 
-    // find the visit toggle button (first button in card)
-    const card = screen.getByText('店D').closest('div');
-    expect(card).toBeTruthy();
-    const buttons = within(card as HTMLElement).getAllByRole('button');
-    // first button is the visit toggle
-    fireEvent.click(buttons[0]);
+    // 「訪問済みにする」ボタンを直接テキストで検索
+    const visitButton = screen.getByRole('button', { name: '訪問済みにする' });
+    fireEvent.click(visitButton);
 
     await waitFor(() => {
       expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
@@ -136,13 +131,8 @@ describe('ListView', () => {
     render(<ListView />);
 
     // second button is delete (trash icon) - pick last button in card
-    const card = screen.getByText('店E').closest('div');
-    expect(card).toBeTruthy();
-    const buttons = within(card as HTMLElement).getAllByRole('button');
-    // ensure there are at least 2 buttons
-    expect(buttons.length).toBeGreaterThanOrEqual(2);
-    const deleteBtn = buttons[buttons.length - 1];
-    fireEvent.click(deleteBtn);
+    const deleteButton = screen.getByRole('button', { name: '削除ボタン' });
+    fireEvent.click(deleteButton);
 
     await waitFor(() => {
       expect(wishlistStoreMock.setWishlist).toHaveBeenCalled();

@@ -465,7 +465,7 @@ describe('SpotSelection - 統合テスト', () => {
 
       // Then: スポットが表示される
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-wishlist-1')).toBeInTheDocument();
+        expect(screen.getByTestId('wishlist-spot-card-wishlist-1')).toBeInTheDocument();
       });
     });
 
@@ -580,7 +580,7 @@ describe('SpotSelection - 統合テスト', () => {
 
       // Then: スポットが表示される
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-visited-1')).toBeInTheDocument();
+        expect(screen.getByTestId('visited-spot-card-visited-1')).toBeInTheDocument();
       });
     });
 
@@ -714,11 +714,11 @@ describe('SpotSelection - 統合テスト', () => {
       await clickRadixTab(wishlistTab);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-wishlist-spot')).toBeInTheDocument();
+        expect(screen.getByTestId('wishlist-spot-card-wishlist-spot')).toBeInTheDocument();
       });
 
       // When: スポットカードをクリックする
-      const spotCard = screen.getByTestId('spot-card-wishlist-spot');
+      const spotCard = screen.getByTestId('wishlist-spot-card-wishlist-spot');
       fireEvent.click(spotCard);
 
       // Then: setSpots が呼ばれる
@@ -997,11 +997,11 @@ describe('SpotSelection - 統合テスト', () => {
       await clickRadixTab(wishlistTab);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-spot-a')).toBeInTheDocument();
+        expect(screen.getByTestId('wishlist-spot-card-spot-a')).toBeInTheDocument();
       });
 
       // When: スポットAを選択
-      const spotCardA = screen.getByTestId('spot-card-spot-a');
+      const spotCardA = screen.getByTestId('wishlist-spot-card-spot-a');
       fireEvent.click(spotCardA);
 
       // Then: setSpots が呼ばれる
@@ -1039,11 +1039,11 @@ describe('SpotSelection - 統合テスト', () => {
       await clickRadixTab(visitedTab);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-kiyomizu-dera')).toBeInTheDocument();
+        expect(screen.getByTestId('visited-spot-card-kiyomizu-dera')).toBeInTheDocument();
       });
 
       // When: 過去に訪問した「清水寺」を選択
-      const spotCard = screen.getByTestId('spot-card-kiyomizu-dera');
+      const spotCard = screen.getByTestId('visited-spot-card-kiyomizu-dera');
       fireEvent.click(spotCard);
 
       // Then: setSpots が呼ばれる
@@ -1090,11 +1090,11 @@ describe('SpotSelection - 統合テスト', () => {
       await clickRadixTab(wishlistTab);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-skytree')).toBeInTheDocument();
+        expect(screen.getByTestId('wishlist-spot-card-skytree')).toBeInTheDocument();
       });
 
       // 行きたいリストからスポット選択
-      const skytree = screen.getByTestId('spot-card-skytree');
+      const skytree = screen.getByTestId('wishlist-spot-card-skytree');
       fireEvent.click(skytree);
 
       // 過去のスポットタブに切り替え
@@ -1102,11 +1102,11 @@ describe('SpotSelection - 統合テスト', () => {
       await clickRadixTab(visitedTab);
 
       await waitFor(() => {
-        expect(screen.getByTestId('spot-card-sensoji')).toBeInTheDocument();
+        expect(screen.getByTestId('visited-spot-card-sensoji')).toBeInTheDocument();
       });
 
       // 過去のスポットから選択
-      const sensoji = screen.getByTestId('spot-card-sensoji');
+      const sensoji = screen.getByTestId('visited-spot-card-sensoji');
       fireEvent.click(sensoji);
 
       // Then: setSpots が複数回呼ばれる

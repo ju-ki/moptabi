@@ -4,6 +4,7 @@ import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-map
 import { useWishlistStore } from '@/store/wishlist/wishlistStore';
 import { WishlistType } from '@/types/wishlist';
 import { useFetchWishlist } from '@/hooks/use-wishlist';
+import { formatTimeDate } from '@/lib/utils';
 
 import { Button } from '../ui/button';
 
@@ -55,7 +56,7 @@ const MapView = () => {
             position={{ lat: selectedWishlist.spot.meta.latitude, lng: selectedWishlist.spot.meta.longitude }}
             onCloseClick={() => wishlistStore.setSelectedWishlist(null)}
           >
-            <div className="w-64">
+            <div className="w-80">
               <h3 className="text-lg font-bold mb-1">{selectedWishlist.spot.meta.name}</h3>
               <div className="mb-2 text-xs text-gray-500">{selectedWishlist.spot.meta.description}</div>
               <div className="mb-2">
@@ -69,6 +70,10 @@ const MapView = () => {
               </div>
               <div className="mb-2">
                 <span className="font-semibold">訪問状況:</span> {selectedWishlist.visited ? '訪問済み' : '未訪問'}
+              </div>
+              <div className="mb-2">
+                <span className="font-semibold">訪問日時:</span>{' '}
+                {formatTimeDate(selectedWishlist.visitedAt) || '未設定'}
               </div>
               <div className="flex gap-2 mt-2">
                 <Button size="sm" onClick={() => handleToggleVisited(selectedWishlist)}>

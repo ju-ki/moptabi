@@ -11,6 +11,7 @@ type WishlistSpot = {
   priority: number;
   visited: number;
   visitedAt: string | null;
+  createdAt: string | null;
   spot: {
     id: string;
     meta: {
@@ -94,6 +95,7 @@ export function useWishlistSpots(options?: WishlistSpotsQueryOptions) {
     priority: item.priority,
     memo: item.memo ?? undefined,
     visitedAt: item.visitedAt ?? undefined,
+    createdAt: item.createdAt ?? undefined,
     // デフォルト値
     stayStart: '09:00',
     stayEnd: '10:00',

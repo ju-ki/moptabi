@@ -11,6 +11,7 @@ type VisitedSpotResponse = {
   priority: number;
   visited: number;
   visitedAt: string | null;
+  visitCount?: number;
   spot: {
     id: string;
     meta: {
@@ -103,6 +104,7 @@ export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
     regularOpeningHours: item.spot.meta.openingHours ? item.spot.meta.openingHours : undefined,
     // 訪問・計画情報
     visitedAt: item.visitedAt ?? undefined,
+    visitCount: item.visitCount ?? undefined,
     planDate: item.plan?.date,
     planTitle: item.plan?.trip.title,
     // デフォルト値

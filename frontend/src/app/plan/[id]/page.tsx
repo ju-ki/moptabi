@@ -47,6 +47,10 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
           catchphrase: planSpot.spot.meta.catchphrase,
           description: planSpot.spot.meta.description,
           category: planSpot.spot.meta.categories,
+          address: planSpot.spot.meta.address,
+          prefecture: planSpot.spot.meta.prefecture ?? undefined,
+          url: planSpot.spot.meta.url ?? undefined,
+          regularOpeningHours: planSpot.spot.meta.openingHours ? planSpot.spot.meta.openingHours : undefined,
           memo: planSpot.memo,
           stayStart: planSpot.stayStart,
           stayEnd: planSpot.stayEnd,
@@ -61,7 +65,6 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
             cost: planSpot.fromLocation[0].cost,
           },
         };
-
         fields.setSpots(plan.date, spot, false);
       });
     });

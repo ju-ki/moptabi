@@ -668,13 +668,7 @@ describe('行きたいリストの更新・削除機能テスト', () => {
       expect(screen.getByText('テストスポット')).toBeInTheDocument();
     });
 
-    const card = screen.getByText('テストスポット').closest('div.bg-white');
-    const priorityLabels = card?.querySelectorAll('p.text-xs');
-    const priorityLabel = Array.from(priorityLabels || []).find((el) => el.textContent === '優先度');
-    const prioritySection = priorityLabel?.closest('div');
-
-    // 星のSVGを取得（lucide-star クラスを持つSVG）
-    const stars = prioritySection?.querySelectorAll('svg.lucide-star');
+    const stars = screen.getAllByRole('button', { name: /星/ });
 
     // 5番目の星（優先度5）をクリック
     expect(stars).toBeDefined();

@@ -70,6 +70,14 @@ export type Spot = {
   regularOpeningHours?: OpeningHoursType;
   nearestStation?: NearestStation; // 最寄駅
   order: number;
+  // 行きたいリスト用のプロパティ
+  priority?: number; // 優先度（1-5）
+  createdAt?: string; // 登録日時
+  // 過去のスポット用のプロパティ
+  visitCount?: number; // 訪問回数
+  visitedAt?: string; // 前回訪問日時
+  planDate?: string; // 計画日
+  planTitle?: string; // 計画タイトル
 };
 
 export type TravelPlanType = {
@@ -130,7 +138,12 @@ export type ResponseSpotMetaType = {
   latitude: number;
   longitude: number;
   image?: string;
+  url?: string;
   rating: number;
+  prefecture?: string | null;
+  address?: string;
+  ratingCount?: number;
+  openingHours?: OpeningHoursType;
   categories: string[];
   catchphrase?: string;
   description?: string;

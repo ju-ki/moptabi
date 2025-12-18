@@ -126,7 +126,12 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
       </div>
 
       {/* 検索結果 */}
-      <SearchResultsView spots={spots} selectedSpotIds={selectedSpotIds} onSpotClick={handleSpotClick} />
+      <SearchResultsView
+        spots={spots}
+        selectedSpotIds={selectedSpotIds}
+        onSpotClick={handleSpotClick}
+        cardType="wishlist"
+      />
 
       {spots.length === 0 && !isLoading && (
         <div className="text-center text-gray-500 py-8">行きたいリストにスポットが登録されていません</div>
