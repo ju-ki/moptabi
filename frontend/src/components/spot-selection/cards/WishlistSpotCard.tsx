@@ -64,7 +64,7 @@ const WishlistSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list
               width={100}
               height={100}
               src={place.image || '/placeholder.jpg'}
-              alt={place.location.name || ''}
+              alt={place.location.name || 'スポット画像'}
               className={`w-full h-full object-cover transition-transform duration-500 ${
                 isHovered ? 'scale-110' : 'scale-100'
               }`}

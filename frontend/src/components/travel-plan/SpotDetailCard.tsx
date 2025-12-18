@@ -139,7 +139,7 @@ export default function SpotDetailCard({
               <div className="mt-4">
                 <Image
                   src={spot.image}
-                  alt={spot.location.name || ''}
+                  alt={spot.location.name || 'スポット画像'}
                   width={300}
                   height={200}
                   className="rounded-lg shadow-md"

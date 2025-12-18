@@ -108,8 +108,8 @@ const WishlistSpotInfoCard = ({ item, idx }: WishlistSpotInfoCardProps) => {
         <Image
           width={200}
           height={200}
-          src={item.spot.meta.image || ''}
-          alt={item.spot.meta.name}
+          src={item.spot.meta.image || './placeholder.jpg'}
+          alt={item.spot.meta.name || 'スポット画像'}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
