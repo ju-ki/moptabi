@@ -103,6 +103,24 @@ export const removeTimeFromDate = (date: Date): Date => {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 };
 
+/**
+ * 文字列の日付をYYYY-MM-DD形式に変換するメソッド
+ */
+export const formatTimeDate = (dateString: string | null): string | null => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+
+  if (isNaN(date.getTime())) {
+    return dateString; // 変換に失敗した場合はそのまま返す
+  }
+
+  try {
+    return date.toLocaleDateString('sv-SE'); // YYYY-MM-DD形式
+  } catch {
+    return dateString; // 変換に失敗した場合はそのまま返す
+  }
+};
+
 export const formatToHHmm = (date: string): string => {
   try {
     const parsedDate = new Date(date);

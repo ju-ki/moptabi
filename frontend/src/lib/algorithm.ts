@@ -116,7 +116,7 @@ export const calcDistance = (baseCoordinate: Coordination, targetCoordination: C
  */
 export const calcTotalTransportTime = (spots: Spot[]): string => {
   let totalMinutes = 0;
-
+  // TODO: travelTimeのフォーマットが多様化した場合はここを拡張する
   // 1. 正規表現: HH hours mm minutes から数値と単位を抽出
   const regex = /(?:(\d+)\s*hours?)?\s*(?:(\d+)\s*mins?)?/;
 

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useState } from 'react';
-import Image from 'next/image';
 import { Search, MapPin, Star, Menu, Globe } from 'lucide-react';
 import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 
@@ -9,16 +8,25 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Spot } from '@/types/plan';
+import { GoogleSpotCard, WishlistSpotCard, VisitedSpotCard } from '@/components/spot-selection/cards';
 
 export type ViewModeType = 'list' | 'map' | 'split';
+export type CardType = 'google' | 'wishlist' | 'visited';
 
 interface SearchResultsViewProps {
   spots: Spot[];
   selectedSpotIds?: string[];
   onSpotClick?: (spot: Spot) => void;
+  /** カードの種類（google: Google検索, wishlist: 行きたいリスト, visited: 過去のスポット） */
+  cardType?: CardType;
 }
 
-export const SearchResultsView: React.FC<SearchResultsViewProps> = ({ spots, selectedSpotIds = [], onSpotClick }) => {
+export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
+  spots,
+  selectedSpotIds = [],
+  onSpotClick,
+  cardType = 'google',
+}) => {
   const defaultCenter = { lat: 35.681236, lng: 139.767125 };
   const firstWithLocation = spots.find((s) => s.location?.lat != null && s.location?.lng != null);
   const mapCenter = firstWithLocation
@@ -39,11 +47,6 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({ spots, sel
     },
     [map, spots],
   );
-
-  const handleClickSpot = (spot: Spot) => {
-    setSelectedSpot(spot);
-    onSpotClick?.(spot);
-  };
 
   const isSpotSelected = (spotId: string) => selectedSpotIds.includes(spotId);
 
@@ -149,68 +152,23 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({ spots, sel
               >
                 <ScrollArea className="h-full w-full">
                   <div className="p-2 sm:p-3 space-y-2">
-                    {spots &&
+                    {spots.length > 0 &&
                       spots.map((place) => {
-                        const isAdded = isSpotSelected(place.id);
-                        const isSelected = selectedSpot?.id === place.id;
-
+                        // カードタイプに応じたコンポーネントをレンダリング
+                        const CardComponent =
+                          cardType === 'wishlist'
+                            ? WishlistSpotCard
+                            : cardType === 'visited'
+                              ? VisitedSpotCard
+                              : GoogleSpotCard;
                         return (
-                          <button
-                            type="button"
+                          <CardComponent
                             key={place.id}
-                            data-testid={`spot-card-${place.id}`}
-                            data-selected={isAdded}
-                            className={`border rounded-lg p-2 sm:p-3 cursor-pointer transition-all max-w-full ${
-                              isSelected
-                                ? 'border-blue-500 bg-blue-50'
-                                : isAdded
-                                  ? 'border-green-500 bg-green-50'
-                                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                            }`}
-                            onClick={() => handleClickSpot(place)}
-                            onMouseEnter={() => setHoveredPlaceId(place.id)}
-                            onMouseLeave={() => setHoveredPlaceId(null)}
-                          >
-                            <div className="flex gap-2 sm:gap-3 w-full min-w-0">
-                              {place.image && (
-                                <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden">
-                                  <Image
-                                    width={100}
-                                    height={100}
-                                    src={place.image || '/placeholder.jpg'}
-                                    alt={place.location.name || ''}
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                              )}
-                              <div className="flex-1 min-w-0 overflow-hidden flex flex-col">
-                                <div className="flex items-start gap-2 mb-1 w-full">
-                                  <h4
-                                    className="font-semibold text-xs sm:text-sm truncate flex-1 min-w-0"
-                                    data-testid={`spot-name-${place.id}`}
-                                  >
-                                    {place.location.name}
-                                  </h4>
-                                  {isAdded && (
-                                    <span className="text-xs text-green-600 font-medium flex-shrink-0">選択済み</span>
-                                  )}
-                                </div>
-                                {place.rating && (
-                                  <div
-                                    className="flex items-center gap-1 mb-1 flex-shrink-0"
-                                    data-testid={`spot-rating-${place.id}`}
-                                  >
-                                    <Star size={10} className="fill-yellow-400 text-yellow-400 flex-shrink-0" />
-                                    <span className="text-xs font-medium">{place.rating}</span>
-                                    {place.ratingCount && (
-                                      <span className="text-xs text-gray-500">({place.ratingCount})</span>
-                                    )}
-                                  </div>
-                                )}
-                                <p className="text-xs text-gray-600 truncate w-full">{place.address}</p>
-                              </div>
-                            </div>
-                          </button>
+                            place={place}
+                            onSpotClick={onSpotClick}
+                            isSpotSelected={isSpotSelected}
+                            viewMode={viewMode}
+                          />
                         );
                       })}
                   </div>

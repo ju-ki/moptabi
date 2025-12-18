@@ -158,7 +158,12 @@ export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: Visit
       </div>
 
       {/* 検索結果 */}
-      <SearchResultsView spots={spots} selectedSpotIds={selectedSpotIds} onSpotClick={handleSpotClick} />
+      <SearchResultsView
+        spots={spots}
+        selectedSpotIds={selectedSpotIds}
+        onSpotClick={handleSpotClick}
+        cardType="visited"
+      />
 
       {spots.length === 0 && !isLoading && (
         <div className="text-center text-gray-500 py-8">過去に訪問・計画したスポットがありません</div>

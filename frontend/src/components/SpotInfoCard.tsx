@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, Flag, Home, MapPin, Star } from 'lucide-react';
+import { Calendar, Clock, ExternalLink, Flag, Home, MapPin, Star, X } from 'lucide-react';
 import Image from 'next/image';
 
 import { Spot, TransportNodeType } from '@/types/plan';
@@ -8,11 +8,13 @@ import { convertHHmmToJpFormat } from '@/lib/utils';
 import { calculateDuration } from '@/lib/algorithm';
 
 import { placeTypeMap } from '../data/constants';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+
 interface SpotCardProps {
   spot: Spot;
 }
 
-export function SpotInfoCard({ spot }: SpotCardProps) {
+export function SpotInfoCard({ spot, onDelete }: SpotCardProps) {
   const isDeparture = spot.transports.fromType === TransportNodeType.DEPARTURE;
   const isDestination = spot.transports.toType === TransportNodeType.DESTINATION;
 
@@ -112,6 +114,7 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
               <div className="absolute top-2 right-2 bg-white/95 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
                 <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                 <span className="text-xs font-semibold">{spot.rating ?? '-'}</span>
+                {spot.ratingCount !== undefined && <span className="text-xs text-gray-400">({spot.ratingCount})</span>}
               </div>
             </div>
 
@@ -122,16 +125,19 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
                   <h3 className="text-lg font-bold text-gray-900 truncate">{spot.location.name}</h3>
                   <p className="text-sm text-gray-600 line-clamp-1">{spot.catchphrase ?? ''}</p>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  {spot.category?.slice(0, 2).map((cat) => (
-                    <span
-                      key={cat}
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
-                    >
-                      {placeTypeMap[cat] ?? 'その他'}
-                    </span>
-                  ))}
-                </div>
+                {/* カテゴリを3つまで表示 */}
+                {spot.category && spot.category.length > 0 && (
+                  <div className="flex gap-1 flex-shrink-0 flex-wrap" data-testid="spot-categories">
+                    {spot.category.slice(0, 3).map((cat) => (
+                      <span
+                        key={cat}
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700"
+                      >
+                        {placeTypeMap[cat] ?? 'その他'}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 mb-2">
@@ -141,14 +147,65 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
                   <span className="text-gray-400">滞在</span>
                 </div>
                 {spot.nearestStation && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                  <div className="flex items-center gap-1.5 text-sm text-gray-600" data-testid="spot-nearest-station">
                     <MapPin className="w-4 h-4 text-gray-400" />
                     <span className="truncate">徒歩{spot.nearestStation.walkingTime ?? '-'}分</span>
                   </div>
                 )}
               </div>
 
+              {/* 住所 */}
+              {spot.address && (
+                <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-2" data-testid="spot-address">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span className="truncate">{spot.address}</span>
+                </div>
+              )}
+
               <p className="text-sm text-gray-600 line-clamp-2">{spot.description}</p>
+
+              {/* 外部URL */}
+              {spot.url && (
+                <div className="mt-2">
+                  <a
+                    href={spot.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    外部サイトを見る
+                  </a>
+                </div>
+              )}
+
+              {/* 営業時間 */}
+              {spot.regularOpeningHours && spot.regularOpeningHours.length > 0 && (
+                <div className="mt-2" data-testid="spot-opening-hours">
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="opening-hours" className="border-none">
+                      <AccordionTrigger className="py-1 hover:no-underline">
+                        <span className="flex items-center gap-1 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          営業時間
+                        </span>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <ul className="text-sm text-gray-600 space-y-1">
+                          {spot.regularOpeningHours.map((item, idx) => (
+                            <li key={idx}>
+                              {item.day}: {item.hours}
+                            </li>
+                          ))}
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+              )}
+
+              {/* メモ */}
+              {spot.memo && <p className="text-sm text-gray-500 mt-2 italic">{spot.memo}</p>}
             </div>
           </div>
         </div>

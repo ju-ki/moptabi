@@ -220,7 +220,7 @@ export async function getVisitedSpots(
     memo: ps.memo,
     priority: 1, // デフォルト
     visited: 0, // 計画として登録したものは未訪問扱い
-    visitedAt: null,
+    visitedAt: ps.plan.date,
     createdAt: new Date(),
     updatedAt: new Date(),
     spot: ps.spot,

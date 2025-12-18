@@ -5,6 +5,7 @@ import { Asterisk, Heart, History, Search } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { Spot } from '@/types/plan';
+import { setStartTimeAutomatically } from '@/lib/algorithm';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -27,7 +28,8 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   }, [plans, date]);
 
   const handleSpotSelect = (spot: Spot, isDeleted: boolean) => {
-    setSpots(date, spot, isDeleted);
+    const updatedSpot = setStartTimeAutomatically(spot, plans.find((p) => p.date === date)?.spots ?? []);
+    setSpots(date, updatedSpot, isDeleted);
   };
 
   return (
@@ -47,7 +49,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
             <Search className="ml-2 h-4 w-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>観光地を検索</DialogTitle>
           </DialogHeader>
