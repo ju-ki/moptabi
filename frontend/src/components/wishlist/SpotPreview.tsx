@@ -7,6 +7,7 @@ import { placeTypeMap } from '@/data/constants';
 import { useToast } from '@/hooks/use-toast';
 import { WishlistType } from '@/types/wishlist';
 import { useFetchWishlist } from '@/hooks/use-wishlist';
+import { isWishlistLimitReached, getLimitErrorMessage } from '@/lib/limits';
 
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -46,53 +47,72 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
   }
 
   const handleAddWishlist = async () => {
-    if (spot) {
-      const targetWishlist: WishlistType = {
-        spotId: spot.id,
-        spot: {
+    if (!spot) return;
+
+    // フロントエンドで上限チェック（楽観的チェック）
+    // storeのwishlist状態を直接参照（安全にアクセス）
+    const currentWishlistCount = wishlistStore.wishlist?.length ?? 0;
+    if (isWishlistLimitReached(currentWishlistCount)) {
+      toast({
+        title: '登録上限に達しています',
+        description: getLimitErrorMessage('wishlist'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const targetWishlist: WishlistType = {
+      spotId: spot.id,
+      spot: {
+        id: spot.id,
+        meta: {
           id: spot.id,
-          meta: {
-            id: spot.id,
-            spotId: spot.id,
-            name: spot.location.name || '',
-            latitude: spot.location.lat,
-            longitude: spot.location.lng,
-            image: spot.image,
-            url: spot.url || '',
-            prefecture: spot.prefecture || '',
-            address: spot.address || '',
-            rating: spot.rating ?? 0,
-            categories: spot.category,
-            description: spot.description,
-            openingHours: spot.regularOpeningHours,
-          },
+          spotId: spot.id,
+          name: spot.location.name || '',
+          latitude: spot.location.lat,
+          longitude: spot.location.lng,
+          image: spot.image,
+          url: spot.url || '',
+          prefecture: spot.prefecture || '',
+          address: spot.address || '',
+          rating: spot.rating ?? 0,
+          categories: spot.category,
+          description: spot.description,
+          openingHours: spot.regularOpeningHours,
         },
-        memo: memo,
-        priority: priority,
-        visited: 0,
-        visitedAt: null,
-      };
-      try {
-        postWishlist(targetWishlist).then((response) => {
-          if (response.ok) {
-            wishlistStore.addWishlist(targetWishlist);
-            wishlistStore.setSelectedSpot(null);
-            // 初期化
-            setMemo('');
-            setPriority(3);
-            toast({
-              title: 'スポットが行きたいリストに追加されました',
-              description: '行きたいリストにスポットの追加に成功しました。',
-              variant: 'success',
-            });
-          } else {
-            throw new Error('スポットの追加に失敗しました');
-          }
+      },
+      memo: memo,
+      priority: priority,
+      visited: 0,
+      visitedAt: null,
+    };
+
+    try {
+      const response = await postWishlist(targetWishlist);
+
+      if (response.ok) {
+        wishlistStore.addWishlist(targetWishlist);
+        wishlistStore.setSelectedSpot(null);
+        // 初期化
+        setMemo('');
+        setPriority(3);
+        toast({
+          title: 'スポットが行きたいリストに追加されました',
+          description: '行きたいリストにスポットの追加に成功しました。',
+          variant: 'success',
         });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        toast({ title: 'スポットの追加に失敗しました', description: errorMessage, variant: 'destructive' });
+      } else {
+        // APIからのエラーメッセージを取得
+        const errorMessage = await response.text();
+        toast({
+          title: 'スポットの追加に失敗しました',
+          description: errorMessage || 'エラーが発生しました',
+          variant: 'destructive',
+        });
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast({ title: 'スポットの追加に失敗しました', description: errorMessage, variant: 'destructive' });
     }
   };
 

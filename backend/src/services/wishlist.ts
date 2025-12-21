@@ -4,6 +4,7 @@ import { Context } from 'hono';
 
 import { PrismaClient } from '@/generated/prisma';
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
+import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 
 const prisma = new PrismaClient();
 
@@ -32,6 +33,27 @@ export const getWishList = async (c: Context) => {
   return wishList;
 };
 
+/**
+ * 行きたいリストの登録数と上限を取得
+ */
+export const getWishListCount = async (c: Context) => {
+  const auth = getAuth(c);
+  if (!auth?.userId) {
+    throw new HTTPException(401, { message: 'Unauthorized error' });
+  }
+
+  const userId = auth.userId;
+
+  const count = await prisma.wishlist.count({
+    where: { userId },
+  });
+
+  return {
+    count,
+    limit: APP_LIMITS.MAX_WISHLIST_SPOTS,
+  };
+};
+
 export const createWishList = async (c: Context) => {
   const auth = getAuth(c);
   if (!auth?.userId) {
@@ -39,6 +61,15 @@ export const createWishList = async (c: Context) => {
   }
 
   const userId = auth.userId;
+
+  // 上限チェック
+  const currentCount = await prisma.wishlist.count({
+    where: { userId },
+  });
+
+  if (currentCount >= APP_LIMITS.MAX_WISHLIST_SPOTS) {
+    throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.WISHLIST_LIMIT_EXCEEDED });
+  }
 
   const body = await c.req.json();
   if (!body) {

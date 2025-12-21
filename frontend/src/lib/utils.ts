@@ -237,3 +237,37 @@ export function convertHHmmToJpFormat(travelTime: string): string {
     return result || match; // マッチしなかった場合は元の文字列を返す
   });
 }
+
+/**
+ * スポットIDが出発地または目的地かどうかを判定する関数
+ * buildSpotIdで生成されたID（departure_YYYY-MM-DD または destination_YYYY-MM-DD）かどうかを判定
+ * @param spotId スポットID
+ * @returns 出発地または目的地の場合true、それ以外はfalse
+ */
+export const isDepartureOrDestination = (spotId: string): boolean => {
+  if (!spotId) return false;
+  // departure_YYYY-MM-DD または destination_YYYY-MM-DD の形式かどうかを判定
+  const departurePattern = /^departure_\d{4}-\d{2}-\d{2}$/;
+  const destinationPattern = /^destination_\d{4}-\d{2}-\d{2}$/;
+  return departurePattern.test(spotId) || destinationPattern.test(spotId);
+};
+
+/**
+ * スポット配列から出発地と目的地を除外した配列を返す関数
+ * @param spots スポット配列（idプロパティを持つオブジェクト）
+ * @returns 出発地と目的地を除外したスポット配列
+ */
+export const filterActualSpots = <T extends { id: string }>(spots: T[]): T[] => {
+  if (!spots || spots.length === 0) return [];
+  return spots.filter((spot) => !isDepartureOrDestination(spot.id));
+};
+
+/**
+ * スポット配列から出発地と目的地を除外したスポット数を返す関数
+ * @param spots スポット配列（idプロパティを持つオブジェクト）
+ * @returns 出発地と目的地を除外したスポット数
+ */
+export const getActualSpotCount = <T extends { id: string }>(spots: T[] | undefined): number => {
+  if (!spots || spots.length === 0) return 0;
+  return filterActualSpots(spots).length;
+};

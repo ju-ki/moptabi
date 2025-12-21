@@ -111,3 +111,27 @@ export const deleteWishlistRoute = createRoute({
     500: { description: 'サーバーエラー' },
   },
 });
+
+/**
+ * カウント取得
+ */
+export const getWishlistCountRoute = createRoute({
+  method: 'get',
+  path: '/count',
+  tags: ['Wishlist'],
+  summary: '行きたいリストの登録数と上限を取得',
+  responses: {
+    200: {
+      description: '登録数と上限を返却',
+      content: {
+        'application/json': {
+          schema: z.object({
+            count: z.number(),
+            limit: z.number(),
+          }),
+        },
+      },
+    },
+    500: { description: 'サーバーエラー' },
+  },
+});
