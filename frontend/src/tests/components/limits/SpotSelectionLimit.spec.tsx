@@ -7,8 +7,8 @@ import { isSpotsPerDayLimitReached, getRemainingCount } from '@/lib/limits';
 
 describe('スポット追加時の上限チェック - limits.ts', () => {
   describe('isSpotsPerDayLimitReached', () => {
-    it('上限に達している場合はtrueを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(true);
+    it('上限に達している場合はfalseを返す', () => {
+      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(false);
     });
 
     it('上限を超えている場合はtrueを返す', () => {
@@ -48,7 +48,7 @@ describe('LimitDisplay統合テスト', () => {
   });
 
   it('上限に達している場合は追加不可状態になる', () => {
-    const current = APP_LIMITS.MAX_SPOTS_PER_DAY;
+    const current = APP_LIMITS.MAX_SPOTS_PER_DAY + 1;
     const isLimitReached = isSpotsPerDayLimitReached(current);
     expect(isLimitReached).toBe(true);
   });

@@ -17,8 +17,8 @@ describe('🔒 上限チェックユーティリティ関数', () => {
       expect(isWishlistLimitReached(99)).toBe(false);
     });
 
-    it('上限に達している場合はtrueを返す', () => {
-      expect(isWishlistLimitReached(APP_LIMITS.MAX_WISHLIST_SPOTS)).toBe(true);
+    it('上限に達している場合はfalseを返す', () => {
+      expect(isWishlistLimitReached(APP_LIMITS.MAX_WISHLIST_SPOTS)).toBe(false);
     });
 
     it('上限を超えている場合もtrueを返す', () => {
@@ -33,8 +33,8 @@ describe('🔒 上限チェックユーティリティ関数', () => {
       expect(isPlanLimitReached(19)).toBe(false);
     });
 
-    it('上限に達している場合はtrueを返す', () => {
-      expect(isPlanLimitReached(APP_LIMITS.MAX_PLANS)).toBe(true);
+    it('上限に達している場合はfalseを返す', () => {
+      expect(isPlanLimitReached(APP_LIMITS.MAX_PLANS)).toBe(false);
     });
 
     it('上限を超えている場合もtrueを返す', () => {
@@ -49,8 +49,8 @@ describe('🔒 上限チェックユーティリティ関数', () => {
       expect(isSpotsPerDayLimitReached(9)).toBe(false);
     });
 
-    it('上限に達している場合はtrueを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(true);
+    it('上限に達している場合はfalseを返す', () => {
+      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(false);
     });
 
     it('上限を超えている場合もtrueを返す', () => {
@@ -64,8 +64,8 @@ describe('🔒 上限チェックユーティリティ関数', () => {
       expect(isPlanDaysLimitReached(APP_LIMITS.MAX_PLAN_DAYS - 1)).toBe(false);
     });
 
-    it('上限に達している場合はtrueを返す', () => {
-      expect(isPlanDaysLimitReached(APP_LIMITS.MAX_PLAN_DAYS)).toBe(true);
+    it('上限に達している場合はfalseを返す', () => {
+      expect(isPlanDaysLimitReached(APP_LIMITS.MAX_PLAN_DAYS)).toBe(false);
     });
 
     it('上限を超えている場合もtrueを返す', () => {

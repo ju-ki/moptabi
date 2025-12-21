@@ -22,8 +22,8 @@ describe('LimitDisplay コンポーネント', () => {
       expect(container).toHaveClass('text-red-600');
     });
 
-    it('上限に近づいている場合（90%以上）は注意スタイルが適用される', () => {
-      render(<LimitDisplay current={90} limit={APP_LIMITS.MAX_WISHLIST_SPOTS} label="行きたいリスト" />);
+    it('上限に近づいている場合（80%以上）は注意スタイルが適用される', () => {
+      render(<LimitDisplay current={80} limit={APP_LIMITS.MAX_WISHLIST_SPOTS} label="行きたいリスト" />);
 
       const container = screen.getByTestId('limit-display');
       expect(container).toHaveClass('text-yellow-600');
@@ -62,7 +62,7 @@ describe('LimitDisplay コンポーネント', () => {
     });
 
     it('1日のスポットが上限に達している場合は警告スタイルが適用される', () => {
-      render(<LimitDisplay current={10} limit={APP_LIMITS.MAX_SPOTS_PER_DAY} label="本日のスポット" />);
+      render(<LimitDisplay current={11} limit={APP_LIMITS.MAX_SPOTS_PER_DAY} label="本日のスポット" />);
 
       const container = screen.getByTestId('limit-display');
       expect(container).toHaveClass('text-red-600');

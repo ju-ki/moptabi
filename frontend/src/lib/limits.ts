@@ -21,7 +21,7 @@ export const LIMIT_ERROR_MESSAGES: Record<LimitType, string> = {
  * @returns 上限に達している場合はtrue
  */
 export const isWishlistLimitReached = (currentCount: number): boolean => {
-  return currentCount >= APP_LIMITS.MAX_WISHLIST_SPOTS;
+  return currentCount > APP_LIMITS.MAX_WISHLIST_SPOTS;
 };
 
 /**
@@ -30,7 +30,7 @@ export const isWishlistLimitReached = (currentCount: number): boolean => {
  * @returns 上限に達している場合はtrue
  */
 export const isPlanLimitReached = (currentCount: number): boolean => {
-  return currentCount >= APP_LIMITS.MAX_PLANS;
+  return currentCount > APP_LIMITS.MAX_PLANS;
 };
 
 /**
@@ -39,7 +39,7 @@ export const isPlanLimitReached = (currentCount: number): boolean => {
  * @returns 上限に達している場合はtrue
  */
 export const isSpotsPerDayLimitReached = (spotCount: number): boolean => {
-  return spotCount >= APP_LIMITS.MAX_SPOTS_PER_DAY;
+  return spotCount > APP_LIMITS.MAX_SPOTS_PER_DAY;
 };
 
 /**
@@ -48,7 +48,7 @@ export const isSpotsPerDayLimitReached = (spotCount: number): boolean => {
  * @returns 上限に達している場合はtrue
  */
 export const isPlanDaysLimitReached = (daysCount: number): boolean => {
-  return daysCount >= APP_LIMITS.MAX_PLAN_DAYS;
+  return daysCount > APP_LIMITS.MAX_PLAN_DAYS;
 };
 
 /**
