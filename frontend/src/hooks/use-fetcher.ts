@@ -14,7 +14,9 @@ export const useFetcher = () => {
     });
 
     if (!response.ok) {
-      throw new Error('エラーが発生しました');
+      // APIからのエラーメッセージを取得
+      const errorMessage = await response.text();
+      throw new Error(errorMessage || 'エラーが発生しました');
     }
 
     return response.json();
@@ -33,7 +35,9 @@ export const useFetcher = () => {
     });
 
     if (!response.ok) {
-      throw new Error('エラーが発生しました');
+      // APIからのエラーメッセージを取得
+      const errorMessage = await response.text();
+      throw new Error(errorMessage || 'エラーが発生しました');
     }
 
     return response.json();
@@ -50,7 +54,9 @@ export const useFetcher = () => {
     });
 
     if (!response.ok) {
-      throw new Error('エラーが発生しました');
+      // APIからのエラーメッセージを取得
+      const errorMessage = await response.text();
+      throw new Error(errorMessage || 'エラーが発生しました');
     }
 
     return response.json();

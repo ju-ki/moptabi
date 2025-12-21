@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Asterisk, CalendarIcon } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
@@ -19,7 +19,8 @@ import PlanningComp from '@/components/PlanningComp';
 import { useToast } from '@/hooks/use-toast';
 import { useFetcher } from '@/hooks/use-fetcher';
 import CreatePlanButton from '@/components/CreatePlanButton';
-import { useWishlistSpots } from '@/hooks/spot-search/use-wishlist-spots';
+import { LimitDisplay } from '@/components/common/LimitDisplay';
+import { APP_LIMITS } from '@/data/constants';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
@@ -149,11 +150,24 @@ const TravelPlanCreate = () => {
             </div>
             {/* 予定日 */}
             <div className="space-y-2">
-              <div className="flex items-center gap-1 text-xs">
-                <Label className="block text-lg font-semibold text-gray-800" htmlFor="date">
-                  予定日
-                </Label>
-                <Asterisk className="text-red-500" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-xs">
+                  <Label className="block text-lg font-semibold text-gray-800" htmlFor="date">
+                    予定日
+                  </Label>
+                  <Asterisk className="text-red-500" />
+                </div>
+                {/* 日数表示 */}
+                {fields.startDate && fields.endDate && (
+                  <LimitDisplay
+                    current={getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).length}
+                    limit={APP_LIMITS.MAX_PLAN_DAYS}
+                    label="旅行日数"
+                    unit="日"
+                    size="sm"
+                    data-testid="plan-days-display"
+                  />
+                )}
               </div>
               <Popover>
                 <PopoverTrigger asChild>

@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { useStoreForPlanning, type FormData as formType } from '@/lib/plan';
 import { useFetcher } from '@/hooks/use-fetcher';
-import { getDatesBetween } from '@/lib/utils';
+import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
+import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
 
 import { Button } from './ui/button';
 
@@ -33,7 +34,19 @@ const CreatePlanButton = () => {
       isError = true;
     }
 
-    getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).map((date) => {
+    const dates = getDatesBetween(new Date(fields.startDate), new Date(fields.endDate));
+
+    // プラン日数の上限チェック
+    if (isPlanDaysLimitReached(dates.length)) {
+      toast({
+        title: 'プラン日数が上限を超えています',
+        description: getLimitErrorMessage('planDays'),
+        variant: 'destructive',
+      });
+      return true;
+    }
+
+    dates.map((date) => {
       const spotsData = fields.getSpotInfo(date, TransportNodeType.SPOT);
       const targetTripInfo = fields.tripInfo.filter((val) => val.date === date)[0];
 
@@ -47,6 +60,15 @@ const CreatePlanButton = () => {
       if (!spotsData || spotsData.length === 0) {
         fields.setPlanErrors(date, {
           spots: '観光地スポットは1つ以上選択してください',
+        });
+        isError = true;
+      }
+
+      // 1日あたりのスポット数の上限チェック（出発地・目的地は除外）
+      const actualSpotCount = getActualSpotCount(spotsData);
+      if (isSpotsPerDayLimitReached(actualSpotCount)) {
+        fields.setPlanErrors(date, {
+          spots: getLimitErrorMessage('spotsPerDay'),
         });
         isError = true;
       }

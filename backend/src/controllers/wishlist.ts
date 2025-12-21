@@ -1,10 +1,14 @@
 import { Context } from 'hono';
 
-import { createWishList, deleteWishList, getWishList, updateWishList } from '@/services/wishlist';
+import { createWishList, deleteWishList, getWishList, getWishListCount, updateWishList } from '@/services/wishlist';
 
 export const wishListHandler = {
   getWishList: async (c: Context) => {
     const response = await getWishList(c);
+    return c.json(response, 200);
+  },
+  getWishListCount: async (c: Context) => {
+    const response = await getWishListCount(c);
     return c.json(response, 200);
   },
   createWishList: async (c: Context) => {

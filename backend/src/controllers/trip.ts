@@ -4,6 +4,7 @@ import { HTTPException } from 'hono/http-exception';
 
 import { TripSchema } from '../models/trip';
 import { Prisma, PrismaClient } from '../generated/prisma';
+import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
 
 const prisma = new PrismaClient();
 
@@ -130,6 +131,26 @@ export const getTripHandler = {
 
     const tripData = result.data;
     const userId = auth.userId;
+
+    // 上限チェック: プラン作成数
+    const currentTripCount = await prisma.trip.count({
+      where: { userId },
+    });
+    if (currentTripCount >= APP_LIMITS.MAX_PLANS) {
+      throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.PLAN_LIMIT_EXCEEDED });
+    }
+
+    // 上限チェック: プラン日数
+    if (tripData.plans.length > APP_LIMITS.MAX_PLAN_DAYS) {
+      throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.PLAN_DAYS_LIMIT_EXCEEDED });
+    }
+
+    // 上限チェック: 1日あたりスポット数
+    for (const plan of tripData.plans) {
+      if (plan.spots.length > APP_LIMITS.MAX_SPOTS_PER_DAY) {
+        throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.SPOTS_PER_DAY_LIMIT_EXCEEDED });
+      }
+    }
 
     // レスポンス用変数を定義
     let createdTrip;
@@ -435,5 +456,29 @@ export const getTripHandler = {
       console.error(errorMessage);
       return c.json({ error: 'Internal Server Error', details: errorMessage }, 500);
     }
+  },
+
+  /**
+   * プランの作成数と上限を取得
+   */
+  getTripCount: async (c: Context) => {
+    const auth = getAuth(c);
+    if (!auth?.userId) {
+      throw new HTTPException(401, { message: 'Unauthorized error' });
+    }
+
+    const userId = auth.userId;
+
+    const count = await prisma.trip.count({
+      where: { userId },
+    });
+
+    return c.json(
+      {
+        count,
+        limit: APP_LIMITS.MAX_PLANS,
+      },
+      200,
+    );
   },
 };

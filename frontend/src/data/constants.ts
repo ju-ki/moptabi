@@ -1,5 +1,20 @@
 import { Coordination, PlaceTypeGroupKey, TransportNodeType } from '@/types/plan';
 
+/**
+ * アプリケーション全体の上限設定
+ * レイアウト崩れやAPI制限対策のための制限値
+ */
+export const APP_LIMITS = {
+  /** 行きたいリストの最大登録数 */
+  MAX_WISHLIST_SPOTS: 100,
+  /** プランの最大作成数 */
+  MAX_PLANS: 20,
+  /** 1日あたりの最大スポット数 */
+  MAX_SPOTS_PER_DAY: 10,
+  /** プランの最大日数 */
+  MAX_PLAN_DAYS: 7,
+} as const;
+
 export const defaultLocation: Coordination = {
   id: 'default-location',
   lat: 35.6813,

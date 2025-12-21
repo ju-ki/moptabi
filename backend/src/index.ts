@@ -13,13 +13,20 @@ import {
   uploadImageRoute,
   getTransportMethodsRoute,
   getDepartureAndDepartment,
+  getTripCountRoute,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
 import { findExistingUserRoute } from './routes/auth';
 import { getAuthHandler } from './controllers/auth';
 import { getImageHandler } from './controllers/image';
 import { getImageRoute } from './routes/trip';
-import { createWishlistRoute, deleteWishlistRoute, getWishlistRoute, updateWishlistRoute } from './routes/wishlist';
+import {
+  createWishlistRoute,
+  deleteWishlistRoute,
+  getWishlistRoute,
+  getWishlistCountRoute,
+  updateWishlistRoute,
+} from './routes/wishlist';
 import { wishListHandler } from './controllers/wishlist';
 import { getUnvisitedSpotsRoute, getVisitedSpotsRoute } from './routes/spot';
 import { spotHandler } from './controllers/spot';
@@ -97,6 +104,7 @@ wishListApp.use(
 
 // トリップルートの登録
 tripApp.openapi(getTripsRoute, getTripHandler.getTrips);
+tripApp.openapi(getTripCountRoute, getTripHandler.getTripCount);
 tripApp.openapi(createTripRoute, getTripHandler.createTrip);
 tripApp.openapi(getTripDetailRoute, getTripHandler.getTripDetail);
 tripApp.openapi(deleteTripRoute, getTripHandler.deleteTrip);
@@ -108,6 +116,7 @@ imageApp.openapi(getImageRoute, getImageHandler.getImage);
 authApp.openapi(findExistingUserRoute, getAuthHandler);
 
 wishListApp.openapi(getWishlistRoute, wishListHandler.getWishList);
+wishListApp.openapi(getWishlistCountRoute, wishListHandler.getWishListCount);
 wishListApp.openapi(createWishlistRoute, wishListHandler.createWishList);
 wishListApp.openapi(updateWishlistRoute, wishListHandler.updateWishList);
 wishListApp.openapi(deleteWishlistRoute, wishListHandler.deleteWishList);
