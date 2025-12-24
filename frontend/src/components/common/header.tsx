@@ -35,6 +35,9 @@ const Header = () => {
           <Link href="/plan/list" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             プラン一覧
           </Link>
+          <Link href="/mypage" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            マイページ
+          </Link>
           <Notification />
           <SignOutButton>
             <Button>ログアウト</Button>
@@ -83,6 +86,13 @@ const Header = () => {
                   prefetch={false}
                 >
                   プラン一覧
+                </Link>
+                <Link
+                  href="/mypage"
+                  className="text-sm font-medium hover:underline underline-offset-4"
+                  prefetch={false}
+                >
+                  マイページ
                 </Link>
                 <SignedIn>
                   <SignOutButton>
