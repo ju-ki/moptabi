@@ -22,9 +22,9 @@ const mockUseSWR = vi.mocked(useSWR);
 describe('useMypageData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // 現在日時を固定（2025-01-01）
+    // 現在日時を固定（2025-01-01 JST）
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-01-01'));
+    vi.setSystemTime(new Date('2025-01-01T00:00:00+09:00'));
   });
 
   afterEach(() => {
@@ -121,7 +121,7 @@ describe('useMypageData', () => {
       expect(result.current.nextTrip).not.toBeNull();
       expect(result.current.nextTrip?.id).toBe(2);
       expect(result.current.nextTrip?.title).toBe('京都旅行');
-      // モック日付 2025-01-01 から 2025-01-15 まで15日間
+      // モック日付 2025-01-01 JST から 2025-01-15 まで15日間（1日から15日）
       expect(result.current.nextTrip?.daysUntil).toBe(15);
     });
 
