@@ -147,6 +147,47 @@ Image 関連
 - Spot: `backend/src/models/spot.ts`
 - Trip: `backend/src/models/trip.ts`
 - Wishlist: `backend/src/models/wishlist.ts`
+- Notification: `backend/src/models/notification.ts`
+
+---
+
+## Notification（お知らせ）
+
+ベースパス: `/api/notification`
+
+- GET /
+  - 概要: ユーザーのお知らせ一覧を取得（公開日時が現在以前のもの）
+  - レスポンス 200: `NotificationListResponseSchema` (配列)
+  - 備考: 未読/既読状態を含む。公開日時降順でソート
+
+- GET /unread-count
+  - 概要: 未読のお知らせ件数を取得
+  - レスポンス 200: { count: number }
+
+- PATCH /{id}/read
+  - 概要: 指定IDのお知らせを既読にする
+  - パスパラメータ: id (notificationId)
+  - レスポンス 200: { success: true }
+  - 404: 指定IDが存在しない
+
+- PATCH /read-all
+  - 概要: 全てのお知らせを既読にする
+  - レスポンス 200: { success: true, count: number }
+
+モデル（主要フィールド）:
+- NotificationSchema
+  - id: number
+  - title: string
+  - content: string
+  - type: 'SYSTEM' | 'INFO'
+  - publishedAt: string (ISO8601)
+  - createdAt: string (ISO8601)
+  - isRead: boolean
+  - readAt: string | null (ISO8601)
+
+将来対応（リアルタイム通知）:
+- WebSocket接続用エンドポイント: `/api/notification/ws`
+- イベント: `notification:new`, `notification:read`
 
 ---
 

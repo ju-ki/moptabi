@@ -146,9 +146,39 @@ model Wishlist {
   @@unique([userId, spotId])
 }
 
+enum NotificationType {
+  SYSTEM
+  INFO
+}
+
+model Notification {
+  id           Int              @id @default(autoincrement())
+  title        String           @db.VarChar(100)
+  content      String
+  type         NotificationType
+  publishedAt  DateTime
+  createdAt    DateTime         @default(now())
+
+  userNotifications UserNotification[]
+}
+
+model UserNotification {
+  id             Int       @id @default(autoincrement())
+  userId         String    @db.VarChar(255)
+  notificationId Int
+  isRead         Boolean   @default(false)
+  readAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationId])
+}
 
 model User {
-  id   String @id @db.VarChar(255)
-  trip Trip[]
-  wishlists Wishlist[]
+  id                String             @id @db.VarChar(255)
+  trip              Trip[]
+  wishlists         Wishlist[]
+  userNotifications UserNotification[]
 }

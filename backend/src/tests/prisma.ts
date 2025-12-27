@@ -42,6 +42,9 @@ export async function clearTestData(): Promise<void> {
     'nearestStation' as any,
     'spotMeta' as any,
     'spot' as any,
+    // お知らせ関連（UserNotification を先に削除）
+    'userNotification' as any,
+    'notification' as any,
     'user' as any,
     'transportMethod' as any,
   ];
