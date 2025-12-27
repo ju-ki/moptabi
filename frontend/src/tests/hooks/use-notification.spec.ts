@@ -1,7 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
+import { ClerkProvider } from '@clerk/nextjs';
+import useSWR from 'swr';
 
 import { useNotification } from '@/hooks/use-notification';
+
+vi.mock('@clerk/nextjs', () => ({
+  useAuth: () => ({
+    isSignedIn: true,
+    isLoaded: true,
+    userId: 'test-user-id',
+    sessionId: 'test-session-id',
+    getToken: vi.fn(() => Promise.resolve('mock-token')),
+  }),
+}));
 
 // SWRのモック
 vi.mock('swr', () => ({
@@ -14,8 +26,6 @@ vi.mock('@/hooks/use-fetcher', () => ({
     getFetcher: vi.fn(),
   }),
 }));
-
-import useSWR from 'swr';
 
 const mockUseSWR = vi.mocked(useSWR);
 
