@@ -14,7 +14,7 @@ interface SpotCardProps {
   spot: Spot;
 }
 
-export function SpotInfoCard({ spot, onDelete }: SpotCardProps) {
+export function SpotInfoCard({ spot }: SpotCardProps) {
   const isDeparture = spot.transports.fromType === TransportNodeType.DEPARTURE;
   const isDestination = spot.transports.toType === TransportNodeType.DESTINATION;
 
