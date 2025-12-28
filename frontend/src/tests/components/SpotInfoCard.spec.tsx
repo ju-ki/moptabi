@@ -34,7 +34,7 @@ const createMockSpot = (overrides: Partial<Spot> = {}): Spot => ({
   stayStart: '10:00',
   stayEnd: '12:00',
   transports: {
-    transportMethodIds: [1],
+    transportMethod: 1,
     name: 'TRANSIT',
     cost: 500,
     travelTime: '00:30',
@@ -81,7 +81,7 @@ const createDepartureSpot = (): Spot => ({
   stayStart: '09:00',
   stayEnd: '09:00',
   transports: {
-    transportMethodIds: [1],
+    transportMethod: 1,
     name: 'TRANSIT',
     cost: 0,
     travelTime: '00:30',
@@ -103,7 +103,7 @@ const createDestinationSpot = (): Spot => ({
   stayStart: '18:00',
   stayEnd: '18:00',
   transports: {
-    transportMethodIds: [1],
+    transportMethod: 1,
     name: 'TRANSIT',
     cost: 0,
     travelTime: '00:00',
@@ -348,7 +348,7 @@ describe('SpotInfoCard', () => {
     it('次のスポットへの移動時間が表示される', () => {
       const spot = createMockSpot({
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           name: 'TRANSIT',
           cost: 500,
           travelTime: '30 mins',
@@ -364,7 +364,7 @@ describe('SpotInfoCard', () => {
     it('移動時間が0の場合も適切に表示される', () => {
       const spot = createMockSpot({
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           name: 'WALKING',
           cost: 0,
           travelTime: '0 mins',

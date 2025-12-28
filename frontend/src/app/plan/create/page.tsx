@@ -1,18 +1,13 @@
 'use client';
 import { useEffect } from 'react';
-import { Asterisk, CalendarIcon } from 'lucide-react';
-import { DateRange } from 'react-day-picker';
-import { format } from 'date-fns';
+import { Asterisk } from 'lucide-react';
 import useSWRMutation from 'swr/mutation';
 import Image from 'next/image';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { cn, getDatesBetween } from '@/lib/utils';
+import { getDatesBetween } from '@/lib/utils';
 import { useStoreForPlanning } from '@/lib/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
@@ -21,6 +16,7 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
 import { APP_LIMITS } from '@/data/constants';
+import DateRangePicker from '@/components/DateRangePicker';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
@@ -147,52 +143,11 @@ const TravelPlanCreate = () => {
                   />
                 )}
               </div>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="date"
-                    variant={'outline'}
-                    className={cn(
-                      'w-full justify-start text-left font-normal',
-                      !fields.startDate && 'text-muted-foreground',
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {fields.startDate ? (
-                      fields.endDate ? (
-                        <>
-                          {format(fields.startDate, 'yyyy/MM/dd')} 〜 {format(fields.endDate, 'yyyy/MM/dd')}
-                        </>
-                      ) : (
-                        format(fields.startDate, 'yyyy/MM/dd')
-                      )
-                    ) : (
-                      <span>日付範囲を選択</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={new Date(fields.startDate)}
-                    selected={{
-                      from: new Date(fields.startDate),
-                      to: new Date(fields.endDate),
-                    }}
-                    onSelect={(dateRange: DateRange | undefined) => {
-                      // 日付をYYYY-MM-DD形式に変換（DBとの整合性のためISO形式を使用）
-                      const fromDate = dateRange?.from && dateRange.from.toLocaleDateString('sv-SE');
-                      const toDate = dateRange?.to && dateRange.to.toLocaleDateString('sv-SE');
-                      fields.setRangeDate({
-                        from: fromDate,
-                        to: toDate,
-                      });
-                    }}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateRangePicker
+                startDate={fields.startDate}
+                endDate={fields.endDate}
+                onDateChange={fields.setRangeDate}
+              />
               <div className="my-1">
                 {fields.errors.startDate && <span className="text-red-500">{fields.errors.startDate.toString()}</span>}
               </div>
