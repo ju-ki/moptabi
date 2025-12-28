@@ -30,6 +30,8 @@ import {
 import { wishListHandler } from './controllers/wishlist';
 import { getUnvisitedSpotsRoute, getVisitedSpotsRoute } from './routes/spot';
 import { spotHandler } from './controllers/spot';
+import { getNotificationsRoute, getUnreadCountRoute, markAsReadRoute, markAllAsReadRoute } from './routes/notification';
+import { notificationHandler } from './controllers/notification';
 
 const app = new OpenAPIHono().basePath('/api');
 
@@ -53,6 +55,7 @@ const transportApp = new OpenAPIHono();
 const spotApp = new OpenAPIHono();
 const authApp = new OpenAPIHono();
 const wishListApp = new OpenAPIHono();
+const notificationApp = new OpenAPIHono();
 
 tripApp.use(
   '*',
@@ -102,6 +105,14 @@ wishListApp.use(
   }),
 );
 
+notificationApp.use(
+  '*',
+  clerkMiddleware({
+    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
+    secretKey: process.env.CLERK_SECRET_KEY,
+  }),
+);
+
 // トリップルートの登録
 tripApp.openapi(getTripsRoute, getTripHandler.getTrips);
 tripApp.openapi(getTripCountRoute, getTripHandler.getTripCount);
@@ -124,12 +135,19 @@ wishListApp.openapi(deleteWishlistRoute, wishListHandler.deleteWishList);
 spotApp.openapi(getUnvisitedSpotsRoute, spotHandler.getUnvisitedSpots);
 spotApp.openapi(getVisitedSpotsRoute, spotHandler.getVisitedSpots);
 
+// お知らせルートの登録
+notificationApp.openapi(getNotificationsRoute, notificationHandler.getNotifications);
+notificationApp.openapi(getUnreadCountRoute, notificationHandler.getUnreadCount);
+notificationApp.openapi(markAsReadRoute, notificationHandler.markAsRead);
+notificationApp.openapi(markAllAsReadRoute, notificationHandler.markAllAsRead);
+
 app.route('/images', imageApp);
 app.route('/trips', tripApp);
 app.route('/transport', transportApp);
 app.route('/spots', spotApp);
 app.route('/auth', authApp);
 app.route('/wishlist', wishListApp);
+app.route('/notification', notificationApp);
 
 // APIドキュメントの登録
 app

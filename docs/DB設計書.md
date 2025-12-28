@@ -23,7 +23,8 @@ User (1)
  │    │    └─< Transport (N)
  │    │         └─< TransportMethodOnTransport (N)
  │    │              └─< TransportMethod
- └─< Wishlist (N) >─ Spot (1)
+ ├─< Wishlist (N) >─ Spot (1)
+ └─< UserNotification (N) >─ Notification (1)
 
 ```
 
@@ -219,6 +220,39 @@ User (1)
 - Spot (N:1)
 - User (N:1)
 
+### 13. Notification（お知らせ）
+**目的**: システムからのお知らせ情報を管理
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | お知らせID |
+| title | VARCHAR(100) | NOT NULL | タイトル |
+| content | TEXT | NOT NULL | 本文 |
+| type | NotificationType | NOT NULL | お知らせ種類 |
+| publishedAt | TIMESTAMP | NOT NULL | 公開日時 |
+| createdAt | TIMESTAMP | DEFAULT NOW() | 作成日時 |
+
+**リレーション**:
+- UserNotification (1:N)
+
+### 14. UserNotification（ユーザーお知らせ）
+**目的**: ユーザーごとのお知らせ既読状態を管理
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | ID |
+| userId | VARCHAR(255) | NOT NULL, FK | ユーザーID |
+| notificationId | INTEGER | NOT NULL, FK | お知らせID |
+| isRead | BOOLEAN | DEFAULT FALSE | 既読フラグ |
+| readAt | TIMESTAMP | NULL | 既読日時 |
+| createdAt | TIMESTAMP | DEFAULT NOW() | 作成日時 |
+
+**リレーション**:
+- User (N:1)
+- Notification (N:1)
+
+**ユニーク制約**:
+- (userId, notificationId)
 
 ## 列挙型
 
@@ -226,6 +260,10 @@ User (1)
 - `DEPARTURE`: 出発地
 - `DESTINATION`: 目的地
 - `SPOT`: 観光スポット
+
+### NotificationType
+- `SYSTEM`: システムお知らせ（メンテナンス告知、新機能リリースなど）
+- `INFO`: 一般情報（Tips、使い方ガイドなど）
 
 ## インデックス
 - `SpotMeta_spotId_key`: SpotMeta.spotId のユニークインデックス
@@ -241,6 +279,8 @@ User (1)
 - Transport.fromSpotId → PlanSpot.id
 - Transport.toSpotId → PlanSpot.id
 - NearestStation.spotId → Spot.id
+- UserNotification.userId → User.id (CASCADE DELETE)
+- UserNotification.notificationId → Notification.id (CASCADE DELETE)
 
 ## データベース設計の特徴
 1. **正規化**: 適切な正規化によりデータの整合性を保証
