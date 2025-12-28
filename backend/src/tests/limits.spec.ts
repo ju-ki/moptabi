@@ -179,7 +179,7 @@ describe('🔒 上限チェック機能', () => {
             {
               date: '2025-01-01',
               genreId: 1,
-              transportationMethod: [1],
+              transportationMethod: 1,
             },
           ],
           plans: [
@@ -206,7 +206,7 @@ describe('🔒 上限チェック機能', () => {
             {
               date: '2025-01-01',
               genreId: 1,
-              transportationMethod: [1],
+              transportationMethod: 1,
             },
           ],
           plans: [
@@ -251,7 +251,7 @@ describe('🔒 上限チェック機能', () => {
         stayStart: `${10 + i}:00`,
         stayEnd: `${11 + i}:00`,
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           name: 'TRANSIT',
           travelTime: '30 mins',
           fromType: 'SPOT',
@@ -269,7 +269,7 @@ describe('🔒 上限チェック機能', () => {
             {
               date: '2025-01-01',
               genreId: 1,
-              transportationMethod: [1],
+              transportationMethod: 1,
             },
           ],
           plans: [
@@ -297,7 +297,7 @@ describe('🔒 上限チェック機能', () => {
             {
               date: '2025-01-01',
               genreId: 1,
-              transportationMethod: [1],
+              transportationMethod: 1,
             },
           ],
           plans: [
@@ -326,7 +326,7 @@ describe('🔒 上限チェック機能', () => {
         return {
           date: date.toISOString().split('T')[0],
           genreId: 1,
-          transportationMethod: [1],
+          transportationMethod: 1,
         };
       });
 
@@ -361,9 +361,9 @@ describe('🔒 上限チェック機能', () => {
           startDate: '2025-01-01',
           endDate: '2025-01-03',
           tripInfo: [
-            { date: '2025-01-01', genreId: 1, transportationMethod: [1] },
-            { date: '2025-01-02', genreId: 1, transportationMethod: [1] },
-            { date: '2025-01-03', genreId: 1, transportationMethod: [1] },
+            { date: '2025-01-01', genreId: 1, transportationMethod: 1 },
+            { date: '2025-01-02', genreId: 1, transportationMethod: 1 },
+            { date: '2025-01-03', genreId: 1, transportationMethod: 1 },
           ],
           plans: [
             { date: '2025-01-01', spots: [] },

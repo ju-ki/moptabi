@@ -30,9 +30,7 @@ export const schema = z.object({
     z.object({
       date: z.string(),
       genreId: z.number().default(1),
-      transportationMethod: z.array(z.number()).refine((value) => value.some((item) => item), {
-        message: '移動手段は最低でも1つ以上選択してください',
-      }),
+      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }),
       memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     }),
   ),
@@ -88,7 +86,6 @@ interface FormState {
   startDate: string;
   endDate: string;
   tripInfo: TripInfo[];
-  transportMaster: TransportMethods[];
   plans: TravelPlanType[];
   departureHistory: Coordination[];
   destinationHistory: Coordination[];
@@ -102,10 +99,8 @@ interface FormState {
   setTripInfo: (
     date: string,
     name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
-    value: string | number | number[] | string,
+    value: string | number,
   ) => void;
-  getTransportMaster: () => TransportMethods[];
-  setTransportMaster: (transportMaster: TransportMethods[]) => void;
   getSpotInfo: (date: string, type: TransportNodeType) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
@@ -131,7 +126,6 @@ export const useStoreForPlanning = create<FormState>()(
       startDate: new Date().toLocaleDateString('sv-SE'),
       endDate: new Date().toLocaleDateString('sv-SE'),
       tripInfo: [],
-      transportMaster: [],
       plans: [
         {
           date: new Date().toLocaleDateString('sv-SE'),
@@ -205,18 +199,10 @@ export const useStoreForPlanning = create<FormState>()(
             state.tripInfo.push({
               date: date,
               genreId: name === 'genreId' ? Number(value) : 0,
-              transportationMethod: name === 'transportationMethod' ? (value as number[]) : [],
+              transportationMethod: name === 'transportationMethod' ? (value as number) : 1,
               memo: name === 'memo' ? (value as string) : '',
             });
           }
-        });
-      },
-      getTransportMaster() {
-        return get().transportMaster;
-      },
-      setTransportMaster(transportMaster) {
-        set((state) => {
-          state.transportMaster = transportMaster;
         });
       },
       setSpots: (date, spot, isDeleted = false) => {
@@ -371,8 +357,8 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     ratingCount: place.userRatingCount ?? 0,
     regularOpeningHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
     transports: {
-      transportMethodIds: [0],
-      name: 'DEFAULT',
+      transportMethod: 1,
+      name: 'WALKING',
       travelTime: '不明',
       fromType: TransportNodeType.SPOT,
       toType: TransportNodeType.SPOT,

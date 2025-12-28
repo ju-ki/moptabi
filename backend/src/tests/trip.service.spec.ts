@@ -6,13 +6,7 @@ import { Context } from 'hono';
 import { TripSchema } from '@/models/trip';
 
 import app from '..';
-import {
-  clearTestData,
-  connectPrisma,
-  createTestUser,
-  createTransportMethodsIfNotExist,
-  disconnectPrisma,
-} from './prisma';
+import { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_id';
@@ -35,7 +29,6 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
-  await createTransportMethodsIfNotExist();
 });
 
 export const mockAuthenticatedContext = (userId: string = TEST_USER_ID): Context => {
@@ -66,13 +59,13 @@ const mockTripInfoData = [
   {
     date: '2024-01-01',
     genreId: 1,
-    transportationMethod: [1],
+    transportationMethod: 1,
     memo: 'モックの旅行情報メモ',
   },
   {
     date: '2024-01-02',
     genreId: 2,
-    transportationMethod: [2],
+    transportationMethod: 2,
   },
 ];
 
@@ -90,7 +83,7 @@ const mockPlanData = [
         spotId: 'departure_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           travelTime: '15分',
           cost: 300,
           fromType: 'DEPARTURE',
@@ -127,7 +120,7 @@ const mockPlanData = [
           { day: '日', hours: '10:00-18:00' },
         ],
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           travelTime: '30分',
           cost: 500,
           fromType: 'SPOT',
@@ -164,7 +157,7 @@ const mockPlanData = [
           { day: '日', hours: '6:00-22:00' },
         ],
         transports: {
-          transportMethodIds: [2],
+          transportMethod: 2,
           travelTime: '45分',
           cost: 700,
           fromType: 'SPOT',
@@ -185,7 +178,7 @@ const mockPlanData = [
         spotId: 'destination_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           travelTime: '15分',
           cost: 300,
           fromType: 'SPOT',
@@ -211,7 +204,7 @@ const mockPlanData = [
         spotId: 'departure_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           travelTime: '15分',
           cost: 300,
           fromType: 'DEPARTURE',
@@ -248,7 +241,7 @@ const mockPlanData = [
           { day: '日', hours: '9:00-20:00' },
         ],
         transports: {
-          transportMethodIds: [3],
+          transportMethod: 3,
           travelTime: '60分',
           cost: 1000,
           fromType: 'SPOT',
@@ -269,7 +262,7 @@ const mockPlanData = [
         spotId: 'destination_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethodIds: [1],
+          transportMethod: 1,
           travelTime: '15分',
           cost: 300,
           fromType: 'SPOT',

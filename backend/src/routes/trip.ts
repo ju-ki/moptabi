@@ -181,31 +181,6 @@ export const getTripCountRoute = createRoute({
   },
 });
 
-export const getTransportMethodsRoute = createRoute({
-  method: 'get',
-  path: '/',
-  tags: ['Transport'],
-  summary: '全ての移動手段を取得',
-  responses: {
-    200: {
-      description: '移動手段一覧を返却',
-      content: {
-        'application/json': {
-          schema: z.array(
-            z.object({
-              id: z.number(),
-              name: z.string(),
-            }),
-          ),
-        },
-      },
-    },
-    500: {
-      description: '移動手段取得時のエラー',
-    },
-  },
-});
-
 export const getDepartureAndDepartment = createRoute({
   method: 'get',
   path: '/',

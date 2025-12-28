@@ -15,7 +15,7 @@ export const TripSchema = z.object({
     z.object({
       date: z.string(),
       genreId: z.number().default(1),
-      transportationMethod: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
+      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }),
       memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     }),
   ),
@@ -44,7 +44,7 @@ export const TripSchema = z.object({
           description: z.string().optional(),
           regularOpeningHours: OpeningHoursSchema.optional(),
           transports: z.object({
-            transportMethodIds: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
+            transportMethod: z.number().min(1, { message: '移動手段を選択してください' }),
             travelTime: z.string().optional(),
             cost: z.number().optional(),
             fromType: z.enum(TransportNodeType),

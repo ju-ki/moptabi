@@ -29,12 +29,13 @@ export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {
   gourmet: ['restaurant', 'cafe', 'bar', 'bakery'],
 };
 
-export const JpTransportMethods: Record<string, string> = {
-  WALKING: '徒歩',
-  TRANSIT: '交通機関',
-  DRIVING: '車',
-  BICYCLING: '自転車',
-  OTHER: 'その他',
+export const TransportMethods: Record<string, { id: number; jp_label: string }> = {
+  WALKING: { id: 1, jp_label: '徒歩' },
+  DRIVING: { id: 2, jp_label: '車' },
+  BICYCLING: { id: 3, jp_label: '自転車' },
+  // TODO: 公共交通機関は対応できていないためコメントアウト
+  // TRANSIT: { id: 4, jp_label: '交通機関' },
+  // OTHER: { id: 5, jp_label: 'その他' },
 };
 
 export const SpotMakerColors: Record<TransportNodeType, string> = {

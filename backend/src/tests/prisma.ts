@@ -23,7 +23,7 @@ export async function disconnectPrisma(): Promise<void> {
  * 外部キー制約を考慮した順序で各モデルの deleteMany() を実行します。
  *
  * 削除順:
- *  - 依存先が多い子テーブルを先に削除する（例: TransportMethodOnTransport, Transport, PlanSpot, TripInfo, Plan, Trip, Wishlist, NearestStation, SpotMeta, Spot, User, TransportMethod）
+ *  - 依存先が多い子テーブルを先に削除する（例: PlanSpot, TripInfo, Plan, Trip, Wishlist, NearestStation, SpotMeta, Spot, User）
  *  - もしスキーマに新しいモデルを追加した場合は、依存関係に注意してここに追加してください。
  *
  * エラーが発生しても処理を続行し、最後にまとめてエラーを throw しません（ログを残す）。
@@ -32,8 +32,6 @@ export async function clearTestData(): Promise<void> {
   // 削除順を列挙（schema.prisma の依存関係に基づく）
   const order: Array<keyof typeof prismaClient> = [
     // 中間テーブル・関連テーブル
-    'transportMethodOnTransport' as any, // optional: 存在しない場合もあるので try-catch で対応
-    'transport' as any,
     'planSpot' as any,
     'tripInfo' as any,
     'plan' as any,
@@ -46,7 +44,6 @@ export async function clearTestData(): Promise<void> {
     'userNotification' as any,
     'notification' as any,
     'user' as any,
-    'transportMethod' as any,
   ];
 
   for (const modelKey of order) {
@@ -60,24 +57,6 @@ export async function clearTestData(): Promise<void> {
       // 削除でエラーが出ても続行する。テストログに残すことでデバッグしやすくする。
 
       console.warn(`clearTestData: failed to delete ${String(modelKey)}:`, (err as Error).message);
-    }
-  }
-}
-
-/** 旅行計画作成用に、あらかじめ交通手段を作成するユーティリティ */
-export async function createTransportMethodsIfNotExist() {
-  const transportMethods = [
-    { id: 0, name: 'WALKING' },
-    { id: 1, name: 'DRIVING' },
-    { id: 2, name: 'TRANSIT' },
-    { id: 3, name: 'BICYCLING' },
-    { id: 4, name: 'DEFAULT' },
-  ];
-
-  for (const method of transportMethods) {
-    const existing = await prismaClient.transportMethod.findUnique({ where: { id: method.id } });
-    if (!existing) {
-      await prismaClient.transportMethod.create({ data: method });
     }
   }
 }

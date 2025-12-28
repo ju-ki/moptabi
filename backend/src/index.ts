@@ -11,7 +11,6 @@ import {
   getTripDetailRoute,
   deleteTripRoute,
   uploadImageRoute,
-  getTransportMethodsRoute,
   getDepartureAndDepartment,
   getTripCountRoute,
 } from './routes/trip';
@@ -65,14 +64,6 @@ tripApp.use(
   }),
 );
 
-transportApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
-
 spotApp.use(
   '*',
   clerkMiddleware({
@@ -119,7 +110,6 @@ tripApp.openapi(getTripCountRoute, getTripHandler.getTripCount);
 tripApp.openapi(createTripRoute, getTripHandler.createTrip);
 tripApp.openapi(getTripDetailRoute, getTripHandler.getTripDetail);
 tripApp.openapi(deleteTripRoute, getTripHandler.deleteTrip);
-transportApp.openapi(getTransportMethodsRoute, getTripHandler.getTransportMethods);
 spotApp.openapi(getDepartureAndDepartment, getTripHandler.getDepartureAndDepartment);
 imageApp.openapi(uploadImageRoute, getImageHandler.uploadImage);
 imageApp.openapi(getImageRoute, getImageHandler.getImage);
@@ -143,7 +133,6 @@ notificationApp.openapi(markAllAsReadRoute, notificationHandler.markAllAsRead);
 
 app.route('/images', imageApp);
 app.route('/trips', tripApp);
-app.route('/transport', transportApp);
 app.route('/spots', spotApp);
 app.route('/auth', authApp);
 app.route('/wishlist', wishListApp);

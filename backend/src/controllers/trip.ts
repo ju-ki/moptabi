@@ -258,12 +258,7 @@ export const getTripHandler = {
                 toSpotId: toSpot.id,
                 cost: transportData.cost ?? 0,
                 travelTime: transportData.travelTime ?? '不明',
-                transportMethods: {
-                  create:
-                    transportData.transportMethodIds?.map((methodId: number) => ({
-                      transportMethodId: methodId,
-                    })) ?? [],
-                },
+                transportMethod: transportData.transportMethod,
               },
             });
           }
@@ -279,6 +274,7 @@ export const getTripHandler = {
                 toSpotId: firstSpot.id,
                 cost: 0,
                 travelTime: '出発',
+                transportMethod: 1,
               },
             });
           }
@@ -294,6 +290,7 @@ export const getTripHandler = {
                 fromSpotId: lastSpot.id,
                 cost: 0,
                 travelTime: '帰宅',
+                transportMethod: 1,
               },
             });
           }
@@ -323,51 +320,6 @@ export const getTripHandler = {
     });
 
     return c.json(createdTrip, 201);
-  },
-
-  // 交通手段を取得
-  getTransportMethods: async (c: Context) => {
-    try {
-      const transportMethods = await prisma.transportMethod.findMany({
-        orderBy: { id: 'asc' },
-      });
-
-      return c.json(transportMethods, 200);
-    } catch (error) {
-      let errorMessage = 'Unknown error occurred';
-      let errorDetails = {};
-
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        // 既知のPrismaエラー
-        errorMessage = `Prisma error code: ${error.code}`;
-        errorDetails = {
-          message: error.message,
-          code: error.code,
-          meta: error.meta,
-        };
-      } else if (error instanceof Prisma.PrismaClientValidationError) {
-        // バリデーションエラー（型など）
-        errorMessage = 'Validation error';
-        errorDetails = {
-          message: error.message,
-        };
-      } else if (error instanceof Error) {
-        // その他のJSエラー
-        errorMessage = error.message;
-        errorDetails = { message: error.message };
-      }
-
-      console.error('Error during Prisma operation:', errorDetails);
-
-      return c.json(
-        {
-          error: 'Internal Server Error',
-          message: errorMessage,
-          details: errorDetails,
-        },
-        500,
-      );
-    }
   },
 
   /**

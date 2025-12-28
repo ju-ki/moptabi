@@ -5,7 +5,7 @@ import { GoogleMap, Marker, Polyline, InfoWindow } from '@react-google-maps/api'
 import { createPortal } from 'react-dom';
 
 import { Coordination, TransportNodeType, TravelModeType } from '@/types/plan';
-import { SpotMakerColors } from '@/data/constants';
+import { SpotMakerColors, TransportMethods } from '@/data/constants';
 import { RouteResult, useStoreForPlanning } from '@/lib/plan';
 import { calcRoutes } from '@/lib/algorithm';
 
@@ -16,23 +16,6 @@ const containerStyle = {
   height: '500px',
   borderRadius: '8px',
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-};
-
-const convertToTransportNameToId = (name: TravelModeType): number => {
-  switch (name) {
-    case 'WALKING':
-      return 1; // 徒歩
-    case 'DRIVING':
-      return 2; // 車
-    case 'TRANSIT':
-      return 3; // 公共交通機関
-    case 'BICYCLING':
-      return 4; // 自転車
-    case 'DEFAULT':
-      return 0; // デフォルト（未指定）
-    default:
-      return 0; // デフォルト（未指定）
-  }
 };
 
 interface TravelMapProps {
@@ -116,10 +99,15 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
     const calculateRoutes = async () => {
       const tripInfo = fields.getTripInfo(date);
-      const masterTransport = fields.getTransportMaster();
-      const transportMethods = tripInfo?.transportationMethod || [];
-      // 現状一つの移動手段のみ
-      const targetTransportMethod = masterTransport.find((val) => transportMethods.includes(val.id))?.name || 'DEFAULT';
+      const transportMethod = tripInfo?.transportationMethod;
+      // IDからキー名を取得するヘルパー
+      const getTransportKeyById = (id: number | undefined): TravelModeType => {
+        if (!id) return 'WALKING';
+        const entry = Object.entries(TransportMethods).find(([, val]) => val.id === id);
+        return (entry ? entry[0] : 'WALKING') as TravelModeType;
+      };
+      // 現状一つの移動手段のみ選択可能
+      const targetTransportMethod = getTransportKeyById(transportMethod);
 
       const routeResults: RouteResult[] = [];
       let orderNumber = 0;
@@ -129,7 +117,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
       fields.editSpots(date, departureCoordination.id, {
         transports: {
-          transportMethodIds: [convertToTransportNameToId(firstRoute.travelMode)],
+          transportMethod: TransportMethods[firstRoute.travelMode].id,
           name: firstRoute.travelMode || 'DEFAULT',
           travelTime: firstRoute.duration || '',
           fromType: TransportNodeType.DEPARTURE,
@@ -149,7 +137,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           routeResults.push(lastRoute);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
-              transportMethodIds: [convertToTransportNameToId(lastRoute.travelMode)],
+              transportMethod: TransportMethods[lastRoute.travelMode].id,
               name: lastRoute.travelMode || 'DEFAULT',
               travelTime: lastRoute.duration || '',
               fromType: TransportNodeType.SPOT,
@@ -162,7 +150,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           // 目的のスポットの情報更新
           fields.editSpots(date, destinationCoordination.id, {
             transports: {
-              transportMethodIds: [convertToTransportNameToId('DEFAULT')],
+              transportMethod: TransportMethods['WALKING'].id,
               name: 'DEFAULT',
               travelTime: '',
               fromType: TransportNodeType.DESTINATION,
@@ -174,7 +162,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           const route = await calcRoutes(spotCoordination[i], spotCoordination[i + 1], targetTransportMethod);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
-              transportMethodIds: [convertToTransportNameToId(route.travelMode)],
+              transportMethod: TransportMethods[route.travelMode].id,
               name: route.travelMode || 'DEFAULT',
               travelTime: route.duration || '',
               fromType: TransportNodeType.SPOT,

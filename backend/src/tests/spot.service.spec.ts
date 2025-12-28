@@ -8,7 +8,6 @@ import prismaUtil, {
   clearTestData,
   connectPrisma,
   createTestUser,
-  createTransportMethodsIfNotExist,
   disconnectPrisma,
   createSpotWithMeta,
   createWishlistEntry,
@@ -29,7 +28,6 @@ beforeAll(async () => {
   await connectPrisma();
   await clearTestData();
   await createTestUser(TEST_USER_ID);
-  await createTransportMethodsIfNotExist();
 });
 
 afterAll(async () => {
@@ -40,7 +38,6 @@ afterAll(async () => {
 beforeEach(async () => {
   vi.clearAllMocks();
   (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
-  await createTransportMethodsIfNotExist();
 });
 
 /**
@@ -81,7 +78,7 @@ async function createTripViaTripService(params: {
       spotId: spot.spotId,
       regularOpeningHours: [],
       transports: {
-        transportMethodIds: [1],
+        transportMethod: 1,
         travelTime: '15分',
         cost: 300,
         fromType,
@@ -104,7 +101,7 @@ async function createTripViaTripService(params: {
         {
           date: startDate,
           genreId: 1,
-          transportationMethod: [1],
+          transportationMethod: 1,
         },
       ],
       plans: [
@@ -610,6 +607,7 @@ describe('🧾 スポットサービス', () => {
           toType: 'SPOT',
           fromSpotId: departurePlanSpot.id,
           toSpotId: normalPlanSpot.id,
+          transportMethod: 1,
         },
       });
 
@@ -621,6 +619,7 @@ describe('🧾 スポットサービス', () => {
           toType: 'DESTINATION',
           fromSpotId: normalPlanSpot.id,
           toSpotId: destinationPlanSpot.id,
+          transportMethod: 1,
         },
       });
 
@@ -818,7 +817,6 @@ describe('🧾 スポットサービス', () => {
       it('過去に計画したスポットに対して期間指定でフィルタリングできること', async () => {
         await clearTestData();
         await createTestUser(TEST_USER_ID);
-        await createTransportMethodsIfNotExist();
 
         // 2024年1月の計画スポット（範囲外）- trip.serviceを介して作成
         await createSpotWithMeta('spot1', { name: 'スポットA' });
@@ -867,7 +865,6 @@ describe('🧾 スポットサービス', () => {
       it('訪問済みスポットと過去に計画したスポットに対して期間指定でフィルタリングできること', async () => {
         await clearTestData();
         await createTestUser(TEST_USER_ID);
-        await createTransportMethodsIfNotExist();
 
         // 訪問済みスポット（2024年1月 - 範囲外）
         await createSpotWithMeta('spot1', { name: 'スポットA' });

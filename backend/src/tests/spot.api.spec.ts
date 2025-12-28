@@ -8,7 +8,6 @@ import prismaUtil, {
   clearTestData,
   connectPrisma,
   createTestUser,
-  createTransportMethodsIfNotExist,
   disconnectPrisma,
   createSpotWithMeta,
   createWishlistEntry,
@@ -25,7 +24,6 @@ beforeAll(async () => {
   await connectPrisma();
   await clearTestData();
   await createTestUser(TEST_USER_ID);
-  await createTransportMethodsIfNotExist();
 });
 
 afterAll(async () => {
