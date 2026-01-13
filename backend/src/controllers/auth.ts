@@ -80,18 +80,28 @@ export async function getUserList(c: Context) {
   const [wishlistCounts, planCounts] = await Promise.all([countWishListByUserId(userIds), countPlanByUserId(userIds)]);
 
   // ユーザー情報にカウントを追加してリストを作成
-  let userList: User[] = users.data.map((user: { id: string; firstName: string | null; lastName: string | null; primaryEmailAddress: { emailAddress: string } | null; imageUrl: string | null; createdAt: number; lastSignInAt: number | null }) => ({
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.primaryEmailAddress ? { emailAddress: user.primaryEmailAddress.emailAddress } : null,
-    imageUrl: user.imageUrl,
-    registeredAt: user.createdAt,
-    lastLoginAt: user.lastSignInAt,
-    role: registeredUsers.find((u: { id: string }) => u.id === user.id)?.role || 'GUEST',
-    wishlistCount: wishlistCounts[user.id] || 0,
-    planCount: planCounts[user.id] || 0,
-  }));
+  let userList: User[] = users.data.map(
+    (user: {
+      id: string;
+      firstName: string | null;
+      lastName: string | null;
+      primaryEmailAddress: { emailAddress: string } | null;
+      imageUrl: string | null;
+      createdAt: number;
+      lastSignInAt: number | null;
+    }) => ({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.primaryEmailAddress ? { emailAddress: user.primaryEmailAddress.emailAddress } : null,
+      imageUrl: user.imageUrl,
+      registeredAt: user.createdAt,
+      lastLoginAt: user.lastSignInAt,
+      role: registeredUsers.find((u: { id: string }) => u.id === user.id)?.role || 'GUEST',
+      wishlistCount: wishlistCounts[user.id] || 0,
+      planCount: planCounts[user.id] || 0,
+    }),
+  );
 
   // 検索フィルター
   if (search) {
