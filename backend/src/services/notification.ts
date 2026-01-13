@@ -2,7 +2,8 @@ import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 
-import { PrismaClient } from '@/generated/prisma';
+import { PrismaClient, NotificationType, Prisma } from '@/generated/prisma';
+import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 
 const prisma = new PrismaClient();
 
@@ -79,11 +80,15 @@ export async function getNotifications(c: Context) {
  */
 export async function getUnreadCount(c: Context) {
   const userId = requireAuth(c);
+  const now = new Date();
 
   const count = await prisma.userNotification.count({
     where: {
       userId,
       isRead: false,
+      notification: {
+        publishedAt: { lte: now },
+      },
     },
   });
 
@@ -177,4 +182,303 @@ export async function distributeNotification(notificationId: number, userIds?: s
   // TODO: リアルタイム通知の実装時
   // WebSocket/SSEを使用して接続中のユーザーにプッシュ通知を送信
   // 例: broadcastToUsers(targetUsers.map(u => u.id), { type: 'NEW_NOTIFICATION', notificationId })
+}
+
+/**
+ * お知らせを作成する（管理者向け）
+ * @param c Honoコンテキスト
+ * @param data 作成データ
+ */
+export async function createNotification(c: Context, data: NotificationCreate) {
+  requireAuth(c);
+
+  let responseNotification;
+  await prisma.$transaction(async (prisma) => {
+    // 全ユーザーのIDを取得
+    const users = await prisma.user.findMany({
+      select: { id: true },
+    });
+    const userIds = users.map((user) => user.id);
+    const notification = await prisma.notification.create({
+      data: {
+        title: data.title,
+        content: data.content,
+        type: data.type as NotificationType,
+        publishedAt: new Date(data.publishedAt),
+      },
+    });
+
+    // 管理者画面から作成したお知らせは全ユーザーに配信する
+    await prisma.userNotification.createMany({
+      data: userIds.map((userId) => ({
+        userId,
+        notificationId: notification.id,
+        isRead: false,
+      })),
+    });
+
+    responseNotification = {
+      id: notification.id,
+      title: notification.title,
+      content: notification.content,
+      type: notification.type,
+      publishedAt: notification.publishedAt.toISOString(),
+      createdAt: notification.createdAt.toISOString(),
+    };
+  });
+
+  return responseNotification;
+}
+
+/**
+ * お知らせを更新する（管理者向け）
+ * @param c Honoコンテキスト
+ * @param notificationId お知らせID
+ * @param data 更新データ
+ */
+export async function updateNotification(c: Context, notificationId: number, data: NotificationUpdate) {
+  requireAuth(c);
+
+  // 存在確認
+  const existing = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Notification not found' });
+  }
+
+  let responseNotification;
+
+  await prisma.$transaction(async (prisma) => {
+    // 全ユーザーのIDを取得
+    const users = await prisma.user.findMany({
+      select: { id: true },
+    });
+    const userIds = users.map((user) => user.id);
+    const notification = await prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        title: data.title,
+        content: data.content,
+        type: data.type as NotificationType,
+        publishedAt: new Date(data.publishedAt),
+      },
+    });
+
+    // 管理者画面から更新したお知らせは全ユーザーに再配信する
+    await Promise.all(
+      userIds.map(async (userId) => {
+        const userNotification = await prisma.userNotification.findUnique({
+          where: {
+            userId_notificationId: {
+              userId,
+              notificationId: notification.id,
+            },
+          },
+        });
+
+        if (userNotification) {
+          // 既存のUserNotificationがある場合は未読に更新
+          await prisma.userNotification.update({
+            where: { id: userNotification.id },
+            data: {
+              isRead: false,
+              readAt: null,
+            },
+          });
+        } else {
+          // 存在しない場合は新規作成
+          await prisma.userNotification.create({
+            data: {
+              userId,
+              notificationId: notification.id,
+              isRead: false,
+            },
+          });
+        }
+      }),
+    );
+    responseNotification = {
+      id: notification.id,
+      title: notification.title,
+      content: notification.content,
+      type: notification.type,
+      publishedAt: notification.publishedAt.toISOString(),
+      createdAt: notification.createdAt.toISOString(),
+    };
+  });
+  return responseNotification;
+}
+
+/**
+ * お知らせを削除する（管理者向け）
+ * 関連するUserNotificationもカスケード削除される
+ * @param c Honoコンテキスト
+ * @param notificationId お知らせID
+ */
+export async function deleteNotification(c: Context, notificationId: number) {
+  requireAuth(c);
+
+  // 存在確認
+  const existing = await prisma.notification.findUnique({
+    where: { id: notificationId },
+  });
+
+  if (!existing) {
+    throw new HTTPException(404, { message: 'Notification not found' });
+  }
+
+  // カスケード削除: UserNotificationも削除される（Prismaスキーマで設定済み）
+  await prisma.notification.delete({
+    where: { id: notificationId },
+  });
+
+  return { success: true };
+}
+
+/**
+ * 管理者向けお知らせ一覧を取得
+ * 未来の公開日も含めて全て取得し、既読率情報も含む
+ * ページネーション・検索・フィルター・ソート対応
+ * @param c Honoコンテキスト
+ */
+export async function getAdminNotifications(c: Context) {
+  const userId = requireAuth(c);
+
+  // 管理者権限以外は403を返す
+  const targetUser = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (targetUser?.role !== 'ADMIN') {
+    throw new HTTPException(403, { message: 'Forbidden' });
+  }
+
+  // クエリパラメータを取得
+  const query = c.req.query() as Record<string, string | undefined>;
+  const page = parseInt(query.page || '1', 10);
+  const limit = Math.min(parseInt(query.limit || '20', 10), 100);
+  const title = query.title;
+  const type = query.type as 'SYSTEM' | 'INFO' | undefined;
+  const publishedFrom = query.publishedFrom;
+  const publishedTo = query.publishedTo;
+  const sortBy = (query.sortBy as 'publishedAt' | 'createdAt' | 'readRate') || 'publishedAt';
+  const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc';
+
+  // Prismaのwhere条件を構築
+  const where: Prisma.NotificationWhereInput = {};
+
+  if (title) {
+    where.title = {
+      contains: title,
+      mode: 'insensitive',
+    };
+  }
+
+  if (type) {
+    where.type = type;
+  }
+
+  if (publishedFrom || publishedTo) {
+    where.publishedAt = {};
+    if (publishedFrom) {
+      where.publishedAt.gte = new Date(publishedFrom);
+    }
+    if (publishedTo) {
+      // publishedToは指定日の終わりまでを含む
+      const endDate = new Date(publishedTo);
+      endDate.setHours(23, 59, 59, 999);
+      where.publishedAt.lte = endDate;
+    }
+  }
+
+  // 総件数を取得
+  const totalCount = await prisma.notification.count({ where });
+
+  // 既読率でソートする場合は全件取得してソート
+  let notifications;
+  if (sortBy === 'readRate') {
+    notifications = await prisma.notification.findMany({
+      where,
+      include: {
+        userNotifications: {
+          select: {
+            isRead: true,
+          },
+        },
+      },
+    });
+  } else {
+    // publishedAtまたはcreatedAtでソートする場合はPrismaでソート
+    notifications = await prisma.notification.findMany({
+      where,
+      orderBy: {
+        [sortBy]: sortOrder,
+      },
+      include: {
+        userNotifications: {
+          select: {
+            isRead: true,
+          },
+        },
+      },
+    });
+  }
+
+  // 既読率を計算してマップ
+  const result = notifications.map((n) => {
+    const totalRecipients = n.userNotifications.length;
+    const readCount = n.userNotifications.filter((un) => un.isRead).length;
+    const readRate = totalRecipients > 0 ? Math.round((readCount / totalRecipients) * 100) : 0;
+
+    return {
+      id: n.id,
+      title: n.title,
+      content: n.content,
+      type: n.type,
+      publishedAt: n.publishedAt,
+      createdAt: n.createdAt,
+      readRate,
+      totalRecipients,
+      readCount,
+    };
+  });
+
+  // 既読率でソートする場合はJavaScriptでソート
+  if (sortBy === 'readRate') {
+    result.sort((a, b) => {
+      if (sortOrder === 'asc') {
+        return a.readRate - b.readRate;
+      }
+      return b.readRate - a.readRate;
+    });
+  }
+
+  // ページネーション
+  const startIndex = (page - 1) * limit;
+  const paginatedResult = result.slice(startIndex, startIndex + limit);
+
+  // ページネーション情報を計算
+  const totalPages = Math.ceil(totalCount / limit);
+  const pagination = {
+    currentPage: page,
+    totalPages,
+    totalCount,
+    limit,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
+  };
+
+  // 日付をISO文字列に変換
+  const formattedNotifications = paginatedResult.map((n) => ({
+    ...n,
+    publishedAt: n.publishedAt instanceof Date ? n.publishedAt.toISOString() : n.publishedAt,
+    createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : n.createdAt,
+  }));
+
+  return {
+    notifications: formattedNotifications,
+    pagination,
+  };
 }

@@ -5,6 +5,11 @@ import {
   UnreadCountResponseSchema,
   MarkReadResponseSchema,
   MarkAllReadResponseSchema,
+  NotificationCreateSchema,
+  NotificationUpdateSchema,
+  NotificationResponseSchema,
+  NotificationAdminQuerySchema,
+  NotificationAdminPaginatedResponseSchema,
 } from '@/models/notification';
 
 /**
@@ -105,6 +110,137 @@ export const markAllAsReadRoute = createRoute({
       },
     },
     401: { description: '認証エラー' },
+    500: { description: 'サーバーエラー' },
+  },
+});
+
+/**
+ * お知らせ作成（管理者向け）
+ */
+export const createNotificationRoute = createRoute({
+  method: 'post',
+  path: '/',
+  tags: ['Notification'],
+  summary: 'お知らせを作成',
+  description: '新しいお知らせを作成します（管理者向け）',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: NotificationCreateSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'お知らせの作成に成功',
+      content: {
+        'application/json': {
+          schema: NotificationResponseSchema,
+        },
+      },
+    },
+    400: { description: 'バリデーションエラー' },
+    401: { description: '認証エラー' },
+    500: { description: 'サーバーエラー' },
+  },
+});
+
+/**
+ * お知らせ更新（管理者向け）
+ */
+export const updateNotificationRoute = createRoute({
+  method: 'patch',
+  path: '/{id}',
+  tags: ['Notification'],
+  summary: 'お知らせを更新',
+  description: '既存のお知らせを更新します（管理者向け）',
+  request: {
+    params: z.object({
+      id: z.string().openapi({ example: '1', description: 'お知らせID' }),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: NotificationUpdateSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'お知らせの更新に成功',
+      content: {
+        'application/json': {
+          schema: NotificationResponseSchema,
+        },
+      },
+    },
+    400: { description: 'バリデーションエラー' },
+    401: { description: '認証エラー' },
+    404: { description: 'お知らせが見つかりません' },
+    500: { description: 'サーバーエラー' },
+  },
+});
+
+/**
+ * お知らせ削除（管理者向け）
+ */
+export const deleteNotificationRoute = createRoute({
+  method: 'delete',
+  path: '/{id}',
+  tags: ['Notification'],
+  summary: 'お知らせを削除',
+  description: 'お知らせを削除します（管理者向け）。関連するUserNotificationも削除されます。',
+  request: {
+    params: z.object({
+      id: z.string().openapi({ example: '1', description: 'お知らせID' }),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'お知らせの削除に成功',
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+          }),
+        },
+      },
+    },
+    401: { description: '認証エラー' },
+    404: { description: 'お知らせが見つかりません' },
+    500: { description: 'サーバーエラー' },
+  },
+});
+
+/**
+ * 管理者向けお知らせ一覧取得
+ * 未来の公開日も含めて全て取得、既読率情報付き
+ * ページネーション・検索・フィルター・ソート対応
+ */
+export const getAdminNotificationsRoute = createRoute({
+  method: 'get',
+  path: '/admin',
+  tags: ['Notification'],
+  summary: '管理者向けお知らせ一覧を取得',
+  description:
+    '管理者向けにお知らせ一覧を取得します。未来の公開日も含めて全て取得し、既読率情報も含みます。ページネーション・検索・フィルター・ソートに対応。',
+  request: {
+    query: NotificationAdminQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'お知らせ一覧の取得に成功',
+      content: {
+        'application/json': {
+          schema: NotificationAdminPaginatedResponseSchema,
+        },
+      },
+    },
+    401: { description: '認証エラー' },
+    403: { description: '権限エラー' },
     500: { description: 'サーバーエラー' },
   },
 });

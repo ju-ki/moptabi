@@ -15,8 +15,8 @@ import {
   getTripCountRoute,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
-import { findExistingUserRoute } from './routes/auth';
-import { getAuthHandler } from './controllers/auth';
+import { findExistingUserRoute, getDashboardStatsRoute, getUserListRoute } from './routes/auth';
+import { getAuthHandler, getStats, getUserList } from './controllers/auth';
 import { getImageHandler } from './controllers/image';
 import { getImageRoute } from './routes/trip';
 import {
@@ -29,7 +29,16 @@ import {
 import { wishListHandler } from './controllers/wishlist';
 import { getUnvisitedSpotsRoute, getVisitedSpotsRoute } from './routes/spot';
 import { spotHandler } from './controllers/spot';
-import { getNotificationsRoute, getUnreadCountRoute, markAsReadRoute, markAllAsReadRoute } from './routes/notification';
+import {
+  getNotificationsRoute,
+  getUnreadCountRoute,
+  markAsReadRoute,
+  markAllAsReadRoute,
+  createNotificationRoute,
+  updateNotificationRoute,
+  deleteNotificationRoute,
+  getAdminNotificationsRoute,
+} from './routes/notification';
 import { notificationHandler } from './controllers/notification';
 
 const app = new OpenAPIHono().basePath('/api');
@@ -50,7 +59,6 @@ app.use(
 //ルートの登録
 const tripApp = new OpenAPIHono();
 const imageApp = new OpenAPIHono();
-const transportApp = new OpenAPIHono();
 const spotApp = new OpenAPIHono();
 const authApp = new OpenAPIHono();
 const wishListApp = new OpenAPIHono();
@@ -115,6 +123,8 @@ imageApp.openapi(uploadImageRoute, getImageHandler.uploadImage);
 imageApp.openapi(getImageRoute, getImageHandler.getImage);
 
 authApp.openapi(findExistingUserRoute, getAuthHandler);
+authApp.openapi(getUserListRoute, getUserList);
+authApp.openapi(getDashboardStatsRoute, getStats);
 
 wishListApp.openapi(getWishlistRoute, wishListHandler.getWishList);
 wishListApp.openapi(getWishlistCountRoute, wishListHandler.getWishListCount);
@@ -126,10 +136,15 @@ spotApp.openapi(getUnvisitedSpotsRoute, spotHandler.getUnvisitedSpots);
 spotApp.openapi(getVisitedSpotsRoute, spotHandler.getVisitedSpots);
 
 // お知らせルートの登録
+// 注意: 具体的なパスを先に登録し、動的パラメータを含むルートを後に登録
+notificationApp.openapi(getAdminNotificationsRoute, notificationHandler.getAdminNotifications);
 notificationApp.openapi(getNotificationsRoute, notificationHandler.getNotifications);
 notificationApp.openapi(getUnreadCountRoute, notificationHandler.getUnreadCount);
-notificationApp.openapi(markAsReadRoute, notificationHandler.markAsRead);
 notificationApp.openapi(markAllAsReadRoute, notificationHandler.markAllAsRead);
+notificationApp.openapi(createNotificationRoute, notificationHandler.createNotification);
+notificationApp.openapi(markAsReadRoute, notificationHandler.markAsRead);
+notificationApp.openapi(updateNotificationRoute, notificationHandler.updateNotification);
+notificationApp.openapi(deleteNotificationRoute, notificationHandler.deleteNotification);
 
 app.route('/images', imageApp);
 app.route('/trips', tripApp);

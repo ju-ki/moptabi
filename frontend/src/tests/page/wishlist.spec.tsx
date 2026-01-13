@@ -104,7 +104,7 @@ describe('行きたいリストの統合テスト', () => {
         stayStart: '09:00',
         stayEnd: '10:00',
         transports: {
-          transportMethodIds: [],
+          transportMethod: 1,
           name: 'WALKING',
           travelTime: '30分',
           fromType: TransportNodeType.SPOT,
@@ -122,7 +122,7 @@ describe('行きたいリストの統合テスト', () => {
         stayStart: '11:00',
         stayEnd: '12:00',
         transports: {
-          transportMethodIds: [],
+          transportMethod: 1,
           name: 'WALKING',
           travelTime: '20分',
           fromType: TransportNodeType.SPOT,
