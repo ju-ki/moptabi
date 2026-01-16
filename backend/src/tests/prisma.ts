@@ -66,13 +66,13 @@ export async function clearTestData(): Promise<void> {
  * @param userId 作成するユーザーのID
  * @returns 作成または既存の user レコード
  */
-export async function createTestUser(userId: string) {
+export async function createTestUser(userId: string, role: 'ADMIN' | 'USER' | 'GUEST' = 'USER') {
   try {
     // upsert を使い、既存ユーザーがいてもエラーにならないようにする
     return await prismaClient.user.upsert({
       where: { id: userId },
       update: {},
-      create: { id: userId },
+      create: { id: userId, role: role },
     });
   } catch (err) {
     console.warn('createTestUser: upsert failed, attempting findUnique fallback:', (err as Error).message);

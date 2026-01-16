@@ -155,7 +155,6 @@ model UserNotification {
   isRead         Boolean   @default(false)
   readAt         DateTime?
   createdAt      DateTime  @default(now())
-
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
@@ -164,7 +163,14 @@ model UserNotification {
 
 model User {
   id                String             @id @db.VarChar(255)
+  role         RoleType  @default(USER)
   trip              Trip[]
   wishlists         Wishlist[]
   userNotifications UserNotification[]
+}
+
+enum RoleType {
+  ADMIN
+  USER
+  GUEST
 }

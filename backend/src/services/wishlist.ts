@@ -203,3 +203,52 @@ export const deleteWishList = async (c: Context) => {
 
   return wishlist;
 };
+
+/**
+ * ユーザーIDごとの行きたいリストの数を取得
+ * @param userId clerkに登録されているuserIdの配列
+ * @returns ユーザーIDをキー、行きたいリストの数を値とするオブジェクト
+ */
+export const countWishListByUserId = async (userId: string[]) => {
+  const counts = await prisma.wishlist.groupBy({
+    by: ['userId'],
+    where: {
+      userId: {
+        in: userId,
+      },
+    },
+    _count: {
+      userId: true,
+    },
+  });
+
+  const countMap: Record<string, number> = {};
+  counts.forEach((item) => {
+    countMap[item.userId] = item._count.userId;
+  });
+
+  return countMap;
+};
+
+/**
+ * 総行きたいリストと前月からの増減数を取得
+ * @returns 行きたいリストの統計情報
+ */
+export const getTotalWishlistAndIncreaseAndDecrease = async () => {
+  const totalWishlist = await prisma.wishlist.count();
+
+  const now = new Date();
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const lastMonthWishlist = await prisma.wishlist.count({
+    where: {
+      createdAt: {
+        lt: startOfThisMonth,
+      },
+    },
+  });
+  return {
+    totalWishlist: totalWishlist,
+    wishlistIncreaseFromLastMonth: totalWishlist - lastMonthWishlist,
+  };
+};

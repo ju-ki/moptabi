@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it, vi, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
 import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
@@ -707,6 +707,321 @@ describe('🧾 行きたいリストサービス', () => {
 
       // JSON フィールドが省略された場合は null として扱われる
       expect(spotOmitted.meta?.openingHours).toBeNull();
+    });
+  });
+
+  // -- ユーザーIDごとの行きたいリスト数取得テスト --
+  describe('countWishListByUserId', () => {
+    it('複数のユーザーがそれぞれ異なる数のwishlistを持つ場合、正しくカウントできること', async () => {
+      // テスト用ユーザーを3人作成
+      const user1 = 'count_test_user_1';
+      const user2 = 'count_test_user_2';
+      const user3 = 'count_test_user_3';
+      await createTestUser(user1);
+      await createTestUser(user2);
+      await createTestUser(user3);
+
+      // テスト用スポットを作成
+      const spot1 = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'count_spot_1',
+          meta: {
+            create: {
+              id: 'count_spot_1',
+              name: 'カウントテスト用スポット1',
+              description: 'テスト用',
+              latitude: 35.6895,
+              longitude: 139.6917,
+              categories: ['park'],
+              rating: 4.0,
+            },
+          },
+        },
+      });
+
+      const spot2 = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'count_spot_2',
+          meta: {
+            create: {
+              id: 'count_spot_2',
+              name: 'カウントテスト用スポット2',
+              description: 'テスト用',
+              latitude: 35.6896,
+              longitude: 139.6918,
+              categories: ['restaurant'],
+              rating: 4.5,
+            },
+          },
+        },
+      });
+
+      const spot3 = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'count_spot_3',
+          meta: {
+            create: {
+              id: 'count_spot_3',
+              name: 'カウントテスト用スポット3',
+              description: 'テスト用',
+              latitude: 35.6897,
+              longitude: 139.6919,
+              categories: ['museum'],
+              rating: 4.2,
+            },
+          },
+        },
+      });
+
+      // user1: 2件のwishlistを作成
+      await prismaClient.prisma.wishlist.create({
+        data: { spotId: spot1.id, userId: user1, priority: 1, visited: 0 },
+      });
+      await prismaClient.prisma.wishlist.create({
+        data: { spotId: spot2.id, userId: user1, priority: 1, visited: 0 },
+      });
+
+      // user2: 1件のwishlistを作成
+      await prismaClient.prisma.wishlist.create({
+        data: { spotId: spot3.id, userId: user2, priority: 1, visited: 0 },
+      });
+
+      // user3: wishlistを作成しない（0件）
+
+      // カウント実行
+      const { countWishListByUserId } = await import('@/services/wishlist');
+      const result = await countWishListByUserId([user1, user2, user3]);
+
+      // 検証
+      expect(result[user1]).toBe(2);
+      expect(result[user2]).toBe(1);
+      expect(result[user3]).toBeUndefined(); // wishlistが0件の場合は含まれない
+    });
+
+    it('wishlistを持たないユーザーは結果に含まれないこと', async () => {
+      const userWithoutWishlist = 'user_without_wishlist';
+      await createTestUser(userWithoutWishlist);
+
+      const { countWishListByUserId } = await import('@/services/wishlist');
+      const result = await countWishListByUserId([userWithoutWishlist]);
+
+      // wishlistが0件の場合は結果オブジェクトに含まれない
+      expect(result[userWithoutWishlist]).toBeUndefined();
+      expect(Object.keys(result).length).toBe(0);
+    });
+
+    it('空の配列を渡した場合、空のオブジェクトを返すこと', async () => {
+      const { countWishListByUserId } = await import('@/services/wishlist');
+      const result = await countWishListByUserId([]);
+
+      expect(result).toEqual({});
+      expect(Object.keys(result).length).toBe(0);
+    });
+
+    it('指定したユーザーIDのみがカウントされること', async () => {
+      // テスト用ユーザーを作成
+      const targetUser = 'target_user_for_count';
+      const otherUser = 'other_user_for_count';
+      await createTestUser(targetUser);
+      await createTestUser(otherUser);
+
+      // テスト用スポットを作成
+      const targetSpot = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'target_count_spot',
+          meta: {
+            create: {
+              id: 'target_count_spot',
+              name: 'ターゲット用スポット',
+              description: 'テスト用',
+              latitude: 35.6898,
+              longitude: 139.692,
+              categories: ['cafe'],
+              rating: 4.3,
+            },
+          },
+        },
+      });
+
+      const otherSpot = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'other_count_spot',
+          meta: {
+            create: {
+              id: 'other_count_spot',
+              name: 'その他用スポット',
+              description: 'テスト用',
+              latitude: 35.6899,
+              longitude: 139.6921,
+              categories: ['temple'],
+              rating: 4.1,
+            },
+          },
+        },
+      });
+
+      // 各ユーザーにwishlistを作成
+      await prismaClient.prisma.wishlist.create({
+        data: { spotId: targetSpot.id, userId: targetUser, priority: 1, visited: 0 },
+      });
+      await prismaClient.prisma.wishlist.create({
+        data: { spotId: otherSpot.id, userId: otherUser, priority: 1, visited: 0 },
+      });
+
+      // targetUserのみを指定してカウント
+      const { countWishListByUserId } = await import('@/services/wishlist');
+      const result = await countWishListByUserId([targetUser]);
+
+      // 検証: targetUserのみが含まれ、otherUserは含まれない
+      expect(result[targetUser]).toBe(1);
+      expect(result[otherUser]).toBeUndefined();
+      expect(Object.keys(result).length).toBe(1);
+    });
+
+    it('同じユーザーが複数のwishlistを持つ場合、正確にカウントされること', async () => {
+      const userWithMany = 'user_with_many_wishlists';
+      await createTestUser(userWithMany);
+
+      // 5件のスポットを作成
+      const spots = await Promise.all(
+        Array.from({ length: 5 }, async (_, i) => {
+          return await prismaClient.prisma.spot.create({
+            data: {
+              id: `many_spot_${i}`,
+              meta: {
+                create: {
+                  id: `many_spot_${i}`,
+                  name: `大量テスト用スポット${i}`,
+                  description: 'テスト用',
+                  latitude: 35.69 + i * 0.001,
+                  longitude: 139.69 + i * 0.001,
+                  categories: ['park'],
+                  rating: 4.0,
+                },
+              },
+            },
+          });
+        }),
+      );
+
+      // 5件のwishlistを作成
+      await Promise.all(
+        spots.map((spot) =>
+          prismaClient.prisma.wishlist.create({
+            data: { spotId: spot.id, userId: userWithMany, priority: 1, visited: 0 },
+          }),
+        ),
+      );
+
+      const { countWishListByUserId } = await import('@/services/wishlist');
+      const result = await countWishListByUserId([userWithMany]);
+
+      expect(result[userWithMany]).toBe(5);
+    });
+  });
+
+  // -- 行きたいリストの登録数と前月からの増減数の取得テスト
+  describe('getTotalWishlistAndIncreaseAndDecrease', () => {
+    it('ユーザーの行きたいリストの総数と前月からの増減数を正しく取得できること', async () => {
+      await clearTestData();
+      const user1 = 'total_increase_decrease_user_1';
+      const user2 = 'total_increase_decrease_user_2';
+      await createTestUser(user1);
+      await createTestUser(user2);
+
+      const spot1 = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'stat_spot_1',
+          meta: {
+            create: {
+              id: 'stat_spot_1',
+              name: 'カウントテスト用スポット1',
+              description: 'テスト用',
+              latitude: 35.6895,
+              longitude: 139.6917,
+              categories: ['park'],
+              rating: 4.0,
+            },
+          },
+        },
+      });
+
+      const spot2 = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'stat_spot_2',
+          meta: {
+            create: {
+              id: 'stat_spot_2',
+              name: 'カウントテスト用スポット2',
+              description: 'テスト用',
+              latitude: 35.6896,
+              longitude: 139.6918,
+              categories: ['restaurant'],
+              rating: 4.5,
+            },
+          },
+        },
+      });
+
+      const spot3 = await prismaClient.prisma.spot.create({
+        data: {
+          id: 'stat_spot_3',
+          meta: {
+            create: {
+              id: 'stat_spot_3',
+              name: 'カウントテスト用スポット3',
+              description: 'テスト用',
+              latitude: 35.6897,
+              longitude: 139.6919,
+              categories: ['museum'],
+              rating: 4.2,
+            },
+          },
+        },
+      });
+
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+      await prismaClient.prisma.wishlist.create({
+        data: {
+          id: 1,
+          spotId: spot1.id,
+          userId: user1,
+          priority: 1,
+          visited: 0,
+          createdAt: new Date('2024-05-15'),
+        },
+      });
+      await prismaClient.prisma.wishlist.create({
+        data: {
+          id: 2,
+          spotId: spot2.id,
+          userId: user2,
+          priority: 1,
+          visited: 0,
+          createdAt: new Date('2024-05-15'),
+        },
+      });
+      await prismaClient.prisma.wishlist.create({
+        data: {
+          id: 3,
+          spotId: spot2.id,
+          userId: user1,
+          priority: 1,
+          visited: 0,
+          createdAt: new Date('2024-04-15'),
+        },
+      });
+      const prevDate = new Date('2024-05-01T12:00:00Z');
+      setSystemTime(prevDate);
+      const { getTotalWishlistAndIncreaseAndDecrease } = await import('@/services/wishlist');
+
+      // (5月:2件, 4月:1件)
+      //行きたいリストの総数の期待値は合計で3件、増減数としては5月は合計+2件
+      const stats = await getTotalWishlistAndIncreaseAndDecrease();
+
+      expect(stats.totalWishlist).toBe(3);
+      expect(stats.wishlistIncreaseFromLastMonth).toBe(2);
+      setSystemTime();
     });
   });
 });

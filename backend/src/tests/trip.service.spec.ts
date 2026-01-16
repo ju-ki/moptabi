@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it, vi, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
 import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
@@ -28,6 +28,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  // 現在日を一ヶ月前にする
+  vi.useFakeTimers();
+  const prevDate = new Date('2023-12-01T12:00:00Z');
+  setSystemTime(prevDate);
   (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
 });
 
@@ -460,6 +464,251 @@ describe('旅行計画サービス', () => {
       const res = await client.api.trips[9999].$get({});
 
       expect(res.status).toBe(404);
+    });
+  });
+
+  // --- ユーザーIDごとの旅行プラン数取得テスト ---
+  describe('countTripByUserId', () => {
+    it('複数のユーザーがそれぞれ異なる数の旅行プランを持つ場合、正しくカウントできること', async () => {
+      // データをクリアして再構築
+      await clearTestData();
+
+      // テスト用ユーザーを3人作成
+      const user1 = 'trip_count_test_user_1';
+      const user2 = 'trip_count_test_user_2';
+      const user3 = 'trip_count_test_user_3';
+      await createTestUser(user1);
+      await createTestUser(user2);
+      await createTestUser(user3);
+
+      // user1: 2件の旅行プランを作成
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+      await client.api.trips.create.$post({
+        json: {
+          ...mockTripData,
+          title: 'User1の旅行1',
+          tripInfo: mockTripInfoData,
+          plans: mockPlanData,
+        },
+      });
+      await client.api.trips.create.$post({
+        json: {
+          ...mockTripData,
+          title: 'User1の旅行2',
+          tripInfo: mockTripInfoData,
+          plans: mockPlanData,
+        },
+      });
+
+      // user2: 1件の旅行プランを作成
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user2 });
+      await client.api.trips.create.$post({
+        json: {
+          ...mockTripData,
+          title: 'User2の旅行1',
+          tripInfo: mockTripInfoData,
+          plans: mockPlanData,
+        },
+      });
+
+      // user3: 旅行プランを作成しない（0件）
+
+      // カウント実行
+      const { countPlanByUserId } = await import('@/services/trip');
+      const result = await countPlanByUserId([user1, user2, user3]);
+
+      // 検証
+      expect(result[user1]).toBe(2);
+      expect(result[user2]).toBe(1);
+      expect(result[user3]).toBeUndefined(); // 旅行プランが0件の場合は含まれない
+    });
+
+    it('旅行プランを持たないユーザーは結果に含まれないこと', async () => {
+      const userWithoutTrip = 'user_without_trip';
+      await createTestUser(userWithoutTrip);
+
+      const { countPlanByUserId } = await import('@/services/trip');
+      const result = await countPlanByUserId([userWithoutTrip]);
+
+      // 旅行プランが0件の場合は結果オブジェクトに含まれない
+      expect(result[userWithoutTrip]).toBeUndefined();
+      expect(Object.keys(result).length).toBe(0);
+    });
+
+    it('空の配列を渡した場合、空のオブジェクトを返すこと', async () => {
+      const { countPlanByUserId } = await import('@/services/trip');
+      const result = await countPlanByUserId([]);
+
+      expect(result).toEqual({});
+      expect(Object.keys(result).length).toBe(0);
+    });
+
+    it('指定したユーザーIDのみがカウントされること', async () => {
+      // テスト用ユーザーを作成
+      const targetUser = 'target_user_for_trip_count';
+      const otherUser = 'other_user_for_trip_count';
+      await createTestUser(targetUser);
+      await createTestUser(otherUser);
+
+      // 各ユーザーに旅行プランを作成
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: targetUser });
+      await client.api.trips.create.$post({
+        json: {
+          ...mockTripData,
+          title: 'ターゲットユーザーの旅行',
+          tripInfo: mockTripInfoData,
+          plans: mockPlanData,
+        },
+      });
+
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: otherUser });
+      await client.api.trips.create.$post({
+        json: {
+          ...mockTripData,
+          title: 'その他ユーザーの旅行',
+          tripInfo: mockTripInfoData,
+          plans: mockPlanData,
+        },
+      });
+
+      // targetUserのみを指定してカウント
+      const { countPlanByUserId } = await import('@/services/trip');
+      const result = await countPlanByUserId([targetUser]);
+
+      // 検証: targetUserのみが含まれ、otherUserは含まれない
+      expect(result[targetUser]).toBe(1);
+      expect(result[otherUser]).toBeUndefined();
+      expect(Object.keys(result).length).toBe(1);
+    });
+
+    it('同じユーザーが複数の旅行プランを持つ場合、正確にカウントされること', async () => {
+      const userWithMany = 'user_with_many_trips';
+      await createTestUser(userWithMany);
+
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: userWithMany });
+
+      // 5件の旅行プランを作成
+      for (let i = 0; i < 5; i++) {
+        await client.api.trips.create.$post({
+          json: {
+            ...mockTripData,
+            title: `大量テスト用旅行${i}`,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        });
+      }
+
+      const { countPlanByUserId } = await import('@/services/trip');
+      const result = await countPlanByUserId([userWithMany]);
+
+      expect(result[userWithMany]).toBe(5);
+    });
+  });
+
+  // 前月のプラン数の増減の計算が正しいかのテスト
+  describe('getPastTripStatistics', () => {
+    it('旅行プランの総数、前月比増減数、平均旅程数の割合を正しく取得できること', async () => {
+      // データをクリアして再構築
+      await clearTestData();
+
+      // テスト用ユーザーを3人作成
+      const user1 = 'trip_count_test_user_1';
+      const user2 = 'trip_count_test_user_2';
+      const user3 = 'trip_count_test_user_3';
+      await createTestUser(user1);
+      await createTestUser(user2);
+      await createTestUser(user3);
+
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+      // 現在日を一ヶ月前にする
+      const prevDate = new Date('2023-12-01T12:00:00Z');
+      setSystemTime(prevDate);
+      // 1件✖️2日の前月の旅行プランを作成
+      for (let i = 0; i < 1; i++) {
+        await client.api.trips.create.$post({
+          json: {
+            ...mockTripData,
+            title: `大量テスト用旅行${i}`,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        });
+      }
+
+      // 元に戻す
+      const date = new Date('2024-01-01T12:00:00Z');
+      setSystemTime(date);
+      // 1件✖️2日の当月の旅行プランを作成
+      for (let i = 0; i < 1; i++) {
+        await client.api.trips.create.$post({
+          json: {
+            ...mockTripData,
+            title: `大量テスト用旅行${i}`,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        });
+      }
+
+      // 1件 + 3件 = 合計4件の旅程
+      // 期待値としては、総プラン数4、前月比増減数2、平均旅程数の割合8/4=2となるはず
+      const { getTripStatistics } = await import('@/services/trip');
+      const stats = await getTripStatistics();
+
+      expect(stats.totalPlans).toBe(2);
+      expect(stats.planIncreaseFromLastMonth).toBe(2);
+      expect(stats.averageDatePerUserPlan).toBeCloseTo(2);
+    });
+  });
+  // 総プラン数の取得と平均旅程数の割合テスト
+  describe('getTripStatistics', () => {
+    it('前月からの増減を正しく計算できること', async () => {
+      // データをクリアして再構築
+      await clearTestData();
+
+      // テスト用ユーザーを3人作成
+      const user1 = 'trip_count_test_user_1';
+      const user2 = 'trip_count_test_user_2';
+      const user3 = 'trip_count_test_user_3';
+      await createTestUser(user1);
+      await createTestUser(user2);
+      await createTestUser(user3);
+
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+
+      // 1件✖️2日の旅行プランを作成
+      for (let i = 0; i < 1; i++) {
+        await client.api.trips.create.$post({
+          json: {
+            ...mockTripData,
+            title: `大量テスト用旅行${i}`,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        });
+      }
+
+      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user2 });
+      // 3件✖️2日の旅行プランを作成
+      for (let i = 0; i < 3; i++) {
+        await client.api.trips.create.$post({
+          json: {
+            ...mockTripData,
+            title: `大量テスト用旅行${i}`,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        });
+      }
+      // 1件 + 3件 = 合計4件の旅程
+      // 期待値としては、総プラン数4、前月比増減数4、平均旅程数の割合8/4=2となるはず
+      const { getTripStatistics } = await import('@/services/trip');
+      const stats = await getTripStatistics();
+
+      expect(stats.totalPlans).toBe(4);
+      expect(stats.planIncreaseFromLastMonth).toBe(4);
+      expect(stats.averageDatePerUserPlan).toBeCloseTo(2);
     });
   });
 });

@@ -11,10 +11,24 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from 
 
 import Notification from '../Notification';
 
+// ユーザー情報の型定義
+interface UserData {
+  status: number;
+  user: {
+    id: string;
+    role: 'ADMIN' | 'USER' | 'GUEST';
+  };
+}
+
 const Header = () => {
   const { getFetcher } = useFetcher();
 
-  useSWR(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth`, getFetcher);
+  // ユーザー情報を取得（roleを含む）
+  const { data: userData } = useSWR<UserData>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth`, getFetcher);
+
+  // ADMINロールかどうかをチェック
+  const isAdmin = userData?.user?.role === 'ADMIN';
+
   return (
     <header className="flex h-16 w-full items-center justify-between px-4 md:px-6 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center space-x-3">
@@ -26,6 +40,12 @@ const Header = () => {
 
       <div className="hidden lg:flex items-center space-x-6">
         <SignedIn>
+          {/* ADMINの場合のみ管理画面リンクを表示 */}
+          {isAdmin && (
+            <Link href="/admin" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+              管理画面
+            </Link>
+          )}
           <Link href="/wishlist" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             行きたいリスト
           </Link>
@@ -63,6 +83,16 @@ const Header = () => {
             </SheetTrigger>
             <SheetContent side="right">
               <div className="grid gap-6 p-6">
+                {/* モバイルメニューでもADMINの場合のみ管理画面リンクを表示 */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="text-sm font-medium hover:underline underline-offset-4"
+                    prefetch={false}
+                  >
+                    管理画面
+                  </Link>
+                )}
                 <Link
                   href="/wishlist"
                   className="text-sm font-medium hover:underline underline-offset-4"
