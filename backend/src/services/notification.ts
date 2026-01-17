@@ -2,10 +2,9 @@ import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 
-import { PrismaClient, NotificationType, Prisma } from '@/generated/prisma';
+import { NotificationType, Prisma } from '@/generated/prisma';
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/client';
 
 /**
  * お知らせサービス

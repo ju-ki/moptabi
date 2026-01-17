@@ -1,6 +1,4 @@
-import { PrismaClient } from '@/generated/prisma';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/client';
 
 /**
  * ユーザーIDごとの旅行プランの数を取得

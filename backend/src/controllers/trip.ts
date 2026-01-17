@@ -2,11 +2,10 @@ import { Context } from 'hono';
 import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 
-import { TripSchema } from '../models/trip';
-import { Prisma, PrismaClient } from '../generated/prisma';
-import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
+import { prisma } from '@/lib/client';
 
-const prisma = new PrismaClient();
+import { TripSchema } from '../models/trip';
+import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
 
 export const getTripHandler = {
   // 全ての旅行計画を取得

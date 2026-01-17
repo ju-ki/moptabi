@@ -8,11 +8,9 @@ import { countPlanByUserId } from '@/services/trip';
 import { getDashboardStats } from '@/services/auth';
 import { calculatePagination } from '@/models/pagination';
 import { User, UserSortBy } from '@/models/user';
+import { prisma } from '@/lib/client';
 
-import { PrismaClient } from '../generated/prisma';
 import { findExistingUserRoute } from '../routes/auth';
-
-const prisma = new PrismaClient();
 
 export const getAuthHandler: RouteHandler<typeof findExistingUserRoute> = async (c: Context) => {
   try {
