@@ -2,11 +2,9 @@ import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 
-import { PrismaClient } from '@/generated/prisma';
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/client';
 
 export const getWishList = async (c: Context) => {
   const auth = getAuth(c);

@@ -2,12 +2,10 @@ import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
-import { PrismaClient } from '@/generated/prisma';
+import { prisma } from '@/lib/client';
 
 import { getTotalWishlistAndIncreaseAndDecrease } from './wishlist';
 import { getTripStatistics } from './trip';
-
-const prisma = new PrismaClient();
 
 export const getDashboardStats = async (c: Context) => {
   // ダッシュボード用の統計情報を取得するロジックをここに実装

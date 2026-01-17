@@ -1,7 +1,6 @@
-import { PrismaClient, Prisma } from '@/generated/prisma';
+import { Prisma } from '@/generated/prisma';
+import { prisma } from '@/lib/client';
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
-// TODO: PrismaClientをDIで渡すように変更する
-const prisma = new PrismaClient();
 
 /**
  * 未訪問の行きたいリストに登録しているスポットを取得
