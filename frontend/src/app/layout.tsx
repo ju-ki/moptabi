@@ -15,7 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="ja">
-      <title>AI旅行計画プランナー</title>
+      <head>
+        <title>モプタビ - もっと旅がしたくなる旅行計画アプリ</title>
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+      </head>
       <body>
         <>
           <ClerkProvider>
