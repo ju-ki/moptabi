@@ -24,7 +24,7 @@ const WishlistSpotInfoCard = ({ item, idx }: WishlistSpotInfoCardProps) => {
   const getItemKey = (item: WishlistType, idx: number) => (typeof item.id === 'string' ? item.id : String(idx));
   const key = getItemKey(item, idx);
 
-  const [visitedAt, setVisitedAt] = useState<{ [id: string]: string | null }>({});
+  const [visitedAt, setVisitedAt] = useState<{ [id: string]: string }>({});
   const [editMemo, setEditMemo] = useState<{ [id: string]: string }>({});
 
   const handleVisitedAtChange = async (date: Date | undefined) => {
@@ -36,7 +36,7 @@ const WishlistSpotInfoCard = ({ item, idx }: WishlistSpotInfoCardProps) => {
         await updateWishlist({ ...item, visitedAt: dateString });
       }
     } else {
-      setVisitedAt((prev) => ({ ...prev, [key]: null }));
+      setVisitedAt((prev) => ({ ...prev, [key]: '' }));
     }
   };
 
@@ -58,9 +58,9 @@ const WishlistSpotInfoCard = ({ item, idx }: WishlistSpotInfoCardProps) => {
     const isCurrentlyVisited = item.visited === 1;
 
     if (isCurrentlyVisited) {
-      wishlistStore.updateWishlist({ ...item, visited: 0, visitedAt: null });
-      await updateWishlist({ ...item, visited: 0, visitedAt: null });
-      setVisitedAt((prev) => ({ ...prev, [key]: null }));
+      wishlistStore.updateWishlist({ ...item, visited: 0, visitedAt: '' });
+      await updateWishlist({ ...item, visited: 0, visitedAt: '' });
+      setVisitedAt((prev) => ({ ...prev, [key]: '' }));
     } else {
       const today = new Date().toLocaleDateString('sv-SE');
       const selectedVisitedAt = visitedAt[key] ?? today;

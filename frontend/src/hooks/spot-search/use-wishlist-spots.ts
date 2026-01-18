@@ -90,7 +90,7 @@ export function useWishlistSpots(options?: WishlistSpotsQueryOptions) {
     prefecture: item.spot.meta.prefecture ?? undefined,
     address: item.spot.meta.address,
     catchphrase: item.spot.meta.catchphrase ?? undefined,
-    regularOpeningHours: item.spot.meta.openingHours ?? null,
+    regularOpeningHours: item.spot.meta.openingHours ? [{ day: '', hours: item.spot.meta.openingHours }] : undefined,
     // wishlist 固有のデータ
     priority: item.priority,
     memo: item.memo ?? undefined,
@@ -100,7 +100,7 @@ export function useWishlistSpots(options?: WishlistSpotsQueryOptions) {
     stayStart: '09:00',
     stayEnd: '10:00',
     transports: {
-      transportMethodIds: [0],
+      transportMethod: 0,
       name: 'DEFAULT',
       travelTime: '不明',
       fromType: TransportNodeType.SPOT,
