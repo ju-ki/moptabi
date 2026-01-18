@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="moptabi-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <path d="M140 256C140 211.817 175.817 176 220 176H292C336.183 176 372 211.817 372 256C372 300.183 336.183 336 292 336C265.49 336 242.06 323.11 228 303.48L284 303.48C310.232 303.48 331.48 282.232 331.48 256C331.48 229.768 310.232 208.52 284 208.52H228C201.768 208.52 180.52 229.768 180.52 256C180.52 282.232 201.768 303.48 228 303.48L172 303.48C152.06 292.06 140 274.49 140 256Z" 
+        stroke="url(#moptabi-gradient)" 
+        stroke-width="50" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+  <circle cx="372" cy="180" r="30" fill="#6366f1"/>
+</svg>

@@ -1,6 +1,7 @@
 'use client';
 import { SignInButton, SignOutButton, SignedIn, SignedOut, useAuth, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
+import Image from 'next/image';
 import { MenuIcon } from 'lucide-react';
 import TravelExploreIcon from '@mui/icons-material/TravelExplore';
 import useSWR from 'swr';
@@ -32,9 +33,9 @@ const Header = () => {
   return (
     <header className="flex h-16 w-full items-center justify-between px-4 md:px-6 border-b border-gray-200 dark:border-gray-800">
       <div className="flex items-center space-x-3">
-        <Link href="/" className="mr-6 flex items-center" prefetch={false}>
-          <TravelExploreIcon className="text-3xl" />
-          <span className="lg:text-2xl md font-semibold text-gray-800">AI旅行計画プランナー</span>{' '}
+        <Link href="/" className="mr-6 flex items-center gap-2" prefetch={false}>
+          <Image src="/logo.svg" alt="MopTabi Logo" width={32} height={32} />
+          <span className="text-xl md:text-xl lg:text-2xl font-semibold text-gray-800">モプタビ</span>
         </Link>
       </div>
 
