@@ -59,7 +59,7 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
           transports: {
             fromType: type === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.SPOT,
             toType: type === 'destination' ? TransportNodeType.DESTINATION : TransportNodeType.SPOT,
-            transportMethodIds: planSpot.fromLocation[0].transportMethodIds,
+            transportMethod: planSpot.fromLocation[0].transportMethod,
             name: planSpot.fromLocation[0].name,
             travelTime: planSpot.fromLocation[0].travelTime,
             cost: planSpot.fromLocation[0].cost,

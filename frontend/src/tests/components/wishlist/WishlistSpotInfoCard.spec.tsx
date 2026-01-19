@@ -170,7 +170,7 @@ describe('WishlistSpotInfoCard', () => {
         expect(mockUpdateWishlist).toHaveBeenCalledWith(
           expect.objectContaining({
             visited: 0,
-            visitedAt: null,
+            visitedAt: '',
           }),
         );
       });

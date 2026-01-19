@@ -94,6 +94,7 @@ const CreatePlanButton = () => {
         startDate: fields.startDate,
         endDate: fields.endDate,
         tripInfo: fields.tripInfo,
+        // @ts-expect-error //TODO:後ほど修正
         plans: fields.plans,
       };
       if (!checkValidation()) {

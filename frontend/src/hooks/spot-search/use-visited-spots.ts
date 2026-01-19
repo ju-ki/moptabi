@@ -101,7 +101,7 @@ export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
     prefecture: item.spot.meta.prefecture ?? undefined,
     address: item.spot.meta.address,
     catchphrase: item.spot.meta.catchphrase ?? undefined,
-    regularOpeningHours: item.spot.meta.openingHours ? item.spot.meta.openingHours : undefined,
+    regularOpeningHours: item.spot.meta.openingHours ? [{ day: '', hours: item.spot.meta.openingHours }] : undefined,
     // 訪問・計画情報
     visitedAt: item.visitedAt ?? undefined,
     visitCount: item.visitCount ?? undefined,
@@ -111,7 +111,7 @@ export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
     stayStart: '09:00',
     stayEnd: '10:00',
     transports: {
-      transportMethodIds: [0],
+      transportMethod: 0,
       name: 'DEFAULT',
       travelTime: '不明',
       fromType: TransportNodeType.SPOT,
