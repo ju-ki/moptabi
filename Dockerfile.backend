@@ -5,7 +5,7 @@ WORKDIR /app
 
 # 必要なファイルをコピー
 COPY backend/package.json backend/bun.lockb ./
-COPY prisma ./prisma
+COPY backend/prisma ./prisma
 COPY backend ./backend
 
 # 作業ディレクトリを backend に移動

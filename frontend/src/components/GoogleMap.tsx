@@ -1,9 +1,9 @@
+import { useEffect } from 'react';
 import { GoogleMap, Marker, MarkerF, InfoWindow } from '@react-google-maps/api';
-import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
-import { useMapStore } from '@/stores/mapStore';
-import { Spot } from '@/types/plan';
+import { useGoogleMap } from '@/hooks/use-google';
+import { Coordination, Spot } from '@/types/plan';
 const INITIALIZE_ZOOM = 13; // ズームレベル
 
 const INITIALIZE_MAP_WIDTH = '100%'; // 地図の幅
@@ -16,87 +16,85 @@ const CONTAINER_STYLE = {
 
 interface GoogleMapCompProps {
   isSetCurrentLocation: boolean;
+  searchedSpots?: Spot[];
+  extraCoordinate?: Coordination;
+  setCoordinate?: (coordination: Coordination | undefined) => void;
 }
 
-const GoogleMapComponent: React.FC<GoogleMapCompProps> = ({ isSetCurrentLocation }: GoogleMapCompProps) => {
-  const { coordinate, setCoordinate, spots } = useMapStore();
-  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+const GoogleMapComponent: React.FC<GoogleMapCompProps> = ({
+  isSetCurrentLocation,
+  searchedSpots,
+  extraCoordinate,
+  setCoordinate,
+}: GoogleMapCompProps) => {
+  const { map, mapCoordinate, selectedSpot, setSelectedSpot, handleMapClick, onLoad, onUnmount } = useGoogleMap(
+    isSetCurrentLocation,
+    extraCoordinate,
+  );
 
   useEffect(() => {
-    if (!map || spots.length === 0) return;
+    if (setCoordinate && mapCoordinate) {
+      setCoordinate(mapCoordinate);
+    }
+  }, [mapCoordinate, setCoordinate]);
+
+  useEffect(() => {
+    if (!searchedSpots || searchedSpots.length === 0) return;
 
     const bounds = new window.google.maps.LatLngBounds();
-    spots.forEach((spot) => {
-      bounds.extend({ lat: spot.latitude, lng: spot.longitude });
+    searchedSpots.forEach((spot) => {
+      bounds.extend({ lat: spot.location.lat, lng: spot.location.lng });
     });
 
-    if (spots.length === 1) {
+    if (!map) return;
+
+    if (searchedSpots.length === 1) {
       map.setCenter(bounds.getCenter());
       map.setZoom(17);
     } else {
       map.fitBounds(bounds);
     }
-  }, [spots, map]);
-
-  useEffect(() => {
-    if (isSetCurrentLocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        setCoordinate({ lat: position.coords.latitude, lng: position.coords.longitude });
-      });
-    }
-  }, [isSetCurrentLocation]);
-
-  const handleMapClick = (event: google.maps.MapMouseEvent) => {
-    if (selectedSpot) {
-      setSelectedSpot(null);
-      return;
-    }
-    if (event.latLng) {
-      const lat = event.latLng.lat();
-      const lng = event.latLng.lng();
-      setCoordinate({ lat, lng });
-    }
-  };
+  }, [searchedSpots, map]);
 
   return (
     <GoogleMap
       id="map"
       mapContainerStyle={CONTAINER_STYLE}
-      center={coordinate}
+      center={mapCoordinate}
       zoom={INITIALIZE_ZOOM}
       onClick={handleMapClick}
-      onLoad={(mapInstance) => setMap(mapInstance)}
+      onLoad={onLoad}
+      onUnmount={onUnmount}
     >
-      <Marker position={coordinate} />
-      {spots.map((spot) => (
+      <Marker position={mapCoordinate} />
+      {searchedSpots?.map((spot) => (
         <MarkerF
           onClick={() => {
             setSelectedSpot(spot);
-            map?.panTo({ lat: spot.latitude, lng: spot.longitude });
+            map?.panTo({ lat: spot.location.lat, lng: spot.location.lng });
             map?.setZoom(17);
           }}
           key={spot.id}
-          position={{ lat: spot.latitude, lng: spot.longitude }}
-          title={spot.name}
+          position={{ lat: spot.location.lat, lng: spot.location.lng }}
+          title={spot.location.name}
         />
       ))}
 
       {selectedSpot ? (
         <InfoWindow
           position={{
-            lat: selectedSpot.latitude,
-            lng: selectedSpot.longitude,
+            lat: selectedSpot.location.lat,
+            lng: selectedSpot.location.lng,
           }}
           onCloseClick={() => {
             setSelectedSpot(null);
           }}
         >
           <div className="text-sm space-y-1">
-            <div className="font-bold">{selectedSpot.name}</div>
+            <div className="font-bold">{selectedSpot.location.name}</div>
             <Image
               src={selectedSpot.image ?? 'not_found.png'}
-              alt={selectedSpot.name}
+              alt={selectedSpot.location.name ?? ''}
               width={100}
               height={30}
               className="rounded-lg"

@@ -1,0 +1,13 @@
+[test]
+preload = ["./vitest.setup.ts"]
+coverageReporter = ["text", "lcov"]
+coveragePathIgnorePatterns = [
+  "node_modules/**",
+  "vendor/**",
+  "**/generated/**",
+  "vitest.setup.ts",
+  "**/prisma.ts"
+]
+
+[test.reporter]
+junit = "./coverage/junit.xml"

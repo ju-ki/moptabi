@@ -16,7 +16,7 @@ type TripDetailProps = {
     tripInfo: {
       date: string;
       genreId: number;
-      transportationMethod: number[];
+      transportationMethod: number;
       memo: string | null;
     }[];
     plans: {
