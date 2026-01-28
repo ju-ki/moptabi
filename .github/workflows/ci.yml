@@ -146,11 +146,7 @@ jobs:
           exit 1
 
       - name: Generate Prisma Client for test DB
-        env:
-          DATABASE_URL: postgresql://travel_user_test:travel_admin_test@localhost:5433/ai_travel_test?schema=public
-        run: |
-          bunx prisma generate
-          bunx prisma migrate dev --name test_init
+        run: bun run migrate:test:dev
 
       - name: Create Coverage Directory
         run: mkdir -p ./coverage
@@ -268,7 +264,7 @@ jobs:
             }
 
       - name: Build
-        run: bun run build
+        run: bun run migrate:dev && bun run prisma:generate && bun run build
 
   create-pull-request:
     if: github.event_name == 'push'
