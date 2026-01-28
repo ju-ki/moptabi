@@ -146,7 +146,11 @@ jobs:
           exit 1
 
       - name: Generate Prisma Client for test DB
-        run: bun run migrate:test:dev
+        env:
+          DATABASE_URL: postgresql://travel_user_test:travel_admin_test@localhost:5433/ai_travel_test?schema=public
+        run: |
+          bunx prisma generate
+          bunx prisma migrate dev --name test_init
 
       - name: Create Coverage Directory
         run: mkdir -p ./coverage
