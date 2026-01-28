@@ -1,7 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
-import { PrismaClient } from '@/generated/prisma';
+import { PrismaClient } from '@/generated/prisma/client';
 
 // PostgreSQL接続プールを作成
 const pool = new Pool({
@@ -33,4 +33,3 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // 型を再エクスポート（生成されたクライアントから）
-export * from '@/generated/prisma';

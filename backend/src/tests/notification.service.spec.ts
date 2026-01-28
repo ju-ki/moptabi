@@ -3,7 +3,7 @@ import { testClient } from 'hono/testing';
 import { getAuth } from '@hono/clerk-auth';
 
 import { NotificationListResponseSchema, UnreadCountResponseSchema } from '@/models/notification';
-import { NotificationType } from '@/generated/prisma';
+import { NotificationType } from '@/generated/prisma/client';
 
 import app from '..';
 import prismaClient, { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
