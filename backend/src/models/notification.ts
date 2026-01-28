@@ -77,7 +77,7 @@ export const NotificationCreateSchema = z
       example: '新しい機能が追加されました。',
     }),
     type: NotificationTypeSchema,
-    publishedAt: z.iso.date().openapi({
+    publishedAt: z.coerce.date().openapi({
       description: '公開日時（ISO8601形式）',
       example: '2025-01-15T09:00:00.000Z',
     }),
@@ -98,7 +98,7 @@ export const NotificationUpdateSchema = z
       example: '更新後の内容',
     }),
     type: NotificationTypeSchema,
-    publishedAt: z.iso.date().openapi({
+    publishedAt: z.coerce.date().openapi({
       description: '公開日時（ISO8601形式）',
       example: '2025-01-15T09:00:00.000Z',
     }),
@@ -114,7 +114,9 @@ export const NotificationResponseSchema = z
     title: z.string().openapi({ description: 'タイトル', example: '新機能リリースのお知らせ' }),
     content: z.string().openapi({ description: '本文', example: '新しい機能が追加されました。' }),
     type: NotificationTypeSchema,
-    publishedAt: z.iso.date(),
+    publishedAt: z.coerce
+      .date()
+      .openapi({ description: '公開日時（ISO8601形式）', example: '2025-01-15T09:00:00.000Z' }),
     createdAt: z.string().datetime(),
   })
   .openapi('NotificationResponse');
@@ -128,7 +130,9 @@ export const NotificationAdminSchema = z
     title: z.string().openapi({ description: 'タイトル', example: '新機能リリースのお知らせ' }),
     content: z.string().openapi({ description: '本文', example: '新しい機能が追加されました。' }),
     type: NotificationTypeSchema,
-    publishedAt: z.string().datetime(),
+    publishedAt: z.coerce
+      .date()
+      .openapi({ description: '公開日時（ISO8601形式）', example: '2025-01-15T09:00:00.000Z' }),
     createdAt: z.string().datetime(),
     readRate: z.number().openapi({ description: '既読率（%）', example: 75 }),
     totalRecipients: z.number().openapi({ description: '配信対象者数', example: 100 }),

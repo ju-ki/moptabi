@@ -1,4 +1,4 @@
-import path from 'path';
+// import path from 'path';
 
 import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
@@ -19,7 +19,7 @@ export const getImageHandler = {
       const buffer = Buffer.from(arrayBuffer);
 
       const newFilename = `${Date.now()}_${file.name}`;
-      const newPath = path.join('static', newFilename);
+      const newPath = `static/${newFilename}`;
 
       await Bun.write(newPath, buffer);
 

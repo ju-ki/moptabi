@@ -2,7 +2,6 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { clerkMiddleware } from '@hono/clerk-auth';
 import { cors } from 'hono/cors';
-import { serve } from 'bun';
 import { HTTPException } from 'hono/http-exception';
 
 import {
@@ -170,12 +169,5 @@ app.onError((error: Error, c) => {
   const message = isDevelopment ? error.message : 'Internal Server Error';
   return c.text(message, 500);
 });
-
-if (import.meta.env.NODE_ENV === 'development') {
-  serve({
-    port: 8787,
-    fetch: app.fetch,
-  });
-}
 
 export default app;

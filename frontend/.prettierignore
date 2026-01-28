@@ -5,3 +5,5 @@ out/
 *.log
 *.json
 src/components/ui/*
+.open-next/
+.wrangler/

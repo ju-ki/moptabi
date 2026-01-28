@@ -14,8 +14,8 @@
       "~/*": ["./src/*"],
     },
     "types": [
-      "vitest/globals"
+      "vitest/globals", "vite/client", "node"
     ]
   },
-  "include": ["src"]
+  "include": ["src", "prisma.config.ts"]
 }
