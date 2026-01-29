@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "next build && opennextjs-cloudflare build",
+    "build:staging": "next build",
+    "build:production": "next build",
     "start": "next start",
     "lint": "eslint .",
     "fix": "eslint . --fix",
@@ -16,6 +19,8 @@
     "test:ui": "vitest --ui",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:staging": "opennextjs-cloudflare build && wrangler pages deploy .open-next/assets --project-name=moptabi-staging",
+    "deploy:production": "opennextjs-cloudflare build && wrangler pages deploy .open-next/assets --project-name=moptabi",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
