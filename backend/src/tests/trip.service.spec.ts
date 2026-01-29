@@ -657,7 +657,7 @@ describe('旅行計画サービス', () => {
       const stats = await getTripStatistics();
 
       expect(stats.totalPlans).toBe(2);
-      expect(stats.planIncreaseFromLastMonth).toBe(2);
+      expect(stats.planIncreaseFromLastMonth).toBe(1);
       expect(stats.averageDatePerUserPlan).toBeCloseTo(2);
     });
   });

@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it, vi, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
 import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
@@ -1055,9 +1055,10 @@ describe('🧾 スポットサービス', () => {
 
   describe('ソート機能', () => {
     describe('GET /unvisited - 未訪問スポットのソート', () => {
-      it('追加日時の昇順でソートできること', async () => {
+      it('追加日時の昇順/降順でソートできること', async () => {
         await clearTestData();
         await createTestUser(TEST_USER_ID);
+        setSystemTime();
 
         // 1番目に追加（古い）
         await createSpotWithMeta('spot1', { name: 'スポットA' });
@@ -1085,38 +1086,17 @@ describe('🧾 スポットサービス', () => {
         expect(results[0].spot.meta?.name).toBe('スポットA');
         expect(results[1].spot.meta?.name).toBe('スポットB');
         expect(results[2].spot.meta?.name).toBe('スポットC');
-      });
 
-      it('追加日時の降順でソートできること', async () => {
-        await clearTestData();
-        await createTestUser(TEST_USER_ID);
-
-        // 1番目に追加（古い）
-        await createSpotWithMeta('spot1', { name: 'スポットA' });
-        await createWishlistEntry({ spotId: 'spot1', userId: TEST_USER_ID, priority: 1, visited: 0 });
-
-        // 少し待ってから2番目を追加
-        await new Promise((resolve) => setTimeout(resolve, 10));
-
-        await createSpotWithMeta('spot2', { name: 'スポットB' });
-        await createWishlistEntry({ spotId: 'spot2', userId: TEST_USER_ID, priority: 2, visited: 0 });
-
-        // 少し待ってから3番目を追加
-        await new Promise((resolve) => setTimeout(resolve, 10));
-
-        await createSpotWithMeta('spot3', { name: 'スポットC' });
-        await createWishlistEntry({ spotId: 'spot3', userId: TEST_USER_ID, priority: 3, visited: 0 });
-
-        const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results2 = await getUnvisitedWishlistSpots(TEST_USER_ID, {
           sortBy: 'createdAt',
           sortOrder: 'desc',
         });
 
-        expect(results.length).toBe(3);
+        expect(results2.length).toBe(3);
         // 新しい順: C → B → A
-        expect(results[0].spot.meta?.name).toBe('スポットC');
-        expect(results[1].spot.meta?.name).toBe('スポットB');
-        expect(results[2].spot.meta?.name).toBe('スポットA');
+        expect(results2[0].spot.meta?.name).toBe('スポットC');
+        expect(results2[1].spot.meta?.name).toBe('スポットB');
+        expect(results2[2].spot.meta?.name).toBe('スポットA');
       });
 
       it('優先度の昇順でソートできること', async () => {

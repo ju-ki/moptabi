@@ -1,6 +1,24 @@
-import { PrismaClient } from '@/generated/prisma';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prismaClient = new PrismaClient();
+import { PrismaClient } from '@/generated/prisma/client';
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required for tests');
+}
+
+// テスト用のPostgreSQL接続プールを作成
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Prisma Pg Adapterを作成
+const adapter = new PrismaPg(pool);
+
+// PrismaClientの初期化（Prisma 7.x以降はアダプターが必要）
+const prismaClient = new PrismaClient({
+  adapter,
+});
 
 /**
  * Prisma に接続する
@@ -16,6 +34,7 @@ export async function connectPrisma(): Promise<void> {
  */
 export async function disconnectPrisma(): Promise<void> {
   await prismaClient.$disconnect();
+  await pool.end();
 }
 
 /**
