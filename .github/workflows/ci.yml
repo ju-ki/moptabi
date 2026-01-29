@@ -264,7 +264,7 @@ jobs:
             }
 
       - name: Build
-        run: bun run migrate:dev && bun run prisma:generate && bun run build
+        run: bunx prisma migrate dev && bun run prisma:generate && bun run build
 
   create-pull-request:
     if: github.event_name == 'push'
