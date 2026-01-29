@@ -33,3 +33,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // 型を再エクスポート（生成されたクライアントから）
+export type { PrismaClient } from '@/generated/prisma/client';

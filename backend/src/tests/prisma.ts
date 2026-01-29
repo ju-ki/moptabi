@@ -3,6 +3,10 @@ import { Pool } from 'pg';
 
 import { PrismaClient } from '@/generated/prisma/client';
 
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL is required for tests');
+}
+
 // テスト用のPostgreSQL接続プールを作成
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -30,6 +34,7 @@ export async function connectPrisma(): Promise<void> {
  */
 export async function disconnectPrisma(): Promise<void> {
   await prismaClient.$disconnect();
+  await pool.end();
 }
 
 /**
