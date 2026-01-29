@@ -2,7 +2,7 @@ import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 
-import { NotificationType, Prisma } from '@/generated/prisma';
+import { NotificationType, Prisma } from '@/generated/prisma/client';
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 import { prisma } from '@/lib/client';
 

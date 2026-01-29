@@ -1,0 +1,6 @@
+name = "moptabi-backend"
+compatibility_date = "2026-01-26"
+compatibility_flags = [ "nodejs_compat" ]
+
+[vars]
+NODE_ENV = "development"

@@ -11,11 +11,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "~/*": ["./src/*"],
+      "~/*": ["./src/*"]
     },
-    "types": [
-      "vitest/globals"
-    ]
+    "types": ["vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src", "prisma.config.ts"]
 }

@@ -1,6 +1,6 @@
 import { z } from '@hono/zod-openapi';
 
-import { TransportNodeType } from '../generated/prisma';
+import { TransportNodeType } from '../generated/prisma/client';
 import { OpeningHoursSchema } from './spot';
 
 export const TripSchema = z.object({

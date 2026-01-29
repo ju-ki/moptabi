@@ -31,6 +31,7 @@ services:
     depends_on:
       - dev-db
     environment:
+      NODE_ENV: development
       DATABASE_URL: 'postgresql://travel_user:travel_admin@dev-db:5432/ai_travel'
       WATCHPACK_POLLING: true
     volumes:

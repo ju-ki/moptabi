@@ -27,6 +27,8 @@ const config = [
       '**/.next/',
       '**/.vscode/',
       'src/components/ui/**/*.{js,ts,tsx}',
+      '**/.open-next/**',
+      '**/.wrangler/**',
     ],
   },
   {
