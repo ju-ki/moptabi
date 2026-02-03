@@ -25,34 +25,34 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
       return redirectToSignIn({ returnBackUrl: '/' });
     }
 
-    try {
-      // バックエンドAPIからユーザーのroleを取得
-      const token = await getToken();
-      if (!token) {
-        return NextResponse.redirect(new URL('/', req.url));
-      }
-      const response = await fetch(`${process.env.NEXT_DOCKER_API_BASE_URL}/auth`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    // try {
+    //   // バックエンドAPIからユーザーのroleを取得
+    //   const token = await getToken();
+    //   if (!token) {
+    //     return NextResponse.redirect(new URL('/', req.url));
+    //   }
+    //   const response = await fetch(`${process.env.NEXT_DOCKER_API_BASE_URL}/auth`, {
+    //     headers: {
+    //       Authorization: `Bearer ${token}`,
+    //     },
+    //   });
 
-      if (response.ok) {
-        const data = await response.json();
-        const userRole = data.user?.role;
+    //   if (response.ok) {
+    //     const data = await response.json();
+    //     const userRole = data.user?.role;
 
-        // ADMIN以外はホームにリダイレクト
-        if (userRole !== 'ADMIN') {
-          return NextResponse.redirect(new URL('/', req.url));
-        }
-      } else {
-        // APIエラーの場合もホームにリダイレクト
-        return NextResponse.redirect(new URL('/', req.url));
-      }
-    } catch (error) {
-      console.error('Failed to check user role:', error);
-      return NextResponse.redirect(new URL('/', req.url));
-    }
+    //     // ADMIN以外はホームにリダイレクト
+    //     if (userRole !== 'ADMIN') {
+    //       return NextResponse.redirect(new URL('/', req.url));
+    //     }
+    //   } else {
+    //     // APIエラーの場合もホームにリダイレクト
+    //     return NextResponse.redirect(new URL('/', req.url));
+    //   }
+    // } catch (error) {
+    //   console.error('Failed to check user role:', error);
+    //   return NextResponse.redirect(new URL('/', req.url));
+    // }
   }
 
   if (userId) {
