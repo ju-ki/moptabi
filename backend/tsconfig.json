@@ -16,5 +16,5 @@
     "types": ["vitest/globals"]
   },
   "include": ["src", "prisma.config.ts"],
-  "exclude": ["node_modules", "dist", "**/*.spec.ts"]
+  "exclude": ["node_modules", "dist", "**/*.spec.ts", "src/tests/**"]
 }
