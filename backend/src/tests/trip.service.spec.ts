@@ -1,54 +1,50 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi, setSystemTime } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { getAuth } from '@hono/clerk-auth';
-import { Context } from 'hono';
 
 import { TripSchema } from '@/models/trip';
 
 import app from '..';
-import { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import { clearTestData, clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
 
 // 認証用のモックユーザーID
-const TEST_USER_ID = 'test_user_id';
+const TEST_USER_ID = 'test_user_trip';
 
-vi.mock('@hono/clerk-auth', () => ({
-  getAuth: vi.fn(),
-}));
+// テストファイル固有のSpot IDプレフィックス（並列実行時の衝突を防ぐ）
+const SPOT_PREFIX = 'trip_svc_';
+
+// Spot IDを生成するヘルパー関数
+function spotId(id: string): string {
+  return `${SPOT_PREFIX}${id}`;
+}
+
+// 現在の認証ユーザーIDを保持する変数
+let currentUserId: string | null = TEST_USER_ID;
+
+// 認証ヘッダーを生成するヘルパー関数
+function getAuthHeaders(): Record<string, string> {
+  if (!currentUserId) {
+    return {};
+  }
+  return { 'X-User-Id': currentUserId };
+}
 
 beforeAll(async () => {
   await connectPrisma();
-  await clearTestData();
-  await createTestUser(TEST_USER_ID);
+  await clearTestDataForUser(TEST_USER_ID, SPOT_PREFIX);
+  await createTestUser(TEST_USER_ID, 'ADMIN');
 });
 
 afterAll(async () => {
-  await clearTestData();
+  await clearTestDataForUser(TEST_USER_ID, SPOT_PREFIX);
   await disconnectPrisma();
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
   // 現在日を一ヶ月前にする
-  vi.useFakeTimers();
   const prevDate = new Date('2023-12-01T12:00:00Z');
   setSystemTime(prevDate);
-  (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
+  currentUserId = TEST_USER_ID;
 });
-
-export const mockAuthenticatedContext = (userId: string = TEST_USER_ID): Context => {
-  return {
-    get: (key: string) => {
-      if (key === 'auth') {
-        return {
-          userId,
-          sessionId: 'mockSessionId',
-        };
-      }
-
-      return undefined;
-    },
-  } as unknown as Context;
-};
 
 // モックtripデータ
 const mockTripData = {
@@ -99,13 +95,13 @@ const mockPlanData = [
         order: 0,
       },
       {
-        id: 'spot1',
+        id: spotId('1'),
         location: {
           name: 'モック観光地1',
           lat: 35.6895,
           lng: 139.6917,
         },
-        spotId: 'spot1',
+        spotId: spotId('1'),
         image: 'https://example.com/spot1.jpg',
         url: 'https://example.com/cafe',
         prefecture: '東京都',
@@ -136,13 +132,13 @@ const mockPlanData = [
         order: 1,
       },
       {
-        id: 'spot2',
+        id: spotId('2'),
         location: {
           name: 'モック観光地2',
           lat: 34.6937,
           lng: 135.5023,
         },
-        spotId: 'spot2',
+        spotId: spotId('2'),
         image: 'https://example.com/spot2.jpg',
         url: 'https://example.com/cafe',
         prefecture: '東京都',
@@ -220,13 +216,13 @@ const mockPlanData = [
         order: 0,
       },
       {
-        id: 'spot3',
+        id: spotId('3'),
         location: {
           name: 'モック観光地3',
           lat: 43.0618,
           lng: 141.3545,
         },
-        spotId: 'spot3',
+        spotId: spotId('3'),
         image: 'https://example.com/spot3.jpg',
         url: 'https://example.com/cafe',
         prefecture: '東京都',
@@ -294,13 +290,16 @@ describe('旅行計画サービス', () => {
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        const res = await client.api.trips.create.$post({
-          json: {
-            ...mockTripData,
-            tripInfo: mockTripInfoData,
-            plans: mockPlanData,
+        const res = await client.api.trips.create.$post(
+          {
+            json: {
+              ...mockTripData,
+              tripInfo: mockTripInfoData,
+              plans: mockPlanData,
+            },
           },
-        });
+          { headers: getAuthHeaders() },
+        );
         expect(res.status).toBe(201);
         const createdTrip = await res.json();
         expect(createdTrip).toHaveProperty('id');
@@ -349,17 +348,18 @@ describe('旅行計画サービス', () => {
   describe('GET /trips', () => {
     it('認証ユーザーの旅行計画一覧を取得できること', async () => {
       // 事前に旅行計画を作成
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
-      const res = await client.api.trips.$get({
-        context: mockAuthenticatedContext(),
-      });
+      const res = await client.api.trips.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const trips = await res.json();
@@ -369,8 +369,8 @@ describe('旅行計画サービス', () => {
     });
 
     it('認証されていない場合、401エラーを返すこと', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
-      const res = await client.api.trips.$get();
+      currentUserId = null;
+      const res = await client.api.trips.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });
@@ -379,20 +379,21 @@ describe('旅行計画サービス', () => {
       // 別ユーザーで旅行計画を作成
       const otherUserId = 'other_user_id';
       await createTestUser(otherUserId);
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: otherUserId });
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      currentUserId = otherUserId;
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
       // 元のユーザーに戻す
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
+      currentUserId = TEST_USER_ID;
 
-      const res = await client.api.trips.$get({
-        context: mockAuthenticatedContext(),
-      });
+      const res = await client.api.trips.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const trips = await res.json();
@@ -405,11 +406,9 @@ describe('旅行計画サービス', () => {
     it('旅行計画が存在しない場合、空配列を返すこと', async () => {
       // 事前にデータをクリア
       await clearTestData();
-      await createTestUser(TEST_USER_ID);
+      await createTestUser(TEST_USER_ID, 'ADMIN');
 
-      const res = await client.api.trips.$get({
-        context: mockAuthenticatedContext(),
-      });
+      const res = await client.api.trips.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const trips = await res.json();
@@ -422,17 +421,20 @@ describe('旅行計画サービス', () => {
   describe('GET /trips/:id', () => {
     it('特定の旅行計画の詳細を取得できること', async () => {
       // 事前に旅行計画を作成
-      const createdTrip = await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      const createdTrip = await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       const result = await createdTrip.json();
 
-      const res = await client.api.trips[result.id].$get();
+      const res = await client.api.trips[result.id].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const trip = await res.json();
@@ -461,7 +463,7 @@ describe('旅行計画サービス', () => {
     });
 
     it('存在しない旅行計画の詳細取得は404エラーを返すこと', async () => {
-      const res = await client.api.trips[9999].$get({});
+      const res = await client.api.trips[9999].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(404);
     });
@@ -482,34 +484,43 @@ describe('旅行計画サービス', () => {
       await createTestUser(user3);
 
       // user1: 2件の旅行プランを作成
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          title: 'User1の旅行1',
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      currentUserId = user1;
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            title: 'User1の旅行1',
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          title: 'User1の旅行2',
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+        { headers: getAuthHeaders() },
+      );
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            title: 'User1の旅行2',
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       // user2: 1件の旅行プランを作成
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user2 });
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          title: 'User2の旅行1',
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      currentUserId = user2;
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            title: 'User2の旅行1',
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       // user3: 旅行プランを作成しない（0件）
 
@@ -551,25 +562,31 @@ describe('旅行計画サービス', () => {
       await createTestUser(otherUser);
 
       // 各ユーザーに旅行プランを作成
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: targetUser });
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          title: 'ターゲットユーザーの旅行',
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      currentUserId = targetUser;
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            title: 'ターゲットユーザーの旅行',
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: otherUser });
-      await client.api.trips.create.$post({
-        json: {
-          ...mockTripData,
-          title: 'その他ユーザーの旅行',
-          tripInfo: mockTripInfoData,
-          plans: mockPlanData,
+      currentUserId = otherUser;
+      await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            title: 'その他ユーザーの旅行',
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       // targetUserのみを指定してカウント
       const { countPlanByUserId } = await import('@/services/trip');
@@ -585,18 +602,21 @@ describe('旅行計画サービス', () => {
       const userWithMany = 'user_with_many_trips';
       await createTestUser(userWithMany);
 
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: userWithMany });
+      currentUserId = userWithMany;
 
       // 5件の旅行プランを作成
       for (let i = 0; i < 5; i++) {
-        await client.api.trips.create.$post({
-          json: {
-            ...mockTripData,
-            title: `大量テスト用旅行${i}`,
-            tripInfo: mockTripInfoData,
-            plans: mockPlanData,
+        await client.api.trips.create.$post(
+          {
+            json: {
+              ...mockTripData,
+              title: `大量テスト用旅行${i}`,
+              tripInfo: mockTripInfoData,
+              plans: mockPlanData,
+            },
           },
-        });
+          { headers: getAuthHeaders() },
+        );
       }
 
       const { countPlanByUserId } = await import('@/services/trip');
@@ -620,20 +640,23 @@ describe('旅行計画サービス', () => {
       await createTestUser(user2);
       await createTestUser(user3);
 
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+      currentUserId = user1;
       // 現在日を一ヶ月前にする
       const prevDate = new Date('2023-12-01T12:00:00Z');
       setSystemTime(prevDate);
       // 1件✖️2日の前月の旅行プランを作成
       for (let i = 0; i < 1; i++) {
-        await client.api.trips.create.$post({
-          json: {
-            ...mockTripData,
-            title: `大量テスト用旅行${i}`,
-            tripInfo: mockTripInfoData,
-            plans: mockPlanData,
+        await client.api.trips.create.$post(
+          {
+            json: {
+              ...mockTripData,
+              title: `大量テスト用旅行${i}`,
+              tripInfo: mockTripInfoData,
+              plans: mockPlanData,
+            },
           },
-        });
+          { headers: getAuthHeaders() },
+        );
       }
 
       // 元に戻す
@@ -641,14 +664,17 @@ describe('旅行計画サービス', () => {
       setSystemTime(date);
       // 1件✖️2日の当月の旅行プランを作成
       for (let i = 0; i < 1; i++) {
-        await client.api.trips.create.$post({
-          json: {
-            ...mockTripData,
-            title: `大量テスト用旅行${i}`,
-            tripInfo: mockTripInfoData,
-            plans: mockPlanData,
+        await client.api.trips.create.$post(
+          {
+            json: {
+              ...mockTripData,
+              title: `大量テスト用旅行${i}`,
+              tripInfo: mockTripInfoData,
+              plans: mockPlanData,
+            },
           },
-        });
+          { headers: getAuthHeaders() },
+        );
       }
 
       // 1件 + 3件 = 合計4件の旅程
@@ -675,31 +701,37 @@ describe('旅行計画サービス', () => {
       await createTestUser(user2);
       await createTestUser(user3);
 
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+      currentUserId = user1;
 
       // 1件✖️2日の旅行プランを作成
       for (let i = 0; i < 1; i++) {
-        await client.api.trips.create.$post({
-          json: {
-            ...mockTripData,
-            title: `大量テスト用旅行${i}`,
-            tripInfo: mockTripInfoData,
-            plans: mockPlanData,
+        await client.api.trips.create.$post(
+          {
+            json: {
+              ...mockTripData,
+              title: `大量テスト用旅行${i}`,
+              tripInfo: mockTripInfoData,
+              plans: mockPlanData,
+            },
           },
-        });
+          { headers: getAuthHeaders() },
+        );
       }
 
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user2 });
+      currentUserId = user2;
       // 3件✖️2日の旅行プランを作成
       for (let i = 0; i < 3; i++) {
-        await client.api.trips.create.$post({
-          json: {
-            ...mockTripData,
-            title: `大量テスト用旅行${i}`,
-            tripInfo: mockTripInfoData,
-            plans: mockPlanData,
+        await client.api.trips.create.$post(
+          {
+            json: {
+              ...mockTripData,
+              title: `大量テスト用旅行${i}`,
+              tripInfo: mockTripInfoData,
+              plans: mockPlanData,
+            },
           },
-        });
+          { headers: getAuthHeaders() },
+        );
       }
       // 1件 + 3件 = 合計4件の旅程
       // 期待値としては、総プラン数4、前月比増減数4、平均旅程数の割合8/4=2となるはず

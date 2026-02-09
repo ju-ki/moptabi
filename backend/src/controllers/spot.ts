@@ -1,4 +1,3 @@
-import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
@@ -7,6 +6,7 @@ import {
   getUnvisitedWishlistSpots as fetchUnvisitedWishlistSpots,
   getVisitedSpots as fetchVisitedSpots,
 } from '@/services/spot';
+import { getUserId } from '@/middleware/auth';
 
 /**
  * 未訪問の行きたいリストに登録しているスポットを取得
@@ -14,8 +14,8 @@ import {
  * - フィルター・ソートパラメータに対応
  */
 export const getUnvisitedSpots = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
+  const userId = getUserId(c);
+  if (!userId) {
     throw new HTTPException(401, { message: 'Unauthorized' });
   }
 
@@ -27,7 +27,7 @@ export const getUnvisitedSpots = async (c: Context) => {
     sortOrder: (c.req.query('sortOrder') as 'asc' | 'desc') || 'desc',
   };
 
-  const spots = await fetchUnvisitedWishlistSpots(auth.userId, query);
+  const spots = await fetchUnvisitedWishlistSpots(userId, query);
   return c.json(spots, 200);
 };
 
@@ -38,8 +38,8 @@ export const getUnvisitedSpots = async (c: Context) => {
  * - 重複は除外
  */
 export const getVisitedSpots = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
+  const userId = getUserId(c);
+  if (!userId) {
     throw new HTTPException(401, { message: 'Unauthorized' });
   }
 
@@ -53,7 +53,7 @@ export const getVisitedSpots = async (c: Context) => {
     sortOrder: (c.req.query('sortOrder') as 'asc' | 'desc') || 'desc',
   };
 
-  const spots = await fetchVisitedSpots(auth.userId, query);
+  const spots = await fetchVisitedSpots(userId, query);
   return c.json(spots, 200);
 };
 

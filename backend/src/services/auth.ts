@@ -1,8 +1,8 @@
-import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
 import { prisma } from '@/lib/client';
+import { getUserId } from '@/middleware/auth';
 
 import { getTotalWishlistAndIncreaseAndDecrease } from './wishlist';
 import { getTripStatistics } from './trip';
@@ -10,39 +10,42 @@ import { getTripStatistics } from './trip';
 export const getDashboardStats = async (c: Context) => {
   // ダッシュボード用の統計情報を取得するロジックをここに実装
 
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized' });
-  }
+  const userId = getUserId(c);
 
   // 管理者権限以外は401を返す
   const targetUser = await prisma.user.findUnique({
-    where: { id: auth.userId },
+    where: { id: userId },
   });
 
   if (targetUser?.role !== 'ADMIN') {
     throw new HTTPException(403, { message: 'Forbidden: Admin access required' });
   }
 
-  const clerkClient = c.get('clerk');
-  const users = await clerkClient.users.getUserList();
-  // アクセス時点1ヶ月間で最終ログインしているユーザー数を取得する
-  const userList = users.data.map((user) => ({
+  // TODO: ClerkからNextAuth.jsへの移行後、ユーザーリスト取得を実装
+  // 現在はDBのユーザー情報を使用
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const userList = users.map((user) => ({
     id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.primaryEmailAddress,
-    imageUrl: user.imageUrl,
-    registeredAt: user.createdAt,
-    lastLoginAt: user.lastSignInAt,
+    firstName: user.name?.split(' ')[0] || '',
+    lastName: user.name?.split(' ')[1] || '',
+    email: user.email,
+    imageUrl: user.image,
+    registeredAt: user.createdAt.getTime(),
+    lastLoginAt: user.lastLoginAt?.getTime() || null,
   }));
-  const totalUsers = users.totalCount;
-  const activeUserCountFromLastMonth = userList.filter((user) => {
+
+  const totalUsers = users.length;
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+  const activeUserCountFromLastMonth = users.filter((user) => {
     if (!user.lastLoginAt) return false;
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-    return user.lastLoginAt >= Math.floor(oneMonthAgo.getTime());
+    return user.lastLoginAt >= oneMonthAgo;
   }).length;
+
   const wishlistStats = await getTotalWishlistAndIncreaseAndDecrease();
   const tripStats = await getTripStatistics();
 

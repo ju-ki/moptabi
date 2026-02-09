@@ -2,7 +2,7 @@
 import './globals.css';
 
 import React from 'react';
-import { ClerkProvider } from '@clerk/nextjs';
+import { SessionProvider } from 'next-auth/react';
 import { useLoadScript } from '@react-google-maps/api';
 
 import { Toaster } from '@/components/ui/toaster';
@@ -21,10 +21,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <>
-          <ClerkProvider>
+          <SessionProvider>
             <Header />
             {!isLoaded ? <div>Loading...</div> : <main>{children}</main>}
-          </ClerkProvider>
+          </SessionProvider>
           <Toaster />
         </>
       </body>

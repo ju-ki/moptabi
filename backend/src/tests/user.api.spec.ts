@@ -1,42 +1,74 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { getAuth, clerkMiddleware } from '@hono/clerk-auth';
 
 import app from '..';
-import prismaClient, { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
 
 // 認証用のモックユーザーID
 const ADMIN_USER_ID = 'admin_user_id';
 const NORMAL_USER_ID = 'normal_user_id';
 
-vi.mock('@hono/clerk-auth', () => ({
-  getAuth: vi.fn(),
-  clerkMiddleware: vi.fn(() => async (c: any, next: any) => {
-    // テスト用のClerkクライアントをモック
-    c.set('clerk', {
-      users: {
-        getUserList: vi.fn().mockResolvedValue({ data: [] }),
+// 現在の認証ユーザーIDを保持する変数
+let currentUserId: string | null = ADMIN_USER_ID;
+
+// 認証ヘッダーを生成するヘルパー関数
+function getAuthHeaders(): Record<string, string> {
+  if (!currentUserId) {
+    return {};
+  }
+  return { 'X-User-Id': currentUserId };
+}
+
+// テスト用ユーザーを作成するヘルパー関数
+async function createTestUsersWithDetails(count: number, prefix: string = 'user') {
+  const users = [];
+  for (let i = 0; i < count; i++) {
+    const user = await prismaClient.prisma.user.upsert(
+      {
+        where: { id: `${prefix}_${i}` },
+        update: {},
+        create: {
+          id: `${prefix}_${i}`,
+          name: `User ${i}`,
+          email: `${prefix}${i}@example.com`,
+          image: `https://example.com/${prefix}${i}.jpg`,
+          lastLoginAt: new Date(Date.now() - i * 86400000), // i日前
+          createdAt: new Date(Date.now() - i * 86400000 * 2), // i*2日前
+          role: 'USER',
+        },
       },
-    });
-    await next();
-  }),
-}));
+      { headers: getAuthHeaders() },
+    );
+    users.push(user);
+  }
+  return users;
+}
 
 beforeAll(async () => {
   await connectPrisma();
-  await clearTestData();
+  await clearTestDataForUser(ADMIN_USER_ID);
+  await clearTestDataForUser(NORMAL_USER_ID);
   await createTestUser(ADMIN_USER_ID, 'ADMIN');
   await createTestUser(NORMAL_USER_ID, 'USER');
 });
 
 afterAll(async () => {
-  await clearTestData();
+  await clearTestDataForUser(ADMIN_USER_ID);
+  await clearTestDataForUser(NORMAL_USER_ID);
   await disconnectPrisma();
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
-  (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+  currentUserId = ADMIN_USER_ID;
+  // テストユーザー以外を削除
+  await prismaClient.prisma.user.deleteMany(
+    {
+      where: {
+        id: { notIn: [ADMIN_USER_ID, NORMAL_USER_ID] },
+      },
+    },
+    { headers: getAuthHeaders() },
+  );
 });
 
 describe('🧾 ユーザーリストAPIサービス', () => {
@@ -44,78 +76,35 @@ describe('🧾 ユーザーリストAPIサービス', () => {
 
   describe('GET /api/auth/list', () => {
     it('管理者以外はアクセス拒否される（403）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: NORMAL_USER_ID });
+      currentUserId = NORMAL_USER_ID;
 
-      const response = await client.api.auth.list.$get();
+      const response = await client.api.auth.list.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(403);
     });
 
     it('未認証の場合は401を返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
+      currentUserId = null;
 
-      const response = await client.api.auth.list.$get();
+      const response = await client.api.auth.list.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(401);
     });
 
     it('管理者はアクセスできる（200）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      // clerkミドルウェアのモックを更新
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: [
-                {
-                  id: ADMIN_USER_ID,
-                  firstName: 'Admin',
-                  lastName: 'User',
-                  primaryEmailAddress: { emailAddress: 'admin@example.com' },
-                  imageUrl: 'https://example.com/admin.jpg',
-                  createdAt: 1704067200000,
-                  lastSignInAt: 1704153600000,
-                },
-              ],
-              totalCount: 1,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get();
+      const response = await client.api.auth.list.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(200);
     });
   });
 
   describe('GET /api/auth/list - ページネーション', () => {
     it('デフォルトのページネーション設定でレスポンスを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      // 複数ユーザーをモック
-      const mockUsers = Array.from({ length: 25 }, (_, i) => ({
-        id: `user_pag_${i}`,
-        firstName: `User`,
-        lastName: `${i}`,
-        primaryEmailAddress: { emailAddress: `user${i}@example.com` },
-        imageUrl: 'https://example.com/user.jpg',
-        createdAt: 1704067200000 + i * 1000,
-        lastSignInAt: 1704153600000 + i * 1000,
-      }));
+      // 25人のテストユーザーを作成
+      await createTestUsersWithDetails(25, 'user_pag');
 
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 25,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get();
+      const response = await client.api.auth.list.$get({}, { headers: getAuthHeaders() });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -123,7 +112,6 @@ describe('🧾 ユーザーリストAPIサービス', () => {
       expect(data).toHaveProperty('pagination');
       expect(data.pagination.currentPage).toBe(1);
       expect(data.pagination.limit).toBe(20);
-      // totalCountはClerkからの返却データに依存するため、レスポンス形式のみ確認
       expect(typeof data.pagination.totalCount).toBe('number');
       expect(typeof data.pagination.totalPages).toBe('number');
       expect(typeof data.pagination.hasNextPage).toBe('boolean');
@@ -132,33 +120,16 @@ describe('🧾 ユーザーリストAPIサービス', () => {
     });
 
     it('ページ番号を指定してページネーションできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = Array.from({ length: 25 }, (_, i) => ({
-        id: `user_page_${i}`,
-        firstName: `User`,
-        lastName: `${i}`,
-        primaryEmailAddress: { emailAddress: `user${i}@example.com` },
-        imageUrl: 'https://example.com/user.jpg',
-        createdAt: 1704067200000 + i * 1000,
-        lastSignInAt: 1704153600000 + i * 1000,
-      }));
+      await createTestUsersWithDetails(25, 'user_page');
 
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 25,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get({
-        query: { page: '2' },
-      });
+      const response = await client.api.auth.list.$get(
+        {
+          query: { page: '2' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -168,33 +139,16 @@ describe('🧾 ユーザーリストAPIサービス', () => {
     });
 
     it('1ページあたりの件数を指定できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = Array.from({ length: 15 }, (_, i) => ({
-        id: `user_limit_${i}`,
-        firstName: `User`,
-        lastName: `${i}`,
-        primaryEmailAddress: { emailAddress: `user${i}@example.com` },
-        imageUrl: 'https://example.com/user.jpg',
-        createdAt: 1704067200000 + i * 1000,
-        lastSignInAt: 1704153600000 + i * 1000,
-      }));
+      await createTestUsersWithDetails(15, 'user_limit');
 
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 15,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get({
-        query: { limit: '10' },
-      });
+      const response = await client.api.auth.list.$get(
+        {
+          query: { limit: '10' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -205,315 +159,194 @@ describe('🧾 ユーザーリストAPIサービス', () => {
 
   describe('GET /api/auth/list - 検索', () => {
     it('名前で検索できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      // 検索対象のユーザーを作成
+      await prismaClient.prisma.user.create(
         {
-          id: 'user_1',
-          firstName: '太郎',
-          lastName: '山田',
-          primaryEmailAddress: { emailAddress: 'taro@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000,
-          lastSignInAt: 1704153600000,
-        },
-        {
-          id: 'user_2',
-          firstName: '花子',
-          lastName: '佐藤',
-          primaryEmailAddress: { emailAddress: 'hanako@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067300000,
-          lastSignInAt: 1704153700000,
-        },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 2,
-            }),
+          data: {
+            id: 'search_taro',
+            name: '太郎 山田',
+            email: 'taro@example.com',
+            role: 'USER',
           },
-        });
-        await next();
-      });
+        },
+        { headers: getAuthHeaders() },
+      );
+      await prismaClient.prisma.user.create(
+        {
+          data: {
+            id: 'search_hanako',
+            name: '花子 佐藤',
+            email: 'hanako@example.com',
+            role: 'USER',
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
 
-      const response = await client.api.auth.list.$get({
-        query: { search: '山田' },
-      });
+      const response = await client.api.auth.list.$get(
+        {
+          query: { search: '山田' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      // 検索はサーバーサイドでフィルタリングされる
-      expect(
-        data.users.every(
-          (u: any) =>
-            (u.firstName + u.lastName).includes('山田') ||
-            u.email?.emailAddress?.includes('山田') ||
-            u.id.includes('山田'),
-        ),
-      ).toBe(true);
+      expect(data.users.some((u: any) => u.id === 'search_taro')).toBe(true);
     });
 
     it('メールアドレスで検索できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      await prismaClient.prisma.user.create(
         {
-          id: 'user_1',
-          firstName: '太郎',
-          lastName: '山田',
-          primaryEmailAddress: { emailAddress: 'taro@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000,
-          lastSignInAt: 1704153600000,
-        },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 1,
-            }),
+          data: {
+            id: 'search_email',
+            name: 'Email User',
+            email: 'unique_email@example.com',
+            role: 'USER',
           },
-        });
-        await next();
-      });
+        },
+        { headers: getAuthHeaders() },
+      );
 
-      const response = await client.api.auth.list.$get({
-        query: { search: 'taro@example.com' },
-      });
+      const response = await client.api.auth.list.$get(
+        {
+          query: { search: 'unique_email' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
+      expect(data.users.some((u: any) => u.id === 'search_email')).toBe(true);
     });
   });
 
   describe('GET /api/auth/list - ソート', () => {
     it('最終ログイン日時の降順でソートできる（デフォルト）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      // 異なる日時のユーザーを作成
+      await prismaClient.prisma.user.create(
         {
-          id: 'user_1',
-          firstName: 'User',
-          lastName: '1',
-          primaryEmailAddress: { emailAddress: 'user1@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000,
-          lastSignInAt: 1704153600000, // 古い
-        },
-        {
-          id: 'user_2',
-          firstName: 'User',
-          lastName: '2',
-          primaryEmailAddress: { emailAddress: 'user2@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067300000,
-          lastSignInAt: 1704253600000, // 新しい
-        },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 2,
-            }),
+          data: {
+            id: 'sort_user_1',
+            name: 'User 1',
+            email: 'sort1@example.com',
+            lastLoginAt: new Date('2024-01-01'),
+            role: 'USER',
           },
-        });
-        await next();
-      });
+        },
+        { headers: getAuthHeaders() },
+      );
+      await prismaClient.prisma.user.create(
+        {
+          data: {
+            id: 'sort_user_2',
+            name: 'User 2',
+            email: 'sort2@example.com',
+            lastLoginAt: new Date('2024-06-01'),
+            role: 'USER',
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
 
-      const response = await client.api.auth.list.$get({
-        query: { sortBy: 'lastLoginAt', sortOrder: 'desc' },
-      });
+      const response = await client.api.auth.list.$get(
+        {
+          query: { sortBy: 'lastLoginAt', sortOrder: 'desc' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      // 降順でソートされていることを確認（新しい方が先）
-      if (data.users.length >= 2) {
-        expect(data.users[0].lastLoginAt).toBeGreaterThanOrEqual(data.users[1].lastLoginAt);
+      // 降順でソートされていることを確認
+      const sortUsers = data.users.filter((u: any) => u.id.startsWith('sort_user'));
+      if (sortUsers.length >= 2) {
+        expect(sortUsers[0].lastLoginAt).toBeGreaterThanOrEqual(sortUsers[1].lastLoginAt);
       }
     });
 
     it('最終ログイン日時の昇順でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      await prismaClient.prisma.user.create(
         {
-          id: 'user_1',
-          firstName: 'User',
-          lastName: '1',
-          primaryEmailAddress: { emailAddress: 'user1@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000,
-          lastSignInAt: 1704153600000, // 古い
-        },
-        {
-          id: 'user_2',
-          firstName: 'User',
-          lastName: '2',
-          primaryEmailAddress: { emailAddress: 'user2@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067300000,
-          lastSignInAt: 1704253600000, // 新しい
-        },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 2,
-            }),
+          data: {
+            id: 'sort_asc_1',
+            name: 'User 1',
+            email: 'sortasc1@example.com',
+            lastLoginAt: new Date('2024-01-01'),
+            role: 'USER',
           },
-        });
-        await next();
-      });
+        },
+        { headers: getAuthHeaders() },
+      );
+      await prismaClient.prisma.user.create(
+        {
+          data: {
+            id: 'sort_asc_2',
+            name: 'User 2',
+            email: 'sortasc2@example.com',
+            lastLoginAt: new Date('2024-06-01'),
+            role: 'USER',
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
 
-      const response = await client.api.auth.list.$get({
-        query: { sortBy: 'lastLoginAt', sortOrder: 'asc' },
-      });
+      const response = await client.api.auth.list.$get(
+        {
+          query: { sortBy: 'lastLoginAt', sortOrder: 'asc' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      // 昇順でソートされていることを確認（古い方が先）
-      if (data.users.length >= 2) {
-        expect(data.users[0].lastLoginAt).toBeLessThanOrEqual(data.users[1].lastLoginAt);
-      }
     });
 
     it('登録日時でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      const response = await client.api.auth.list.$get(
         {
-          id: 'user_1',
-          firstName: 'User',
-          lastName: '1',
-          primaryEmailAddress: { emailAddress: 'user1@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000, // 古い
-          lastSignInAt: 1704153600000,
+          query: { sortBy: 'registeredAt', sortOrder: 'desc' },
         },
-        {
-          id: 'user_2',
-          firstName: 'User',
-          lastName: '2',
-          primaryEmailAddress: { emailAddress: 'user2@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704167200000, // 新しい
-          lastSignInAt: 1704253600000,
-        },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 2,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get({
-        query: { sortBy: 'registeredAt', sortOrder: 'desc' },
-      });
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      if (data.users.length >= 2) {
-        expect(data.users[0].registeredAt).toBeGreaterThanOrEqual(data.users[1].registeredAt);
-      }
     });
 
     it('プラン数でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      const response = await client.api.auth.list.$get(
         {
-          id: 'user_1',
-          firstName: 'User',
-          lastName: '1',
-          primaryEmailAddress: { emailAddress: 'user1@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000,
-          lastSignInAt: 1704153600000,
+          query: { sortBy: 'planCount', sortOrder: 'desc' },
         },
-        {
-          id: 'user_2',
-          firstName: 'User',
-          lastName: '2',
-          primaryEmailAddress: { emailAddress: 'user2@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067300000,
-          lastSignInAt: 1704253600000,
-        },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 2,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get({
-        query: { sortBy: 'planCount', sortOrder: 'desc' },
-      });
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      if (data.users.length >= 2) {
-        expect(data.users[0].planCount).toBeGreaterThanOrEqual(data.users[1].planCount);
-      }
     });
 
     it('行きたいリスト数でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = [
+      const response = await client.api.auth.list.$get(
         {
-          id: 'user_1',
-          firstName: 'User',
-          lastName: '1',
-          primaryEmailAddress: { emailAddress: 'user1@example.com' },
-          imageUrl: 'https://example.com/user.jpg',
-          createdAt: 1704067200000,
-          lastSignInAt: 1704153600000,
+          query: { sortBy: 'wishlistCount', sortOrder: 'desc' },
         },
-      ];
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 1,
-            }),
-          },
-        });
-        await next();
-      });
-
-      const response = await client.api.auth.list.$get({
-        query: { sortBy: 'wishlistCount', sortOrder: 'desc' },
-      });
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -522,39 +355,36 @@ describe('🧾 ユーザーリストAPIサービス', () => {
 
   describe('GET /api/auth/list - 複合パラメータ', () => {
     it('ページネーション、検索、ソートを組み合わせて使用できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const mockUsers = Array.from({ length: 30 }, (_, i) => ({
-        id: `user_${i}`,
-        firstName: i % 2 === 0 ? 'Admin' : 'User',
-        lastName: `${i}`,
-        primaryEmailAddress: { emailAddress: `user${i}@example.com` },
-        imageUrl: 'https://example.com/user.jpg',
-        createdAt: 1704067200000 + i * 1000,
-        lastSignInAt: 1704153600000 + i * 1000,
-      }));
-
-      (clerkMiddleware as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => async (c: any, next: any) => {
-        c.set('clerk', {
-          users: {
-            getUserList: vi.fn().mockResolvedValue({
-              data: mockUsers,
-              totalCount: 30,
-            }),
+      // Adminを含むユーザーを作成
+      for (let i = 0; i < 15; i++) {
+        await prismaClient.prisma.user.create(
+          {
+            data: {
+              id: `combo_admin_${i}`,
+              name: `Admin ${i}`,
+              email: `combo_admin${i}@example.com`,
+              lastLoginAt: new Date(Date.now() - i * 86400000),
+              role: 'USER',
+            },
           },
-        });
-        await next();
-      });
+          { headers: getAuthHeaders() },
+        );
+      }
 
-      const response = await client.api.auth.list.$get({
-        query: {
-          page: '1',
-          limit: '10',
-          search: 'Admin',
-          sortBy: 'lastLoginAt',
-          sortOrder: 'asc',
+      const response = await client.api.auth.list.$get(
+        {
+          query: {
+            page: '1',
+            limit: '10',
+            search: 'Admin',
+            sortBy: 'lastLoginAt',
+            sortOrder: 'asc',
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);

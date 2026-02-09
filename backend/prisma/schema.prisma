@@ -1,7 +1,6 @@
 generator client {
   provider      = "prisma-client"
   output        = "../src/generated/prisma"
-  engine = "client"
 }
 
 datasource db {
@@ -162,6 +161,11 @@ model UserNotification {
 
 model User {
   id                String             @id @db.VarChar(255)
+  name              String?            @db.VarChar(255)
+  email             String?            @db.VarChar(255)
+  image             String?            @db.VarChar(500)
+  lastLoginAt       DateTime?
+  createdAt         DateTime           @default(now())
   role         RoleType  @default(USER)
   trip              Trip[]
   wishlists         Wishlist[]

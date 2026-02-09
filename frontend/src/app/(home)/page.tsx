@@ -1,6 +1,8 @@
+'use client';
+
 import React from 'react';
 import { MapPin, Calendar, History, Sparkles, Users, CloudSun, ArrowRight, LucideIcon } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { useSession, signIn } from 'next-auth/react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -129,6 +131,10 @@ const FUTURE_FEATURES: Feature[] = [
 ];
 
 const Home = () => {
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === 'authenticated';
+  const isLoading = status === 'loading';
+
   return (
     <div className="flex-1 flex flex-col w-full">
       {/* ヒーローセクション */}
@@ -166,28 +172,32 @@ const Home = () => {
             新しいトラベルパートナーです。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <SignedIn>
-              <Button size="lg" className="h-12 px-8 text-base bg-white text-gray-900 hover:bg-gray-100" asChild>
-                <Link href="/plan/create">
-                  旅を計画する <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+            {isAuthenticated ? (
+              <>
+                <Button size="lg" className="h-12 px-8 text-base bg-white text-gray-900 hover:bg-gray-100" asChild>
+                  <Link href="/plan/create">
+                    旅を計画する <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 px-8 text-base bg-transparent border-white text-white hover:bg-white/10"
+                  asChild
+                >
+                  <Link href="/wishlist">スポットを探す</Link>
+                </Button>
+              </>
+            ) : (
               <Button
                 size="lg"
-                variant="outline"
-                className="h-12 px-8 text-base bg-transparent border-white text-white hover:bg-white/10"
-                asChild
+                className="h-12 px-8 text-base bg-white text-gray-900 hover:bg-gray-100"
+                onClick={() => signIn('google')}
+                disabled={isLoading}
               >
-                <Link href="/wishlist">スポットを探す</Link>
+                無料で始める
               </Button>
-            </SignedIn>
-            <SignedOut>
-              <SignInButton mode="modal">
-                <Button size="lg" className="h-12 px-8 text-base bg-white text-gray-900 hover:bg-gray-100">
-                  無料で始める
-                </Button>
-              </SignInButton>
-            </SignedOut>
+            )}
           </div>
         </div>
       </section>
@@ -221,11 +231,11 @@ const Home = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-6 min-h-[4rem]">{step.content}</p>
-                  <SignedIn>
+                  {isAuthenticated && (
                     <Button variant="link" className={`p-0 ${step.colors.text} h-auto font-semibold`} asChild>
                       <Link href={step.linkHref}>{step.linkText} &rarr;</Link>
                     </Button>
-                  </SignedIn>
+                  )}
                 </CardContent>
               </Card>
             ))}

@@ -1,50 +1,45 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi, setSystemTime } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { getAuth } from '@hono/clerk-auth';
-import { Context } from 'hono';
 
 import { WishlistCreateSchema, WishlistListResponseSchema, WishlistUpdateSchema } from '@/models/wishlist';
 
 import app from '..';
-import prismaClient, { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import prismaClient, {
+  clearTestData,
+  clearTestDataForUser,
+  connectPrisma,
+  createTestUser,
+  disconnectPrisma,
+} from './prisma';
 
 // 認証用のモックユーザーID
-const TEST_USER_ID = 'test_user_id';
+const TEST_USER_ID = 'test_user_wishlist';
 
-vi.mock('@hono/clerk-auth', () => ({
-  getAuth: vi.fn(),
-}));
+// 現在の認証ユーザーIDを保持する変数
+let currentUserId: string | null = TEST_USER_ID;
+
+// 認証ヘッダーを生成するヘルパー関数
+function getAuthHeaders(): Record<string, string> {
+  if (!currentUserId) {
+    return {};
+  }
+  return { 'X-User-Id': currentUserId };
+}
 
 beforeAll(async () => {
   await connectPrisma();
-  await clearTestData();
-  await createTestUser(TEST_USER_ID);
+  await clearTestDataForUser(TEST_USER_ID);
+  await createTestUser(TEST_USER_ID, 'ADMIN');
 });
 
 afterAll(async () => {
-  await clearTestData();
+  await clearTestDataForUser(TEST_USER_ID);
   await disconnectPrisma();
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
-  (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
+  currentUserId = TEST_USER_ID;
 });
-
-export const mockAuthenticatedContext = (userId: string = TEST_USER_ID): Context => {
-  return {
-    get: (key: string) => {
-      if (key === 'auth') {
-        return {
-          userId,
-          sessionId: 'mockSessionId',
-        };
-      }
-
-      return undefined;
-    },
-  } as unknown as Context;
-};
 
 // 再利用するモックデータ
 const mockSpotMeta = {
@@ -81,7 +76,7 @@ describe('🧾 行きたいリストサービス', () => {
   describe('GET /wishlist', () => {
     // 行きたいリスト一覧の取得テスト(中身が空)
     it('データが無い場合は空配列を返す', async () => {
-      const response = await client.api.wishlist.$get();
+      const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const res = await response.json();
       expect(Array.isArray(res)).toBe(true);
       expect((res as any[]).length).toBe(0);
@@ -122,7 +117,7 @@ describe('🧾 行きたいリストサービス', () => {
           visitedAt: null,
         },
       });
-      const response = await client.api.wishlist.$get();
+      const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const res = await response.json();
       expect(Array.isArray(res)).toBe(true);
       expect((res as any[]).length).toBeGreaterThanOrEqual(1);
@@ -170,7 +165,7 @@ describe('🧾 行きたいリストサービス', () => {
           visitedAt: null,
         },
       });
-      const response = await client.api.wishlist.$get();
+      const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const res = await response.json();
       expect(Array.isArray(res)).toBe(true);
       expect((res as any[]).length).toBeGreaterThanOrEqual(2);
@@ -196,7 +191,7 @@ describe('🧾 行きたいリストサービス', () => {
       });
 
       // テスト対象ユーザーの行きたいリストを取得する
-      const response = await client.api.wishlist.$get();
+      const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const res = await response.json();
       expect(Array.isArray(res)).toBe(true);
       // 取得した行きたいリストに他のユーザーのデータが含まれていないことを確認する
@@ -207,10 +202,10 @@ describe('🧾 行きたいリストサービス', () => {
 
     // 行きたいリスト取得時に、認証エラーが発生した場合のテスト
     it('認証エラーが発生した場合は401エラーを返す', async () => {
-      // getAuthのモックを認証エラーに設定する
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
+      // currentUserIdのモックを認証エラーに設定する
+      currentUserId = null;
 
-      const res = await client.api.wishlist.$get();
+      const res = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       expect(res.status).toBe(401);
     });
   });
@@ -266,9 +261,12 @@ describe('🧾 行きたいリストサービス', () => {
       const parseResult = WishlistCreateSchema.safeParse(payload);
       expect(parseResult.success).toBe(true);
 
-      const res = await client.api.wishlist.$post({
-        json: payload,
-      });
+      const res = await client.api.wishlist.$post(
+        {
+          json: payload,
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(201);
       const body = await res.json();
@@ -309,7 +307,7 @@ describe('🧾 行きたいリストサービス', () => {
       const parseResult = WishlistCreateSchema.safeParse(payload);
       expect(parseResult.success).toBe(true);
 
-      const res = await client.api.wishlist.$post({ json: payload });
+      const res = await client.api.wishlist.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(201);
       const body = await res.json();
@@ -323,7 +321,7 @@ describe('🧾 行きたいリストサービス', () => {
     });
 
     it('セッションが切れた場合は 401 を返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
+      currentUserId = null;
       const payload = {
         spotId: 'any',
         spot: {
@@ -347,7 +345,7 @@ describe('🧾 行きたいリストサービス', () => {
         visitedAt: null,
       };
 
-      const res = await client.api.wishlist.$post({ json: payload });
+      const res = await client.api.wishlist.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });
@@ -389,7 +387,7 @@ describe('🧾 行きたいリストサービス', () => {
       const parseResult = WishlistCreateSchema.safeParse(payload);
       expect(parseResult.success).toBe(false);
 
-      const res = await client.api.wishlist.$post({ json: payload });
+      const res = await client.api.wishlist.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(400);
     });
@@ -445,9 +443,12 @@ describe('🧾 行きたいリストサービス', () => {
       const parseResult = WishlistUpdateSchema.safeParse(updatePayload);
       expect(parseResult.success).toBe(true);
 
-      const res = await client.api.wishlist[`${wishlistEntry.id}`].$patch({
-        json: updatePayload,
-      });
+      const res = await client.api.wishlist[`${wishlistEntry.id}`].$patch(
+        {
+          json: updatePayload,
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -466,15 +467,18 @@ describe('🧾 行きたいリストサービス', () => {
         visitedAt: new Date().toISOString(),
       };
 
-      const res = await client.api.wishlist['non_existent_id'].$patch({
-        json: updatePayload,
-      });
+      const res = await client.api.wishlist['non_existent_id'].$patch(
+        {
+          json: updatePayload,
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(404);
     });
 
     it('セッションが切れた場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
+      currentUserId = null;
 
       const updatePayload = {
         id: 1,
@@ -505,9 +509,12 @@ describe('🧾 行きたいリストサービス', () => {
       const parseResult = WishlistUpdateSchema.safeParse(updatePayload);
       expect(parseResult.success).toBe(false);
 
-      const res = await client.api.wishlist['1'].$patch({
-        json: updatePayload,
-      });
+      const res = await client.api.wishlist['1'].$patch(
+        {
+          json: updatePayload,
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(400);
     });
@@ -557,13 +564,13 @@ describe('🧾 行きたいリストサービス', () => {
         },
       });
 
-      const res = await client.api.wishlist[`${wishlistEntry.id}`].$delete();
+      const res = await client.api.wishlist[`${wishlistEntry.id}`].$delete({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
     });
 
     it('セッションが切れた場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
+      currentUserId = null;
 
       const res = await client.api.wishlist['1'].$delete();
 
@@ -571,7 +578,7 @@ describe('🧾 行きたいリストサービス', () => {
     });
 
     it('不正なIDの行きたいリストを削除しようとした場合は404エラーを返す', async () => {
-      const res = await client.api.wishlist['non_existent_id'].$delete();
+      const res = await client.api.wishlist['non_existent_id'].$delete({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(400);
     });
@@ -639,9 +646,12 @@ describe('🧾 行きたいリストサービス', () => {
       const createResult = WishlistCreateSchema.safeParse(createPayload);
       expect(createResult.success).toBe(true);
 
-      const res = await client.api.wishlist.$post({
-        json: createPayload,
-      });
+      const res = await client.api.wishlist.$post(
+        {
+          json: createPayload,
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(201);
       const json = await res.json();
@@ -649,7 +659,7 @@ describe('🧾 行きたいリストサービス', () => {
       expect(json.memo).toBe('営業時間を確認したい');
 
       // 取得してopeningHoursが含まれているか確認
-      const getRes = await client.api.wishlist.$get();
+      const getRes = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const wishlists = await getRes.json();
 
       const addedWishlist = (wishlists as any[]).find((w) => w.spotId === spotWithHoursId);
@@ -980,7 +990,7 @@ describe('🧾 行きたいリストサービス', () => {
         },
       });
 
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: user1 });
+      currentUserId = user1;
       await prismaClient.prisma.wishlist.create({
         data: {
           id: 1,

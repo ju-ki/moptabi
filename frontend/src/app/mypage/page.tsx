@@ -1,6 +1,6 @@
 'use client';
 
-import { SignOutButton } from '@clerk/nextjs';
+import { signOut } from 'next-auth/react';
 import { LogOut, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -99,11 +99,9 @@ export default function MyPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <SignOutButton>
-              <Button variant="outline" className="w-full">
-                ログアウト
-              </Button>
-            </SignOutButton>
+            <Button variant="outline" className="w-full" onClick={() => signOut()}>
+              ログアウト
+            </Button>
           </CardContent>
         </Card>
       </div>

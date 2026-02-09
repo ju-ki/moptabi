@@ -50,7 +50,7 @@ export const getTripStatistics = async () => {
   // プランあたりの平均旅程数を取得
   const result = await prisma.$queryRaw<{ avg_days_per_plan: number }[]>`
   SELECT
-    plan_count / trip_count AS avg_days_per_plan
+    COALESCE(plan_count / NULLIF(trip_count, 0), 0) AS avg_days_per_plan
   FROM (
     SELECT
       COUNT(DISTINCT p."tripId") AS trip_count,
