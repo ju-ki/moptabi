@@ -1,14 +1,15 @@
 // import path from 'path';
 
-import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
+
+import { getUserId } from '@/middleware/auth';
 
 export const getImageHandler = {
   // 画像をアップロード
   uploadImage: async (c: Context) => {
     try {
-      const auth = getAuth(c);
-      if (!auth?.userId) {
+      const userId = getUserId(c);
+      if (!userId) {
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
