@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { useAuth } from '@clerk/nextjs';
+// import { useAuth } from '@clerk/nextjs';
 
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 import { StatsType } from '@/models/admin';
@@ -20,7 +20,6 @@ export type NotificationType = 'SYSTEM' | 'INFO';
  * ユーザーリスト・通知リストは別フック（use-user-list, use-notification-list）で管理
  */
 export function useAdminData() {
-  const { getToken } = useAuth();
   const { getFetcher } = useFetcher();
 
   // ダッシュボードデータ
@@ -34,12 +33,10 @@ export function useAdminData() {
   const error = dashboardError;
 
   const postNotification = async (newNotification: NotificationCreate) => {
-    const token = await getToken();
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(newNotification),
     });
@@ -51,12 +48,10 @@ export function useAdminData() {
     return response;
   };
   const updateNotification = async (updatedNotification: NotificationUpdate) => {
-    const token = await getToken();
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/${updatedNotification.id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(updatedNotification),
     });
@@ -68,12 +63,10 @@ export function useAdminData() {
     return response;
   };
   const deleteNotification = async (id: number) => {
-    const token = await getToken();
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
     });
 

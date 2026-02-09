@@ -1,10 +1,10 @@
-import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 
 import { NotificationType, Prisma } from '@/generated/prisma/client';
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 import { prisma } from '@/lib/client';
+import { getUserId } from '@/middleware/auth';
 
 /**
  * お知らせサービス
@@ -18,27 +18,13 @@ import { prisma } from '@/lib/client';
  */
 
 /**
- * 認証チェックユーティリティ
- * @param c Honoコンテキスト
- * @returns ユーザーID
- * @throws 認証エラー時にHTTPException(401)
- */
-function requireAuth(c: Context): string {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized' });
-  }
-  return auth.userId;
-}
-
-/**
  * お知らせ一覧を取得
  * - 公開日時が現在以前のお知らせのみを取得
  * - ユーザーに紐づくUserNotificationがない場合は未読扱い
  * - 公開日時の降順でソート
  */
 export async function getNotifications(c: Context) {
-  const userId = requireAuth(c);
+  const userId = getUserId(c);
   const now = new Date();
 
   // ユーザーに紐づくお知らせを取得
@@ -78,7 +64,7 @@ export async function getNotifications(c: Context) {
  * ヘッダーのバッジ表示などで使用
  */
 export async function getUnreadCount(c: Context) {
-  const userId = requireAuth(c);
+  const userId = getUserId(c);
   const now = new Date();
 
   const count = await prisma.userNotification.count({
@@ -100,7 +86,7 @@ export async function getUnreadCount(c: Context) {
  * @param notificationId お知らせID
  */
 export async function markAsRead(c: Context, notificationId: number) {
-  const userId = requireAuth(c);
+  const userId = getUserId(c);
 
   // UserNotificationの存在確認
   const userNotification = await prisma.userNotification.findUnique({
@@ -135,7 +121,7 @@ export async function markAsRead(c: Context, notificationId: number) {
  * 一括既読機能で使用
  */
 export async function markAllAsRead(c: Context) {
-  const userId = requireAuth(c);
+  const userId = getUserId(c);
 
   const result = await prisma.userNotification.updateMany({
     where: {
@@ -189,7 +175,7 @@ export async function distributeNotification(notificationId: number, userIds?: s
  * @param data 作成データ
  */
 export async function createNotification(c: Context, data: NotificationCreate) {
-  requireAuth(c);
+  getUserId(c);
 
   let responseNotification;
   await prisma.$transaction(async (prisma) => {
@@ -236,7 +222,7 @@ export async function createNotification(c: Context, data: NotificationCreate) {
  * @param data 更新データ
  */
 export async function updateNotification(c: Context, notificationId: number, data: NotificationUpdate) {
-  requireAuth(c);
+  getUserId(c);
 
   // 存在確認
   const existing = await prisma.notification.findUnique({
@@ -317,7 +303,7 @@ export async function updateNotification(c: Context, notificationId: number, dat
  * @param notificationId お知らせID
  */
 export async function deleteNotification(c: Context, notificationId: number) {
-  requireAuth(c);
+  getUserId(c);
 
   // 存在確認
   const existing = await prisma.notification.findUnique({
@@ -343,7 +329,7 @@ export async function deleteNotification(c: Context, notificationId: number) {
  * @param c Honoコンテキスト
  */
 export async function getAdminNotifications(c: Context) {
-  const userId = requireAuth(c);
+  const userId = getUserId(c);
 
   // 管理者権限以外は403を返す
   const targetUser = await prisma.user.findUnique({

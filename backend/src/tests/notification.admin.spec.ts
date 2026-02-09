@@ -1,36 +1,40 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { getAuth } from '@hono/clerk-auth';
 
 import app from '..';
-import prismaClient, { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
 
 // 認証用のモックユーザーID
 const ADMIN_USER_ID = 'admin_user_id_notification';
 const NORMAL_USER_ID = 'normal_user_id_notification';
 
-vi.mock('@hono/clerk-auth', () => ({
-  getAuth: vi.fn(),
-  clerkMiddleware: vi.fn(() => async (c: any, next: any) => {
-    await next();
-  }),
-}));
+// 現在の認証ユーザーIDを保持する変数
+let currentUserId: string | null = ADMIN_USER_ID;
+
+// 認証ヘッダーを生成するヘルパー関数
+function getAuthHeaders(): Record<string, string> {
+  if (!currentUserId) {
+    return {};
+  }
+  return { 'X-User-Id': currentUserId };
+}
 
 beforeAll(async () => {
   await connectPrisma();
-  await clearTestData();
+  await clearTestDataForUser(ADMIN_USER_ID);
+  await clearTestDataForUser(NORMAL_USER_ID);
   await createTestUser(ADMIN_USER_ID, 'ADMIN');
   await createTestUser(NORMAL_USER_ID, 'USER');
 });
 
 afterAll(async () => {
-  await clearTestData();
+  await clearTestDataForUser(ADMIN_USER_ID);
+  await clearTestDataForUser(NORMAL_USER_ID);
   await disconnectPrisma();
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
-  (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+  currentUserId = ADMIN_USER_ID;
 
   // お知らせデータをクリア
   await prismaClient.prisma.userNotification.deleteMany();
@@ -60,35 +64,35 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
 
   describe('GET /api/notification/admin', () => {
     it('管理者以外はアクセス拒否される（403）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: NORMAL_USER_ID });
+      currentUserId = NORMAL_USER_ID;
 
-      const response = await client.api.notification.admin.$get();
+      const response = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(403);
     });
 
     it('未認証の場合は401を返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: null });
+      currentUserId = null;
 
-      const response = await client.api.notification.admin.$get();
+      const response = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(401);
     });
 
     it('管理者はアクセスできる（200）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
-      const response = await client.api.notification.admin.$get();
+      const response = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(200);
     });
   });
 
   describe('GET /api/notification/admin - ページネーション', () => {
     it('デフォルトのページネーション設定でレスポンスを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       // 25件のお知らせを作成
       await createTestNotifications(25);
 
-      const response = await client.api.notification.admin.$get();
+      const response = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -104,13 +108,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('ページ番号を指定してページネーションできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(25);
 
-      const response = await client.api.notification.admin.$get({
-        query: { page: '2' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { page: '2' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -121,13 +128,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('1ページあたりの件数を指定できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(15);
 
-      const response = await client.api.notification.admin.$get({
-        query: { limit: '10' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { limit: '10' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -137,13 +147,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('空のページを取得した場合は空配列を返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(5);
 
-      const response = await client.api.notification.admin.$get({
-        query: { page: '10' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { page: '10' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -154,7 +167,7 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
 
   describe('GET /api/notification/admin - 検索/フィルター', () => {
     it('タイトルで検索できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       // 特定のタイトルのお知らせを作成
       await prismaClient.prisma.notification.create({
@@ -174,9 +187,12 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
         },
       });
 
-      const response = await client.api.notification.admin.$get({
-        query: { title: 'システム' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { title: 'システム' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -185,13 +201,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('タイプでフィルターできる（SYSTEM）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(10); // 5件 SYSTEM, 5件 INFO
 
-      const response = await client.api.notification.admin.$get({
-        query: { type: 'SYSTEM' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { type: 'SYSTEM' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -199,13 +218,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('タイプでフィルターできる（INFO）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(10);
 
-      const response = await client.api.notification.admin.$get({
-        query: { type: 'INFO' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { type: 'INFO' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -213,7 +235,7 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('公開日の範囲でフィルターできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       // 異なる日付のお知らせを作成
       const today = new Date();
@@ -245,12 +267,15 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
         },
       });
 
-      const response = await client.api.notification.admin.$get({
-        query: {
-          publishedFrom: yesterday.toISOString().split('T')[0],
-          publishedTo: today.toISOString().split('T')[0],
+      const response = await client.api.notification.admin.$get(
+        {
+          query: {
+            publishedFrom: yesterday.toISOString().split('T')[0],
+            publishedTo: today.toISOString().split('T')[0],
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -258,7 +283,7 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('AND検索: タイトルとタイプを組み合わせてフィルターできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await prismaClient.prisma.notification.create({
         data: {
@@ -285,9 +310,12 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
         },
       });
 
-      const response = await client.api.notification.admin.$get({
-        query: { title: 'システム', type: 'SYSTEM' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { title: 'システム', type: 'SYSTEM' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -299,13 +327,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
 
   describe('GET /api/notification/admin - ソート', () => {
     it('公開日時の降順でソートできる（デフォルト）', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(5);
 
-      const response = await client.api.notification.admin.$get({
-        query: { sortBy: 'publishedAt', sortOrder: 'desc' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { sortBy: 'publishedAt', sortOrder: 'desc' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -318,13 +349,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('公開日時の昇順でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(5);
 
-      const response = await client.api.notification.admin.$get({
-        query: { sortBy: 'publishedAt', sortOrder: 'asc' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { sortBy: 'publishedAt', sortOrder: 'asc' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -337,13 +371,16 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('作成日時でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       await createTestNotifications(5);
 
-      const response = await client.api.notification.admin.$get({
-        query: { sortBy: 'createdAt', sortOrder: 'desc' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { sortBy: 'createdAt', sortOrder: 'desc' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -355,7 +392,7 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     });
 
     it('既読率でソートできる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       // お知らせを作成し、異なる既読率を設定
       const notification1 = await prismaClient.prisma.notification.create({
@@ -384,9 +421,12 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
         },
       });
 
-      const response = await client.api.notification.admin.$get({
-        query: { sortBy: 'readRate', sortOrder: 'desc' },
-      });
+      const response = await client.api.notification.admin.$get(
+        {
+          query: { sortBy: 'readRate', sortOrder: 'desc' },
+        },
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -395,20 +435,23 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
 
   describe('GET /api/notification/admin - 複合パラメータ', () => {
     it('ページネーション、フィルター、ソートを組み合わせて使用できる', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: ADMIN_USER_ID });
+      currentUserId = ADMIN_USER_ID;
 
       // 30件のSYSTEMお知らせを作成
       await createTestNotifications(30, { type: 'SYSTEM' });
 
-      const response = await client.api.notification.admin.$get({
-        query: {
-          page: '1',
-          limit: '10',
-          type: 'SYSTEM',
-          sortBy: 'publishedAt',
-          sortOrder: 'asc',
+      const response = await client.api.notification.admin.$get(
+        {
+          query: {
+            page: '1',
+            limit: '10',
+            type: 'SYSTEM',
+            sortBy: 'publishedAt',
+            sortOrder: 'asc',
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
       const data = await response.json();
 
       expect(response.status).toBe(200);

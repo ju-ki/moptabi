@@ -1,17 +1,35 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
+import useSWR from 'swr';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useFetcher } from '@/hooks/use-fetcher';
+
+// ユーザー情報の型定義
+interface UserData {
+  status: number;
+  user: {
+    id: string;
+    role: 'ADMIN' | 'USER' | 'GUEST';
+    name: string;
+    image: string;
+    email: string;
+  };
+}
 
 /**
  * プロフィールセクションコンポーネント
  * ユーザーのアイコン、名前、メールアドレスを表示
  */
 export function ProfileSection() {
-  const { user, isLoaded } = useUser();
-
-  if (!isLoaded) {
+  const { data: session, status } = useSession();
+  const { getFetcher } = useFetcher();
+  const { data: userData, isLoading } = useSWR<UserData>(
+    session ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` : null,
+    getFetcher,
+  );
+  if (isLoading) {
     return (
       <div className="flex items-center gap-4 animate-pulse">
         <div className="h-16 w-16 rounded-full bg-gray-200" />
@@ -23,9 +41,9 @@ export function ProfileSection() {
     );
   }
 
-  const userName = user?.fullName || user?.firstName || 'ユーザー';
-  const userEmail = user?.primaryEmailAddress?.emailAddress || '';
-  const userImageUrl = user?.imageUrl || '';
+  const userName = userData?.user.name || 'ユーザー';
+  const userEmail = userData?.user.email || '';
+  const userImageUrl = userData?.user.image || '';
 
   return (
     <div className="flex items-center gap-4">

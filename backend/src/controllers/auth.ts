@@ -1,5 +1,4 @@
 import { RouteHandler } from '@hono/zod-openapi';
-import { getAuth } from '@hono/clerk-auth';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
@@ -7,35 +6,56 @@ import { countWishListByUserId } from '@/services/wishlist';
 import { countPlanByUserId } from '@/services/trip';
 import { getDashboardStats } from '@/services/auth';
 import { calculatePagination } from '@/models/pagination';
-import { User, UserSortBy } from '@/models/user';
+import { UserSortBy } from '@/models/user';
 import { prisma } from '@/lib/client';
+import { getUserId } from '@/middleware/auth';
 
 import { findExistingUserRoute } from '../routes/auth';
 
 export const getAuthHandler: RouteHandler<typeof findExistingUserRoute> = async (c: Context) => {
   try {
-    const auth = getAuth(c);
+    const userId = getUserId(c);
 
-    if (!auth?.userId) {
+    if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
 
     const existingUser = await prisma.user.findUnique({
       where: {
-        id: auth.userId,
+        id: userId,
       },
     });
 
     if (!existingUser) {
+      // ヘッダーからユーザー情報を取得
+      const email = c.req.header('X-User-Email');
+      const encodedName = c.req.header('X-User-Name');
+      const image = c.req.header('X-User-Image');
+
+      // 名前はエンコードされているのでデコード
+      const name = encodedName ? decodeURIComponent(encodedName) : null;
+
       const createdUser = await prisma.user.create({
         data: {
-          id: auth.userId,
+          id: userId,
+          email: email || null,
+          name: name,
+          image: image || null,
+          lastLoginAt: new Date(),
+          createdAt: new Date(),
         },
       });
 
       return c.json({ status: 201, user: createdUser });
     }
-    return c.json({ status: 200, user: existingUser });
+
+    // 既存ユーザーの lastLoginAt を更新
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return c.json({ status: 200, user: updatedUser });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error(errorMessage);
@@ -44,14 +64,14 @@ export const getAuthHandler: RouteHandler<typeof findExistingUserRoute> = async 
 };
 
 export async function getUserList(c: Context) {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
+  const userId = getUserId(c);
+  if (!userId) {
     throw new HTTPException(401, { message: 'Unauthorized' });
   }
 
   // 管理者権限以外は403を返す
   const targetUser = await prisma.user.findUnique({
-    where: { id: auth.userId },
+    where: { id: userId },
   });
 
   if (targetUser?.role !== 'ADMIN') {
@@ -66,53 +86,37 @@ export async function getUserList(c: Context) {
   const sortBy: UserSortBy = (query.sortBy as UserSortBy) || 'lastLoginAt';
   const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc';
 
-  const clerkClient = c.get('clerk');
   const registeredUsers = await prisma.user.findMany();
-  const users = await clerkClient.users.getUserList({
-    userId: registeredUsers.map((user: { id: string }) => user.id),
-    limit: 100,
-  });
-  const userIds = users.data.map((user: { id: string }) => user.id);
+  const userIds = registeredUsers.map((user: { id: string }) => user.id);
 
   // clerkから取得したユーザーIDを元に行きたいリストと旅行計画の総数を取得する
   const [wishlistCounts, planCounts] = await Promise.all([countWishListByUserId(userIds), countPlanByUserId(userIds)]);
 
-  // ユーザー情報にカウントを追加してリストを作成
-  let userList: User[] = users.data.map(
-    (user: {
-      id: string;
-      firstName: string | null;
-      lastName: string | null;
-      primaryEmailAddress: { emailAddress: string } | null;
-      imageUrl: string | null;
-      createdAt: number;
-      lastSignInAt: number | null;
-    }) => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.primaryEmailAddress ? { emailAddress: user.primaryEmailAddress.emailAddress } : null,
-      imageUrl: user.imageUrl,
-      registeredAt: user.createdAt,
-      lastLoginAt: user.lastSignInAt,
-      role: registeredUsers.find((u: { id: string }) => u.id === user.id)?.role || 'GUEST',
-      wishlistCount: wishlistCounts[user.id] || 0,
-      planCount: planCounts[user.id] || 0,
-    }),
-  );
+  let userList = registeredUsers.map((user) => ({
+    id: user.id,
+    firstName: user.name?.split(' ')[0] || '',
+    lastName: user.name?.split(' ')[1] || '',
+    email: user.email,
+    imageUrl: user.image,
+    registeredAt: user.createdAt.getTime(),
+    lastLoginAt: user.lastLoginAt?.getTime() || null,
+    role: user.role,
+    planCount: planCounts[user.id] || 0,
+    wishlistCount: wishlistCounts[user.id] || 0,
+  }));
 
   // 検索フィルター
   if (search) {
-    userList = userList.filter((user: User) => {
-      const fullName = `${user.firstName || ''}${user.lastName || ''}`.toLowerCase();
-      const email = user.email?.emailAddress?.toLowerCase() || '';
+    userList = userList.filter((user) => {
+      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+      const email = user.email?.toLowerCase() || '';
       const id = user.id.toLowerCase();
       return fullName.includes(search) || email.includes(search) || id.includes(search);
     });
   }
 
   // ソート
-  userList.sort((a: User, b: User) => {
+  userList.sort((a, b) => {
     let aValue: number;
     let bValue: number;
 
@@ -126,12 +130,12 @@ export async function getUserList(c: Context) {
         bValue = b.registeredAt || 0;
         break;
       case 'planCount':
-        aValue = a.planCount;
-        bValue = b.planCount;
+        aValue = a.planCount || 0;
+        bValue = b.planCount || 0;
         break;
       case 'wishlistCount':
-        aValue = a.wishlistCount;
-        bValue = b.wishlistCount;
+        aValue = a.wishlistCount || 0;
+        bValue = b.wishlistCount || 0;
         break;
       default:
         aValue = a.lastLoginAt || 0;

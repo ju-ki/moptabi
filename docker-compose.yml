@@ -10,8 +10,6 @@ services:
       - '3000:3000'
     depends_on:
       - dev-db
-    environment:
-      DATABASE_URL: 'postgresql://travel_user:travel_admin@dev-db:5432/ai_travel'
     volumes:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public
@@ -28,11 +26,10 @@ services:
     container_name: hono-api
     ports:
       - '8787:8787'
-    depends_on:
-      - dev-db
+    env_file:
+      - ./backend/.env
     environment:
       NODE_ENV: development
-      DATABASE_URL: 'postgresql://travel_user:travel_admin@dev-db:5432/ai_travel'
       WATCHPACK_POLLING: true
     volumes:
       - ./backend:/app/backend

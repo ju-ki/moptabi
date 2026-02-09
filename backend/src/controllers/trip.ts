@@ -1,8 +1,8 @@
 import { Context } from 'hono';
-import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 
 import { prisma } from '@/lib/client';
+import { getUserId } from '@/middleware/auth';
 
 import { TripSchema } from '../models/trip';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
@@ -10,14 +10,11 @@ import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
 export const getTripHandler = {
   // 全ての旅行計画を取得
   getTrips: async (c: Context) => {
-    const auth = getAuth(c);
+    const userId = getUserId(c);
 
-    if (!auth?.userId) {
+    if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
     }
-
-    const userId = auth.userId;
-
     const tripInfo = await prisma.trip.findMany({
       where: { userId: userId },
       include: {
@@ -32,8 +29,8 @@ export const getTripHandler = {
   // 特定の旅行計画を取得
 
   getTripDetail: async (c: Context) => {
-    const auth = getAuth(c);
-    if (!auth?.userId) {
+    const userId = getUserId(c);
+    if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
     }
 
@@ -45,7 +42,7 @@ export const getTripHandler = {
     const targetTrip = await prisma.trip.findFirst({
       where: {
         id: tripId,
-        userId: auth.userId,
+        userId: userId,
       },
 
       include: {
@@ -79,8 +76,8 @@ export const getTripHandler = {
 
   deleteTrip: async (c: Context) => {
     try {
-      const auth = getAuth(c);
-      if (!auth?.userId) {
+      const userId = getUserId(c);
+      if (!userId) {
         return c.json({ error: 'Unauthorized' }, 401);
       }
 
@@ -89,7 +86,7 @@ export const getTripHandler = {
       const targetTrip = await prisma.trip.findFirst({
         where: {
           id: tripId,
-          userId: auth.userId,
+          userId: userId,
         },
       });
 
@@ -113,8 +110,8 @@ export const getTripHandler = {
 
   // 新しい旅行計画を登録
   createTrip: async (c: Context) => {
-    const auth = getAuth(c);
-    if (!auth?.userId) {
+    const userId = getUserId(c);
+    if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
     }
 
@@ -129,7 +126,6 @@ export const getTripHandler = {
     }
 
     const tripData = result.data;
-    const userId = auth.userId;
 
     // 上限チェック: プラン作成数
     const currentTripCount = await prisma.trip.count({
@@ -326,12 +322,10 @@ export const getTripHandler = {
    */
   getDepartureAndDepartment: async (c: Context) => {
     try {
-      const auth = getAuth(c);
-      if (!auth?.userId) {
+      const userId = getUserId(c);
+      if (!userId) {
         return c.json({ error: 'Unauthorized' }, 401);
       }
-
-      const userId = auth.userId;
 
       const departureAndDestinationSpots = await prisma.planSpot.findMany({
         where: {
@@ -413,12 +407,10 @@ export const getTripHandler = {
    * プランの作成数と上限を取得
    */
   getTripCount: async (c: Context) => {
-    const auth = getAuth(c);
-    if (!auth?.userId) {
+    const userId = getUserId(c);
+    if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
     }
-
-    const userId = auth.userId;
 
     const count = await prisma.trip.count({
       where: { userId },
