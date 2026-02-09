@@ -127,7 +127,8 @@ app.onError((error: Error, c) => {
   if (error instanceof HTTPException) {
     return c.text(error.message, error.status);
   }
-  const isDevelopment = import.meta.env.NODE_ENV === 'development';
+  // const isDevelopment = import.meta.env.NODE_ENV === 'development';
+  const isDevelopment = true;
   const message = isDevelopment ? error.message : 'Internal Server Error';
   return c.text(message, 500);
 });
