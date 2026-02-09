@@ -1,33 +1,38 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { getAuth } from '@hono/clerk-auth';
 
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 
 import app from '..';
-import prismaClient, { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_limits';
 
-vi.mock('@hono/clerk-auth', () => ({
-  getAuth: vi.fn(),
-}));
+// 現在の認証ユーザーIDを保持する変数
+let currentUserId: string | null = TEST_USER_ID;
+
+// 認証ヘッダーを生成するヘルパー関数
+function getAuthHeaders(): Record<string, string> {
+  if (!currentUserId) {
+    return {};
+  }
+  return { 'X-User-Id': currentUserId };
+}
 
 beforeAll(async () => {
   await connectPrisma();
-  await clearTestData();
+  await clearTestDataForUser(TEST_USER_ID);
   await createTestUser(TEST_USER_ID);
 });
 
 afterAll(async () => {
-  await clearTestData();
+  await clearTestDataForUser(TEST_USER_ID);
   await disconnectPrisma();
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
-  (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
+  currentUserId = TEST_USER_ID;
   // 各テスト前にデータをクリア
   await prismaClient.prisma.wishlist.deleteMany({ where: { userId: TEST_USER_ID } });
   await prismaClient.prisma.trip.deleteMany({ where: { userId: TEST_USER_ID } });
@@ -108,9 +113,12 @@ describe('🔒 上限チェック機能', () => {
       }
 
       // 上限を超える登録を試みる
-      const response = await client.api.wishlist.$post({
-        json: createMockWishlistPayload('over_limit_spot'),
-      });
+      const response = await client.api.wishlist.$post(
+        {
+          json: createMockWishlistPayload('over_limit_spot'),
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(400);
       const text = await response.text();
@@ -118,9 +126,12 @@ describe('🔒 上限チェック機能', () => {
     });
 
     it('上限未満の場合は登録できる', async () => {
-      const response = await client.api.wishlist.$post({
-        json: createMockWishlistPayload('normal_spot'),
-      });
+      const response = await client.api.wishlist.$post(
+        {
+          json: createMockWishlistPayload('normal_spot'),
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(201);
     });
@@ -147,7 +158,7 @@ describe('🔒 上限チェック機能', () => {
         });
       }
 
-      const response = await client.api.wishlist.count.$get();
+      const response = await client.api.wishlist.count.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(200);
       const result = await response.json();
       expect(result.count).toBe(3);
@@ -170,26 +181,29 @@ describe('🔒 上限チェック機能', () => {
       }
 
       // 上限を超える作成を試みる
-      const response = await client.api.trips.create.$post({
-        json: {
-          title: '超過プラン',
-          startDate: '2025-01-01',
-          endDate: '2025-01-02',
-          tripInfo: [
-            {
-              date: '2025-01-01',
-              genreId: 1,
-              transportationMethod: 1,
-            },
-          ],
-          plans: [
-            {
-              date: '2025-01-01',
-              spots: [],
-            },
-          ],
+      const response = await client.api.trips.create.$post(
+        {
+          json: {
+            title: '超過プラン',
+            startDate: '2025-01-01',
+            endDate: '2025-01-02',
+            tripInfo: [
+              {
+                date: '2025-01-01',
+                genreId: 1,
+                transportationMethod: 1,
+              },
+            ],
+            plans: [
+              {
+                date: '2025-01-01',
+                spots: [],
+              },
+            ],
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(400);
       const text = await response.text();
@@ -197,26 +211,29 @@ describe('🔒 上限チェック機能', () => {
     });
 
     it('上限未満の場合は作成できる', async () => {
-      const response = await client.api.trips.create.$post({
-        json: {
-          title: '通常プラン',
-          startDate: '2025-01-01',
-          endDate: '2025-01-02',
-          tripInfo: [
-            {
-              date: '2025-01-01',
-              genreId: 1,
-              transportationMethod: 1,
-            },
-          ],
-          plans: [
-            {
-              date: '2025-01-01',
-              spots: [],
-            },
-          ],
+      const response = await client.api.trips.create.$post(
+        {
+          json: {
+            title: '通常プラン',
+            startDate: '2025-01-01',
+            endDate: '2025-01-02',
+            tripInfo: [
+              {
+                date: '2025-01-01',
+                genreId: 1,
+                transportationMethod: 1,
+              },
+            ],
+            plans: [
+              {
+                date: '2025-01-01',
+                spots: [],
+              },
+            ],
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(201);
     });
@@ -234,7 +251,7 @@ describe('🔒 上限チェック機能', () => {
         });
       }
 
-      const response = await client.api.trips.count.$get();
+      const response = await client.api.trips.count.$get({}, { headers: getAuthHeaders() });
       expect(response.status).toBe(200);
       const result = await response.json();
       expect(result.count).toBe(5);
@@ -260,26 +277,29 @@ describe('🔒 上限チェック機能', () => {
         order: i,
       }));
 
-      const response = await client.api.trips.create.$post({
-        json: {
-          title: 'スポット過多プラン',
-          startDate: '2025-01-01',
-          endDate: '2025-01-01',
-          tripInfo: [
-            {
-              date: '2025-01-01',
-              genreId: 1,
-              transportationMethod: 1,
-            },
-          ],
-          plans: [
-            {
-              date: '2025-01-01',
-              spots,
-            },
-          ],
+      const response = await client.api.trips.create.$post(
+        {
+          json: {
+            title: 'スポット過多プラン',
+            startDate: '2025-01-01',
+            endDate: '2025-01-01',
+            tripInfo: [
+              {
+                date: '2025-01-01',
+                genreId: 1,
+                transportationMethod: 1,
+              },
+            ],
+            plans: [
+              {
+                date: '2025-01-01',
+                spots,
+              },
+            ],
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(400);
       const text = await response.text();
@@ -288,26 +308,29 @@ describe('🔒 上限チェック機能', () => {
 
     it('上限以内のスポット数なら作成できる', async () => {
       // スポット数0のプランは作成できる
-      const response = await client.api.trips.create.$post({
-        json: {
-          title: '通常スポット数プラン',
-          startDate: '2025-01-01',
-          endDate: '2025-01-01',
-          tripInfo: [
-            {
-              date: '2025-01-01',
-              genreId: 1,
-              transportationMethod: 1,
-            },
-          ],
-          plans: [
-            {
-              date: '2025-01-01',
-              spots: [],
-            },
-          ],
+      const response = await client.api.trips.create.$post(
+        {
+          json: {
+            title: '通常スポット数プラン',
+            startDate: '2025-01-01',
+            endDate: '2025-01-01',
+            tripInfo: [
+              {
+                date: '2025-01-01',
+                genreId: 1,
+                transportationMethod: 1,
+              },
+            ],
+            plans: [
+              {
+                date: '2025-01-01',
+                spots: [],
+              },
+            ],
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(201);
     });
@@ -339,15 +362,18 @@ describe('🔒 上限チェック機能', () => {
         };
       });
 
-      const response = await client.api.trips.create.$post({
-        json: {
-          title: '長期プラン',
-          startDate: '2025-01-01',
-          endDate: endDate.toISOString().split('T')[0],
-          tripInfo,
-          plans,
+      const response = await client.api.trips.create.$post(
+        {
+          json: {
+            title: '長期プラン',
+            startDate: '2025-01-01',
+            endDate: endDate.toISOString().split('T')[0],
+            tripInfo,
+            plans,
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(400);
       const text = await response.text();
@@ -355,23 +381,26 @@ describe('🔒 上限チェック機能', () => {
     });
 
     it('上限以内の日数なら作成できる', async () => {
-      const response = await client.api.trips.create.$post({
-        json: {
-          title: '通常日数プラン',
-          startDate: '2025-01-01',
-          endDate: '2025-01-03',
-          tripInfo: [
-            { date: '2025-01-01', genreId: 1, transportationMethod: 1 },
-            { date: '2025-01-02', genreId: 1, transportationMethod: 1 },
-            { date: '2025-01-03', genreId: 1, transportationMethod: 1 },
-          ],
-          plans: [
-            { date: '2025-01-01', spots: [] },
-            { date: '2025-01-02', spots: [] },
-            { date: '2025-01-03', spots: [] },
-          ],
+      const response = await client.api.trips.create.$post(
+        {
+          json: {
+            title: '通常日数プラン',
+            startDate: '2025-01-01',
+            endDate: '2025-01-03',
+            tripInfo: [
+              { date: '2025-01-01', genreId: 1, transportationMethod: 1 },
+              { date: '2025-01-02', genreId: 1, transportationMethod: 1 },
+              { date: '2025-01-03', genreId: 1, transportationMethod: 1 },
+            ],
+            plans: [
+              { date: '2025-01-01', spots: [] },
+              { date: '2025-01-02', spots: [] },
+              { date: '2025-01-03', spots: [] },
+            ],
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(response.status).toBe(201);
     });

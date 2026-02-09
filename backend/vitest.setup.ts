@@ -1,4 +1,8 @@
 import { afterEach, beforeAll, afterAll } from 'vitest';
+import { config } from 'dotenv';
+
+// テスト用の環境変数を読み込む
+config({ path: '.env.test' });
 
 // グローバルのテストセットアップ
 beforeAll(() => {

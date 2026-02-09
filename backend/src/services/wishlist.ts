@@ -1,18 +1,13 @@
-import { getAuth } from '@hono/clerk-auth';
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 import { prisma } from '@/lib/client';
+import { getUserId } from '@/middleware/auth';
 
 export const getWishList = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized error' });
-  }
-
-  const userId = auth.userId;
+  const userId = getUserId(c);
 
   const wishList = await prisma.wishlist.findMany({
     where: { userId: userId },
@@ -35,12 +30,7 @@ export const getWishList = async (c: Context) => {
  * 行きたいリストの登録数と上限を取得
  */
 export const getWishListCount = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized error' });
-  }
-
-  const userId = auth.userId;
+  const userId = getUserId(c);
 
   const count = await prisma.wishlist.count({
     where: { userId },
@@ -53,12 +43,7 @@ export const getWishListCount = async (c: Context) => {
 };
 
 export const createWishList = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized error' });
-  }
-
-  const userId = auth.userId;
+  const userId = getUserId(c);
 
   // 上限チェック
   const currentCount = await prisma.wishlist.count({
@@ -139,10 +124,7 @@ export const createWishList = async (c: Context) => {
 };
 
 export const updateWishList = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized error' });
-  }
+  const userId = getUserId(c);
 
   const body = await c.req.json();
   if (!body) {
@@ -169,7 +151,7 @@ export const updateWishList = async (c: Context) => {
   const wishlist = await prisma.wishlist.update({
     where: {
       id: wishListResult.id,
-      userId: auth.userId,
+      userId: userId,
     },
     data: {
       memo: wishListResult.memo,
@@ -182,10 +164,7 @@ export const updateWishList = async (c: Context) => {
   return wishlist;
 };
 export const deleteWishList = async (c: Context) => {
-  const auth = getAuth(c);
-  if (!auth?.userId) {
-    throw new HTTPException(401, { message: 'Unauthorized error' });
-  }
+  const userId = getUserId(c);
 
   const wishlistId = parseInt(c.req.param('id'));
 
@@ -193,9 +172,11 @@ export const deleteWishList = async (c: Context) => {
     throw new HTTPException(400, { message: 'Invalid wishlist ID' });
   }
 
+  // ユーザーが所有している行きたいリストのみ削除可能
   const wishlist = await prisma.wishlist.delete({
     where: {
       id: wishlistId,
+      userId: userId,
     },
   });
 

@@ -4,24 +4,45 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import WishlistCreateModal from '@/components/wishlist/WishlistCreateModal';
 
-// Clerk を完全モック: Provider はそのまま子要素を返し、useAuth で認証済み状態を提供
-vi.mock('@clerk/nextjs', () => ({
-  ClerkProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useAuth: vi.fn(() => ({
-    isLoaded: true,
-    isSignedIn: true,
-    userId: 'test-user-id',
-    sessionId: 'test-session-id',
-    getToken: vi.fn(() => Promise.resolve('mock-token')),
-  })),
-}));
+// NextAuthのモック
+vi.mock('next-auth/react', async () => {
+  const actual = await vi.importActual('next-auth/react');
+  return {
+    ...actual,
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user-id',
+          name: 'テストユーザー',
+          email: 'test@example.com',
+          image: 'https://example.com/avatar.jpg',
+        },
+        expires: '2099-12-31T23:59:59.999Z',
+      },
+      status: 'authenticated',
+    }),
+    SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
-// 追加のラッパーは不要なのでそのまま子を返す
+// TestProvidersはそのまま子を返す
 const TestProviders = ({ children }: { children: React.ReactNode }) => <>{children}</>;
 
 const renderWithProviders = (ui: React.ReactElement, isLoggedIn = false) => {
   return render(<TestProviders>{ui}</TestProviders>);
 };
+
+// useFetchWishlistフックのモック
+vi.mock('@/hooks/use-wishlist', () => ({
+  useFetchWishlist: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+    postWishlist: vi.fn(),
+    updateWishlist: vi.fn(),
+    deleteWishlist: vi.fn(),
+  }),
+}));
 
 vi.mock('@/store/wishlist/wishlistStore', () => ({
   useWishlistStore: vi.fn((selector) => {

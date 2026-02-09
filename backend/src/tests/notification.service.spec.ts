@@ -1,36 +1,41 @@
-import { beforeAll, beforeEach, afterAll, describe, expect, it, vi } from 'bun:test';
+import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { getAuth } from '@hono/clerk-auth';
 
 import { NotificationListResponseSchema, UnreadCountResponseSchema } from '@/models/notification';
 import { NotificationType } from '@/generated/prisma/client';
 
 import app from '..';
-import prismaClient, { clearTestData, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_notification_user';
 
-vi.mock('@hono/clerk-auth', () => ({
-  getAuth: vi.fn(),
-}));
+// 現在の認証ユーザーIDを保持する変数
+let currentUserId: string | null = TEST_USER_ID;
+
+// 認証ヘッダーを生成するヘルパー関数
+function getAuthHeaders(): Record<string, string> {
+  if (!currentUserId) {
+    return {};
+  }
+  return { 'X-User-Id': currentUserId };
+}
 
 beforeAll(async () => {
   console.log('Bun test start');
   await connectPrisma();
-  await clearTestData();
+  await clearTestDataForUser(TEST_USER_ID);
   await createTestUser(TEST_USER_ID, 'ADMIN');
 });
 
 afterAll(async () => {
-  await clearTestData();
+  await clearTestDataForUser(TEST_USER_ID);
   await disconnectPrisma();
   console.log('Bun test end');
 });
 
 beforeEach(async () => {
-  vi.clearAllMocks();
-  (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ userId: TEST_USER_ID });
+  currentUserId = TEST_USER_ID;
 
   // 各テスト前にお知らせ関連データをクリア
   await prismaClient.prisma.userNotification.deleteMany({});
@@ -76,7 +81,7 @@ describe('🔔 お知らせサービス', () => {
   // ---- GET /notification: お知らせ一覧取得 ----
   describe('GET /notification', () => {
     it('お知らせがない場合は空配列を返す', async () => {
-      const res = await client.api.notification.$get();
+      const res = await client.api.notification.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -103,7 +108,7 @@ describe('🔔 お知らせサービス', () => {
       await createUserNotification(TEST_USER_ID, notification1.id, false);
       await createUserNotification(TEST_USER_ID, notification2.id, false);
 
-      const res = await client.api.notification.$get();
+      const res = await client.api.notification.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -134,7 +139,7 @@ describe('🔔 お知らせサービス', () => {
 
       await createUserNotification(TEST_USER_ID, pastNotification.id, false);
 
-      const res = await client.api.notification.$get();
+      const res = await client.api.notification.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -150,7 +155,7 @@ describe('🔔 お知らせサービス', () => {
       });
       await createUserNotification(TEST_USER_ID, notification.id, true);
 
-      const res = await client.api.notification.$get();
+      const res = await client.api.notification.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -160,9 +165,9 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification.$get();
+      const res = await client.api.notification.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });
@@ -171,7 +176,7 @@ describe('🔔 お知らせサービス', () => {
   // ---- GET /notification/unread-count: 未読件数取得 ----
   describe('GET /notification/unread-count', () => {
     it('未読件数が0の場合', async () => {
-      const res = await client.api.notification['unread-count'].$get();
+      const res = await client.api.notification['unread-count'].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -187,7 +192,7 @@ describe('🔔 お知らせサービス', () => {
       await createUserNotification(TEST_USER_ID, notification2.id, false);
       await createUserNotification(TEST_USER_ID, notification3.id, true);
 
-      const res = await client.api.notification['unread-count'].$get();
+      const res = await client.api.notification['unread-count'].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -200,9 +205,9 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification['unread-count'].$get();
+      const res = await client.api.notification['unread-count'].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });
@@ -218,7 +223,7 @@ describe('🔔 お知らせサービス', () => {
         publishedAt: new Date().toLocaleDateString('sv-SE'),
       };
 
-      const res = await client.api.notification.$post({ json: payload });
+      const res = await client.api.notification.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(201);
       const data = await res.json();
@@ -251,7 +256,7 @@ describe('🔔 お知らせサービス', () => {
         publishedAt: new Date().toLocaleDateString('sv-SE'),
       };
 
-      const res = await client.api.notification.$post({ json: payload });
+      const res = await client.api.notification.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(201);
       const data = await res.json();
@@ -266,13 +271,13 @@ describe('🔔 お知らせサービス', () => {
         publishedAt: new Date().toLocaleDateString('sv-SE'),
       };
 
-      const res = await client.api.notification.$post({ json: payload });
+      const res = await client.api.notification.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(400);
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
       const payload = {
         title: 'テスト',
@@ -281,7 +286,7 @@ describe('🔔 お知らせサービス', () => {
         publishedAt: new Date().toLocaleDateString('sv-SE'),
       };
 
-      const res = await client.api.notification.$post({ json: payload });
+      const res = await client.api.notification.$post({ json: payload }, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });
@@ -293,9 +298,12 @@ describe('🔔 お知らせサービス', () => {
       const notification = await createTestNotification({ title: 'テスト', content: '内容' });
       await createUserNotification(TEST_USER_ID, notification.id, false);
 
-      const res = await client.api.notification[':id'].read.$patch({
-        param: { id: notification.id.toString() },
-      });
+      const res = await client.api.notification[':id'].read.$patch(
+        {
+          param: { id: notification.id.toString() },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -310,19 +318,25 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('存在しないお知らせIDの場合は404エラーを返す', async () => {
-      const res = await client.api.notification[':id'].read.$patch({
-        param: { id: '99999' },
-      });
+      const res = await client.api.notification[':id'].read.$patch(
+        {
+          param: { id: '99999' },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(404);
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification[':id'].read.$patch({
-        param: { id: '1' },
-      });
+      const res = await client.api.notification[':id'].read.$patch(
+        {
+          param: { id: '1' },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(401);
     });
@@ -339,7 +353,7 @@ describe('🔔 お知らせサービス', () => {
       await createUserNotification(TEST_USER_ID, notification2.id, false);
       await createUserNotification(TEST_USER_ID, notification3.id, true);
 
-      const res = await client.api.notification['read-all'].$patch();
+      const res = await client.api.notification['read-all'].$patch({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -354,7 +368,7 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('未読がない場合もエラーにならない', async () => {
-      const res = await client.api.notification['read-all'].$patch();
+      const res = await client.api.notification['read-all'].$patch({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -363,9 +377,9 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification['read-all'].$patch();
+      const res = await client.api.notification['read-all'].$patch({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });
@@ -379,14 +393,17 @@ describe('🔔 お知らせサービス', () => {
         content: '内容',
       });
 
-      const res = await client.api.notification[':id'].$patch({
-        param: { id: notification.id.toString() },
-        json: {
-          ...notification,
-          title: '更新後タイトル',
-          publishedAt: new Date(notification.publishedAt).toLocaleDateString('sv-SE'),
+      const res = await client.api.notification[':id'].$patch(
+        {
+          param: { id: notification.id.toString() },
+          json: {
+            ...notification,
+            title: '更新後タイトル',
+            publishedAt: new Date(notification.publishedAt).toLocaleDateString('sv-SE'),
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -406,14 +423,17 @@ describe('🔔 お知らせサービス', () => {
         content: '更新前内容',
       });
 
-      const res = await client.api.notification[':id'].$patch({
-        param: { id: notification.id.toString() },
-        json: {
-          ...notification,
-          publishedAt: new Date(notification.publishedAt).toLocaleDateString('sv-SE'),
-          content: '更新後内容',
+      const res = await client.api.notification[':id'].$patch(
+        {
+          param: { id: notification.id.toString() },
+          json: {
+            ...notification,
+            publishedAt: new Date(notification.publishedAt).toLocaleDateString('sv-SE'),
+            content: '更新後内容',
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -427,14 +447,17 @@ describe('🔔 お知らせサービス', () => {
         type: 'SYSTEM',
       });
 
-      const res = await client.api.notification[':id'].$patch({
-        param: { id: notification.id.toString() },
-        json: {
-          ...notification,
-          publishedAt: new Date(notification.publishedAt).toLocaleDateString('sv-SE'),
-          type: 'INFO',
+      const res = await client.api.notification[':id'].$patch(
+        {
+          param: { id: notification.id.toString() },
+          json: {
+            ...notification,
+            publishedAt: new Date(notification.publishedAt).toLocaleDateString('sv-SE'),
+            type: 'INFO',
+          },
         },
-      });
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -449,10 +472,13 @@ describe('🔔 お知らせサービス', () => {
       });
 
       const newPublishedAt = new Date('2025-02-01T00:00:00Z').toLocaleDateString('sv-SE');
-      const res = await client.api.notification[':id'].$patch({
-        param: { id: notification.id.toString() },
-        json: { ...notification, publishedAt: newPublishedAt },
-      });
+      const res = await client.api.notification[':id'].$patch(
+        {
+          param: { id: notification.id.toString() },
+          json: { ...notification, publishedAt: newPublishedAt },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -460,21 +486,27 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('存在しないお知らせIDの場合は404エラーを返す', async () => {
-      const res = await client.api.notification[':id'].$patch({
-        param: { id: '99999' },
-        json: { title: '更新', content: '内容', type: 'SYSTEM', publishedAt: new Date().toLocaleDateString('sv-SE') },
-      });
+      const res = await client.api.notification[':id'].$patch(
+        {
+          param: { id: '99999' },
+          json: { title: '更新', content: '内容', type: 'SYSTEM', publishedAt: new Date().toLocaleDateString('sv-SE') },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(404);
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification[':id'].$patch({
-        param: { id: '1' },
-        json: { title: '更新', content: '内容', type: 'SYSTEM', publishedAt: new Date().toLocaleDateString('sv-SE') },
-      });
+      const res = await client.api.notification[':id'].$patch(
+        {
+          param: { id: '1' },
+          json: { title: '更新', content: '内容', type: 'SYSTEM', publishedAt: new Date().toLocaleDateString('sv-SE') },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(401);
     });
@@ -488,9 +520,12 @@ describe('🔔 お知らせサービス', () => {
         content: '削除されるお知らせ',
       });
 
-      const res = await client.api.notification[':id'].$delete({
-        param: { id: notification.id.toString() },
-      });
+      const res = await client.api.notification[':id'].$delete(
+        {
+          param: { id: notification.id.toString() },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -516,9 +551,12 @@ describe('🔔 お知らせサービス', () => {
       });
       expect(beforeCount).toBe(1);
 
-      const res = await client.api.notification[':id'].$delete({
-        param: { id: notification.id.toString() },
-      });
+      const res = await client.api.notification[':id'].$delete(
+        {
+          param: { id: notification.id.toString() },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(200);
 
@@ -530,19 +568,25 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('存在しないお知らせIDの場合は404エラーを返す', async () => {
-      const res = await client.api.notification[':id'].$delete({
-        param: { id: '99999' },
-      });
+      const res = await client.api.notification[':id'].$delete(
+        {
+          param: { id: '99999' },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(404);
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification[':id'].$delete({
-        param: { id: '1' },
-      });
+      const res = await client.api.notification[':id'].$delete(
+        {
+          param: { id: '1' },
+        },
+        { headers: getAuthHeaders() },
+      );
 
       expect(res.status).toBe(401);
     });
@@ -564,7 +608,7 @@ describe('🔔 お知らせサービス', () => {
         publishedAt: new Date('2099-01-01T00:00:00Z'),
       });
 
-      const res = await client.api.notification.admin.$get();
+      const res = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -586,7 +630,7 @@ describe('🔔 お知らせサービス', () => {
         publishedAt: new Date('2025-06-01T00:00:00Z'),
       });
 
-      const res = await client.api.notification.admin.$get();
+      const res = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -612,7 +656,7 @@ describe('🔔 お知らせサービス', () => {
       await createUserNotification(TEST_USER_ID, notification.id, true); // 既読
       await createUserNotification(user2, notification.id, false); // 未読
 
-      const res = await client.api.notification.admin.$get();
+      const res = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
@@ -625,9 +669,9 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('認証されていない場合は401エラーを返す', async () => {
-      (getAuth as unknown as ReturnType<typeof vi.fn>).mockReturnValue(null);
+      currentUserId = null;
 
-      const res = await client.api.notification.admin.$get();
+      const res = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(401);
     });

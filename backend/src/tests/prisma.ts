@@ -1,24 +1,8 @@
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
-
+import { prisma } from '@/lib/client';
 import { PrismaClient } from '@/generated/prisma/client';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is required for tests');
-}
-
-// テスト用のPostgreSQL接続プールを作成
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
-
-// Prisma Pg Adapterを作成
-const adapter = new PrismaPg(pool);
-
-// PrismaClientの初期化（Prisma 7.x以降はアダプターが必要）
-const prismaClient = new PrismaClient({
-  adapter,
-});
+// テスト用のPrismaClientをlib/client.tsから再利用
+const prismaClient = prisma;
 
 /**
  * Prisma に接続する
@@ -33,22 +17,26 @@ export async function connectPrisma(): Promise<void> {
  * テストランナー側で afterAll で呼び出してください。
  */
 export async function disconnectPrisma(): Promise<void> {
-  await prismaClient.$disconnect();
-  await pool.end();
+  // グローバルインスタンスなので、ここでは切断しない
+  // 最後のテストファイルが終了した後に自動的にクリーンアップされる
 }
 
 /**
  * テスト用データを安全に全削除するユーティリティ。
  * 外部キー制約を考慮した順序で各モデルの deleteMany() を実行します。
  *
+ * 注意: この関数は全データを削除するため、並行実行時に他のテストファイルのデータも削除してしまいます。
+ * 並行実行時は clearTestDataForUser() を使用してください。
+ *
  * 削除順:
- *  - 依存先が多い子テーブルを先に削除する（例: PlanSpot, TripInfo, Plan, Trip, Wishlist, NearestStation, SpotMeta, Spot, User）
+ *  - 依存先が多い子テーブルを先に削除する（例: PlanSpot, TripInfo, Plan, Trip, Wishlist, NearestStation, SpotMeta, Spot）
  *  - もしスキーマに新しいモデルを追加した場合は、依存関係に注意してここに追加してください。
  *
  * エラーが発生しても処理を続行し、最後にまとめてエラーを throw しません（ログを残す）。
  */
 export async function clearTestData(): Promise<void> {
   // 削除順を列挙（schema.prisma の依存関係に基づく）
+  // ユーザーは削除しない（複数のテストファイル間で共有されるため）
   const order: Array<keyof typeof prismaClient> = [
     // 中間テーブル・関連テーブル
     'planSpot' as any,
@@ -62,7 +50,7 @@ export async function clearTestData(): Promise<void> {
     // お知らせ関連（UserNotification を先に削除）
     'userNotification' as any,
     'notification' as any,
-    'user' as any,
+    // 'user' は削除しない
   ];
 
   for (const modelKey of order) {
@@ -77,6 +65,138 @@ export async function clearTestData(): Promise<void> {
 
       console.warn(`clearTestData: failed to delete ${String(modelKey)}:`, (err as Error).message);
     }
+  }
+}
+
+/**
+ * 特定のユーザーに関連するテストデータを削除するユーティリティ。
+ * 並行実行時に他のテストファイルのデータを消さないようにするために使用します。
+ *
+ * @param userId 削除対象のユーザーID
+ * @param deleteSpots Spotも削除するかどうか（デフォルト: false）。文字列の場合はプレフィックスとして扱い、そのプレフィックスで始まるSpotを削除します。
+ */
+export async function clearTestDataForUser(userId: string, deleteSpots: boolean | string = false): Promise<void> {
+  try {
+    // Trip に紐づく Plan と PlanSpot を削除
+    const trips = await prismaClient.trip.findMany({
+      where: { userId },
+      select: { id: true },
+    });
+    const tripIds = trips.map((t) => t.id);
+
+    // Wishlistに紐づくSpotのIDを取得（後で削除するため）
+    let wishlistSpotIds: string[] = [];
+    if (deleteSpots) {
+      const wishlists = await prismaClient.wishlist.findMany({
+        where: { userId },
+        select: { spotId: true },
+      });
+      wishlistSpotIds = wishlists.map((w) => w.spotId);
+    }
+
+    // PlanSpotに紐づくSpotのIDを取得
+    let planSpotIds: string[] = [];
+    if (deleteSpots && tripIds.length > 0) {
+      const plans = await prismaClient.plan.findMany({
+        where: { tripId: { in: tripIds } },
+        select: { id: true },
+      });
+      const planIds = plans.map((p) => p.id);
+
+      if (planIds.length > 0) {
+        const planSpots = await prismaClient.planSpot.findMany({
+          where: { planId: { in: planIds } },
+          select: { spotId: true },
+        });
+        planSpotIds = planSpots.map((ps) => ps.spotId);
+
+        await prismaClient.planSpot.deleteMany({
+          where: { planId: { in: planIds } },
+        });
+      }
+
+      await prismaClient.tripInfo.deleteMany({
+        where: { tripId: { in: tripIds } },
+      });
+
+      await prismaClient.plan.deleteMany({
+        where: { tripId: { in: tripIds } },
+      });
+
+      await prismaClient.trip.deleteMany({
+        where: { userId },
+      });
+    } else if (tripIds.length > 0) {
+      const plans = await prismaClient.plan.findMany({
+        where: { tripId: { in: tripIds } },
+        select: { id: true },
+      });
+      const planIds = plans.map((p) => p.id);
+
+      if (planIds.length > 0) {
+        await prismaClient.planSpot.deleteMany({
+          where: { planId: { in: planIds } },
+        });
+      }
+
+      await prismaClient.tripInfo.deleteMany({
+        where: { tripId: { in: tripIds } },
+      });
+
+      await prismaClient.plan.deleteMany({
+        where: { tripId: { in: tripIds } },
+      });
+
+      await prismaClient.trip.deleteMany({
+        where: { userId },
+      });
+    }
+
+    // Wishlist を削除
+    await prismaClient.wishlist.deleteMany({
+      where: { userId },
+    });
+
+    // UserNotification を削除
+    await prismaClient.userNotification.deleteMany({
+      where: { userId },
+    });
+
+    // Spotを削除（リクエストされた場合）
+    if (deleteSpots) {
+      // プレフィックスが指定された場合は、そのプレフィックスで始まるSpotを削除
+      if (typeof deleteSpots === 'string') {
+        // プレフィックスで始まるSpotを削除
+        await prismaClient.spotMeta.deleteMany({
+          where: { spotId: { startsWith: deleteSpots } },
+        });
+        await prismaClient.nearestStation.deleteMany({
+          where: { spotId: { startsWith: deleteSpots } },
+        });
+        await prismaClient.spot.deleteMany({
+          where: { id: { startsWith: deleteSpots } },
+        });
+      } else {
+        // true の場合は、Wishlist/PlanSpotに紐づくSpotを削除
+        const allSpotIds = [...new Set([...wishlistSpotIds, ...planSpotIds])];
+        if (allSpotIds.length > 0) {
+          // SpotMetaを先に削除
+          await prismaClient.spotMeta.deleteMany({
+            where: { spotId: { in: allSpotIds } },
+          });
+          // NearestStationを削除
+          await prismaClient.nearestStation.deleteMany({
+            where: { spotId: { in: allSpotIds } },
+          });
+          // Spotを削除
+          await prismaClient.spot.deleteMany({
+            where: { id: { in: allSpotIds } },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`clearTestDataForUser: failed to delete data for user ${userId}:`, (err as Error).message);
   }
 }
 

@@ -1,6 +1,5 @@
 import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { clerkMiddleware } from '@hono/clerk-auth';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 
@@ -39,6 +38,7 @@ import {
   getAdminNotificationsRoute,
 } from './routes/notification';
 import { notificationHandler } from './controllers/notification';
+import { requireAuth, optionalAuth } from './middleware/auth';
 
 const app = new OpenAPIHono().basePath('/api');
 
@@ -47,9 +47,9 @@ const app = new OpenAPIHono().basePath('/api');
 app.use(
   '*',
   cors({
-    origin: 'http://localhost:3000',
+    origin: ['http://localhost:3000', 'https://moptabi.jp'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Clerk-Auth'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
     maxAge: 600,
   }),
@@ -63,53 +63,15 @@ const authApp = new OpenAPIHono();
 const wishListApp = new OpenAPIHono();
 const notificationApp = new OpenAPIHono();
 
-tripApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
+// 認証が必要なルート
+tripApp.use('*', requireAuth);
+spotApp.use('*', requireAuth);
+imageApp.use('*', requireAuth);
+wishListApp.use('*', requireAuth);
+notificationApp.use('*', requireAuth);
 
-spotApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
-
-imageApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
-
-authApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
-
-wishListApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
-
-notificationApp.use(
-  '*',
-  clerkMiddleware({
-    publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-    secretKey: process.env.CLERK_SECRET_KEY,
-  }),
-);
+// authAppは認証なしでアクセス可能（ユーザー登録・検索など）
+authApp.use('*', optionalAuth);
 
 // トリップルートの登録
 tripApp.openapi(getTripsRoute, getTripHandler.getTrips);

@@ -8,23 +8,66 @@ import { TripSummaryCards } from '@/components/mypage/TripSummaryCards';
 import { UsageStatus } from '@/components/mypage/UsageStatus';
 import { RecentTrips } from '@/components/mypage/RecentTrips';
 
-// Clerkのモック
-vi.mock('@clerk/nextjs', () => ({
-  useUser: () => ({
-    user: {
-      imageUrl: 'https://example.com/avatar.jpg',
-      fullName: 'テストユーザー',
-      primaryEmailAddress: { emailAddress: 'test@example.com' },
-    },
-    isLoaded: true,
-  }),
-  SignOutButton: ({ children }: { children: React.ReactNode }) => <div data-testid="sign-out-button">{children}</div>,
-}));
+// NextAuthのモック
+vi.mock('next-auth/react', async () => {
+  const actual = await vi.importActual('next-auth/react');
+  return {
+    ...actual,
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user-id',
+          name: 'テストユーザー',
+          email: 'test@example.com',
+          image: 'https://example.com/avatar.jpg',
+        },
+        expires: '2099-12-31T23:59:59.999Z',
+      },
+      status: 'authenticated',
+    }),
+    SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 // useMypageDataフックのモック
 const mockUseMypageData = vi.fn();
 vi.mock('@/hooks/use-mypage', () => ({
   useMypageData: () => mockUseMypageData(),
+}));
+
+// useFetcherフックのモック
+vi.mock('@/hooks/use-fetcher', () => ({
+  useFetcher: () => ({
+    getFetcher: async () => ({
+      status: 200,
+      user: {
+        id: 'test-user-id',
+        role: 'USER',
+        name: 'テストユーザー',
+        image: 'https://example.com/avatar.jpg',
+        email: 'test@example.com',
+      },
+    }),
+  }),
+}));
+
+// SWRのモック（ProfileSection用）
+vi.mock('swr', () => ({
+  default: () => ({
+    data: {
+      status: 200,
+      user: {
+        id: 'test-user-id',
+        role: 'USER',
+        name: 'テストユーザー',
+        image: 'https://example.com/avatar.jpg',
+        email: 'test@example.com',
+      },
+    },
+    isLoading: false,
+    error: null,
+    mutate: vi.fn(),
+  }),
 }));
 
 describe('マイページ', () => {

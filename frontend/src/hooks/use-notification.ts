@@ -1,6 +1,5 @@
 import useSWR, { KeyedMutator } from 'swr';
 import { useCallback } from 'react';
-import { useAuth } from '@clerk/nextjs';
 
 import { useFetcher } from '@/hooks/use-fetcher';
 
@@ -58,7 +57,6 @@ export type UseNotificationReturn = {
  * - エラーハンドリング
  */
 export function useNotification(): UseNotificationReturn {
-  const { getToken } = useAuth();
   const { getFetcher } = useFetcher();
 
   // お知らせ一覧を取得
@@ -94,11 +92,10 @@ export function useNotification(): UseNotificationReturn {
   const markAsRead = useCallback(
     async (id: number) => {
       try {
-        const token = await getToken();
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/${id}/read`, {
           method: 'PATCH',
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${'token'}`,
           },
         });
 
@@ -130,11 +127,10 @@ export function useNotification(): UseNotificationReturn {
    */
   const markAllAsRead = useCallback(async () => {
     try {
-      const token = await getToken();
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/read-all`, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${'token'}`,
         },
       });
 
