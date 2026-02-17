@@ -2,7 +2,18 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test'
 import { testClient } from 'hono/testing';
 
 import app from '..';
-import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import {
+  db,
+  notification,
+  userNotification,
+  connectDb as connectPrisma,
+  disconnectDb as disconnectPrisma,
+  clearUserTestData as clearTestDataForUser,
+  createTestUser,
+  deleteAllNotifications,
+  createNotification as createNotificationDB,
+  createUserNotification as createUserNotificationDB,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const ADMIN_USER_ID = 'admin_user_id_notification';
@@ -37,24 +48,20 @@ beforeEach(async () => {
   currentUserId = ADMIN_USER_ID;
 
   // お知らせデータをクリア
-  await prismaClient.prisma.userNotification.deleteMany();
-  await prismaClient.prisma.notification.deleteMany();
+  await deleteAllNotifications();
 });
 
 // テスト用お知らせデータを作成するヘルパー関数
 async function createTestNotifications(count: number, options?: { type?: 'SYSTEM' | 'INFO' }) {
   const notifications = [];
   for (let i = 0; i < count; i++) {
-    const notification = await prismaClient.prisma.notification.create({
-      data: {
-        title: `テストお知らせ ${i + 1}`,
-        content: `テスト内容 ${i + 1}`,
-        type: options?.type || (i % 2 === 0 ? 'SYSTEM' : 'INFO'),
-        publishedAt: new Date(Date.now() - i * 86400000).toISOString(), // i日前
-        createdAt: new Date(Date.now() - i * 86400000),
-      },
+    const notif = await createNotificationDB({
+      title: `テストお知らせ ${i + 1}`,
+      content: `テスト内容 ${i + 1}`,
+      type: options?.type || (i % 2 === 0 ? 'SYSTEM' : 'INFO'),
+      publishedAt: new Date(Date.now() - i * 86400000), // i日前
     });
-    notifications.push(notification);
+    notifications.push(notif);
   }
   return notifications;
 }
@@ -170,21 +177,17 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
       currentUserId = ADMIN_USER_ID;
 
       // 特定のタイトルのお知らせを作成
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: 'システムメンテナンスのお知らせ',
-          content: 'システムメンテナンスを実施します',
-          type: 'SYSTEM',
-          publishedAt: new Date().toISOString(),
-        },
+      await createNotificationDB({
+        title: 'システムメンテナンスのお知らせ',
+        content: 'システムメンテナンスを実施します',
+        type: 'SYSTEM',
+        publishedAt: new Date(),
       });
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: '新機能リリースのお知らせ',
-          content: '新機能をリリースしました',
-          type: 'INFO',
-          publishedAt: new Date().toISOString(),
-        },
+      await createNotificationDB({
+        title: '新機能リリースのお知らせ',
+        content: '新機能をリリースしました',
+        type: 'INFO',
+        publishedAt: new Date(),
       });
 
       const response = await client.api.notification.admin.$get(
@@ -242,29 +245,23 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
       const yesterday = new Date(today.getTime() - 86400000);
       const twoDaysAgo = new Date(today.getTime() - 2 * 86400000);
 
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: '今日のお知らせ',
-          content: 'テスト',
-          type: 'INFO',
-          publishedAt: today.toISOString(),
-        },
+      await createNotificationDB({
+        title: '今日のお知らせ',
+        content: 'テスト',
+        type: 'INFO',
+        publishedAt: today,
       });
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: '昨日のお知らせ',
-          content: 'テスト',
-          type: 'INFO',
-          publishedAt: yesterday.toISOString(),
-        },
+      await createNotificationDB({
+        title: '昨日のお知らせ',
+        content: 'テスト',
+        type: 'INFO',
+        publishedAt: yesterday,
       });
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: '2日前のお知らせ',
-          content: 'テスト',
-          type: 'INFO',
-          publishedAt: twoDaysAgo.toISOString(),
-        },
+      await createNotificationDB({
+        title: '2日前のお知らせ',
+        content: 'テスト',
+        type: 'INFO',
+        publishedAt: twoDaysAgo,
       });
 
       const response = await client.api.notification.admin.$get(
@@ -285,29 +282,23 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
     it('AND検索: タイトルとタイプを組み合わせてフィルターできる', async () => {
       currentUserId = ADMIN_USER_ID;
 
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: 'システムメンテナンス',
-          content: 'テスト',
-          type: 'SYSTEM',
-          publishedAt: new Date().toISOString(),
-        },
+      await createNotificationDB({
+        title: 'システムメンテナンス',
+        content: 'テスト',
+        type: 'SYSTEM',
+        publishedAt: new Date(),
       });
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: 'システム関連のお知らせ',
-          content: 'テスト',
-          type: 'INFO',
-          publishedAt: new Date().toISOString(),
-        },
+      await createNotificationDB({
+        title: 'システム関連のお知らせ',
+        content: 'テスト',
+        type: 'INFO',
+        publishedAt: new Date(),
       });
-      await prismaClient.prisma.notification.create({
-        data: {
-          title: '新機能リリース',
-          content: 'テスト',
-          type: 'SYSTEM',
-          publishedAt: new Date().toISOString(),
-        },
+      await createNotificationDB({
+        title: '新機能リリース',
+        content: 'テスト',
+        type: 'SYSTEM',
+        publishedAt: new Date(),
       });
 
       const response = await client.api.notification.admin.$get(
@@ -395,30 +386,24 @@ describe('🧾 お知らせ管理APIサービス - ページネーション・�
       currentUserId = ADMIN_USER_ID;
 
       // お知らせを作成し、異なる既読率を設定
-      const notification1 = await prismaClient.prisma.notification.create({
-        data: {
-          title: 'お知らせ1',
-          content: 'テスト',
-          type: 'INFO',
-          publishedAt: new Date().toISOString(),
-        },
+      const notification1 = await createNotificationDB({
+        title: 'お知らせ1',
+        content: 'テスト',
+        type: 'INFO',
+        publishedAt: new Date(),
       });
-      const notification2 = await prismaClient.prisma.notification.create({
-        data: {
-          title: 'お知らせ2',
-          content: 'テスト',
-          type: 'INFO',
-          publishedAt: new Date().toISOString(),
-        },
+      const notification2 = await createNotificationDB({
+        title: 'お知らせ2',
+        content: 'テスト',
+        type: 'INFO',
+        publishedAt: new Date(),
       });
 
       // ユーザーがお知らせ1を既読にする
-      await prismaClient.prisma.userNotification.create({
-        data: {
-          userId: NORMAL_USER_ID,
-          notificationId: notification1.id,
-          readAt: new Date(),
-        },
+      await createUserNotificationDB({
+        userId: NORMAL_USER_ID,
+        notificationId: notification1.id,
+        isRead: true,
       });
 
       const response = await client.api.notification.admin.$get(

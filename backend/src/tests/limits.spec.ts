@@ -4,7 +4,17 @@ import { testClient } from 'hono/testing';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 
 import app from '..';
-import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import {
+  connectDb as connectPrisma,
+  disconnectDb as disconnectPrisma,
+  clearUserTestData as clearTestDataForUser,
+  createTestUser,
+  createSpotWithMeta,
+  createWishlistEntry,
+  deleteWishlistByUser,
+  deleteTripsByUser,
+  createTrip,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_limits';
@@ -34,8 +44,8 @@ afterAll(async () => {
 beforeEach(async () => {
   currentUserId = TEST_USER_ID;
   // 各テスト前にデータをクリア
-  await prismaClient.prisma.wishlist.deleteMany({ where: { userId: TEST_USER_ID } });
-  await prismaClient.prisma.trip.deleteMany({ where: { userId: TEST_USER_ID } });
+  await deleteWishlistByUser(TEST_USER_ID);
+  await deleteTripsByUser(TEST_USER_ID);
 });
 
 // 再利用するモックデータ
@@ -94,21 +104,12 @@ describe('🔒 上限チェック機能', () => {
       // 上限まで登録
       for (let i = 0; i < APP_LIMITS.MAX_WISHLIST_SPOTS; i++) {
         const spotId = `limit_test_spot_${i}`;
-        await prismaClient.prisma.spot.create({
-          data: {
-            id: spotId,
-            meta: {
-              create: createMockSpotMetaForDB(spotId),
-            },
-          },
-        });
-        await prismaClient.prisma.wishlist.create({
-          data: {
-            userId: TEST_USER_ID,
-            spotId,
-            priority: 3,
-            memo: 'テスト',
-          },
+        await createSpotWithMeta(spotId, createMockSpotMetaForDB(spotId));
+        await createWishlistEntry({
+          userId: TEST_USER_ID,
+          spotId,
+          priority: 3,
+          memo: 'テスト',
         });
       }
 
@@ -140,21 +141,12 @@ describe('🔒 上限チェック機能', () => {
       // 3件登録
       for (let i = 0; i < 3; i++) {
         const spotId = `count_test_spot_${i}`;
-        await prismaClient.prisma.spot.create({
-          data: {
-            id: spotId,
-            meta: {
-              create: createMockSpotMetaForDB(spotId),
-            },
-          },
-        });
-        await prismaClient.prisma.wishlist.create({
-          data: {
-            userId: TEST_USER_ID,
-            spotId,
-            priority: 3,
-            memo: 'テスト',
-          },
+        await createSpotWithMeta(spotId, createMockSpotMetaForDB(spotId));
+        await createWishlistEntry({
+          userId: TEST_USER_ID,
+          spotId,
+          priority: 3,
+          memo: 'テスト',
         });
       }
 
@@ -170,13 +162,11 @@ describe('🔒 上限チェック機能', () => {
     it(`上限（${APP_LIMITS.MAX_PLANS}件）に達している場合、新規作成が拒否される`, async () => {
       // 上限まで作成
       for (let i = 0; i < APP_LIMITS.MAX_PLANS; i++) {
-        await prismaClient.prisma.trip.create({
-          data: {
-            userId: TEST_USER_ID,
-            title: `テストプラン_${i}`,
-            startDate: '2025-01-01',
-            endDate: '2025-01-02',
-          },
+        await createTrip({
+          userId: TEST_USER_ID,
+          title: `テストプラン_${i}`,
+          startDate: '2025-01-01',
+          endDate: '2025-01-02',
         });
       }
 
@@ -241,13 +231,11 @@ describe('🔒 上限チェック機能', () => {
     it('現在のプラン数を取得できる', async () => {
       // 5件作成
       for (let i = 0; i < 5; i++) {
-        await prismaClient.prisma.trip.create({
-          data: {
-            userId: TEST_USER_ID,
-            title: `テストプラン_${i}`,
-            startDate: '2025-01-01',
-            endDate: '2025-01-02',
-          },
+        await createTrip({
+          userId: TEST_USER_ID,
+          title: `テストプラン_${i}`,
+          startDate: '2025-01-01',
+          endDate: '2025-01-02',
         });
       }
 
