@@ -18,7 +18,7 @@
     "db:studio": "drizzle-kit studio",
     "db:migrate:dev": "drizzle-kit migrate",
     "db:migrate:prod": "NODE_ENV=production drizzle-kit migrate",
-    "db:push:test": "DATABASE_URL='postgresql://travel_user_test:travel_admin_test@localhost:5433/ai_travel_test' drizzle-kit generate --config=./drizzle-test.config.ts && drizzle-kit push --config=./drizzle-test.config.ts",
+    "db:push:test": "drizzle-kit push --config=./drizzle-test.config.ts",
     "prepare": "husky"
   },
   "dependencies": {
