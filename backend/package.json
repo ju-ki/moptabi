@@ -19,6 +19,7 @@
     "db:migrate:dev": "drizzle-kit migrate",
     "db:migrate:prod": "NODE_ENV=production drizzle-kit migrate",
     "db:push:test": "drizzle-kit push --config=./drizzle-test.config.ts",
+    "db:push:staging": "drizzle-kit push --config=./drizzle-staging.config.ts",
     "prepare": "husky"
   },
   "dependencies": {
