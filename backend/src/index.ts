@@ -44,10 +44,24 @@ const app = new OpenAPIHono().basePath('/api');
 
 // 静的ファイル配信の設定
 
+// 許可するオリジンのリスト
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://moptabi-frontend.moptabi.workers.dev',
+  'https://moptabi.com',
+];
+
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://moptabi-frontend.moptabi.workers.dev', 'https://moptabi.com'],
+    origin: (origin) => {
+      // リクエストのオリジンが許可リストに含まれていればそのオリジンを返す
+      if (allowedOrigins.includes(origin)) {
+        return origin;
+      }
+      // 含まれていない場合は最初のオリジンを返す（または空文字でブロック）
+      return allowedOrigins[0];
+    },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
