@@ -47,13 +47,18 @@ const app = new OpenAPIHono().basePath('/api');
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://moptabi-frontend.moptabi.workers.dev'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    origin: ['http://localhost:3000', 'https://moptabi-frontend.moptabi.workers.dev', 'https://moptabi.com'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
     maxAge: 600,
   }),
 );
+
+// OPTIONSリクエスト（プリフライト）に明示的に対応
+app.options('*', (c) => {
+  return c.text('', 204);
+});
 
 //ルートの登録
 const tripApp = new OpenAPIHono();
