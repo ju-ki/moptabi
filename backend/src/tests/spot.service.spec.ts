@@ -2,15 +2,20 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } 
 import { testClient } from 'hono/testing';
 
 import app from '..';
-import prismaUtil, {
-  clearTestData,
-  clearTestDataForUser,
-  connectPrisma,
+import {
+  clearAllTestData as clearTestData,
+  clearUserTestData as clearTestDataForUser,
+  connectDb as connectPrisma,
   createTestUser,
-  disconnectPrisma,
+  disconnectDb as disconnectPrisma,
   createSpotWithMeta,
   createWishlistEntry,
-} from './prisma';
+  createTrip,
+  createPlan,
+  createPlanSpot,
+  db,
+  transport,
+} from './db-helper';
 import { getUnvisitedWishlistSpots, getVisitedSpots } from '../services/spot';
 
 // testClientのインスタンスを取得（型アサーション）
@@ -343,48 +348,36 @@ describe('🧾 スポットサービス', () => {
 
       // 古い計画
       await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
-      const trip1 = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '古い旅行',
-          startDate: '2024-01-01',
-          endDate: '2024-01-02',
-          userId: TEST_USER_ID,
-        },
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
       });
-      const plan1 = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip1.id, date: '2024-01-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan1.id,
-          spotId: spotId('1'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+      await createPlanSpot({
+        planId: plan1.id,
+        spotId: spotId('1'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       // 新しい計画
       await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-      const trip2 = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '新しい旅行',
-          startDate: '2024-03-01',
-          endDate: '2024-03-02',
-          userId: TEST_USER_ID,
-        },
+      const trip2 = await createTrip({
+        title: '新しい旅行',
+        startDate: '2024-03-01',
+        endDate: '2024-03-02',
+        userId: TEST_USER_ID,
       });
-      const plan2 = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip2.id, date: '2024-03-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan2.id,
-          spotId: spotId('2'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan2 = await createPlan({ tripId: trip2.id, date: '2024-03-01' });
+      await createPlanSpot({
+        planId: plan2.id,
+        spotId: spotId('2'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       const results = await getVisitedSpots(TEST_USER_ID);
@@ -410,25 +403,19 @@ describe('🧾 スポットサービス', () => {
 
       // 過去の計画スポット
       await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-      const trip = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行',
-          startDate: '2024-03-01',
-          endDate: '2024-03-02',
-          userId: TEST_USER_ID,
-        },
+      const trip = await createTrip({
+        title: '旅行',
+        startDate: '2024-03-01',
+        endDate: '2024-03-02',
+        userId: TEST_USER_ID,
       });
-      const plan = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip.id, date: '2024-03-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: spotId('2'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan = await createPlan({ tripId: trip.id, date: '2024-03-01' });
+      await createPlanSpot({
+        planId: plan.id,
+        spotId: spotId('2'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       const results = await getVisitedSpots(TEST_USER_ID);
@@ -455,25 +442,19 @@ describe('🧾 スポットサービス', () => {
       });
 
       // 過去の計画
-      const trip = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行',
-          startDate: '2024-03-01',
-          endDate: '2024-03-02',
-          userId: TEST_USER_ID,
-        },
+      const trip = await createTrip({
+        title: '旅行',
+        startDate: '2024-03-01',
+        endDate: '2024-03-02',
+        userId: TEST_USER_ID,
       });
-      const plan = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip.id, date: '2024-03-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: spotId('1'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan = await createPlan({ tripId: trip.id, date: '2024-03-01' });
+      await createPlanSpot({
+        planId: plan.id,
+        spotId: spotId('1'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       const results = await getVisitedSpots(TEST_USER_ID);
@@ -490,47 +471,35 @@ describe('🧾 スポットサービス', () => {
       await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
 
       // 1つ目の計画
-      const trip1 = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行1',
-          startDate: '2024-01-01',
-          endDate: '2024-01-02',
-          userId: TEST_USER_ID,
-        },
+      const trip1 = await createTrip({
+        title: '旅行1',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
       });
-      const plan1 = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip1.id, date: '2024-01-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan1.id,
-          spotId: spotId('1'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+      await createPlanSpot({
+        planId: plan1.id,
+        spotId: spotId('1'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       // 2つ目の計画（同じスポット）
-      const trip2 = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行2',
-          startDate: '2024-02-01',
-          endDate: '2024-02-02',
-          userId: TEST_USER_ID,
-        },
+      const trip2 = await createTrip({
+        title: '旅行2',
+        startDate: '2024-02-01',
+        endDate: '2024-02-02',
+        userId: TEST_USER_ID,
       });
-      const plan2 = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip2.id, date: '2024-02-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan2.id,
-          spotId: spotId('1'),
-          stayStart: '14:00',
-          stayEnd: '15:00',
-          order: 1,
-        },
+      const plan2 = await createPlan({ tripId: trip2.id, date: '2024-02-01' });
+      await createPlanSpot({
+        planId: plan2.id,
+        spotId: spotId('1'),
+        stayStart: '14:00',
+        stayEnd: '15:00',
+        order: 1,
       });
 
       const results = await getVisitedSpots(TEST_USER_ID);
@@ -551,77 +520,63 @@ describe('🧾 スポットサービス', () => {
       // 通常のスポット
       await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
 
-      const trip = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行',
-          startDate: '2024-01-01',
-          endDate: '2024-01-02',
-          userId: TEST_USER_ID,
-        },
+      const trip = await createTrip({
+        title: '旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
       });
-      const plan = await prismaUtil.prisma.plan.create({
-        data: {
-          tripId: trip.id,
-          date: '2024-01-01',
-        },
+      const plan = await createPlan({
+        tripId: trip.id,
+        date: '2024-01-01',
       });
 
       // 出発地用のPlanSpot
-      const departurePlanSpot = await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: 'departure1',
-          stayStart: '08:00',
-          stayEnd: '08:30',
-          order: 0,
-        },
+      const departurePlanSpot = await createPlanSpot({
+        planId: plan.id,
+        spotId: 'departure1',
+        stayStart: '08:00',
+        stayEnd: '08:30',
+        order: 0,
       });
 
       // 目的地用のPlanSpot
-      const destinationPlanSpot = await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: 'destination1',
-          stayStart: '18:00',
-          stayEnd: '18:30',
-          order: 2,
-        },
+      const destinationPlanSpot = await createPlanSpot({
+        planId: plan.id,
+        spotId: 'destination1',
+        stayStart: '18:00',
+        stayEnd: '18:30',
+        order: 2,
       });
 
       // 通常のスポット用のPlanSpot
-      const normalPlanSpot = await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: spotId('1'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const normalPlanSpot = await createPlanSpot({
+        planId: plan.id,
+        spotId: spotId('1'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       // Transportで出発地・目的地を設定
       // 出発地 → 通常スポット
-      await prismaUtil.prisma.transport.create({
-        data: {
-          planId: plan.id,
-          fromType: 'DEPARTURE',
-          toType: 'SPOT',
-          fromSpotId: departurePlanSpot.id,
-          toSpotId: normalPlanSpot.id,
-          transportMethod: 1,
-        },
+      await db.insert(transport).values({
+        planId: plan.id,
+        fromType: 'DEPARTURE',
+        toType: 'SPOT',
+        fromSpotId: departurePlanSpot.id,
+        toSpotId: normalPlanSpot.id,
+        transportMethod: 1,
       });
 
       // 通常スポット → 目的地
-      await prismaUtil.prisma.transport.create({
-        data: {
-          planId: plan.id,
-          fromType: 'SPOT',
-          toType: 'DESTINATION',
-          fromSpotId: normalPlanSpot.id,
-          toSpotId: destinationPlanSpot.id,
-          transportMethod: 1,
-        },
+      await db.insert(transport).values({
+        planId: plan.id,
+        fromType: 'SPOT',
+        toType: 'DESTINATION',
+        fromSpotId: normalPlanSpot.id,
+        toSpotId: destinationPlanSpot.id,
+        transportMethod: 1,
       });
 
       const results = await getVisitedSpots(TEST_USER_ID);
@@ -995,49 +950,37 @@ describe('🧾 スポットサービス', () => {
         // スポットA: 3回計画に登録
         await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
         for (let i = 0; i < 3; i++) {
-          const trip = await prismaUtil.prisma.trip.create({
-            data: {
-              title: `旅行A${i + 1}`,
-              startDate: `2024-0${i + 1}-01`,
-              endDate: `2024-0${i + 1}-02`,
-              userId: TEST_USER_ID,
-            },
+          const trip = await createTrip({
+            title: `旅行A${i + 1}`,
+            startDate: `2024-0${i + 1}-01`,
+            endDate: `2024-0${i + 1}-02`,
+            userId: TEST_USER_ID,
           });
-          const plan = await prismaUtil.prisma.plan.create({
-            data: { tripId: trip.id, date: `2024-0${i + 1}-01` },
-          });
-          await prismaUtil.prisma.planSpot.create({
-            data: {
-              planId: plan.id,
-              spotId: spotId('1'),
-              stayStart: '10:00',
-              stayEnd: '11:00',
-              order: 1,
-            },
+          const plan = await createPlan({ tripId: trip.id, date: `2024-0${i + 1}-01` });
+          await createPlanSpot({
+            planId: plan.id,
+            spotId: spotId('1'),
+            stayStart: '10:00',
+            stayEnd: '11:00',
+            order: 1,
           });
         }
 
         // スポットB: 1回計画に登録
         await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-        const tripB = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '旅行B',
-            startDate: '2024-04-01',
-            endDate: '2024-04-02',
-            userId: TEST_USER_ID,
-          },
+        const tripB = await createTrip({
+          title: '旅行B',
+          startDate: '2024-04-01',
+          endDate: '2024-04-02',
+          userId: TEST_USER_ID,
         });
-        const planB = await prismaUtil.prisma.plan.create({
-          data: { tripId: tripB.id, date: '2024-04-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: planB.id,
-            spotId: spotId('2'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const planB = await createPlan({ tripId: tripB.id, date: '2024-04-01' });
+        await createPlanSpot({
+          planId: planB.id,
+          spotId: spotId('2'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // minVisitCount=2で検索（2回以上登録されたスポットのみ）
@@ -1220,71 +1163,53 @@ describe('🧾 スポットサービス', () => {
 
         // 古い計画のスポット
         await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
-        const trip1 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '旅行1',
-            startDate: '2024-01-01',
-            endDate: '2024-01-02',
-            userId: TEST_USER_ID,
-          },
+        const trip1 = await createTrip({
+          title: '旅行1',
+          startDate: '2024-01-01',
+          endDate: '2024-01-02',
+          userId: TEST_USER_ID,
         });
-        const plan1 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip1.id, date: '2024-01-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan1.id,
-            spotId: spotId('1'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+        await createPlanSpot({
+          planId: plan1.id,
+          spotId: spotId('1'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // 新しい計画のスポット
         await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-        const trip2 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '旅行2',
-            startDate: '2024-03-01',
-            endDate: '2024-03-02',
-            userId: TEST_USER_ID,
-          },
+        const trip2 = await createTrip({
+          title: '旅行2',
+          startDate: '2024-03-01',
+          endDate: '2024-03-02',
+          userId: TEST_USER_ID,
         });
-        const plan2 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip2.id, date: '2024-03-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan2.id,
-            spotId: spotId('2'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan2 = await createPlan({ tripId: trip2.id, date: '2024-03-01' });
+        await createPlanSpot({
+          planId: plan2.id,
+          spotId: spotId('2'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // 中間の計画のスポット
         await createSpotWithMeta(spotId('3'), { name: 'スポットC' });
-        const trip3 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '旅行3',
-            startDate: '2024-02-01',
-            endDate: '2024-02-02',
-            userId: TEST_USER_ID,
-          },
+        const trip3 = await createTrip({
+          title: '旅行3',
+          startDate: '2024-02-01',
+          endDate: '2024-02-02',
+          userId: TEST_USER_ID,
         });
-        const plan3 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip3.id, date: '2024-02-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan3.id,
-            spotId: spotId('3'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan3 = await createPlan({ tripId: trip3.id, date: '2024-02-01' });
+        await createPlanSpot({
+          planId: plan3.id,
+          spotId: spotId('3'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         const results = await getVisitedSpots(TEST_USER_ID, {
@@ -1355,25 +1280,19 @@ describe('🧾 スポットサービス', () => {
 
         // 計画スポット（2024年3月計画）
         await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-        const trip = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '旅行',
-            startDate: '2024-03-01',
-            endDate: '2024-03-02',
-            userId: TEST_USER_ID,
-          },
+        const trip = await createTrip({
+          title: '旅行',
+          startDate: '2024-03-01',
+          endDate: '2024-03-02',
+          userId: TEST_USER_ID,
         });
-        const plan = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip.id, date: '2024-03-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan.id,
-            spotId: spotId('2'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan = await createPlan({ tripId: trip.id, date: '2024-03-01' });
+        await createPlanSpot({
+          planId: plan.id,
+          spotId: spotId('2'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // 訪問済みスポット（2024年1月訪問）
@@ -1406,73 +1325,55 @@ describe('🧾 スポットサービス', () => {
         // スポットA: 2回計画に登録
         await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
         for (let i = 0; i < 2; i++) {
-          const trip = await prismaUtil.prisma.trip.create({
-            data: {
-              title: `旅行A${i + 1}`,
-              startDate: `2024-0${i + 1}-01`,
-              endDate: `2024-0${i + 1}-02`,
-              userId: TEST_USER_ID,
-            },
+          const tripA = await createTrip({
+            title: `旅行A${i + 1}`,
+            startDate: `2024-0${i + 1}-01`,
+            endDate: `2024-0${i + 1}-02`,
+            userId: TEST_USER_ID,
           });
-          const plan = await prismaUtil.prisma.plan.create({
-            data: { tripId: trip.id, date: `2024-0${i + 1}-01` },
-          });
-          await prismaUtil.prisma.planSpot.create({
-            data: {
-              planId: plan.id,
-              spotId: spotId('1'),
-              stayStart: '10:00',
-              stayEnd: '11:00',
-              order: 1,
-            },
+          const planA = await createPlan({ tripId: tripA.id, date: `2024-0${i + 1}-01` });
+          await createPlanSpot({
+            planId: planA.id,
+            spotId: spotId('1'),
+            stayStart: '10:00',
+            stayEnd: '11:00',
+            order: 1,
           });
         }
 
         // スポットB: 1回計画に登録
         await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-        const tripB = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '旅行B',
-            startDate: '2024-03-01',
-            endDate: '2024-03-02',
-            userId: TEST_USER_ID,
-          },
+        const tripB = await createTrip({
+          title: '旅行B',
+          startDate: '2024-03-01',
+          endDate: '2024-03-02',
+          userId: TEST_USER_ID,
         });
-        const planB = await prismaUtil.prisma.plan.create({
-          data: { tripId: tripB.id, date: '2024-03-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: planB.id,
-            spotId: spotId('2'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const planB = await createPlan({ tripId: tripB.id, date: '2024-03-01' });
+        await createPlanSpot({
+          planId: planB.id,
+          spotId: spotId('2'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // スポットC: 3回計画に登録
         await createSpotWithMeta(spotId('3'), { name: 'スポットC' });
         for (let i = 0; i < 3; i++) {
-          const trip = await prismaUtil.prisma.trip.create({
-            data: {
-              title: `旅行C${i + 1}`,
-              startDate: `2024-0${i + 4}-01`,
-              endDate: `2024-0${i + 4}-02`,
-              userId: TEST_USER_ID,
-            },
+          const tripC = await createTrip({
+            title: `旅行C${i + 1}`,
+            startDate: `2024-0${i + 4}-01`,
+            endDate: `2024-0${i + 4}-02`,
+            userId: TEST_USER_ID,
           });
-          const plan = await prismaUtil.prisma.plan.create({
-            data: { tripId: trip.id, date: `2024-0${i + 4}-01` },
-          });
-          await prismaUtil.prisma.planSpot.create({
-            data: {
-              planId: plan.id,
-              spotId: spotId('3'),
-              stayStart: '10:00',
-              stayEnd: '11:00',
-              order: 1,
-            },
+          const planC = await createPlan({ tripId: tripC.id, date: `2024-0${i + 4}-01` });
+          await createPlanSpot({
+            planId: planC.id,
+            spotId: spotId('3'),
+            stayStart: '10:00',
+            stayEnd: '11:00',
+            order: 1,
           });
         }
 

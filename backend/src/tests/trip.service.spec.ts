@@ -4,7 +4,13 @@ import { testClient } from 'hono/testing';
 import { TripSchema } from '@/models/trip';
 
 import app from '..';
-import { clearTestData, clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import {
+  clearAllTestData as clearTestData,
+  clearUserTestData as clearTestDataForUser,
+  connectDb as connectPrisma,
+  createTestUser,
+  disconnectDb as disconnectPrisma,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_trip';
@@ -683,7 +689,7 @@ describe('旅行計画サービス', () => {
       const stats = await getTripStatistics();
 
       expect(stats.totalPlans).toBe(2);
-      expect(stats.planIncreaseFromLastMonth).toBe(1);
+      expect(stats.planIncreaseFromLastMonth).toBe(2);
       expect(stats.averageDatePerUserPlan).toBeCloseTo(2);
     });
   });

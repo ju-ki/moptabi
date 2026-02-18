@@ -4,13 +4,19 @@ import { testClient } from 'hono/testing';
 import { WishlistCreateSchema, WishlistListResponseSchema, WishlistUpdateSchema } from '@/models/wishlist';
 
 import app from '..';
-import prismaClient, {
-  clearTestData,
-  clearTestDataForUser,
-  connectPrisma,
+import {
+  db,
+  wishlist,
+  connectDb as connectPrisma,
+  disconnectDb as disconnectPrisma,
+  clearUserTestData as clearTestDataForUser,
+  clearAllTestData as clearTestData,
   createTestUser,
-  disconnectPrisma,
-} from './prisma';
+  createSpotWithMeta,
+  createWishlistEntry,
+  countSpots,
+  findSpotById,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_wishlist';
@@ -84,38 +90,29 @@ describe('🧾 行きたいリストサービス', () => {
 
     // 行きたいリストの中身が単数1件のテスト
     it('単数1件が存在する場合は配列で返す', async () => {
-      // 実DB（PrismaClient）を使って spot と wishlist を作成する
-      const spot = await prismaClient.prisma.spot.create({
-        data: {
-          id: mockSpotPayload.id,
-          meta: {
-            create: {
-              id: mockSpotMeta.id,
-              name: mockSpotMeta.name,
-              description: mockSpotMeta.description,
-              latitude: mockSpotMeta.latitude,
-              longitude: mockSpotMeta.longitude,
-              categories: mockSpotMeta.categories,
-              image: mockSpotMeta.image,
-              rating: mockSpotMeta.rating,
-              url: mockSpotMeta.url,
-              prefecture: mockSpotMeta.prefecture,
-              address: mockSpotMeta.address,
-              catchphrase: mockSpotMeta.catchphrase,
-              openingHours: mockSpotMeta.openingHours,
-            },
-          },
-        },
+      // Drizzleを使って spot と wishlist を作成する
+      await createSpotWithMeta(mockSpotPayload.id, {
+        id: mockSpotMeta.id,
+        name: mockSpotMeta.name,
+        description: mockSpotMeta.description,
+        latitude: mockSpotMeta.latitude,
+        longitude: mockSpotMeta.longitude,
+        categories: mockSpotMeta.categories,
+        image: mockSpotMeta.image,
+        rating: mockSpotMeta.rating,
+        url: mockSpotMeta.url,
+        prefecture: mockSpotMeta.prefecture,
+        address: mockSpotMeta.address,
+        catchphrase: mockSpotMeta.catchphrase,
+        openingHours: mockSpotMeta.openingHours,
       });
-      await prismaClient.prisma.wishlist.create({
-        data: {
-          spotId: spot.id,
-          userId: TEST_USER_ID,
-          memo: 'memo1',
-          priority: 1,
-          visited: 0,
-          visitedAt: null,
-        },
+      await createWishlistEntry({
+        spotId: mockSpotPayload.id,
+        userId: TEST_USER_ID,
+        memo: 'memo1',
+        priority: 1,
+        visited: 0,
+        visitedAt: null,
       });
       const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const res = await response.json();
@@ -127,43 +124,29 @@ describe('🧾 行きたいリストサービス', () => {
     });
     // 行きたいリストの中身が複数件のテスト
     it('複数件が存在する場合は配列で返す', async () => {
-      const spot2 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'spot_def456',
-          meta: {
-            create: {
-              id: 'spot_def456',
-              name: '別の有名な観光地',
-              description: '歴史的な建造物です',
-              latitude: 36.6622,
-              longitude: 135.6622,
-              categories: ['museum'],
-              image: 'https://example.com/image2.jpg',
-              url: 'https://example.com',
-              prefecture: '東京都',
-              address: '東京都千代田区千代田1-1',
-              rating: 4.5,
-              catchphrase: '歴史を感じる場所です',
-              openingHours: [
-                {
-                  day: '月',
-                  hours: '9:00-18:00',
-                },
-              ],
-            },
-          },
-        },
+      await createSpotWithMeta('spot_def456', {
+        id: 'spot_def456',
+        name: '別の有名な観光地',
+        description: '歴史的な建造物です',
+        latitude: 36.6622,
+        longitude: 135.6622,
+        categories: ['museum'],
+        image: 'https://example.com/image2.jpg',
+        url: 'https://example.com',
+        prefecture: '東京都',
+        address: '東京都千代田区千代田1-1',
+        rating: 4.5,
+        catchphrase: '歴史を感じる場所です',
+        openingHours: [{ day: '月', hours: '9:00-18:00' }],
       });
       // 2件目の行きたいリストを作成する
-      await prismaClient.prisma.wishlist.create({
-        data: {
-          spotId: spot2.id,
-          userId: TEST_USER_ID,
-          memo: 'memo1',
-          priority: 1,
-          visited: 0,
-          visitedAt: null,
-        },
+      await createWishlistEntry({
+        spotId: 'spot_def456',
+        userId: TEST_USER_ID,
+        memo: 'memo1',
+        priority: 1,
+        visited: 0,
+        visitedAt: null,
       });
       const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
       const res = await response.json();
@@ -179,15 +162,13 @@ describe('🧾 行きたいリストサービス', () => {
       // 別ユーザーの行きたいリストを作成する
       const otherUserId = 'other_user_id';
       await createTestUser(otherUserId);
-      await prismaClient.prisma.wishlist.create({
-        data: {
-          spotId: mockSpotPayload.id,
-          userId: otherUserId,
-          memo: 'memo_other',
-          priority: 2,
-          visited: 0,
-          visitedAt: null,
-        },
+      await createWishlistEntry({
+        spotId: mockSpotPayload.id,
+        userId: otherUserId,
+        memo: 'memo_other',
+        priority: 2,
+        visited: 0,
+        visitedAt: null,
       });
 
       // テスト対象ユーザーの行きたいリストを取得する
@@ -214,43 +195,46 @@ describe('🧾 行きたいリストサービス', () => {
   describe('POST /wishlist', () => {
     it('スポットがDBに登録済みの場合は wishlist のみを作成する', async () => {
       // 事前に spot を作成
-      const spot = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'spot_def789',
-          meta: {
-            create: {
-              id: 'spot_def789',
-              name: '別の有名な観光地',
-              description: '歴史的な建造物です',
-              latitude: 36.6622,
-              longitude: 135.6622,
-              categories: ['museum'],
-              image: 'https://example.com/image2.jpg',
-              rating: 4.5,
-              url: 'https://example.com',
-              prefecture: '東京都',
-              address: '東京都千代田区千代田1-1',
-              catchphrase: '歴史を感じる場所です',
-              openingHours: [
-                {
-                  day: '月',
-                  hours: '9:00-18:00',
-                },
-              ],
-            },
-          },
-        },
-        include: {
-          meta: true,
-        },
+      const spotData = await createSpotWithMeta('spot_def789', {
+        id: 'spot_def789',
+        name: '別の有名な観光地',
+        description: '歴史的な建造物です',
+        latitude: 36.6622,
+        longitude: 135.6622,
+        categories: ['museum'],
+        image: 'https://example.com/image2.jpg',
+        rating: 4.5,
+        url: 'https://example.com',
+        prefecture: '東京都',
+        address: '東京都千代田区千代田1-1',
+        catchphrase: '歴史を感じる場所です',
+        openingHours: [{ day: '月', hours: '9:00-18:00' }],
       });
 
       // カウントを取得
-      const beforeSpotCount = await prismaClient.prisma.spot.count();
+      const beforeSpotCount = await countSpots();
 
       const payload = {
-        spotId: spot.id,
-        spot: spot,
+        spotId: spotData.id,
+        spot: {
+          id: spotData.id,
+          meta: {
+            id: spotData.meta!.id,
+            spotId: spotData.id,
+            name: spotData.meta!.name,
+            description: spotData.meta!.description,
+            latitude: spotData.meta!.latitude,
+            longitude: spotData.meta!.longitude,
+            categories: spotData.meta!.categories,
+            image: spotData.meta!.image,
+            rating: spotData.meta!.rating,
+            url: spotData.meta!.url,
+            prefecture: spotData.meta!.prefecture,
+            address: spotData.meta!.address,
+            catchphrase: spotData.meta!.catchphrase,
+            openingHours: spotData.meta!.openingHours,
+          },
+        },
         memo: 'memo1',
         priority: 1,
         visited: 0,
@@ -270,15 +254,15 @@ describe('🧾 行きたいリストサービス', () => {
 
       expect(res.status).toBe(201);
       const body = await res.json();
-      expect(body).toHaveProperty('spotId', spot.id);
+      expect(body).toHaveProperty('spotId', spotData.id);
 
       // spot が新規作成されていないこと
-      const afterSpotCount = await prismaClient.prisma.spot.count();
+      const afterSpotCount = await countSpots();
       expect(afterSpotCount).toBe(beforeSpotCount);
     });
 
     it('スポットがDBに登録されていない場合は先にスポットを登録してから wishlist を作成する', async () => {
-      const beforeSpotCount = await prismaClient.prisma.spot.count();
+      const beforeSpotCount = await countSpots();
 
       const payload = {
         spotId: 'new_spot_99',
@@ -314,9 +298,9 @@ describe('🧾 行きたいリストサービス', () => {
       expect(body).toHaveProperty('spotId', payload.spotId);
 
       // spot が作成されていること
-      const afterSpotCount = await prismaClient.prisma.spot.count();
+      const afterSpotCount = await countSpots();
       expect(afterSpotCount).toBeGreaterThan(beforeSpotCount);
-      const spotInDb = await prismaClient.prisma.spot.findUnique({ where: { id: payload.spotId } });
+      const spotInDb = await findSpotById(payload.spotId);
       expect(spotInDb).not.toBeNull();
     });
 
@@ -397,38 +381,28 @@ describe('🧾 行きたいリストサービス', () => {
   describe('PATCH /wishlist/:id', () => {
     it('既存の行きたいリストを更新できること', async () => {
       // 事前に wishlist エントリを作成
-      const spot = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'spot_patch_123',
-          meta: {
-            create: {
-              id: 'spot_patch_123',
-              name: 'パッチ用スポット',
-              description: '説明文',
-              latitude: 34.6622,
-              longitude: 133.6622,
-              categories: ['temple'],
-              url: 'https://example.com',
-              prefecture: '東京都',
-              address: '東京都千代田区千代田1-1',
-              image: 'https://example.com/image_patch.jpg',
-              rating: 4.0,
-              catchphrase: 'パッチ用キャッチフレーズ',
-            },
-          },
-        },
-        include: { meta: true },
+      await createSpotWithMeta('spot_patch_123', {
+        id: 'spot_patch_123',
+        name: 'パッチ用スポット',
+        description: '説明文',
+        latitude: 34.6622,
+        longitude: 133.6622,
+        categories: ['temple'],
+        url: 'https://example.com',
+        prefecture: '東京都',
+        address: '東京都千代田区千代田1-1',
+        image: 'https://example.com/image_patch.jpg',
+        rating: 4.0,
+        catchphrase: 'パッチ用キャッチフレーズ',
       });
 
-      const wishlistEntry = await prismaClient.prisma.wishlist.create({
-        data: {
-          spotId: spot.id,
-          userId: TEST_USER_ID,
-          memo: '初期メモ',
-          priority: 2,
-          visited: 0,
-          visitedAt: null,
-        },
+      const wishlistEntry = await createWishlistEntry({
+        spotId: 'spot_patch_123',
+        userId: TEST_USER_ID,
+        memo: '初期メモ',
+        priority: 2,
+        visited: 0,
+        visitedAt: null,
       });
 
       // 更新用ペイロード
@@ -524,44 +498,29 @@ describe('🧾 行きたいリストサービス', () => {
   describe('DELETE /wishlist/:id', () => {
     it('既存の行きたいリストを削除できること', async () => {
       // 事前に wishlist エントリを作成
-      const spot = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'spot_delete_123',
-          meta: {
-            create: {
-              id: 'spot_delete_123',
-              name: 'デリート用スポット',
-              description: '説明文',
-              latitude: 34.6622,
-              longitude: 133.6622,
-              categories: ['temple'],
-              image: 'https://example.com/image_delete.jpg',
-              rating: 4.0,
-              catchphrase: 'デリート用キャッチフレーズ',
-              url: 'https://example.com',
-              prefecture: '東京都',
-              address: '東京都千代田区千代田1-1',
-              openingHours: [
-                {
-                  day: '月',
-                  hours: '9:00-18:00',
-                },
-              ],
-            },
-          },
-        },
-        include: { meta: true },
+      await createSpotWithMeta('spot_delete_123', {
+        id: 'spot_delete_123',
+        name: 'デリート用スポット',
+        description: '説明文',
+        latitude: 34.6622,
+        longitude: 133.6622,
+        categories: ['temple'],
+        image: 'https://example.com/image_delete.jpg',
+        rating: 4.0,
+        catchphrase: 'デリート用キャッチフレーズ',
+        url: 'https://example.com',
+        prefecture: '東京都',
+        address: '東京都千代田区千代田1-1',
+        openingHours: [{ day: '月', hours: '9:00-18:00' }],
       });
 
-      const wishlistEntry = await prismaClient.prisma.wishlist.create({
-        data: {
-          spotId: spot.id,
-          userId: TEST_USER_ID,
-          memo: '初期メモ',
-          priority: 2,
-          visited: 0,
-          visitedAt: null,
-        },
+      const wishlistEntry = await createWishlistEntry({
+        spotId: 'spot_delete_123',
+        userId: TEST_USER_ID,
+        memo: '初期メモ',
+        priority: 2,
+        visited: 0,
+        visitedAt: null,
       });
 
       const res = await client.api.wishlist[`${wishlistEntry.id}`].$delete({}, { headers: getAuthHeaders() });
@@ -588,33 +547,20 @@ describe('🧾 行きたいリストサービス', () => {
   describe('営業時間を含むスポット作成', () => {
     it('営業時間を含むスポットを作成し、wishlist に登録できること', async () => {
       const spotWithHoursId = 'spot_with_hours_001';
-      const openingHoursData = [
-        {
-          day: '月',
-          hours: '9:00-18:00',
-        },
-      ];
+      const openingHoursData = [{ day: '月', hours: '9:00-18:00' }];
 
       // 営業時間を含むスポットを作成
-      const spotWithHours = await prismaClient.prisma.spot.create({
-        data: {
-          id: spotWithHoursId,
-          meta: {
-            create: {
-              id: spotWithHoursId,
-              name: '営業時間ありカフェ',
-              description: '美味しいコーヒーが飲めるカフェ',
-              latitude: 35.6895,
-              longitude: 139.6917,
-              categories: ['cafe', 'restaurant'],
-              image: 'https://example.com/cafe.jpg',
-              rating: 4.5,
-              catchphrase: '落ち着いた雰囲気',
-              openingHours: openingHoursData,
-            },
-          },
-        },
-        include: { meta: true },
+      const spotWithHours = await createSpotWithMeta(spotWithHoursId, {
+        id: spotWithHoursId,
+        name: '営業時間ありカフェ',
+        description: '美味しいコーヒーが飲めるカフェ',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        categories: ['cafe', 'restaurant'],
+        image: 'https://example.com/cafe.jpg',
+        rating: 4.5,
+        catchphrase: '落ち着いた雰囲気',
+        openingHours: openingHoursData,
       });
 
       // 営業時間が正しく保存されているか確認
@@ -670,23 +616,15 @@ describe('🧾 行きたいリストサービス', () => {
     it('営業時間が null のスポットも正しく作成できること', async () => {
       const spotNoHoursId = 'spot_no_hours_001';
 
-      const spotNoHours = await prismaClient.prisma.spot.create({
-        data: {
-          id: spotNoHoursId,
-          meta: {
-            create: {
-              id: spotNoHoursId,
-              name: '営業時間なし公園',
-              description: '24時間オープンの公園',
-              latitude: 35.6805,
-              longitude: 139.769,
-              categories: ['park'],
-              rating: 4.0,
-              // openingHours を省略（null の代わり）
-            },
-          },
-        },
-        include: { meta: true },
+      const spotNoHours = await createSpotWithMeta(spotNoHoursId, {
+        id: spotNoHoursId,
+        name: '営業時間なし公園',
+        description: '24時間オープンの公園',
+        latitude: 35.6805,
+        longitude: 139.769,
+        categories: ['park'],
+        rating: 4.0,
+        // openingHours を省略（null の代わり）
       });
 
       // JSON フィールドが省略された場合は null として扱われる
@@ -696,23 +634,15 @@ describe('🧾 行きたいリストサービス', () => {
     it('営業時間が省略されたスポットも正しく作成できること', async () => {
       const spotOmittedId = 'spot_omitted_hours_001';
 
-      const spotOmitted = await prismaClient.prisma.spot.create({
-        data: {
-          id: spotOmittedId,
-          meta: {
-            create: {
-              id: spotOmittedId,
-              name: '営業時間省略スポット',
-              description: '営業時間データがないスポット',
-              latitude: 35.6805,
-              longitude: 139.769,
-              categories: ['landmark'],
-              rating: 3.8,
-              // openingHours は意図的に省略
-            },
-          },
-        },
-        include: { meta: true },
+      const spotOmitted = await createSpotWithMeta(spotOmittedId, {
+        id: spotOmittedId,
+        name: '営業時間省略スポット',
+        description: '営業時間データがないスポット',
+        latitude: 35.6805,
+        longitude: 139.769,
+        categories: ['landmark'],
+        rating: 3.8,
+        // openingHours は意図的に省略
       });
 
       // JSON フィールドが省略された場合は null として扱われる
@@ -732,69 +662,42 @@ describe('🧾 行きたいリストサービス', () => {
       await createTestUser(user3);
 
       // テスト用スポットを作成
-      const spot1 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'count_spot_1',
-          meta: {
-            create: {
-              id: 'count_spot_1',
-              name: 'カウントテスト用スポット1',
-              description: 'テスト用',
-              latitude: 35.6895,
-              longitude: 139.6917,
-              categories: ['park'],
-              rating: 4.0,
-            },
-          },
-        },
+      await createSpotWithMeta('count_spot_1', {
+        id: 'count_spot_1',
+        name: 'カウントテスト用スポット1',
+        description: 'テスト用',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        categories: ['park'],
+        rating: 4.0,
       });
 
-      const spot2 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'count_spot_2',
-          meta: {
-            create: {
-              id: 'count_spot_2',
-              name: 'カウントテスト用スポット2',
-              description: 'テスト用',
-              latitude: 35.6896,
-              longitude: 139.6918,
-              categories: ['restaurant'],
-              rating: 4.5,
-            },
-          },
-        },
+      await createSpotWithMeta('count_spot_2', {
+        id: 'count_spot_2',
+        name: 'カウントテスト用スポット2',
+        description: 'テスト用',
+        latitude: 35.6896,
+        longitude: 139.6918,
+        categories: ['restaurant'],
+        rating: 4.5,
       });
 
-      const spot3 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'count_spot_3',
-          meta: {
-            create: {
-              id: 'count_spot_3',
-              name: 'カウントテスト用スポット3',
-              description: 'テスト用',
-              latitude: 35.6897,
-              longitude: 139.6919,
-              categories: ['museum'],
-              rating: 4.2,
-            },
-          },
-        },
+      await createSpotWithMeta('count_spot_3', {
+        id: 'count_spot_3',
+        name: 'カウントテスト用スポット3',
+        description: 'テスト用',
+        latitude: 35.6897,
+        longitude: 139.6919,
+        categories: ['museum'],
+        rating: 4.2,
       });
 
       // user1: 2件のwishlistを作成
-      await prismaClient.prisma.wishlist.create({
-        data: { spotId: spot1.id, userId: user1, priority: 1, visited: 0 },
-      });
-      await prismaClient.prisma.wishlist.create({
-        data: { spotId: spot2.id, userId: user1, priority: 1, visited: 0 },
-      });
+      await createWishlistEntry({ spotId: 'count_spot_1', userId: user1, priority: 1, visited: 0 });
+      await createWishlistEntry({ spotId: 'count_spot_2', userId: user1, priority: 1, visited: 0 });
 
       // user2: 1件のwishlistを作成
-      await prismaClient.prisma.wishlist.create({
-        data: { spotId: spot3.id, userId: user2, priority: 1, visited: 0 },
-      });
+      await createWishlistEntry({ spotId: 'count_spot_3', userId: user2, priority: 1, visited: 0 });
 
       // user3: wishlistを作成しない（0件）
 
@@ -836,47 +739,29 @@ describe('🧾 行きたいリストサービス', () => {
       await createTestUser(otherUser);
 
       // テスト用スポットを作成
-      const targetSpot = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'target_count_spot',
-          meta: {
-            create: {
-              id: 'target_count_spot',
-              name: 'ターゲット用スポット',
-              description: 'テスト用',
-              latitude: 35.6898,
-              longitude: 139.692,
-              categories: ['cafe'],
-              rating: 4.3,
-            },
-          },
-        },
+      await createSpotWithMeta('target_count_spot', {
+        id: 'target_count_spot',
+        name: 'ターゲット用スポット',
+        description: 'テスト用',
+        latitude: 35.6898,
+        longitude: 139.692,
+        categories: ['cafe'],
+        rating: 4.3,
       });
 
-      const otherSpot = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'other_count_spot',
-          meta: {
-            create: {
-              id: 'other_count_spot',
-              name: 'その他用スポット',
-              description: 'テスト用',
-              latitude: 35.6899,
-              longitude: 139.6921,
-              categories: ['temple'],
-              rating: 4.1,
-            },
-          },
-        },
+      await createSpotWithMeta('other_count_spot', {
+        id: 'other_count_spot',
+        name: 'その他用スポット',
+        description: 'テスト用',
+        latitude: 35.6899,
+        longitude: 139.6921,
+        categories: ['temple'],
+        rating: 4.1,
       });
 
       // 各ユーザーにwishlistを作成
-      await prismaClient.prisma.wishlist.create({
-        data: { spotId: targetSpot.id, userId: targetUser, priority: 1, visited: 0 },
-      });
-      await prismaClient.prisma.wishlist.create({
-        data: { spotId: otherSpot.id, userId: otherUser, priority: 1, visited: 0 },
-      });
+      await createWishlistEntry({ spotId: 'target_count_spot', userId: targetUser, priority: 1, visited: 0 });
+      await createWishlistEntry({ spotId: 'other_count_spot', userId: otherUser, priority: 1, visited: 0 });
 
       // targetUserのみを指定してカウント
       const { countWishListByUserId } = await import('@/services/wishlist');
@@ -893,35 +778,22 @@ describe('🧾 行きたいリストサービス', () => {
       await createTestUser(userWithMany);
 
       // 5件のスポットを作成
-      const spots = await Promise.all(
-        Array.from({ length: 5 }, async (_, i) => {
-          return await prismaClient.prisma.spot.create({
-            data: {
-              id: `many_spot_${i}`,
-              meta: {
-                create: {
-                  id: `many_spot_${i}`,
-                  name: `大量テスト用スポット${i}`,
-                  description: 'テスト用',
-                  latitude: 35.69 + i * 0.001,
-                  longitude: 139.69 + i * 0.001,
-                  categories: ['park'],
-                  rating: 4.0,
-                },
-              },
-            },
-          });
-        }),
-      );
+      for (let i = 0; i < 5; i++) {
+        await createSpotWithMeta(`many_spot_${i}`, {
+          id: `many_spot_${i}`,
+          name: `大量テスト用スポット${i}`,
+          description: 'テスト用',
+          latitude: 35.69 + i * 0.001,
+          longitude: 139.69 + i * 0.001,
+          categories: ['park'],
+          rating: 4.0,
+        });
+      }
 
       // 5件のwishlistを作成
-      await Promise.all(
-        spots.map((spot) =>
-          prismaClient.prisma.wishlist.create({
-            data: { spotId: spot.id, userId: userWithMany, priority: 1, visited: 0 },
-          }),
-        ),
-      );
+      for (let i = 0; i < 5; i++) {
+        await createWishlistEntry({ spotId: `many_spot_${i}`, userId: userWithMany, priority: 1, visited: 0 });
+      }
 
       const { countWishListByUserId } = await import('@/services/wishlist');
       const result = await countWishListByUserId([userWithMany]);
@@ -939,87 +811,61 @@ describe('🧾 行きたいリストサービス', () => {
       await createTestUser(user1);
       await createTestUser(user2);
 
-      const spot1 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'stat_spot_1',
-          meta: {
-            create: {
-              id: 'stat_spot_1',
-              name: 'カウントテスト用スポット1',
-              description: 'テスト用',
-              latitude: 35.6895,
-              longitude: 139.6917,
-              categories: ['park'],
-              rating: 4.0,
-            },
-          },
-        },
+      await createSpotWithMeta('stat_spot_1', {
+        id: 'stat_spot_1',
+        name: 'カウントテスト用スポット1',
+        description: 'テスト用',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        categories: ['park'],
+        rating: 4.0,
       });
 
-      const spot2 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'stat_spot_2',
-          meta: {
-            create: {
-              id: 'stat_spot_2',
-              name: 'カウントテスト用スポット2',
-              description: 'テスト用',
-              latitude: 35.6896,
-              longitude: 139.6918,
-              categories: ['restaurant'],
-              rating: 4.5,
-            },
-          },
-        },
+      await createSpotWithMeta('stat_spot_2', {
+        id: 'stat_spot_2',
+        name: 'カウントテスト用スポット2',
+        description: 'テスト用',
+        latitude: 35.6896,
+        longitude: 139.6918,
+        categories: ['restaurant'],
+        rating: 4.5,
       });
 
-      const spot3 = await prismaClient.prisma.spot.create({
-        data: {
-          id: 'stat_spot_3',
-          meta: {
-            create: {
-              id: 'stat_spot_3',
-              name: 'カウントテスト用スポット3',
-              description: 'テスト用',
-              latitude: 35.6897,
-              longitude: 139.6919,
-              categories: ['museum'],
-              rating: 4.2,
-            },
-          },
-        },
+      await createSpotWithMeta('stat_spot_3', {
+        id: 'stat_spot_3',
+        name: 'カウントテスト用スポット3',
+        description: 'テスト用',
+        latitude: 35.6897,
+        longitude: 139.6919,
+        categories: ['museum'],
+        rating: 4.2,
       });
 
       currentUserId = user1;
-      await prismaClient.prisma.wishlist.create({
-        data: {
-          id: 1,
-          spotId: spot1.id,
-          userId: user1,
-          priority: 1,
-          visited: 0,
-          createdAt: new Date('2024-05-15'),
-        },
+      // createdAtを指定するためにDrizzle直接挿入
+      await db.insert(wishlist).values({
+        id: 1,
+        spotId: 'stat_spot_1',
+        userId: user1,
+        priority: 1,
+        visited: 0,
+        createdAt: '2024-05-15T00:00:00.000Z',
       });
-      await prismaClient.prisma.wishlist.create({
-        data: {
-          id: 2,
-          spotId: spot2.id,
-          userId: user2,
-          priority: 1,
-          visited: 0,
-          createdAt: new Date('2024-05-15'),
-        },
+      await db.insert(wishlist).values({
+        id: 2,
+        spotId: 'stat_spot_2',
+        userId: user2,
+        priority: 1,
+        visited: 0,
+        createdAt: '2024-05-15T00:00:00.000Z',
       });
-      await prismaClient.prisma.wishlist.create({
-        data: {
-          id: 3,
-          spotId: spot2.id,
-          userId: user1,
-          priority: 1,
-          visited: 0,
-          createdAt: new Date('2024-04-15'),
-        },
+      await db.insert(wishlist).values({
+        id: 3,
+        spotId: 'stat_spot_3',
+        userId: user1,
+        priority: 1,
+        visited: 0,
+        createdAt: '2024-04-15T00:00:00.000Z',
       });
       const prevDate = new Date('2024-05-01T12:00:00Z');
       setSystemTime(prevDate);

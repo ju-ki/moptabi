@@ -1,340 +1,269 @@
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
+import { eq, and, lte, count, desc, asc } from 'drizzle-orm';
+import { db, notification, userNotification, user } from '@db';
 
-import { NotificationType, Prisma } from '@/generated/prisma/client';
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
-import { prisma } from '@/lib/client';
 import { getUserId } from '@/middleware/auth';
 
 /**
  * お知らせサービス
  * 将来的にリアルタイム通知（WebSocket/SSE）への移行を考慮した設計
- *
- * 設計思想:
- * - お知らせ本体（Notification）とユーザーごとの既読状態（UserNotification）を分離
- * - 全ユーザー向けのお知らせは Notification に1レコードのみ
- * - 既読状態は UserNotification でユーザーごとに管理
- * - リアルタイム化時は、新規お知らせ作成時にWebSocket/SSEでプッシュ可能
  */
 
 /**
+ * タイムスタンプをISO 8601形式（Z付き）に変換するヘルパー
+ */
+const toISOWithZ = (timestamp: string | null | undefined): string | null => {
+  if (!timestamp) return null;
+  // すでにZが付いている場合はそのまま返す
+  if (timestamp.endsWith('Z')) return timestamp;
+  // タイムゾーン情報がない場合はZを追加
+  return timestamp + 'Z';
+};
+
+/**
  * お知らせ一覧を取得
- * - 公開日時が現在以前のお知らせのみを取得
- * - ユーザーに紐づくUserNotificationがない場合は未読扱い
- * - 公開日時の降順でソート
  */
 export async function getNotifications(c: Context) {
   const userId = getUserId(c);
-  const now = new Date();
+  const now = new Date().toISOString();
 
-  // ユーザーに紐づくお知らせを取得
-  // UserNotificationが存在するものを取得
-  const userNotifications = await prisma.userNotification.findMany({
-    where: {
-      userId,
-      notification: {
-        publishedAt: { lte: now },
-      },
-    },
-    include: {
+  // userNotificationを取得してnotificationと結合
+  const rows = await db.query.userNotification.findMany({
+    where: eq(userNotification.userId, userId),
+    with: {
       notification: true,
-    },
-    orderBy: {
-      notification: {
-        publishedAt: 'desc',
-      },
     },
   });
 
-  // レスポンス形式に変換
-  return userNotifications.map((un) => ({
+  // 公開日時でフィルタリングしてソート
+  const filtered = rows
+    .filter((un) => un.notification && un.notification.publishedAt <= now)
+    .sort((a, b) => {
+      const dateA = a.notification?.publishedAt || '';
+      const dateB = b.notification?.publishedAt || '';
+      return dateB.localeCompare(dateA);
+    });
+
+  return filtered.map((un) => ({
     id: un.notification.id,
     title: un.notification.title,
     content: un.notification.content,
     type: un.notification.type,
-    publishedAt: un.notification.publishedAt.toISOString(),
-    createdAt: un.notification.createdAt.toISOString(),
+    publishedAt: toISOWithZ(un.notification.publishedAt),
+    createdAt: toISOWithZ(un.notification.createdAt),
     isRead: un.isRead,
-    readAt: un.readAt ? un.readAt.toISOString() : null,
+    readAt: toISOWithZ(un.readAt),
   }));
 }
 
 /**
  * 未読件数を取得
- * ヘッダーのバッジ表示などで使用
  */
 export async function getUnreadCount(c: Context) {
   const userId = getUserId(c);
   const now = new Date();
 
-  const count = await prisma.userNotification.count({
-    where: {
-      userId,
-      isRead: false,
-      notification: {
-        publishedAt: { lte: now },
-      },
-    },
-  });
+  // userNotificationとnotificationをjoinして未読をカウント
+  const rows = await db
+    .select({ count: count() })
+    .from(userNotification)
+    .innerJoin(notification, eq(userNotification.notificationId, notification.id))
+    .where(
+      and(
+        eq(userNotification.userId, userId),
+        eq(userNotification.isRead, false),
+        lte(notification.publishedAt, now.toISOString()),
+      ),
+    );
 
-  return { count };
+  return { count: rows[0]?.count ?? 0 };
 }
 
 /**
  * 指定したお知らせを既読にする
- * @param c Honoコンテキスト
- * @param notificationId お知らせID
  */
 export async function markAsRead(c: Context, notificationId: number) {
   const userId = getUserId(c);
 
-  // UserNotificationの存在確認
-  const userNotification = await prisma.userNotification.findUnique({
-    where: {
-      userId_notificationId: {
-        userId,
-        notificationId,
-      },
-    },
-  });
+  const [existing] = await db
+    .select()
+    .from(userNotification)
+    .where(and(eq(userNotification.userId, userId), eq(userNotification.notificationId, notificationId)))
+    .limit(1);
 
-  if (!userNotification) {
+  if (!existing) {
     throw new HTTPException(404, { message: 'Notification not found' });
   }
 
-  // 既読に更新
-  await prisma.userNotification.update({
-    where: {
-      id: userNotification.id,
-    },
-    data: {
+  await db
+    .update(userNotification)
+    .set({
       isRead: true,
-      readAt: new Date(),
-    },
-  });
+      readAt: new Date().toISOString(),
+    })
+    .where(eq(userNotification.id, existing.id));
 
   return { success: true };
 }
 
 /**
  * 全ての未読お知らせを既読にする
- * 一括既読機能で使用
  */
 export async function markAllAsRead(c: Context) {
   const userId = getUserId(c);
 
-  const result = await prisma.userNotification.updateMany({
-    where: {
-      userId,
-      isRead: false,
-    },
-    data: {
+  const result = await db
+    .update(userNotification)
+    .set({
       isRead: true,
-      readAt: new Date(),
-    },
-  });
+      readAt: new Date().toISOString(),
+    })
+    .where(and(eq(userNotification.userId, userId), eq(userNotification.isRead, false)))
+    .returning();
 
   return {
     success: true,
-    count: result.count,
+    count: result.length,
   };
 }
 
 /**
- * 新しいお知らせをユーザーに配信する
- * 管理画面からお知らせを作成した際に呼び出される想定
- * 将来的にはWebSocket/SSEでリアルタイムプッシュも可能
- *
- * @param notificationId お知らせID
- * @param userIds 配信対象のユーザーID配列（空の場合は全ユーザー）
- */
-export async function distributeNotification(notificationId: number, userIds?: string[]) {
-  // 対象ユーザーを取得
-  const targetUsers = userIds?.length
-    ? await prisma.user.findMany({ where: { id: { in: userIds } } })
-    : await prisma.user.findMany();
-
-  // UserNotificationを一括作成
-  await prisma.userNotification.createMany({
-    data: targetUsers.map((user) => ({
-      userId: user.id,
-      notificationId,
-      isRead: false,
-    })),
-    skipDuplicates: true,
-  });
-
-  // TODO: リアルタイム通知の実装時
-  // WebSocket/SSEを使用して接続中のユーザーにプッシュ通知を送信
-  // 例: broadcastToUsers(targetUsers.map(u => u.id), { type: 'NEW_NOTIFICATION', notificationId })
-}
-
-/**
  * お知らせを作成する（管理者向け）
- * @param c Honoコンテキスト
- * @param data 作成データ
  */
 export async function createNotification(c: Context, data: NotificationCreate) {
   getUserId(c);
 
-  let responseNotification;
-  await prisma.$transaction(async (prisma) => {
-    // 全ユーザーのIDを取得
-    const users = await prisma.user.findMany({
-      select: { id: true },
-    });
-    const userIds = users.map((user) => user.id);
-    const notification = await prisma.notification.create({
-      data: {
-        title: data.title,
-        content: data.content,
-        type: data.type as NotificationType,
-        publishedAt: new Date(data.publishedAt),
-      },
-    });
+  // 全ユーザーのIDを取得
+  const users = await db.select({ id: user.id }).from(user);
+  const userIds = users.map((u) => u.id);
 
-    // 管理者画面から作成したお知らせは全ユーザーに配信する
-    await prisma.userNotification.createMany({
-      data: userIds.map((userId) => ({
+  // publishedAtをISO文字列に変換
+  const publishedAtStr = data.publishedAt instanceof Date ? data.publishedAt.toISOString() : data.publishedAt;
+
+  // お知らせを作成
+  const [newNotification] = await db
+    .insert(notification)
+    .values({
+      title: data.title,
+      content: data.content,
+      type: data.type as 'SYSTEM' | 'INFO',
+      publishedAt: publishedAtStr,
+    })
+    .returning();
+
+  // 全ユーザーにUserNotificationを作成
+  if (userIds.length > 0) {
+    await db.insert(userNotification).values(
+      userIds.map((userId) => ({
         userId,
-        notificationId: notification.id,
+        notificationId: newNotification.id,
         isRead: false,
       })),
-    });
+    );
+  }
 
-    responseNotification = {
-      id: notification.id,
-      title: notification.title,
-      content: notification.content,
-      type: notification.type,
-      publishedAt: notification.publishedAt.toISOString(),
-      createdAt: notification.createdAt.toISOString(),
-    };
-  });
-
-  return responseNotification;
+  return {
+    id: newNotification.id,
+    title: newNotification.title,
+    content: newNotification.content,
+    type: newNotification.type,
+    publishedAt: toISOWithZ(newNotification.publishedAt),
+    createdAt: toISOWithZ(newNotification.createdAt),
+  };
 }
 
 /**
  * お知らせを更新する（管理者向け）
- * @param c Honoコンテキスト
- * @param notificationId お知らせID
- * @param data 更新データ
  */
 export async function updateNotification(c: Context, notificationId: number, data: NotificationUpdate) {
   getUserId(c);
 
   // 存在確認
-  const existing = await prisma.notification.findUnique({
-    where: { id: notificationId },
-  });
+  const [existing] = await db.select().from(notification).where(eq(notification.id, notificationId)).limit(1);
 
   if (!existing) {
     throw new HTTPException(404, { message: 'Notification not found' });
   }
 
-  let responseNotification;
+  // publishedAtをISO文字列に変換
+  const publishedAtStr = data.publishedAt instanceof Date ? data.publishedAt.toISOString() : data.publishedAt;
 
-  await prisma.$transaction(async (prisma) => {
-    // 全ユーザーのIDを取得
-    const users = await prisma.user.findMany({
-      select: { id: true },
-    });
-    const userIds = users.map((user) => user.id);
-    const notification = await prisma.notification.update({
-      where: { id: notificationId },
-      data: {
-        title: data.title,
-        content: data.content,
-        type: data.type as NotificationType,
-        publishedAt: new Date(data.publishedAt),
-      },
-    });
+  // お知らせを更新
+  const [updated] = await db
+    .update(notification)
+    .set({
+      title: data.title,
+      content: data.content,
+      type: data.type as 'SYSTEM' | 'INFO',
+      publishedAt: publishedAtStr,
+    })
+    .where(eq(notification.id, notificationId))
+    .returning();
 
-    // 管理者画面から更新したお知らせは全ユーザーに再配信する
-    await Promise.all(
-      userIds.map(async (userId) => {
-        const userNotification = await prisma.userNotification.findUnique({
-          where: {
-            userId_notificationId: {
-              userId,
-              notificationId: notification.id,
-            },
-          },
-        });
+  // 全ユーザーのUserNotificationを未読に更新または作成
+  const users = await db.select({ id: user.id }).from(user);
 
-        if (userNotification) {
-          // 既存のUserNotificationがある場合は未読に更新
-          await prisma.userNotification.update({
-            where: { id: userNotification.id },
-            data: {
-              isRead: false,
-              readAt: null,
-            },
-          });
-        } else {
-          // 存在しない場合は新規作成
-          await prisma.userNotification.create({
-            data: {
-              userId,
-              notificationId: notification.id,
-              isRead: false,
-            },
-          });
-        }
-      }),
-    );
-    responseNotification = {
-      id: notification.id,
-      title: notification.title,
-      content: notification.content,
-      type: notification.type,
-      publishedAt: notification.publishedAt.toISOString(),
-      createdAt: notification.createdAt.toISOString(),
-    };
-  });
-  return responseNotification;
+  for (const u of users) {
+    const [existingUn] = await db
+      .select()
+      .from(userNotification)
+      .where(and(eq(userNotification.userId, u.id), eq(userNotification.notificationId, notificationId)))
+      .limit(1);
+
+    if (existingUn) {
+      await db
+        .update(userNotification)
+        .set({ isRead: false, readAt: null })
+        .where(eq(userNotification.id, existingUn.id));
+    } else {
+      await db.insert(userNotification).values({
+        userId: u.id,
+        notificationId,
+        isRead: false,
+      });
+    }
+  }
+
+  return {
+    id: updated.id,
+    title: updated.title,
+    content: updated.content,
+    type: updated.type,
+    publishedAt: toISOWithZ(updated.publishedAt),
+    createdAt: toISOWithZ(updated.createdAt),
+  };
 }
 
 /**
  * お知らせを削除する（管理者向け）
- * 関連するUserNotificationもカスケード削除される
- * @param c Honoコンテキスト
- * @param notificationId お知らせID
  */
 export async function deleteNotification(c: Context, notificationId: number) {
   getUserId(c);
 
-  // 存在確認
-  const existing = await prisma.notification.findUnique({
-    where: { id: notificationId },
-  });
+  const [existing] = await db.select().from(notification).where(eq(notification.id, notificationId)).limit(1);
 
   if (!existing) {
     throw new HTTPException(404, { message: 'Notification not found' });
   }
 
-  // カスケード削除: UserNotificationも削除される（Prismaスキーマで設定済み）
-  await prisma.notification.delete({
-    where: { id: notificationId },
-  });
+  // UserNotificationを先に削除（外部キー制約のため）
+  await db.delete(userNotification).where(eq(userNotification.notificationId, notificationId));
+
+  await db.delete(notification).where(eq(notification.id, notificationId));
 
   return { success: true };
 }
 
 /**
  * 管理者向けお知らせ一覧を取得
- * 未来の公開日も含めて全て取得し、既読率情報も含む
- * ページネーション・検索・フィルター・ソート対応
- * @param c Honoコンテキスト
  */
 export async function getAdminNotifications(c: Context) {
   const userId = getUserId(c);
 
-  // 管理者権限以外は403を返す
-  const targetUser = await prisma.user.findUnique({
-    where: { id: userId },
-  });
+  // 管理者権限チェック
+  const [targetUser] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
 
   if (targetUser?.role !== 'ADMIN') {
     throw new HTTPException(403, { message: 'Forbidden' });
@@ -351,67 +280,47 @@ export async function getAdminNotifications(c: Context) {
   const sortBy = (query.sortBy as 'publishedAt' | 'createdAt' | 'readRate') || 'publishedAt';
   const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc';
 
-  // Prismaのwhere条件を構築
-  const where: Prisma.NotificationWhereInput = {};
+  // 全お知らせを取得してフィルタリング
+  let notifications = await db.query.notification.findMany({
+    with: {
+      userNotifications: {
+        columns: {
+          isRead: true,
+        },
+      },
+    },
+  });
 
+  // ソート
+  if (sortBy !== 'readRate') {
+    notifications = notifications.sort((a, b) => {
+      const dateA = sortBy === 'publishedAt' ? a.publishedAt : a.createdAt;
+      const dateB = sortBy === 'publishedAt' ? b.publishedAt : b.createdAt;
+      const cmp = (dateB || '').localeCompare(dateA || '');
+      return sortOrder === 'asc' ? -cmp : cmp;
+    });
+  }
+
+  // フィルタリング
   if (title) {
-    where.title = {
-      contains: title,
-      mode: 'insensitive',
-    };
+    notifications = notifications.filter((n) => n.title.toLowerCase().includes(title.toLowerCase()));
   }
-
   if (type) {
-    where.type = type;
+    notifications = notifications.filter((n) => n.type === type);
+  }
+  if (publishedFrom) {
+    const fromDate = new Date(publishedFrom);
+    notifications = notifications.filter((n) => new Date(n.publishedAt) >= fromDate);
+  }
+  if (publishedTo) {
+    const toDate = new Date(publishedTo);
+    toDate.setHours(23, 59, 59, 999);
+    notifications = notifications.filter((n) => new Date(n.publishedAt) <= toDate);
   }
 
-  if (publishedFrom || publishedTo) {
-    where.publishedAt = {};
-    if (publishedFrom) {
-      where.publishedAt.gte = new Date(publishedFrom);
-    }
-    if (publishedTo) {
-      // publishedToは指定日の終わりまでを含む
-      const endDate = new Date(publishedTo);
-      endDate.setHours(23, 59, 59, 999);
-      where.publishedAt.lte = endDate;
-    }
-  }
+  const totalCount = notifications.length;
 
-  // 総件数を取得
-  const totalCount = await prisma.notification.count({ where });
-
-  // 既読率でソートする場合は全件取得してソート
-  let notifications;
-  if (sortBy === 'readRate') {
-    notifications = await prisma.notification.findMany({
-      where,
-      include: {
-        userNotifications: {
-          select: {
-            isRead: true,
-          },
-        },
-      },
-    });
-  } else {
-    // publishedAtまたはcreatedAtでソートする場合はPrismaでソート
-    notifications = await prisma.notification.findMany({
-      where,
-      orderBy: {
-        [sortBy]: sortOrder,
-      },
-      include: {
-        userNotifications: {
-          select: {
-            isRead: true,
-          },
-        },
-      },
-    });
-  }
-
-  // 既読率を計算してマップ
+  // 既読率を計算
   const result = notifications.map((n) => {
     const totalRecipients = n.userNotifications.length;
     const readCount = n.userNotifications.filter((un) => un.isRead).length;
@@ -422,48 +331,33 @@ export async function getAdminNotifications(c: Context) {
       title: n.title,
       content: n.content,
       type: n.type,
-      publishedAt: n.publishedAt,
-      createdAt: n.createdAt,
+      publishedAt: toISOWithZ(n.publishedAt),
+      createdAt: toISOWithZ(n.createdAt),
       readRate,
       totalRecipients,
       readCount,
     };
   });
 
-  // 既読率でソートする場合はJavaScriptでソート
+  // 既読率でソート
   if (sortBy === 'readRate') {
-    result.sort((a, b) => {
-      if (sortOrder === 'asc') {
-        return a.readRate - b.readRate;
-      }
-      return b.readRate - a.readRate;
-    });
+    result.sort((a, b) => (sortOrder === 'asc' ? a.readRate - b.readRate : b.readRate - a.readRate));
   }
 
   // ページネーション
   const startIndex = (page - 1) * limit;
   const paginatedResult = result.slice(startIndex, startIndex + limit);
-
-  // ページネーション情報を計算
   const totalPages = Math.ceil(totalCount / limit);
-  const pagination = {
-    currentPage: page,
-    totalPages,
-    totalCount,
-    limit,
-    hasNextPage: page < totalPages,
-    hasPrevPage: page > 1,
-  };
-
-  // 日付をISO文字列に変換
-  const formattedNotifications = paginatedResult.map((n) => ({
-    ...n,
-    publishedAt: n.publishedAt instanceof Date ? n.publishedAt.toISOString() : n.publishedAt,
-    createdAt: n.createdAt instanceof Date ? n.createdAt.toISOString() : n.createdAt,
-  }));
 
   return {
-    notifications: formattedNotifications,
-    pagination,
+    notifications: paginatedResult,
+    pagination: {
+      currentPage: page,
+      totalPages,
+      totalCount,
+      limit,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
   };
 }

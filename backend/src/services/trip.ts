@@ -1,26 +1,28 @@
-import { prisma } from '@/lib/client';
+import { eq, lt, count, sql, inArray } from 'drizzle-orm';
+import { db, trip, plan } from '@db';
 
 /**
  * ユーザーIDごとの旅行プランの数を取得
- * @param userId clerkに登録されているuserIdの配列
+ * @param userIds clerkに登録されているuserIdの配列
  * @returns ユーザーIDをキー、旅行プランの数を値とするオブジェクト
  */
-export const countPlanByUserId = async (userId: string[]) => {
-  const counts = await prisma.trip.groupBy({
-    by: ['userId'],
-    where: {
-      userId: {
-        in: userId,
-      },
-    },
-    _count: {
-      userId: true,
-    },
-  });
+export const countPlanByUserId = async (userIds: string[]) => {
+  if (userIds.length === 0) {
+    return {};
+  }
+
+  const counts = await db
+    .select({
+      userId: trip.userId,
+      count: count(),
+    })
+    .from(trip)
+    .where(inArray(trip.userId, userIds))
+    .groupBy(trip.userId);
 
   const countMap: Record<string, number> = {};
   counts.forEach((item) => {
-    countMap[item.userId] = item._count.userId;
+    countMap[item.userId] = item.count;
   });
 
   return countMap;
@@ -32,38 +34,38 @@ export const countPlanByUserId = async (userId: string[]) => {
  */
 export const getTripStatistics = async () => {
   // プランの総数を取得
-  const totalPlans = await prisma.trip.count();
-  // 前月までのプラン数を取得
+  const [totalResult] = await db.select({ count: count() }).from(trip);
+  const totalPlans = totalResult?.count ?? 0;
+
   // 当月の初日（0時0分0秒）を取得
   const firstDayOfCurrentMonth = new Date();
   firstDayOfCurrentMonth.setDate(1);
   firstDayOfCurrentMonth.setHours(0, 0, 0, 0);
 
-  const lastMonthPlans = await prisma.trip.count({
-    where: {
-      createdAt: {
-        lt: firstDayOfCurrentMonth,
-      },
-    },
-  });
+  // 前月までのプラン数を取得
+  const [lastMonthResult] = await db
+    .select({ count: count() })
+    .from(trip)
+    .where(lt(trip.createdAt, firstDayOfCurrentMonth.toISOString()));
+  const lastMonthPlans = lastMonthResult?.count ?? 0;
 
   // プランあたりの平均旅程数を取得
-  const result = await prisma.$queryRaw<{ avg_days_per_plan: number }[]>`
-  SELECT
-    COALESCE(plan_count / NULLIF(trip_count, 0), 0) AS avg_days_per_plan
-  FROM (
+  const result = await db.execute<{ avg_days_per_plan: number }>(sql`
     SELECT
-      COUNT(DISTINCT p."tripId") AS trip_count,
-      COUNT(p.id) AS plan_count
-    FROM "public"."Trip" t
-    LEFT JOIN "public"."Plan" p ON p."tripId" = t.id
-  ) sub;
-`;
-  const averageDatePerUserPlan = Number(result[0]?.avg_days_per_plan) || 0;
+      COALESCE(plan_count / NULLIF(trip_count, 0), 0) AS avg_days_per_plan
+    FROM (
+      SELECT
+        COUNT(DISTINCT p."tripId") AS trip_count,
+        COUNT(p.id) AS plan_count
+      FROM "public"."Trip" t
+      LEFT JOIN "public"."Plan" p ON p."tripId" = t.id
+    ) sub
+  `);
+  const averageDatePerUserPlan = Number(result.rows?.[0]?.avg_days_per_plan) || 0;
 
   return {
-    totalPlans: totalPlans,
+    totalPlans,
     planIncreaseFromLastMonth: totalPlans - lastMonthPlans,
-    averageDatePerUserPlan: averageDatePerUserPlan,
+    averageDatePerUserPlan,
   };
 };

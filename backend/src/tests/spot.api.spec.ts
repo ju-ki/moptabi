@@ -2,14 +2,17 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test'
 import { testClient } from 'hono/testing';
 
 import app from '..';
-import prismaUtil, {
-  clearTestDataForUser,
-  connectPrisma,
+import {
+  clearUserTestData as clearTestDataForUser,
+  connectDb as connectPrisma,
   createTestUser,
-  disconnectPrisma,
+  disconnectDb as disconnectPrisma,
   createSpotWithMeta,
   createWishlistEntry,
-} from './prisma';
+  createTrip,
+  createPlan,
+  createPlanSpot,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_spot_api';
@@ -222,48 +225,36 @@ describe('🗺️ スポットAPI統合テスト', () => {
     it('過去の計画スポットを計画日時が新しい順に返す', async () => {
       // 古い計画
       await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
-      const trip1 = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '古い旅行',
-          startDate: '2024-01-01',
-          endDate: '2024-01-02',
-          userId: TEST_USER_ID,
-        },
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
       });
-      const plan1 = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip1.id, date: '2024-01-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan1.id,
-          spotId: spotId('1'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+      await createPlanSpot({
+        planId: plan1.id,
+        spotId: spotId('1'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       // 新しい計画
       await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-      const trip2 = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '新しい旅行',
-          startDate: '2024-03-01',
-          endDate: '2024-03-02',
-          userId: TEST_USER_ID,
-        },
+      const trip2 = await createTrip({
+        title: '新しい旅行',
+        startDate: '2024-03-01',
+        endDate: '2024-03-02',
+        userId: TEST_USER_ID,
       });
-      const plan2 = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip2.id, date: '2024-03-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan2.id,
-          spotId: spotId('2'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan2 = await createPlan({ tripId: trip2.id, date: '2024-03-01' });
+      await createPlanSpot({
+        planId: plan2.id,
+        spotId: spotId('2'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       const res = await client.api.spots.visited.$get({}, { headers: getAuthHeaders() });
@@ -288,25 +279,19 @@ describe('🗺️ スポットAPI統合テスト', () => {
 
       // 過去の計画スポット
       await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-      const trip = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行',
-          startDate: '2024-03-01',
-          endDate: '2024-03-02',
-          userId: TEST_USER_ID,
-        },
+      const trip = await createTrip({
+        title: '旅行',
+        startDate: '2024-03-01',
+        endDate: '2024-03-02',
+        userId: TEST_USER_ID,
       });
-      const plan = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip.id, date: '2024-03-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: spotId('2'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan = await createPlan({ tripId: trip.id, date: '2024-03-01' });
+      await createPlanSpot({
+        planId: plan.id,
+        spotId: spotId('2'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       const res = await client.api.spots.visited.$get({}, { headers: getAuthHeaders() });
@@ -332,25 +317,19 @@ describe('🗺️ スポットAPI統合テスト', () => {
       });
 
       // 過去の計画
-      const trip = await prismaUtil.prisma.trip.create({
-        data: {
-          title: '旅行',
-          startDate: '2024-03-01',
-          endDate: '2024-03-02',
-          userId: TEST_USER_ID,
-        },
+      const trip2 = await createTrip({
+        title: '旅行',
+        startDate: '2024-03-01',
+        endDate: '2024-03-02',
+        userId: TEST_USER_ID,
       });
-      const plan = await prismaUtil.prisma.plan.create({
-        data: { tripId: trip.id, date: '2024-03-01' },
-      });
-      await prismaUtil.prisma.planSpot.create({
-        data: {
-          planId: plan.id,
-          spotId: spotId('1'),
-          stayStart: '10:00',
-          stayEnd: '11:00',
-          order: 1,
-        },
+      const plan2 = await createPlan({ tripId: trip2.id, date: '2024-03-01' });
+      await createPlanSpot({
+        planId: plan2.id,
+        spotId: spotId('1'),
+        stayStart: '10:00',
+        stayEnd: '11:00',
+        order: 1,
       });
 
       const res = await client.api.spots.visited.$get({}, { headers: getAuthHeaders() });
@@ -373,48 +352,36 @@ describe('🗺️ スポットAPI統合テスト', () => {
       it('dateFromとdateToで計画スポットをフィルタリングできること', async () => {
         // 2024年1月の計画スポット（範囲外）
         await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
-        const trip1 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '古い旅行',
-            startDate: '2024-01-01',
-            endDate: '2024-01-02',
-            userId: TEST_USER_ID,
-          },
+        const trip1 = await createTrip({
+          title: '古い旅行',
+          startDate: '2024-01-01',
+          endDate: '2024-01-02',
+          userId: TEST_USER_ID,
         });
-        const plan1 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip1.id, date: '2024-01-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan1.id,
-            spotId: spotId('1'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+        await createPlanSpot({
+          planId: plan1.id,
+          spotId: spotId('1'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // 2024年6月の計画スポット（範囲内）
         await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-        const trip2 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '新しい旅行',
-            startDate: '2024-06-01',
-            endDate: '2024-06-02',
-            userId: TEST_USER_ID,
-          },
+        const trip2 = await createTrip({
+          title: '新しい旅行',
+          startDate: '2024-06-01',
+          endDate: '2024-06-02',
+          userId: TEST_USER_ID,
         });
-        const plan2 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip2.id, date: '2024-06-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan2.id,
-            spotId: spotId('2'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan2 = await createPlan({ tripId: trip2.id, date: '2024-06-01' });
+        await createPlanSpot({
+          planId: plan2.id,
+          spotId: spotId('2'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // クエリパラメータを使用してAPI呼び出し
@@ -438,48 +405,36 @@ describe('🗺️ スポットAPI統合テスト', () => {
       it('dateFromのみ指定で計画スポットをフィルタリングできること', async () => {
         // 2024年1月の計画スポット（範囲外）
         await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
-        const trip1 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '古い旅行',
-            startDate: '2024-01-01',
-            endDate: '2024-01-02',
-            userId: TEST_USER_ID,
-          },
+        const trip1 = await createTrip({
+          title: '古い旅行',
+          startDate: '2024-01-01',
+          endDate: '2024-01-02',
+          userId: TEST_USER_ID,
         });
-        const plan1 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip1.id, date: '2024-01-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan1.id,
-            spotId: spotId('1'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+        await createPlanSpot({
+          planId: plan1.id,
+          spotId: spotId('1'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // 2024年6月の計画スポット（範囲内）
         await createSpotWithMeta(spotId('2'), { name: 'スポットB' });
-        const trip2 = await prismaUtil.prisma.trip.create({
-          data: {
-            title: '新しい旅行',
-            startDate: '2024-06-01',
-            endDate: '2024-06-02',
-            userId: TEST_USER_ID,
-          },
+        const trip2 = await createTrip({
+          title: '新しい旅行',
+          startDate: '2024-06-01',
+          endDate: '2024-06-02',
+          userId: TEST_USER_ID,
         });
-        const plan2 = await prismaUtil.prisma.plan.create({
-          data: { tripId: trip2.id, date: '2024-06-01' },
-        });
-        await prismaUtil.prisma.planSpot.create({
-          data: {
-            planId: plan2.id,
-            spotId: spotId('2'),
-            stayStart: '10:00',
-            stayEnd: '11:00',
-            order: 1,
-          },
+        const plan2 = await createPlan({ tripId: trip2.id, date: '2024-06-01' });
+        await createPlanSpot({
+          planId: plan2.id,
+          spotId: spotId('2'),
+          stayStart: '10:00',
+          stayEnd: '11:00',
+          order: 1,
         });
 
         // dateFromのみ指定
