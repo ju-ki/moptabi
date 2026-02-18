@@ -103,7 +103,7 @@ export const userNotification = pgTable(
   (table) => [
     uniqueIndex('UserNotification_userId_notificationId_key').using(
       'btree',
-      table.userId.asc().nullsLast().op('int4_ops'),
+      table.userId.asc().nullsLast().op('text_ops'),
       table.notificationId.asc().nullsLast().op('int4_ops'),
     ),
     foreignKey({
