@@ -139,7 +139,7 @@ const createDbProxy = (): DbType => {
   return new Proxy({} as DbType, {
     get(_target, prop) {
       const currentDb = getCurrentDb();
-      return (currentDb as Record<string | symbol, unknown>)[prop];
+      return (currentDb as unknown as Record<string | symbol, unknown>)[prop];
     },
   });
 };
