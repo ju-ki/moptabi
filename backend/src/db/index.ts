@@ -74,7 +74,13 @@ export const getDbFromEnv = (env?: { DATABASE_URL?: string }): AnyDbType => {
   if (isProduction) {
     const databaseUrl = env?.DATABASE_URL;
     if (!databaseUrl) {
-      throw new Error('DATABASE_URL is required in production');
+      // デバッグ用: envの内容を確認
+      const envKeys = env ? Object.keys(env) : [];
+      throw new Error(
+        `DATABASE_URL is required in production. ` +
+        `Available env keys: [${envKeys.join(', ')}]. ` +
+        `Make sure DATABASE_URL is set as a secret in Cloudflare Workers.`
+      );
     }
     return createDbForWorkers(databaseUrl);
   }
