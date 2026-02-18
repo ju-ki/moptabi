@@ -47,7 +47,7 @@ const app = new OpenAPIHono().basePath('/api');
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://moptabi.jp'],
+    origin: ['http://localhost:3000', 'https://moptabi-frontend.moptabi.workers.dev'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
