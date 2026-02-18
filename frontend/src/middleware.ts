@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
+
+import { auth } from '../auth';
 
 import type { NextRequest } from 'next/server';
 
 // 保護されたルートのパターン
 const protectedRoutes = ['/plan/create', '/plan/list', '/plan/', '/wishlist', '/admin', '/mypage'];
 
-export async function middleware(req: NextRequest) {
+export default auth((req) => {
   const { pathname } = req.nextUrl;
 
   // NextAuthのAPIルートはスキップ
@@ -18,11 +19,8 @@ export async function middleware(req: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
   if (isProtectedRoute) {
-    // JWTトークンを確認
-    const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-
-    // 未認証で保護されたルートにアクセスした場合
-    if (!token) {
+    // auth()が提供するセッション情報を使用
+    if (!req.auth) {
       const signInUrl = new URL('/api/auth/signin', req.url);
       signInUrl.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(signInUrl);
@@ -30,7 +28,7 @@ export async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
