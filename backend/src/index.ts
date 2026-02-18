@@ -45,11 +45,7 @@ const app = new OpenAPIHono().basePath('/api');
 // 静的ファイル配信の設定
 
 // 許可するオリジンのリスト
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://moptabi-frontend.moptabi.workers.dev',
-  'https://moptabi.com',
-];
+const allowedOrigins = ['https://moptabi-frontend.moptabi.workers.dev'];
 
 app.use(
   '*',
