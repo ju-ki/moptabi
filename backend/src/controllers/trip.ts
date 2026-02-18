@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { eq, and, count, notInArray, asc } from 'drizzle-orm';
-import { db, trip, tripInfo, plan, planSpot, spot, spotMeta, transport, nearestStation } from '@db';
+import { getDbFromContext, trip, tripInfo, plan, planSpot, spot, spotMeta, transport, nearestStation } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 
@@ -19,6 +19,7 @@ const getMeta = (spotData: { meta?: unknown[] | unknown } | null | undefined) =>
 export const getTripHandler = {
   // 全ての旅行計画を取得
   getTrips: async (c: Context) => {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
 
     if (!userId) {
@@ -45,6 +46,7 @@ export const getTripHandler = {
 
   // 特定の旅行計画を取得
   getTripDetail: async (c: Context) => {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
     if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
@@ -103,6 +105,7 @@ export const getTripHandler = {
 
   deleteTrip: async (c: Context) => {
     try {
+      const db = getDbFromContext(c);
       const userId = getUserId(c);
       if (!userId) {
         return c.json({ error: 'Unauthorized' }, 401);
@@ -132,6 +135,7 @@ export const getTripHandler = {
 
   // 新しい旅行計画を登録
   createTrip: async (c: Context) => {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
     if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
@@ -349,6 +353,7 @@ export const getTripHandler = {
    */
   getDepartureAndDepartment: async (c: Context) => {
     try {
+      const db = getDbFromContext(c);
       const userId = getUserId(c);
       if (!userId) {
         return c.json({ error: 'Unauthorized' }, 401);
@@ -421,6 +426,7 @@ export const getTripHandler = {
    * プランの作成数と上限を取得
    */
   getTripCount: async (c: Context) => {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
     if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });

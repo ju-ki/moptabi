@@ -2,7 +2,7 @@ import { RouteHandler } from '@hono/zod-openapi';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { eq } from 'drizzle-orm';
-import { db, user } from '@db/index';
+import { getDbFromContext, user } from '@db/index';
 
 import { countWishListByUserId } from '@/services/wishlist';
 import { countPlanByUserId } from '@/services/trip';
@@ -15,6 +15,7 @@ import { findExistingUserRoute } from '../routes/auth';
 
 export const getAuthHandler: RouteHandler<typeof findExistingUserRoute> = async (c: Context) => {
   try {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
 
     if (!userId) {
@@ -63,6 +64,7 @@ export const getAuthHandler: RouteHandler<typeof findExistingUserRoute> = async 
 };
 
 export async function getUserList(c: Context) {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
   if (!userId) {
     throw new HTTPException(401, { message: 'Unauthorized' });

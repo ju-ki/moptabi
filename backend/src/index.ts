@@ -2,6 +2,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
+import { getDbFromEnv, setRequestScopeDb, clearRequestScopeDb } from '@db/index';
 
 import {
   getTripsRoute,
@@ -40,7 +41,17 @@ import {
 import { notificationHandler } from './controllers/notification';
 import { requireAuth, optionalAuth } from './middleware/auth';
 
-const app = new OpenAPIHono().basePath('/api');
+// Cloudflare Workers用のBindings型
+type Bindings = {
+  DATABASE_URL: string;
+};
+
+// DBをContextに追加する型
+type Variables = {
+  db: ReturnType<typeof getDbFromEnv>;
+};
+
+const app = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>().basePath('/api');
 
 // 静的ファイル配信の設定
 
@@ -64,6 +75,20 @@ app.use(
     maxAge: 600,
   }),
 );
+
+// DBミドルウェア：リクエストごとにDB接続を設定
+app.use('*', async (c, next) => {
+  const db = getDbFromEnv(c.env);
+  c.set('db', db);
+  // リクエストスコープのDBを設定（サービス層からのアクセス用）
+  setRequestScopeDb(db);
+  try {
+    await next();
+  } finally {
+    // リクエスト終了時にDBをクリア
+    clearRequestScopeDb();
+  }
+});
 
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {
