@@ -2,7 +2,15 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test'
 import { testClient } from 'hono/testing';
 
 import app from '..';
-import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import {
+  connectDb as connectPrisma,
+  disconnectDb as disconnectPrisma,
+  clearUserTestData as clearTestDataForUser,
+  createTestUser,
+  upsertUser,
+  createUserWithDetails,
+  deleteUsersExcept,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const ADMIN_USER_ID = 'admin_user_id';
@@ -23,22 +31,14 @@ function getAuthHeaders(): Record<string, string> {
 async function createTestUsersWithDetails(count: number, prefix: string = 'user') {
   const users = [];
   for (let i = 0; i < count; i++) {
-    const user = await prismaClient.prisma.user.upsert(
-      {
-        where: { id: `${prefix}_${i}` },
-        update: {},
-        create: {
-          id: `${prefix}_${i}`,
-          name: `User ${i}`,
-          email: `${prefix}${i}@example.com`,
-          image: `https://example.com/${prefix}${i}.jpg`,
-          lastLoginAt: new Date(Date.now() - i * 86400000), // i日前
-          createdAt: new Date(Date.now() - i * 86400000 * 2), // i*2日前
-          role: 'USER',
-        },
-      },
-      { headers: getAuthHeaders() },
-    );
+    const user = await upsertUser({
+      id: `${prefix}_${i}`,
+      name: `User ${i}`,
+      email: `${prefix}${i}@example.com`,
+      image: `https://example.com/${prefix}${i}.jpg`,
+      lastLoginAt: new Date(Date.now() - i * 86400000), // i日前
+      role: 'USER',
+    });
     users.push(user);
   }
   return users;
@@ -61,14 +61,7 @@ afterAll(async () => {
 beforeEach(async () => {
   currentUserId = ADMIN_USER_ID;
   // テストユーザー以外を削除
-  await prismaClient.prisma.user.deleteMany(
-    {
-      where: {
-        id: { notIn: [ADMIN_USER_ID, NORMAL_USER_ID] },
-      },
-    },
-    { headers: getAuthHeaders() },
-  );
+  await deleteUsersExcept([ADMIN_USER_ID, NORMAL_USER_ID]);
 });
 
 describe('🧾 ユーザーリストAPIサービス', () => {
@@ -162,28 +155,18 @@ describe('🧾 ユーザーリストAPIサービス', () => {
       currentUserId = ADMIN_USER_ID;
 
       // 検索対象のユーザーを作成
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'search_taro',
-            name: '太郎 山田',
-            email: 'taro@example.com',
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'search_hanako',
-            name: '花子 佐藤',
-            email: 'hanako@example.com',
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
+      await createUserWithDetails({
+        id: 'search_taro',
+        name: '太郎 山田',
+        email: 'taro@example.com',
+        role: 'USER',
+      });
+      await createUserWithDetails({
+        id: 'search_hanako',
+        name: '花子 佐藤',
+        email: 'hanako@example.com',
+        role: 'USER',
+      });
 
       const response = await client.api.auth.list.$get(
         {
@@ -200,17 +183,12 @@ describe('🧾 ユーザーリストAPIサービス', () => {
     it('メールアドレスで検索できる', async () => {
       currentUserId = ADMIN_USER_ID;
 
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'search_email',
-            name: 'Email User',
-            email: 'unique_email@example.com',
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
+      await createUserWithDetails({
+        id: 'search_email',
+        name: 'Email User',
+        email: 'unique_email@example.com',
+        role: 'USER',
+      });
 
       const response = await client.api.auth.list.$get(
         {
@@ -230,30 +208,20 @@ describe('🧾 ユーザーリストAPIサービス', () => {
       currentUserId = ADMIN_USER_ID;
 
       // 異なる日時のユーザーを作成
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'sort_user_1',
-            name: 'User 1',
-            email: 'sort1@example.com',
-            lastLoginAt: new Date('2024-01-01'),
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'sort_user_2',
-            name: 'User 2',
-            email: 'sort2@example.com',
-            lastLoginAt: new Date('2024-06-01'),
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
+      await createUserWithDetails({
+        id: 'sort_user_1',
+        name: 'User 1',
+        email: 'sort1@example.com',
+        lastLoginAt: new Date('2024-01-01'),
+        role: 'USER',
+      });
+      await createUserWithDetails({
+        id: 'sort_user_2',
+        name: 'User 2',
+        email: 'sort2@example.com',
+        lastLoginAt: new Date('2024-06-01'),
+        role: 'USER',
+      });
 
       const response = await client.api.auth.list.$get(
         {
@@ -274,30 +242,20 @@ describe('🧾 ユーザーリストAPIサービス', () => {
     it('最終ログイン日時の昇順でソートできる', async () => {
       currentUserId = ADMIN_USER_ID;
 
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'sort_asc_1',
-            name: 'User 1',
-            email: 'sortasc1@example.com',
-            lastLoginAt: new Date('2024-01-01'),
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
-      await prismaClient.prisma.user.create(
-        {
-          data: {
-            id: 'sort_asc_2',
-            name: 'User 2',
-            email: 'sortasc2@example.com',
-            lastLoginAt: new Date('2024-06-01'),
-            role: 'USER',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
+      await createUserWithDetails({
+        id: 'sort_asc_1',
+        name: 'User 1',
+        email: 'sortasc1@example.com',
+        lastLoginAt: new Date('2024-01-01'),
+        role: 'USER',
+      });
+      await createUserWithDetails({
+        id: 'sort_asc_2',
+        name: 'User 2',
+        email: 'sortasc2@example.com',
+        lastLoginAt: new Date('2024-06-01'),
+        role: 'USER',
+      });
 
       const response = await client.api.auth.list.$get(
         {
@@ -359,18 +317,13 @@ describe('🧾 ユーザーリストAPIサービス', () => {
 
       // Adminを含むユーザーを作成
       for (let i = 0; i < 15; i++) {
-        await prismaClient.prisma.user.create(
-          {
-            data: {
-              id: `combo_admin_${i}`,
-              name: `Admin ${i}`,
-              email: `combo_admin${i}@example.com`,
-              lastLoginAt: new Date(Date.now() - i * 86400000),
-              role: 'USER',
-            },
-          },
-          { headers: getAuthHeaders() },
-        );
+        await createUserWithDetails({
+          id: `combo_admin_${i}`,
+          name: `Admin ${i}`,
+          email: `combo_admin${i}@example.com`,
+          lastLoginAt: new Date(Date.now() - i * 86400000),
+          role: 'USER',
+        });
       }
 
       const response = await client.api.auth.list.$get(

@@ -145,8 +145,8 @@ jobs:
           echo "Postgres did not become ready in time" >&2
           exit 1
 
-      - name: Generate Prisma Client for test DB
-        run: bun run migrate:test:dev
+      - name: Generate Drizzle for test DB
+        run: bun run db:push:test
 
       - name: Create Coverage Directory
         run: mkdir -p ./coverage
@@ -264,7 +264,7 @@ jobs:
             }
 
       - name: Build
-        run: bun run prisma:generate && bun run build
+        run: bun run build
 
   create-pull-request:
     if: github.event_name == 'push'

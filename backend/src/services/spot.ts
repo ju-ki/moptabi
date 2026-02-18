@@ -1,5 +1,6 @@
-import { Prisma } from '@/generated/prisma/client';
-import { prisma } from '@/lib/client';
+import { eq, and, gte, lte } from 'drizzle-orm';
+import { db, wishlist, spot, spotMeta, planSpot, plan, trip } from '@db';
+
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
 
 /**
@@ -16,38 +17,55 @@ export async function getUnvisitedWishlistSpots(
 ) {
   const { prefecture, priority, sortBy, sortOrder } = query;
 
-  // フィルター条件を構築
-  const where: Prisma.WishlistWhereInput = {
-    userId,
-    visited: 0,
-    // 優先度フィルター
-    ...(priority !== undefined && { priority }),
-    // 都道府県フィルター
-    ...(prefecture && {
+  // Drizzle relational queryで取得
+  let rows = await db.query.wishlist.findMany({
+    where: and(
+      eq(wishlist.userId, userId),
+      eq(wishlist.visited, 0),
+      priority !== undefined ? eq(wishlist.priority, priority) : undefined,
+    ),
+    with: {
       spot: {
-        meta: {
-          prefecture,
+        with: {
+          meta: true,
         },
       },
-    }),
-  };
-
-  // ソート条件を構築
-  const orderBy: Prisma.WishlistOrderByWithRelationInput[] = [];
-  if (sortBy === 'priority') {
-    orderBy.push({ priority: sortOrder });
-  } else if (sortBy === 'createdAt') {
-    orderBy.push({ createdAt: sortOrder });
-  }
-  // 同一値の場合はIDでソート
-  orderBy.push({ id: 'asc' });
-
-  const rows = await prisma.wishlist.findMany({
-    where,
-    include: { spot: { include: { meta: true } } },
-    orderBy,
+    },
   });
-  return rows;
+
+  // 都道府県フィルター（metaは配列なので最初の要素を使用）
+  if (prefecture) {
+    rows = rows.filter((w) => {
+      const meta = Array.isArray(w.spot?.meta) ? w.spot.meta[0] : w.spot?.meta;
+      return meta?.prefecture === prefecture;
+    });
+  }
+
+  // ソート（JavaScript側でソート）
+  rows.sort((a, b) => {
+    if (sortBy === 'priority') {
+      const cmp = (b.priority ?? 0) - (a.priority ?? 0);
+      if (sortOrder === 'asc') return -cmp;
+      if (cmp !== 0) return cmp;
+    } else if (sortBy === 'createdAt') {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const cmp = dateB - dateA;
+      if (sortOrder === 'asc') return -cmp;
+      if (cmp !== 0) return cmp;
+    }
+    // 同一値の場合はIDでソート
+    return a.id - b.id;
+  });
+
+  // レスポンス形式を既存のPrisma形式に合わせる（meta配列を単一オブジェクトに変換）
+  return rows.map((row) => ({
+    ...row,
+    spot: {
+      id: row.spot?.id,
+      meta: Array.isArray(row.spot?.meta) ? row.spot.meta[0] || null : row.spot?.meta || null,
+    },
+  }));
 }
 
 /**
@@ -65,107 +83,100 @@ export async function getVisitedSpots(
 ) {
   const { prefecture, dateFrom, dateTo, minVisitCount, sortBy, sortOrder } = query;
 
-  // 1. 訪問済みのwishlistを取得
-  const visitedWishlistWhere: Prisma.WishlistWhereInput = {
-    userId,
-    visited: 1,
-    ...(prefecture && {
-      spot: {
-        meta: {
-          prefecture,
-        },
-      },
-    }),
-    // 期間フィルター（訪問日時）
-    ...(dateFrom || dateTo
-      ? {
-          visitedAt: {
-            ...(dateFrom && { gte: new Date(dateFrom) }),
-            ...(dateTo && { lte: new Date(dateTo) }),
-          },
-        }
-      : {}),
+  // ヘルパー関数：配列のmetaを単一オブジェクトに変換
+  const getMeta = (spotData: { meta?: unknown[] | unknown } | null | undefined) => {
+    if (!spotData) return null;
+    return Array.isArray(spotData.meta) ? spotData.meta[0] || null : spotData.meta || null;
   };
 
-  // 訪問済みwishlistのソート条件
-  const wishlistOrderBy: Prisma.WishlistOrderByWithRelationInput[] = [];
-  if (sortBy === 'visitedAt') {
-    wishlistOrderBy.push({ visitedAt: sortOrder });
-  } else if (sortBy === 'createdAt') {
-    wishlistOrderBy.push({ createdAt: sortOrder });
-  }
-  wishlistOrderBy.push({ id: 'asc' });
+  // 1. 訪問済みのwishlistを取得
+  let visitedWishlist = await db.query.wishlist.findMany({
+    where: and(
+      eq(wishlist.userId, userId),
+      eq(wishlist.visited, 1),
+      dateFrom ? gte(wishlist.visitedAt, dateFrom) : undefined,
+      dateTo ? lte(wishlist.visitedAt, dateTo) : undefined,
+    ),
+    with: {
+      spot: {
+        with: {
+          meta: true,
+        },
+      },
+    },
+  });
 
-  const visitedWishlist = await prisma.wishlist.findMany({
-    where: visitedWishlistWhere,
-    include: { spot: { include: { meta: true } } },
-    orderBy: wishlistOrderBy,
+  // 都道府県フィルター
+  if (prefecture) {
+    visitedWishlist = visitedWishlist.filter((w) => {
+      const meta = getMeta(w.spot);
+      return meta?.prefecture === prefecture;
+    });
+  }
+
+  // ソート
+  visitedWishlist.sort((a, b) => {
+    if (sortBy === 'visitedAt') {
+      const dateA = a.visitedAt ? new Date(a.visitedAt).getTime() : 0;
+      const dateB = b.visitedAt ? new Date(b.visitedAt).getTime() : 0;
+      const cmp = dateB - dateA;
+      if (sortOrder === 'asc') return -cmp;
+      if (cmp !== 0) return cmp;
+    } else if (sortBy === 'createdAt') {
+      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const cmp = dateB - dateA;
+      if (sortOrder === 'asc') return -cmp;
+      if (cmp !== 0) return cmp;
+    }
+    return a.id - b.id;
   });
 
   // 2. 過去の計画から登録したスポットを取得（出発地・目的地を除外）
-  // 出発地・目的地はSpotのIDが「departure」または「destination」で始まる
-  const planSpotsWhere: Prisma.PlanSpotWhereInput = {
-    plan: {
-      trip: {
-        userId,
-      },
-      // 期間フィルター（計画日）
-      ...(dateFrom || dateTo
-        ? {
-            date: {
-              ...(dateFrom && { gte: dateFrom }),
-              ...(dateTo && { lte: dateTo }),
-            },
-          }
-        : {}),
-    },
-    // 出発地・目的地を除外（SpotのIDがdepartureまたはdestinationで始まるものを除外）
-    AND: [
-      {
-        spot: {
-          id: {
-            not: {
-              startsWith: 'departure',
-            },
-          },
-        },
-      },
-      {
-        spot: {
-          id: {
-            not: {
-              startsWith: 'destination',
-            },
-          },
-        },
-      },
-    ],
-    ...(prefecture && {
+  let planSpots = await db.query.planSpot.findMany({
+    with: {
       spot: {
-        meta: {
-          prefecture,
+        with: {
+          meta: true,
         },
       },
-    }),
-  };
-
-  // 計画スポットのソート条件
-  const planSpotOrderBy: Prisma.PlanSpotOrderByWithRelationInput[] = [];
-  if (sortBy === 'visitedAt' || sortBy === 'planDate') {
-    // visitedAtまたはplanDateの場合は計画日時でソート
-    planSpotOrderBy.push({ plan: { date: sortOrder } });
-  } else if (sortBy === 'createdAt') {
-    planSpotOrderBy.push({ plan: { date: sortOrder } });
-  }
-  planSpotOrderBy.push({ id: 'asc' });
-
-  const planSpots = await prisma.planSpot.findMany({
-    where: planSpotsWhere,
-    include: {
-      spot: { include: { meta: true } },
-      plan: { include: { trip: true } },
+      plan: {
+        with: {
+          trip: true,
+        },
+      },
     },
-    orderBy: planSpotOrderBy,
+  });
+
+  // ユーザーフィルター & 日付フィルター & 出発地・目的地除外
+  planSpots = planSpots.filter((ps) => {
+    if (ps.plan?.trip?.userId !== userId) return false;
+    if (ps.spotId.startsWith('departure') || ps.spotId.startsWith('destination')) return false;
+    if (dateFrom && ps.plan.date && ps.plan.date < dateFrom) return false;
+    if (dateTo && ps.plan.date && ps.plan.date > dateTo) return false;
+    if (prefecture) {
+      const meta = getMeta(ps.spot);
+      if (meta?.prefecture !== prefecture) return false;
+    }
+    return true;
+  });
+
+  // ソート
+  planSpots.sort((a, b) => {
+    if (sortBy === 'visitedAt' || sortBy === 'planDate') {
+      const dateA = a.plan?.date || '';
+      const dateB = b.plan?.date || '';
+      const cmp = dateB.localeCompare(dateA);
+      if (sortOrder === 'asc') return -cmp;
+      if (cmp !== 0) return cmp;
+    } else if (sortBy === 'createdAt') {
+      const dateA = a.plan?.date || '';
+      const dateB = b.plan?.date || '';
+      const cmp = dateB.localeCompare(dateA);
+      if (sortOrder === 'asc') return -cmp;
+      if (cmp !== 0) return cmp;
+    }
+    return a.id - b.id;
   });
 
   // 4. 訪問済みwishlistのspotIdを取得（重複除外用）
@@ -211,7 +222,7 @@ export async function getVisitedSpots(
     spotVisitCounts.set(ps.spotId, (spotVisitCounts.get(ps.spotId) || 0) + 1);
   });
 
-  // 7. wishlist形式に変換（型を統一）
+  // 7. wishlist形式に変換（型を統一、metaを単一オブジェクトに変換）
   const planSpotResults = uniquePlanSpots.map((ps) => ({
     id: ps.id,
     spotId: ps.spotId,
@@ -219,18 +230,25 @@ export async function getVisitedSpots(
     memo: ps.memo,
     priority: 1, // デフォルト
     visited: 0, // 計画として登録したものは未訪問扱い
-    visitedAt: ps.plan.date,
+    visitedAt: ps.plan?.date,
     createdAt: new Date(),
     updatedAt: new Date(),
-    spot: ps.spot,
+    spot: {
+      id: ps.spot?.id,
+      meta: getMeta(ps.spot),
+    },
     user: { id: userId },
-    planDate: ps.plan.date, // ソート用に計画日を保持
+    planDate: ps.plan?.date, // ソート用に計画日を保持
     visitCount: spotVisitCounts.get(ps.spotId) || 1,
   }));
 
-  // 訪問済みにも回数情報を追加
+  // 訪問済みにも回数情報を追加 + metaを単一オブジェクトに変換
   const visitedWithCount = visitedWishlist.map((w) => ({
     ...w,
+    spot: {
+      id: w.spot?.id,
+      meta: getMeta(w.spot),
+    },
     visitCount: spotVisitCounts.get(w.spotId) || 1,
   }));
 

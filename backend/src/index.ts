@@ -44,16 +44,31 @@ const app = new OpenAPIHono().basePath('/api');
 
 // 静的ファイル配信の設定
 
+// 許可するオリジンのリスト
+const allowedOrigins = ['https://moptabi-frontend.moptabi.workers.dev', 'http://localhost:3000', 'https://moptabi.com'];
+
 app.use(
   '*',
   cors({
-    origin: ['http://localhost:3000', 'https://moptabi.jp'],
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    origin: (origin) => {
+      // リクエストのオリジンが許可リストに含まれていればそのオリジンを返す
+      if (allowedOrigins.includes(origin)) {
+        return origin;
+      }
+      // 含まれていない場合は最初のオリジンを返す（または空文字でブロック）
+      return allowedOrigins[0];
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
     maxAge: 600,
   }),
 );
+
+// OPTIONSリクエスト（プリフライト）に明示的に対応
+app.options('*', (c) => {
+  return c.text('', 204);
+});
 
 //ルートの登録
 const tripApp = new OpenAPIHono();
@@ -127,8 +142,7 @@ app.onError((error: Error, c) => {
   if (error instanceof HTTPException) {
     return c.text(error.message, error.status);
   }
-  // const isDevelopment = import.meta.env.NODE_ENV === 'development';
-  const isDevelopment = true;
+  const isDevelopment = import.meta.env.NODE_ENV === 'development';
   const message = isDevelopment ? error.message : 'Internal Server Error';
   return c.text(message, 500);
 });

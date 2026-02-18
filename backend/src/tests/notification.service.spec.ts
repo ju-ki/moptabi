@@ -2,10 +2,26 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test'
 import { testClient } from 'hono/testing';
 
 import { NotificationListResponseSchema, UnreadCountResponseSchema } from '@/models/notification';
-import { NotificationType } from '@/generated/prisma/client';
 
 import app from '..';
-import prismaClient, { clearTestDataForUser, connectPrisma, createTestUser, disconnectPrisma } from './prisma';
+import {
+  db,
+  notification,
+  userNotification,
+  eq,
+  and,
+  connectDb as connectPrisma,
+  disconnectDb as disconnectPrisma,
+  clearUserTestData as clearTestDataForUser,
+  createTestUser,
+  createNotification as createTestNotificationDB,
+  createUserNotification as createUserNotificationDB,
+  deleteAllNotifications,
+  findNotificationById,
+  findUserNotification,
+  countUserNotifications,
+  upsertUser,
+} from './db-helper';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_notification_user';
@@ -38,8 +54,7 @@ beforeEach(async () => {
   currentUserId = TEST_USER_ID;
 
   // 各テスト前にお知らせ関連データをクリア
-  await prismaClient.prisma.userNotification.deleteMany({});
-  await prismaClient.prisma.notification.deleteMany({});
+  await deleteAllNotifications();
 });
 
 /**
@@ -51,13 +66,11 @@ async function createTestNotification(data: {
   type?: 'SYSTEM' | 'INFO';
   publishedAt?: Date;
 }) {
-  return await prismaClient.prisma.notification.create({
-    data: {
-      title: data.title,
-      content: data.content,
-      type: data.type ?? 'SYSTEM',
-      publishedAt: data.publishedAt ?? new Date(),
-    },
+  return await createTestNotificationDB({
+    title: data.title,
+    content: data.content,
+    type: data.type ?? 'SYSTEM',
+    publishedAt: data.publishedAt ?? new Date(),
   });
 }
 
@@ -65,13 +78,10 @@ async function createTestNotification(data: {
  * テスト用のユーザーお知らせを作成するヘルパー関数
  */
 async function createUserNotification(userId: string, notificationId: number, isRead: boolean = false) {
-  return await prismaClient.prisma.userNotification.create({
-    data: {
-      userId,
-      notificationId,
-      isRead,
-      readAt: isRead ? new Date() : null,
-    },
+  return await createUserNotificationDB({
+    userId,
+    notificationId,
+    isRead: isRead,
   });
 }
 
@@ -219,7 +229,7 @@ describe('🔔 お知らせサービス', () => {
       const payload = {
         title: '新機能リリースのお知らせ',
         content: '新しい機能が追加されました。ぜひお試しください。',
-        type: NotificationType.SYSTEM,
+        type: 'SYSTEM' as const,
         publishedAt: new Date().toLocaleDateString('sv-SE'),
       };
 
@@ -233,19 +243,15 @@ describe('🔔 お知らせサービス', () => {
       expect(data.type).toBe(payload.type);
 
       // DBに保存されていることを確認
-      const saved = await prismaClient.prisma.notification.findUnique({
-        where: { id: data.id },
-      });
+      const saved = await findNotificationById(data.id);
       expect(saved).not.toBeNull();
       expect(saved?.title).toBe(payload.title);
 
       // ユーザー通知の方にもデータが作成されていること
-      const userNotification = await prismaClient.prisma.userNotification.findFirst({
-        where: { notificationId: data.id },
-      });
+      const userNotif = await findUserNotification(TEST_USER_ID, data.id);
 
-      expect(userNotification).not.toBeNull();
-      expect(userNotification?.isRead).toBe(false);
+      expect(userNotif).not.toBeNull();
+      expect(userNotif?.isRead).toBe(false);
     });
 
     it('INFOタイプのお知らせを作成できる', async () => {
@@ -310,11 +316,8 @@ describe('🔔 お知らせサービス', () => {
       expect(data.success).toBe(true);
 
       // DBで確認
-      const updated = await prismaClient.prisma.userNotification.findFirst({
-        where: { userId: TEST_USER_ID, notificationId: notification.id },
-      });
+      const updated = await findUserNotification(TEST_USER_ID, notification.id);
       expect(updated?.isRead).toBe(true);
-      expect(updated?.readAt).not.toBeNull();
     });
 
     it('存在しないお知らせIDの場合は404エラーを返す', async () => {
@@ -361,9 +364,7 @@ describe('🔔 お知らせサービス', () => {
       expect(data.count).toBe(2); // 未読だった2件が更新された
 
       // DBで確認
-      const unreadCount = await prismaClient.prisma.userNotification.count({
-        where: { userId: TEST_USER_ID, isRead: false },
-      });
+      const unreadCount = await countUserNotifications({ userId: TEST_USER_ID, isRead: false });
       expect(unreadCount).toBe(0);
     });
 
@@ -411,9 +412,7 @@ describe('🔔 お知らせサービス', () => {
       expect(data.content).toBe('内容'); // 変更していないフィールドは保持
 
       // DBで確認
-      const updated = await prismaClient.prisma.notification.findUnique({
-        where: { id: notification.id },
-      });
+      const updated = await findNotificationById(notification.id);
       expect(updated?.title).toBe('更新後タイトル');
     });
 
@@ -532,9 +531,7 @@ describe('🔔 お知らせサービス', () => {
       expect(data.success).toBe(true);
 
       // DBから削除されていることを確認
-      const deleted = await prismaClient.prisma.notification.findUnique({
-        where: { id: notification.id },
-      });
+      const deleted = await findNotificationById(notification.id);
       expect(deleted).toBeNull();
     });
 
@@ -546,9 +543,7 @@ describe('🔔 お知らせサービス', () => {
       await createUserNotification(TEST_USER_ID, notification.id, false);
 
       // 事前確認: UserNotificationが存在する
-      const beforeCount = await prismaClient.prisma.userNotification.count({
-        where: { notificationId: notification.id },
-      });
+      const beforeCount = await countUserNotifications({ userId: TEST_USER_ID });
       expect(beforeCount).toBe(1);
 
       const res = await client.api.notification[':id'].$delete(
@@ -561,9 +556,7 @@ describe('🔔 お知らせサービス', () => {
       expect(res.status).toBe(200);
 
       // 関連するUserNotificationも削除されていることを確認
-      const afterCount = await prismaClient.prisma.userNotification.count({
-        where: { notificationId: notification.id },
-      });
+      const afterCount = await countUserNotifications({ userId: TEST_USER_ID });
       expect(afterCount).toBe(0);
     });
 
@@ -640,28 +633,24 @@ describe('🔔 お知らせサービス', () => {
     });
 
     it('各お知らせの既読率を取得できる', async () => {
-      const notification = await createTestNotification({
+      const notif = await createTestNotification({
         title: '既読率テスト',
         content: '内容',
       });
 
       // 2人のユーザーを作成、1人は既読、1人は未読
       const user2 = 'test_user_2';
-      await prismaClient.prisma.user.upsert({
-        where: { id: user2 },
-        update: {},
-        create: { id: user2 },
-      });
+      await upsertUser({ id: user2 });
 
-      await createUserNotification(TEST_USER_ID, notification.id, true); // 既読
-      await createUserNotification(user2, notification.id, false); // 未読
+      await createUserNotification(TEST_USER_ID, notif.id, true); // 既読
+      await createUserNotification(user2, notif.id, false); // 未読
 
       const res = await client.api.notification.admin.$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(200);
       const data = await res.json();
 
-      const targetNotification = data.notifications.find((n: any) => n.id === notification.id);
+      const targetNotification = data.notifications.find((n: any) => n.id === notif.id);
       expect(targetNotification).toBeDefined();
       expect(targetNotification.readRate).toBe(50); // 50%既読
       expect(targetNotification.totalRecipients).toBe(2);

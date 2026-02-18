@@ -1,6 +1,5 @@
 import { z } from '@hono/zod-openapi';
 
-import { TransportNodeType } from '../generated/prisma/client';
 import { OpeningHoursSchema } from './spot';
 
 export const TripSchema = z.object({
@@ -47,8 +46,8 @@ export const TripSchema = z.object({
             transportMethod: z.number().min(1, { message: '移動手段を選択してください' }),
             travelTime: z.string().optional(),
             cost: z.number().optional(),
-            fromType: z.enum(TransportNodeType),
-            toType: z.enum(TransportNodeType),
+            fromType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),
+            toType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),
           }),
           order: z.number().default(0),
           nearestStation: z

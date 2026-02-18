@@ -1,29 +1,35 @@
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
+import { eq, and, count, lt, inArray } from 'drizzle-orm';
+import { db, wishlist, spot, spotMeta } from '@db';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
-import { prisma } from '@/lib/client';
 import { getUserId } from '@/middleware/auth';
 
 export const getWishList = async (c: Context) => {
   const userId = getUserId(c);
 
-  const wishList = await prisma.wishlist.findMany({
-    where: { userId: userId },
-    include: {
+  const rows = await db.query.wishlist.findMany({
+    where: eq(wishlist.userId, userId),
+    with: {
       spot: {
-        include: {
+        with: {
           meta: true,
         },
       },
     },
-    orderBy: {
-      priority: 'desc',
-    },
+    orderBy: (wishlist, { desc }) => [desc(wishlist.priority)],
   });
 
-  return wishList;
+  // レスポンス形式を既存のPrisma形式に合わせる
+  return rows.map((row) => ({
+    ...row,
+    spot: {
+      id: row.spot?.id,
+      meta: row.spot?.meta?.[0] || null,
+    },
+  }));
 };
 
 /**
@@ -32,12 +38,10 @@ export const getWishList = async (c: Context) => {
 export const getWishListCount = async (c: Context) => {
   const userId = getUserId(c);
 
-  const count = await prisma.wishlist.count({
-    where: { userId },
-  });
+  const [result] = await db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId));
 
   return {
-    count,
+    count: result?.count ?? 0,
     limit: APP_LIMITS.MAX_WISHLIST_SPOTS,
   };
 };
@@ -46,11 +50,9 @@ export const createWishList = async (c: Context) => {
   const userId = getUserId(c);
 
   // 上限チェック
-  const currentCount = await prisma.wishlist.count({
-    where: { userId },
-  });
+  const [countResult] = await db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId));
 
-  if (currentCount >= APP_LIMITS.MAX_WISHLIST_SPOTS) {
+  if ((countResult?.count ?? 0) >= APP_LIMITS.MAX_WISHLIST_SPOTS) {
     throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.WISHLIST_LIMIT_EXCEEDED });
   }
 
@@ -65,62 +67,53 @@ export const createWishList = async (c: Context) => {
   const wishListResult = result.data;
 
   // spotが登録されているかを確認する
-  const existingSpot = await prisma.spot.findUnique({
-    where: {
-      id: wishListResult.spotId,
-    },
-  });
+  const [existingSpot] = await db.select().from(spot).where(eq(spot.id, wishListResult.spotId)).limit(1);
 
   // spotが登録されていない場合はまずスポットを登録する
   if (!existingSpot) {
-    await prisma.spot.create({
-      data: {
-        id: wishListResult.spotId,
-        meta: {
-          create: {
-            id: wishListResult.spotId,
-            name: wishListResult.spot.meta.name,
-            description: wishListResult.spot.meta.description,
-            latitude: wishListResult.spot.meta.latitude,
-            longitude: wishListResult.spot.meta.longitude,
-            categories: wishListResult.spot.meta.categories,
-            image: wishListResult.spot.meta.image,
-            url: wishListResult.spot.meta.url,
-            prefecture: wishListResult.spot.meta.prefecture,
-            address: wishListResult.spot.meta.address,
-            rating: wishListResult.spot.meta.rating,
-            catchphrase: wishListResult.spot.meta.catchphrase,
-            openingHours: wishListResult.spot.meta.openingHours ? wishListResult.spot.meta.openingHours : undefined,
-          },
-        },
-      },
+    await db.insert(spot).values({ id: wishListResult.spotId });
+    await db.insert(spotMeta).values({
+      id: wishListResult.spotId,
+      spotId: wishListResult.spotId,
+      name: wishListResult.spot.meta.name,
+      description: wishListResult.spot.meta.description,
+      latitude: wishListResult.spot.meta.latitude,
+      longitude: wishListResult.spot.meta.longitude,
+      categories: wishListResult.spot.meta.categories,
+      image: wishListResult.spot.meta.image,
+      url: wishListResult.spot.meta.url,
+      prefecture: wishListResult.spot.meta.prefecture,
+      address: wishListResult.spot.meta.address,
+      rating: wishListResult.spot.meta.rating,
+      catchphrase: wishListResult.spot.meta.catchphrase,
+      openingHours: wishListResult.spot.meta.openingHours || null,
     });
   }
 
   // 既存の行きたいリストの重複チェック
-  const existingWishlist = await prisma.wishlist.findFirst({
-    where: {
-      userId: userId,
-      spotId: wishListResult.spotId,
-    },
-  });
+  const [existingWishlist] = await db
+    .select()
+    .from(wishlist)
+    .where(and(eq(wishlist.userId, userId), eq(wishlist.spotId, wishListResult.spotId)))
+    .limit(1);
 
   if (existingWishlist) {
     throw new HTTPException(400, { message: 'Wishlist entry already exists for this spot' });
   }
 
-  const wishList = await prisma.wishlist.create({
-    data: {
+  const [newWishlist] = await db
+    .insert(wishlist)
+    .values({
       spotId: wishListResult.spotId,
       userId: userId,
       priority: wishListResult.priority,
       memo: wishListResult.memo,
       visited: wishListResult.visited,
-      visitedAt: wishListResult.visitedAt,
-    },
-  });
+      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt.toISOString() : null,
+    })
+    .returning();
 
-  return wishList;
+  return newWishlist;
 };
 
 export const updateWishList = async (c: Context) => {
@@ -138,31 +131,26 @@ export const updateWishList = async (c: Context) => {
   const wishListResult = result.data;
 
   // 更新対象の行きたいリストが存在するか確認する
-  const existingWishlist = await prisma.wishlist.findUnique({
-    where: {
-      id: wishListResult.id,
-    },
-  });
+  const [existingWishlist] = await db.select().from(wishlist).where(eq(wishlist.id, wishListResult.id)).limit(1);
 
   if (!existingWishlist) {
     throw new HTTPException(404, { message: 'Wishlist entry not found' });
   }
 
-  const wishlist = await prisma.wishlist.update({
-    where: {
-      id: wishListResult.id,
-      userId: userId,
-    },
-    data: {
+  const [updated] = await db
+    .update(wishlist)
+    .set({
       memo: wishListResult.memo,
       priority: wishListResult.priority,
       visited: wishListResult.visited,
-      visitedAt: wishListResult.visitedAt,
-    },
-  });
+      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt.toISOString() : null,
+    })
+    .where(and(eq(wishlist.id, wishListResult.id), eq(wishlist.userId, userId)))
+    .returning();
 
-  return wishlist;
+  return updated;
 };
+
 export const deleteWishList = async (c: Context) => {
   const userId = getUserId(c);
 
@@ -173,37 +161,36 @@ export const deleteWishList = async (c: Context) => {
   }
 
   // ユーザーが所有している行きたいリストのみ削除可能
-  const wishlist = await prisma.wishlist.delete({
-    where: {
-      id: wishlistId,
-      userId: userId,
-    },
-  });
+  const [deleted] = await db
+    .delete(wishlist)
+    .where(and(eq(wishlist.id, wishlistId), eq(wishlist.userId, userId)))
+    .returning();
 
-  return wishlist;
+  return deleted;
 };
 
 /**
  * ユーザーIDごとの行きたいリストの数を取得
- * @param userId clerkに登録されているuserIdの配列
+ * @param userIds clerkに登録されているuserIdの配列
  * @returns ユーザーIDをキー、行きたいリストの数を値とするオブジェクト
  */
-export const countWishListByUserId = async (userId: string[]) => {
-  const counts = await prisma.wishlist.groupBy({
-    by: ['userId'],
-    where: {
-      userId: {
-        in: userId,
-      },
-    },
-    _count: {
-      userId: true,
-    },
-  });
+export const countWishListByUserId = async (userIds: string[]) => {
+  if (userIds.length === 0) {
+    return {};
+  }
+
+  const counts = await db
+    .select({
+      userId: wishlist.userId,
+      count: count(),
+    })
+    .from(wishlist)
+    .where(inArray(wishlist.userId, userIds))
+    .groupBy(wishlist.userId);
 
   const countMap: Record<string, number> = {};
   counts.forEach((item) => {
-    countMap[item.userId] = item._count.userId;
+    countMap[item.userId] = item.count;
   });
 
   return countMap;
@@ -214,20 +201,20 @@ export const countWishListByUserId = async (userId: string[]) => {
  * @returns 行きたいリストの統計情報
  */
 export const getTotalWishlistAndIncreaseAndDecrease = async () => {
-  const totalWishlist = await prisma.wishlist.count();
+  const [totalResult] = await db.select({ count: count() }).from(wishlist);
+  const totalWishlist = totalResult?.count ?? 0;
 
   const now = new Date();
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const lastMonthWishlist = await prisma.wishlist.count({
-    where: {
-      createdAt: {
-        lt: startOfThisMonth,
-      },
-    },
-  });
+  const [lastMonthResult] = await db
+    .select({ count: count() })
+    .from(wishlist)
+    .where(lt(wishlist.createdAt, startOfThisMonth.toISOString()));
+  const lastMonthWishlist = lastMonthResult?.count ?? 0;
+
   return {
-    totalWishlist: totalWishlist,
+    totalWishlist,
     wishlistIncreaseFromLastMonth: totalWishlist - lastMonthWishlist,
   };
 };
