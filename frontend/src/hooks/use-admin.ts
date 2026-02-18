@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-// import { useAuth } from '@clerk/nextjs';
+import { useSession } from 'next-auth/react';
 
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 import { StatsType } from '@/models/admin';
@@ -20,7 +20,29 @@ export type NotificationType = 'SYSTEM' | 'INFO';
  * ユーザーリスト・通知リストは別フック（use-user-list, use-notification-list）で管理
  */
 export function useAdminData() {
+  const { data: session } = useSession();
   const { getFetcher } = useFetcher();
+
+  // 認証ヘッダーを生成
+  const getAuthHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    if (session?.user?.id) {
+      headers['X-User-Id'] = session.user.id;
+    }
+    if (session?.user?.email) {
+      headers['X-User-Email'] = session.user.email;
+    }
+    if (session?.user?.name) {
+      headers['X-User-Name'] = encodeURIComponent(session.user.name);
+    }
+    if (session?.user?.image) {
+      headers['X-User-Image'] = session.user.image;
+    }
+    return headers;
+  };
 
   // ダッシュボードデータ
   const {
@@ -35,10 +57,9 @@ export function useAdminData() {
   const postNotification = async (newNotification: NotificationCreate) => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(newNotification),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -50,10 +71,9 @@ export function useAdminData() {
   const updateNotification = async (updatedNotification: NotificationUpdate) => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/${updatedNotification.id}`, {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(updatedNotification),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -65,9 +85,8 @@ export function useAdminData() {
   const deleteNotification = async (id: number) => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
+      credentials: 'include',
     });
 
     if (!response.ok) {
