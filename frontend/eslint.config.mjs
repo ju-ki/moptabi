@@ -27,6 +27,8 @@ const config = [
       '**/.next/',
       '**/.vscode/',
       'src/components/ui/**/*.{js,ts,tsx}',
+      '**/.open-next/**',
+      '**/.wrangler/**',
     ],
   },
   {
@@ -89,6 +91,16 @@ const config = [
           'newlines-between': 'always',
         },
       ],
+    },
+  },
+  {
+    name: 'test-files',
+    files: ['**/tests/**/*.{ts,tsx,js,jsx}', '**/*.test.{ts,tsx,js,jsx}', '**/*.spec.{ts,tsx,js,jsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off', // anyを許可
+      '@typescript-eslint/no-unused-vars': 'off', // 未使用変数を許可
+      'import/order': 'off', // import/orderを無効化
+      'no-console': 'off', // console.logを許可
     },
   },
 ];

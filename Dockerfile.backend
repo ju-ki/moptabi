@@ -1,21 +1,18 @@
-FROM oven/bun:1.1.4
+FROM oven/bun:1.2
 
-# ルートワークディレクトリ
-WORKDIR /app
-
-# 必要なファイルをコピー
-COPY backend/package.json backend/bun.lockb ./
-COPY prisma ./prisma
-COPY backend ./backend
-
-# 作業ディレクトリを backend に移動
+# 作業ディレクトリを設定
 WORKDIR /app/backend
+
+# package.json と bun.lock をコピー（キャッシュ活用）
+COPY backend/package.json backend/bun.lock ./
 
 # 依存インストール
 RUN bun install
 
-# Prisma Client を生成（bun を使って実行）
-RUN bun prisma generate
+# ソースコード全体をコピー
+COPY backend ./
 
-# エントリポイント（bun run dev）を最終的に呼び出す
+# Prisma Client を生成
+RUN bun drizzle-kit generate
+# エントリポイント
 CMD ["bun", "run", "dev"]

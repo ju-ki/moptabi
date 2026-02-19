@@ -1,20 +1,32 @@
+'use client';
 import './globals.css';
 
-import { ClerkProvider } from '@clerk/nextjs';
+import React from 'react';
+import { SessionProvider } from 'next-auth/react';
+import { useLoadScript } from '@react-google-maps/api';
 
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/common/header';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAP_API_KEY || '',
+  });
+
   return (
     <html lang="ja">
-      <title>AI旅行計画プランナー</title>
+      <head>
+        <title>モプタビ - もっと旅がしたくなる旅行計画アプリ</title>
+        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+      </head>
       <body>
-        <ClerkProvider>
-          <Header />
-          <main>{children}</main>
-        </ClerkProvider>
-        <Toaster />
+        <>
+          <SessionProvider>
+            <Header />
+            {!isLoaded ? <div>Loading...</div> : <main>{children}</main>}
+          </SessionProvider>
+          <Toaster />
+        </>
       </body>
     </html>
   );

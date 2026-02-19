@@ -1,0 +1,2 @@
+DROP INDEX "UserNotification_userId_notificationId_key";--> statement-breakpoint
+CREATE UNIQUE INDEX "UserNotification_userId_notificationId_key" ON "UserNotification" USING btree ("userId" text_ops,"notificationId" int4_ops);

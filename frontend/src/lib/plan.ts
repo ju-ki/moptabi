@@ -1,13 +1,22 @@
-import { DateRange } from 'react-day-picker';
 import { z } from 'zod';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
-import { Location, SearchSpotByCategoryParams, Spot, TravelPlanType, TripInfo } from '@/types/plan';
-import { placeTypeGroups } from '@/data/dummyData';
+import {
+  Coordination,
+  PlanErrorType,
+  SearchSpotByCategoryParams,
+  Spot,
+  TransportMethods,
+  TransportNodeType,
+  TravelModeType,
+  TravelPlanType,
+  TripInfo,
+} from '@/types/plan';
 
-import { removeTimeFromDate } from './utils';
+import { formatOpeningHours } from './google-maps';
+import { getPrefectures } from './algorithm';
 
 export const schema = z.object({
   title: z
@@ -15,45 +24,45 @@ export const schema = z.object({
     .min(1, { message: 'タイトルは必須です' })
     .max(50, { message: 'タイトルの上限を超えています。50文字以下で入力してください' }),
   imageUrl: z.string().url().optional(),
-  startDate: z.date({ message: '予定日の開始日を入力してください' }),
-  endDate: z.date({ message: '予定日の終了日を入力してください' }),
+  startDate: z.string().date('予定日の終了日を入力してください'),
+  endDate: z.string().date('予定日の終了日を入力してください'),
   tripInfo: z.array(
     z.object({
-      date: z.date(),
-      genreId: z.number(),
-      transportationMethod: z.array(z.number()).refine((value) => value.some((item) => item), {
-        message: '移動手段は最低でも1つ以上選択してください',
-      }),
+      date: z.string(),
+      genreId: z.number().default(1),
+      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }),
       memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     }),
   ),
   plans: z.array(
     z.object({
-      date: z.date(),
-      departure: z.object({
-        name: z.string().min(1, { message: '出発地は必須です' }),
-        latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-        longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
-      }),
-      destination: z.object({
-        name: z.string().min(1, { message: '目的地は必須です' }),
-        latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-        longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
-      }),
+      date: z.string().date(),
       spots: z.array(
         z.object({
           id: z.string(),
-          name: z.string().min(1, { message: '観光地名は必須です' }),
-          latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-          longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
-          stayStart: z.string().time(),
-          stayEnd: z.string().time(),
+          location: z.object({
+            name: z.string().min(1, { message: '観光地名は必須です' }),
+            lat: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
+            lng: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
+          }),
+          stayStart: z.string().time().optional(),
+          stayEnd: z.string().time().optional(),
           memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
           image: z.string().url().optional(),
           rating: z.number().optional(),
-          category: z.array(z.string()),
+          category: z.array(z.string()).optional(),
           catchphrase: z.string().optional(),
           description: z.string().optional(),
+          transports: z
+            .object({
+              transportMethodIds: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
+              travelTime: z.string().optional(),
+              cost: z.number().optional(),
+              fromType: z.nativeEnum(TransportNodeType),
+              toType: z.nativeEnum(TransportNodeType),
+            })
+            .optional(),
+          order: z.number().default(0),
           nearestStation: z
             .object({
               name: z.string(),
@@ -71,48 +80,55 @@ export const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 interface FormState {
+  id?: string;
   title: string;
   imageUrl?: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string;
+  endDate: string;
   tripInfo: TripInfo[];
   plans: TravelPlanType[];
+  departureHistory: Coordination[];
+  destinationHistory: Coordination[];
   errors: Partial<Record<keyof FormData, string>>;
   tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
-  planErrors: Partial<Record<string, Partial<Record<keyof TravelPlanType, string>>>>;
+  planErrors: Record<string, Record<PlanErrorType, string>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
+  setDepartureHistory: (history: Coordination[]) => void;
+  setDestinationHistory: (history: Coordination[]) => void;
+  getTripInfo: (date: string) => TripInfo;
   setTripInfo: (
-    date: Date,
+    date: string,
     name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
-    value: Date | number | number[] | string,
+    value: string | number,
   ) => void;
-  simulationStatus: { date: Date; status: number }[] | null;
-  setSimulationStatus: (status: { date: Date; status: number }) => void;
-  setPlan: (date: Date, name: 'destination' | 'departure', value: Location) => void;
-  setSpots: (date: Date, spot: Spot, isDeleted: boolean) => void;
+  getSpotInfo: (date: string, type: TransportNodeType) => Spot[];
+  simulationStatus: { date: string; status: number }[] | null;
+  setSimulationStatus: (status: { date: string; status: number }) => void;
+  setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
+  editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
+  getSortedSpots: (date: string) => Spot[];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
-  setTripInfoErrors: (date: Date, errors: Partial<Record<keyof TripInfo, string>>) => void;
-  setSpotErrors: (date: Date, errors: Partial<Record<keyof Spot, string>>) => void;
-  setPlanErrors: (date: Date, errors: Partial<Record<keyof TravelPlanType, string>>) => void;
-  setRangeDate: (date: DateRange | undefined) => void;
+  setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
+  setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
+  setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
+  setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
+  getSpotCoordination: (date: string) => Record<string, Spot>;
   resetErrors: () => void;
   resetForm: () => void;
 }
 
 export const useStoreForPlanning = create<FormState>()(
   immer(
-    devtools((set) => ({
+    devtools((set, get) => ({
       title: '',
       imageUrl: '',
-      startDate: new Date(),
-      endDate: new Date(),
+      startDate: new Date().toLocaleDateString('sv-SE'),
+      endDate: new Date().toLocaleDateString('sv-SE'),
       tripInfo: [],
       plans: [
         {
-          date: new Date(),
-          departure: { name: '', latitude: 34.7335, longitude: 135.5003 },
-          destination: { name: '', latitude: 34.7335, longitude: 135.5003 },
+          date: new Date().toLocaleDateString('sv-SE'),
           spots: [],
         },
       ],
@@ -120,9 +136,7 @@ export const useStoreForPlanning = create<FormState>()(
       setSimulationStatus: (status) => {
         set((state) => {
           if (state.simulationStatus) {
-            const existingStatusIndex = state.simulationStatus.findIndex(
-              (info) => info.date.toLocaleDateString('ja-JP') === status.date.toLocaleDateString('ja-JP'),
-            );
+            const existingStatusIndex = state.simulationStatus.findIndex((info) => info.date === status.date);
             if (existingStatusIndex >= 0) {
               state.simulationStatus[existingStatusIndex] = {
                 ...state.simulationStatus[existingStatusIndex],
@@ -130,14 +144,14 @@ export const useStoreForPlanning = create<FormState>()(
               };
             } else {
               state.simulationStatus.push({
-                date: removeTimeFromDate(status.date),
+                date: status.date,
                 status: status.status,
               });
             }
           } else {
             state.simulationStatus = [
               {
-                date: removeTimeFromDate(status.date),
+                date: status.date,
                 status: status.status,
               },
             ];
@@ -148,11 +162,33 @@ export const useStoreForPlanning = create<FormState>()(
       tripInfoErrors: {},
       spotErrors: {},
       planErrors: {},
+      departureHistory: [],
+      destinationHistory: [],
+      setDepartureHistory: (history) => set((state) => ({ ...state, departureHistory: history })),
+      setDestinationHistory: (history) => set((state) => ({ ...state, destinationHistory: history })),
+      getSpotInfo: (date, type) => {
+        const plansForDate = get().plans.filter((plan) => plan.date === date);
+        if (plansForDate.length > 0) {
+          if (type === TransportNodeType.DEPARTURE) {
+            return plansForDate[0].spots.filter((spot) => spot.transports?.fromType === type);
+          } else if (type === TransportNodeType.DESTINATION) {
+            return plansForDate[0].spots.filter((spot) => spot.transports?.toType === type);
+          } else if (type === TransportNodeType.SPOT) {
+            return plansForDate[0].spots
+              .filter((spot) => spot.transports?.fromType === type && spot.transports?.toType === type)
+              .sort((a, b) => a.order - b.order);
+          } else {
+            return [...plansForDate[0].spots].sort((a, b) => a.order - b.order);
+          }
+        }
+        return [];
+      },
+      getTripInfo: (date) => {
+        return get().tripInfo.find((info) => info.date == date);
+      },
       setTripInfo: (date, name, value) => {
         set((state) => {
-          const existingTripInfoIndex = state.tripInfo.findIndex(
-            (info) => info.date.toDateString() === date.toDateString(),
-          );
+          const existingTripInfoIndex = state.tripInfo.findIndex((info) => info.date === date);
 
           if (existingTripInfoIndex >= 0) {
             state.tripInfo[existingTripInfoIndex] = {
@@ -161,49 +197,26 @@ export const useStoreForPlanning = create<FormState>()(
             };
           } else {
             state.tripInfo.push({
-              date: removeTimeFromDate(date),
+              date: date,
               genreId: name === 'genreId' ? Number(value) : 0,
-              transportationMethod: name === 'transportationMethod' ? (value as number[]) : [],
+              transportationMethod: name === 'transportationMethod' ? (value as number) : 1,
               memo: name === 'memo' ? (value as string) : '',
-            });
-          }
-        });
-      },
-      setPlan: (date, name, value) => {
-        set((state) => {
-          const existingTripInfoIndex = state.plans.findIndex(
-            (info) => info.date.toDateString() === date.toDateString(),
-          );
-          if (existingTripInfoIndex >= 0) {
-            state.plans[existingTripInfoIndex] = {
-              ...state.plans[existingTripInfoIndex],
-              [name]:
-                name === 'destination' || name === 'departure'
-                  ? { name: value.name, latitude: value.latitude, longitude: value.longitude }
-                  : value,
-            };
-          } else {
-            state.plans.push({
-              date: removeTimeFromDate(date),
-              destination:
-                name === 'destination'
-                  ? { name: value.name, latitude: value.latitude, longitude: value.longitude }
-                  : { name: '', latitude: 0, longitude: 0 },
-              departure:
-                name === 'departure'
-                  ? { name: value.name, latitude: value.latitude, longitude: value.longitude }
-                  : { name: '', latitude: 0, longitude: 0 },
-              spots: [],
             });
           }
         });
       },
       setSpots: (date, spot, isDeleted = false) => {
         set((state) => {
-          const existingPlansIndex = state.plans.findIndex(
-            (info) => info.date.toLocaleDateString('ja-JP') === date.toLocaleDateString('ja-JP'),
-          );
+          const existingPlansIndex = state.plans.findIndex((info) => info.date === date);
+          if (existingPlansIndex < 0) {
+            state.plans.push({
+              date: date,
+              spots: [spot],
+            });
+            return;
+          }
           const existingSpotIndex = state.plans[existingPlansIndex].spots.findIndex((info) => info.id === spot.id);
+
           if (existingSpotIndex >= 0 && !isDeleted) {
             state.plans[existingPlansIndex].spots[existingSpotIndex] = spot;
           } else if (existingSpotIndex >= 0 && isDeleted) {
@@ -221,7 +234,7 @@ export const useStoreForPlanning = create<FormState>()(
       setErrors: (errors) => set((state) => ({ ...state, errors })),
       setTripInfoErrors: (date, errors) =>
         set((state) => {
-          const dateKey = date.toLocaleDateString('ja-JP');
+          const dateKey = date;
           state.tripInfoErrors[dateKey] = {
             ...state.tripInfoErrors[dateKey],
             ...errors,
@@ -230,7 +243,7 @@ export const useStoreForPlanning = create<FormState>()(
         }),
       setPlanErrors: (date, errors) =>
         set((state) => {
-          const dateKey = date.toLocaleDateString('ja-JP');
+          const dateKey = date;
           state.planErrors[dateKey] = {
             ...state.planErrors[dateKey],
             ...errors,
@@ -239,13 +252,55 @@ export const useStoreForPlanning = create<FormState>()(
         }),
       setSpotErrors: (date, errors) =>
         set((state) => {
-          const dateKey = date.toLocaleDateString('ja-JP');
+          const dateKey = date;
           state.spotErrors[dateKey] = {
             ...state.spotErrors[dateKey],
             ...errors,
           };
+
           return state;
         }),
+      editSpots: (date, spotId, updatedSpot) => {
+        set((state) => {
+          const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
+
+          if (plansForDateIndex >= 0) {
+            const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === spotId);
+            if (spotIndex >= 0) {
+              state.plans[plansForDateIndex].spots[spotIndex] = {
+                ...state.plans[plansForDateIndex].spots[spotIndex],
+                ...updatedSpot,
+              };
+            } else {
+              console.warn(`Spot with id ${spotId} not found in plans for date ${date}`);
+            }
+          } else {
+            console.warn(`No plans found for date ${date}`);
+          }
+        });
+      },
+      getSpotCoordination: (date: string) => {
+        const plansForDate = get().plans.find((plan) => plan.date === date);
+        if (plansForDate) {
+          const departureSpot = plansForDate.spots.find(
+            (spot) => spot.transports?.fromType === TransportNodeType.DEPARTURE,
+          );
+          const destinationSpot = plansForDate.spots.find(
+            (spot) => spot.transports?.toType === TransportNodeType.DESTINATION,
+          );
+          const spotCoordination = plansForDate.spots.filter(
+            (spot) =>
+              spot.transports?.fromType === TransportNodeType.SPOT &&
+              spot.transports?.toType === TransportNodeType.SPOT,
+          );
+
+          return {
+            departureCoordination: departureSpot,
+            destinationCoordination: destinationSpot,
+            spotCoordination: spotCoordination,
+          };
+        }
+      },
       resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),
     })),
@@ -275,27 +330,40 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
   )) as google.maps.PlacesLibrary;
 
   // Restrict within the map viewport.
-  const center = new google.maps.LatLng(params.center.lat, params.center.lng);
 
   // 複数ジャンルを指定した場合にgoogle docsのtypeを使用
   //https://developers.google.com/maps/documentation/places/web-service/place-types?hl=ja&_gl=1*tofb5y*_up*MQ..*_ga*MTQ4MDA4MDA0Mi4xNzQzODkxMDQ4*_ga_NRWSTWS78N*MTc0Mzg5MTA0Ny4xLjEuMTc0Mzg5MTMxNy4wLjAuMA..
-  const searchCategoryList: string[] = [];
-  params.genreIds?.forEach((genreId) => {
-    searchCategoryList.push(...placeTypeGroups[genreId]);
-  });
+  const searchCategoryList: string[] = params.genreIds ?? [];
 
   const placeToSpot = (place: google.maps.places.Place): Spot => ({
     id: place.id,
-    name: place.displayName ?? '',
-    image: place.photos?.[0]?.getURI() ?? '',
-    url: place.googleMapsURI ?? '',
+    location: {
+      id: place.id,
+      name: place.displayName ?? '',
+      lat: place.location?.lat() ?? 0,
+      lng: place.location?.lng() ?? 0,
+    },
+    // image: place.photos?.[0]?.getURI() ?? '',
+    // TODO: 画像課金対策のため一旦デフォルト画像にする
+    image: '/scene.webp',
+    url: place.websiteURI ?? '',
     rating: place.rating ?? 0,
-    latitude: place.location?.lat() ?? 0,
-    longitude: place.location?.lng() ?? 0,
-    stayStart: '09:00', // TODO: 仮置き
-    stayEnd: '10:00', // TODO: 仮置き
-    category: place.types ?? [], // TODO: 日本語化
-    transport: { name: '徒歩', time: '30分' }, // TODO: 仮置き
+    stayStart: '09:00',
+    stayEnd: '10:00',
+    description: place.editorialSummary ?? '説明なし',
+    category: place.types, // TODO: 日本語化
+    prefecture: getPrefectures(place.addressComponents),
+    address: place.formattedAddress ?? '',
+    ratingCount: place.userRatingCount ?? 0,
+    regularOpeningHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
+    transports: {
+      transportMethod: 1,
+      name: 'WALKING',
+      travelTime: '不明',
+      fromType: TransportNodeType.SPOT,
+      toType: TransportNodeType.SPOT,
+    },
+    order: 0,
   });
 
   const fields = [
@@ -303,19 +371,26 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     'location',
     'businessStatus',
     'googleMapsURI',
-    'photos',
+    // 'photos',
     'rating',
     'types',
     'primaryType',
     'primaryTypeDisplayName',
     'attributions',
     'regularOpeningHours',
+    'editorialSummary',
+    'websiteURI',
+    'priceLevel',
+    'userRatingCount',
+    'formattedAddress',
+    'addressComponents',
   ];
 
   if (params.searchWord) {
     const request: google.maps.places.SearchByTextRequest = {
       textQuery: params.searchWord,
       fields: fields,
+      locationRestriction: params.center ? new google.maps.LatLngBounds(params.center) : undefined,
       maxResultCount: params.maxResultLimit,
       rankPreference:
         params.sortOption === 'distance' ? SearchByTextRankPreference.DISTANCE : SearchByTextRankPreference.RELEVANCE,
@@ -326,6 +401,11 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
 
     return places?.map(placeToSpot) ?? [];
   } else {
+    // TODO: 一旦保留
+    if (!params.center) {
+      return [];
+    }
+    const center = new google.maps.LatLng(params.center.lat, params.center.lng);
     const request: google.maps.places.SearchNearbyRequest = {
       // required parameters
       fields: fields,
@@ -344,6 +424,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       region: 'JP',
     };
     const { places } = await Place.searchNearby(request);
+
     return places?.map(placeToSpot) ?? [];
   }
 }
@@ -352,19 +433,24 @@ export type RouteResult = {
   path: google.maps.LatLngLiteral[];
   distance: string;
   duration: string;
+  travelMode: TravelModeType;
 };
 
 export const getRoute = async (
   origin: { lat: number; lng: number },
   destination: { lat: number; lng: number },
-  travelMode: google.maps.TravelMode = google.maps.TravelMode.WALKING,
+  travelMode: TravelModeType = 'WALKING',
 ): Promise<RouteResult> => {
   try {
     const directionsService = new google.maps.DirectionsService();
+    if (travelMode === 'DEFAULT') {
+      travelMode = 'WALKING';
+    }
+    const searchForTravelMode: google.maps.TravelMode = google.maps.TravelMode[travelMode];
     const result = await directionsService.route({
       origin,
       destination,
-      travelMode,
+      travelMode: searchForTravelMode,
     });
 
     if (result.routes[0]) {
@@ -375,6 +461,7 @@ export const getRoute = async (
         })),
         distance: result.routes[0].legs[0].distance?.text || '',
         duration: result.routes[0].legs[0].duration?.text || '',
+        travelMode: travelMode || 'DEFAULT',
       };
     }
   } catch (error) {
@@ -386,5 +473,6 @@ export const getRoute = async (
     path: [origin, destination],
     distance: '',
     duration: '',
+    travelMode: 'DEFAULT',
   };
 };

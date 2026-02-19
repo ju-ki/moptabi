@@ -7,8 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 type TripCardProps = {
   id: string | number;
   title: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: string;
+  endDate: string;
   imageUrl?: string;
 };
 

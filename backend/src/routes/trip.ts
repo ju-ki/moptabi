@@ -157,3 +157,53 @@ export const createTripRoute = createRoute({
     },
   },
 });
+
+export const getTripCountRoute = createRoute({
+  method: 'get',
+  path: '/count',
+  tags: ['Trip'],
+  summary: 'プランの作成数と上限を取得',
+  responses: {
+    200: {
+      description: 'プラン数と上限を返却',
+      content: {
+        'application/json': {
+          schema: z.object({
+            count: z.number(),
+            limit: z.number(),
+          }),
+        },
+      },
+    },
+    500: {
+      description: 'プラン数取得時のエラー',
+    },
+  },
+});
+
+export const getDepartureAndDepartment = createRoute({
+  method: 'get',
+  path: '/',
+  tags: ['DepartureAndDestination'],
+  summary: 'ユーザーの出発地と目的地の履歴を取得',
+  responses: {
+    200: {
+      description: '出発地と目的地の履歴を返却',
+      content: {
+        'application/json': {
+          schema: z.array(
+            z.object({
+              id: z.number(),
+              name: z.string(),
+              lat: z.number(),
+              lng: z.number(),
+            }),
+          ),
+        },
+      },
+    },
+    500: {
+      description: '出発地と目的地の履歴取得時のエラー',
+    },
+  },
+});

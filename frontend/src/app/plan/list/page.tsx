@@ -4,8 +4,10 @@ import useSWR from 'swr';
 
 import { TripCard } from '@/components/TripCard';
 import { TripSearchForm } from '@/components/TripSearchForm';
-import { FormData } from '@/lib/plan';
 import { useFetcher } from '@/hooks/use-fetcher';
+import { ResponseTripType } from '@/types/plan';
+import { LimitDisplay } from '@/components/common/LimitDisplay';
+import { APP_LIMITS } from '@/data/constants';
 
 export default function TripsPage() {
   const { getFetcher } = useFetcher();
@@ -14,18 +16,30 @@ export default function TripsPage() {
   if (error) return <div>エラーが発生しました</div>;
   if (isLoading) return <div>読み込み中...</div>;
 
+  const tripCount = (trips as ResponseTripType[])?.length ?? 0;
+
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">旅行プラン一覧</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">旅行プラン一覧</h1>
+          {/* プラン数表示 */}
+          <LimitDisplay
+            current={tripCount}
+            limit={APP_LIMITS.MAX_PLANS}
+            label=""
+            size="md"
+            data-testid="plan-count-display"
+          />
+        </div>
         <TripSearchForm />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(trips as FormData[]).map((trip, idx) => (
+        {(trips as ResponseTripType[]).map((trip, idx) => (
           <TripCard
-            key={idx}
-            id={idx}
+            key={trip.id}
+            id={trip.id}
             title={trip.title}
             startDate={trip.startDate}
             endDate={trip.endDate}

@@ -1,22 +1,41 @@
+import z from 'zod';
+
+import { placeTypeMap } from '@/data/constants';
+import { OpeningHoursSchema } from '@/models/spot';
+
 export type Location = {
   name: string;
   latitude: number;
   longitude: number;
-  transport?: {
-    name: string;
-    time: string;
-  };
 };
 
 export type Coordination = {
+  id: string;
   lat: number;
   lng: number;
+  name: string;
 };
 
-type Transport = {
-  name: string; // 例: "電車" | "バス"
-  time: string; // 例: "30分"
+export type Transport = {
+  transportMethod: number;
+  name: TravelModeType; // 例: "電車" | "バス"
+  cost?: number;
+  travelTime: string; // 例: "30分"
+  fromType: TransportNodeType;
+  toType: TransportNodeType;
 };
+
+export type TransportMethods = {
+  id: number;
+  name: TravelModeType; // 例: "電車" | "バス"
+};
+
+export enum TransportNodeType {
+  DEPARTURE = 'DEPARTURE',
+  DESTINATION = 'DESTINATION',
+  SPOT = 'SPOT',
+  ALL = 'ALL',
+}
 
 type NearestStation = {
   name: string; // 最寄駅の名前
@@ -26,44 +45,119 @@ type NearestStation = {
 };
 
 export type TripInfo = {
-  date: Date;
+  date: string;
   genreId: number;
-  transportationMethod: number[];
+  transportationMethod: number;
   memo?: string;
 };
 
 export type Spot = {
   id: string;
-  name: string;
-  latitude: number;
-  longitude: number;
+  location: Coordination;
   stayStart: string;
   stayEnd: string;
-  transport: Transport;
+  transports: Transport;
   url?: string;
   memo?: string;
-  image?: string; // 画像URL (省略可能)
-  rating: number; // 例: 4.7
-  category: string[]; // 例: ["文化", "歴史"]
+  image?: string; // 画像URL(省略可能)
+  rating?: number; // 例: 4.7
+  category?: string[]; // 例: ["文化", "歴史"]
   catchphrase?: string; // キャッチコピー
   description?: string; // 説明文
+  prefecture?: string | null;
+  address?: string;
+  ratingCount?: number;
+  regularOpeningHours?: OpeningHoursType;
   nearestStation?: NearestStation; // 最寄駅
+  order: number;
+  // 行きたいリスト用のプロパティ
+  priority?: number; // 優先度（1-5）
+  createdAt?: string; // 登録日時
+  // 過去のスポット用のプロパティ
+  visitCount?: number; // 訪問回数
+  visitedAt?: string; // 前回訪問日時
+  planDate?: string; // 計画日
+  planTitle?: string; // 計画タイトル
 };
 
 export type TravelPlanType = {
-  date: Date;
-  departure: Location;
-  destination: Location;
+  date: string;
   spots: Spot[];
 };
 
-export type PlaceTypeGroupKey = 'culture' | 'nature' | 'leisure' | 'gourmet';
+export type PlanErrorType = 'spots' | 'departure' | 'destination' | 'transportationMethod' | 'genreId' | 'memo';
+
+export type ResponseTripType = {
+  id: number;
+  title: string;
+  imageUrl?: string;
+  startDate: string;
+  endDate: string;
+  tripInfo: ResponseTripInfoType[];
+  plans: ResponsePlanType[];
+};
+
+export type ResponseTripInfoType = {
+  date: string;
+  genreId: number;
+  transportationMethod: number;
+  memo?: string;
+};
+
+export type ResponsePlanType = {
+  id: number;
+  tripId: number;
+  date: string;
+  planSpots: ResponsePlanSpotType[];
+};
+
+export type ResponsePlanSpotType = {
+  id: number;
+  plan: ResponsePlanType;
+  planId: number;
+  spot: ResponseSpotType;
+  spotId: string;
+  stayStart: string;
+  stayEnd: string;
+  fromLocation: Transport[];
+  toLocation: Transport[];
+  memo?: string;
+  order: number;
+};
+
+export type ResponseSpotType = {
+  id: string;
+  meta: ResponseSpotMetaType;
+  nearestStation: NearestStation;
+};
+
+export type ResponseSpotMetaType = {
+  id: string;
+  spotId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  image?: string;
+  url?: string;
+  rating: number;
+  prefecture?: string | null;
+  address?: string;
+  ratingCount?: number;
+  openingHours?: OpeningHoursType;
+  categories: string[];
+  catchphrase?: string;
+  description?: string;
+};
+
+export type PlaceTypeGroupKey = keyof typeof placeTypeMap;
+
+export type OpeningHoursType = z.infer<typeof OpeningHoursSchema>;
 
 export type SortOption = 'popularity' | 'distance';
 
 export type SearchSpotByCategoryParams = {
   genreIds?: PlaceTypeGroupKey[]; //ジャンルリスト
-  center: Coordination; //基準となる地点
+  center?: Coordination; //基準となる地点
   radius: number; //半径
   sortOption: SortOption; //ソートオプション
   maxResultLimit: number; //最大取得件数
@@ -77,3 +171,12 @@ export type Notification = {
   createdAt: Date;
   isRead: boolean;
 };
+
+export type TravelModeType = 'DRIVING' | 'TRANSIT' | 'WALKING' | 'BICYCLING' | 'DEFAULT';
+
+export type TravelModeTypeForDisplay = Partial<{
+  [key in TravelModeType]: {
+    icon: React.ReactNode;
+    label: string;
+  };
+}>;
