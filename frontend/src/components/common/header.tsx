@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { MenuIcon } from 'lucide-react';
 import useSWR from 'swr';
+import { useState } from 'react';
 
 import { useFetcher } from '@/hooks/use-fetcher';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ interface UserData {
 }
 
 const Header = () => {
+  const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
   const { data: session, status } = useSession();
   const { getFetcher } = useFetcher();
   const router = useRouter();
@@ -89,7 +91,7 @@ const Header = () => {
 
       <div className="ml-auto flex items-center space-x-4 lg:hidden">
         {isAuthenticated && (
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="lg:hidden">
                 <SheetTitle className="sr-only">ハンバーガーメニュー</SheetTitle>
@@ -104,6 +106,7 @@ const Header = () => {
                 {isAdmin && (
                   <Link
                     href="/admin"
+                    onClick={() => setIsSheetOpen(false)}
                     className="text-sm font-medium hover:underline underline-offset-4"
                     prefetch={false}
                   >
@@ -112,16 +115,23 @@ const Header = () => {
                 )}
                 <Link
                   href="/wishlist"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
                   行きたいリスト
                 </Link>
-                <Link href="/" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+                <Link
+                  href="/"
+                  onClick={() => setIsSheetOpen(false)}
+                  className="text-sm font-medium hover:underline underline-offset-4"
+                  prefetch={false}
+                >
                   トップへ
                 </Link>
                 <Link
                   href="/plan/create"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
@@ -129,6 +139,7 @@ const Header = () => {
                 </Link>
                 <Link
                   href="/plan/list"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
@@ -136,13 +147,17 @@ const Header = () => {
                 </Link>
                 <Link
                   href="/mypage"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
                   マイページ
                 </Link>
                 <button
-                  onClick={handleSignOut}
+                  onClick={() => {
+                    handleSignOut();
+                    setIsSheetOpen(false);
+                  }}
                   className="text-sm font-medium hover:underline underline-offset-4 text-left"
                 >
                   ログアウト
