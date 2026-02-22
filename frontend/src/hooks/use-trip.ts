@@ -29,6 +29,17 @@ export const useFetchTripDetail = (tripId?: string) => {
       credentials: 'include',
     });
 
+    if (!response.ok) {
+      let errorMessage = `旅行計画の作成に失敗しました (${response.status})`;
+      try {
+        const errorResult = await response.json();
+        errorMessage = errorResult.message ?? errorMessage;
+      } catch {
+        // response body is not JSON; use the default error message
+      }
+      throw new Error(errorMessage);
+    }
+
     const result = await response.json();
 
     return result.id; // 作成された旅行計画のid
