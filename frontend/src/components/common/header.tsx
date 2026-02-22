@@ -2,6 +2,7 @@
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { MenuIcon } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -23,6 +24,14 @@ interface UserData {
 const Header = () => {
   const { data: session, status } = useSession();
   const { getFetcher } = useFetcher();
+  const router = useRouter();
+
+  // ログアウト処理（本番環境での問題を回避）
+  const handleSignOut = async () => {
+    await signOut({ redirect: false });
+    router.push('/');
+    router.refresh();
+  };
 
   // ユーザー情報を取得（roleを含む）
   const { data: userData } = useSWR<UserData>(
@@ -70,7 +79,7 @@ const Header = () => {
               マイページ
             </Link>
             <Notification />
-            <Button onClick={async () => await signOut({ redirectTo: '/' })}>ログアウト</Button>
+            <Button onClick={handleSignOut}>ログアウト</Button>
           </>
         )}
         {!isAuthenticated && !isLoading && (
@@ -133,7 +142,7 @@ const Header = () => {
                   マイページ
                 </Link>
                 <button
-                  onClick={async () => await signOut({ redirectTo: '/' })}
+                  onClick={handleSignOut}
                   className="text-sm font-medium hover:underline underline-offset-4 text-left"
                 >
                   ログアウト
