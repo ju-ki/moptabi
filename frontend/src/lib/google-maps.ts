@@ -21,7 +21,7 @@ export const formatOpeningHours = (periods: google.maps.places.OpeningHoursPerio
 
   periods.forEach((period) => {
     if (!period.open) {
-      return [{ day: getDayName(8), hours: '営業時間情報なし' }];
+      return;
     }
     const day = period.open.day;
     // Places API (New) では hours/minutes プロパティを使用
