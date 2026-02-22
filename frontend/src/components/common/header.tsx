@@ -2,6 +2,7 @@
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { MenuIcon } from 'lucide-react';
 import useSWR from 'swr';
 
@@ -23,6 +24,14 @@ interface UserData {
 const Header = () => {
   const { data: session, status } = useSession();
   const { getFetcher } = useFetcher();
+  const router = useRouter();
+
+  // ログアウト処理（本番環境での問題を回避）
+  const handleSignOut = async () => {
+    await signOut({ redirect: false });
+    router.push('/');
+    router.refresh();
+  };
 
   // ユーザー情報を取得（roleを含む）
   const { data: userData } = useSWR<UserData>(
@@ -70,10 +79,12 @@ const Header = () => {
               マイページ
             </Link>
             <Notification />
-            <Button onClick={() => signOut()}>ログアウト</Button>
+            <Button onClick={handleSignOut}>ログアウト</Button>
           </>
         )}
-        {!isAuthenticated && !isLoading && <Button onClick={async () => await signIn('google')}>ログイン</Button>}
+        {!isAuthenticated && !isLoading && (
+          <Button onClick={async () => await signIn('google', { redirectTo: '/mypage' })}>ログイン</Button>
+        )}
       </div>
 
       <div className="ml-auto flex items-center space-x-4 lg:hidden">
@@ -131,7 +142,7 @@ const Header = () => {
                   マイページ
                 </Link>
                 <button
-                  onClick={() => signOut()}
+                  onClick={handleSignOut}
                   className="text-sm font-medium hover:underline underline-offset-4 text-left"
                 >
                   ログアウト
@@ -140,7 +151,9 @@ const Header = () => {
             </SheetContent>
           </Sheet>
         )}
-        {!isAuthenticated && !isLoading && <Button onClick={async () => await signIn('google')}>ログイン</Button>}
+        {!isAuthenticated && !isLoading && (
+          <Button onClick={async () => await signIn('google', { redirectTo: '/mypage' })}>ログイン</Button>
+        )}
       </div>
     </header>
   );
