@@ -79,5 +79,5 @@ export const useFetcher = () => {
     return response.json();
   };
 
-  return { getFetcher, postFetcher, deleteFetcher };
+  return { getFetcher, postFetcher, deleteFetcher, getAuthHeaders };
 };

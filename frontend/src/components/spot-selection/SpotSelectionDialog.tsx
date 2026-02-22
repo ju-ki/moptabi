@@ -86,17 +86,15 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
             <DialogTitle>観光地を検索</DialogTitle>
             <DialogDescription>
               {/* 上限表示とメッセージ */}
-              <div className="flex items-center justify-between mt-2">
-                <LimitDisplay
-                  current={currentSpotCount}
-                  limit={APP_LIMITS.MAX_SPOTS_PER_DAY}
-                  label="本日のスポット"
-                  data-testid="spot-count-display"
-                />
-                {!isLimitReached && remainingCount <= 3 && (
-                  <span className="text-yellow-600 text-sm">あと{remainingCount}件追加できます</span>
-                )}
-              </div>
+              <LimitDisplay
+                current={currentSpotCount}
+                limit={APP_LIMITS.MAX_SPOTS_PER_DAY}
+                label="本日のスポット"
+                data-testid="spot-count-display"
+              />
+              {!isLimitReached && remainingCount <= 3 && (
+                <span className="text-yellow-600 text-sm">あと{remainingCount}件追加できます</span>
+              )}
             </DialogDescription>
           </DialogHeader>
 

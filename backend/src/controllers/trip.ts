@@ -326,26 +326,13 @@ export const getTripHandler = {
       });
     });
 
-    // レスポンス形式を整形
+    // 作成した旅行計画のidを渡してリダイレクト用に使用させる
     if (createdTrip) {
-      const formattedTrip = {
-        ...createdTrip,
-        tripInfo: createdTrip.tripInfos,
-        plans: createdTrip.plans.map((p) => ({
-          ...p,
-          planSpots: p.planSpots.map((ps) => ({
-            ...ps,
-            spot: {
-              ...ps.spot,
-              meta: getMeta(ps.spot),
-            },
-          })),
-        })),
+      const responseTrip = {
+        id: createdTrip.id,
       };
-      return c.json(formattedTrip, 201);
+      return c.json(responseTrip, 201);
     }
-
-    return c.json(createdTrip, 201);
   },
 
   /**
