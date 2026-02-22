@@ -8,6 +8,8 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
 import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
+import { useFetchTripDetail } from '@/hooks/use-trip';
+import { TripType } from '@/types/trip';
 
 import { Button } from './ui/button';
 
@@ -15,11 +17,7 @@ const CreatePlanButton = () => {
   const fields = useStoreForPlanning();
   const router = useRouter();
   const { toast } = useToast();
-  const { postFetcher } = useFetcher();
-  const { trigger: createTripTrigger } = useSWRMutation(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/create`,
-    postFetcher,
-  );
+  const { postTrip } = useFetchTripDetail();
 
   const checkValidation = () => {
     let isError = false;
@@ -88,19 +86,22 @@ const CreatePlanButton = () => {
 
   const handleCreatePlan = async () => {
     try {
-      const newData: formType = {
+      const newData: TripType = {
         title: fields.title,
         imageUrl: fields.imageUrl,
         startDate: fields.startDate,
         endDate: fields.endDate,
         tripInfo: fields.tripInfo,
-        // @ts-expect-error //TODO:後ほど修正
         plans: fields.plans,
       };
       if (!checkValidation()) {
-        const result = await createTripTrigger({ data: newData, isMulti: false });
+        const resultId = await postTrip(newData);
         toast({ title: '旅行計画が作成されました', description: '旅行計画の作成に成功しました。', variant: 'success' });
-        router.push(`/plan/${result.id}`);
+        if (resultId) {
+          router.push(`/plan/${resultId}`);
+        } else {
+          router.push('/plan/list');
+        }
       } else {
         toast({
           title: '入力項目に一部不備があります',

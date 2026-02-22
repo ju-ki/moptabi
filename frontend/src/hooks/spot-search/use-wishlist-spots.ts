@@ -1,7 +1,7 @@
 import useSWR from 'swr';
 
 import { useFetcher } from '@/hooks/use-fetcher';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { OpeningHoursType, Spot, TransportNodeType } from '@/types/plan';
 
 type WishlistSpot = {
   id: number;
@@ -26,7 +26,8 @@ type WishlistSpot = {
       address: string;
       rating: number | null;
       catchphrase: string | null;
-      openingHours: string | null;
+      // 営業時間の型がおかしい
+      openingHours: OpeningHoursType;
     };
   };
 };
@@ -90,7 +91,7 @@ export function useWishlistSpots(options?: WishlistSpotsQueryOptions) {
     prefecture: item.spot.meta.prefecture ?? undefined,
     address: item.spot.meta.address,
     catchphrase: item.spot.meta.catchphrase ?? undefined,
-    regularOpeningHours: item.spot.meta.openingHours ? [{ day: '', hours: item.spot.meta.openingHours }] : undefined,
+    regularOpeningHours: item.spot.meta.openingHours ? item.spot.meta.openingHours : undefined,
     // wishlist 固有のデータ
     priority: item.priority,
     memo: item.memo ?? undefined,

@@ -308,44 +308,10 @@ describe('旅行計画サービス', () => {
         );
         expect(res.status).toBe(201);
         const createdTrip = await res.json();
+        // 作成した旅行計画のidが返却されることを確認
         expect(createdTrip).toHaveProperty('id');
-        expect(createdTrip).toHaveProperty('title', mockTripData.title);
-        expect(Array.isArray(createdTrip.tripInfo)).toBe(true);
-        expect(Array.isArray(createdTrip.plans)).toBe(true);
-
-        // 詳細情報の確認
-        createdTrip.plans.forEach((currentPlan: any) => {
-          expect(currentPlan).toHaveProperty('date');
-          expect(Array.isArray(currentPlan.planSpots)).toBe(true);
-          currentPlan.planSpots.forEach((planSpot: any) => {
-            expect(planSpot).toHaveProperty('id');
-            expect(planSpot).toHaveProperty('stayStart');
-            expect(planSpot).toHaveProperty('stayEnd');
-            expect(planSpot).toHaveProperty('order');
-            expect(planSpot).toHaveProperty('memo');
-            // スポットのmeta情報も確認
-            const spot = planSpot.spot.meta;
-            // 追加のプロパティも確認可能
-            expect(spot).toHaveProperty('url');
-            expect(spot).toHaveProperty('prefecture');
-            expect(spot).toHaveProperty('address');
-            expect(spot).toHaveProperty('rating');
-            expect(spot).toHaveProperty('categories');
-            expect(spot).toHaveProperty('catchphrase');
-            expect(spot).toHaveProperty('description');
-
-            // 登録した内容が得られているかの確認
-            const mockSpotData = mockPlanData.flatMap((plan) => plan.spots).find((s) => s.spotId === planSpot.spotId);
-            if (mockSpotData) {
-              expect(spot.url).toBe(mockSpotData.url);
-              expect(spot.prefecture).toBe(mockSpotData.prefecture);
-              expect(spot.address).toBe(mockSpotData.address);
-              expect(spot.rating).toBe(mockSpotData.rating);
-              expect(spot.catchphrase).toBe(mockSpotData.catchphrase);
-              expect(spot.description).toBe(mockSpotData.description);
-            }
-          });
-        });
+        // 返却されたレスポンスに関係のない値が入っていないことの確認
+        expect(createdTrip).not.toHaveProperty('title');
       }
     });
   });

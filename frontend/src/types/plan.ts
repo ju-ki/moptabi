@@ -34,7 +34,6 @@ export enum TransportNodeType {
   DEPARTURE = 'DEPARTURE',
   DESTINATION = 'DESTINATION',
   SPOT = 'SPOT',
-  ALL = 'ALL',
 }
 
 type NearestStation = {
@@ -64,7 +63,7 @@ export type Spot = {
   category?: string[]; // 例: ["文化", "歴史"]
   catchphrase?: string; // キャッチコピー
   description?: string; // 説明文
-  prefecture?: string | null;
+  prefecture?: string; // 都道府県
   address?: string;
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;

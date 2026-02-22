@@ -1,7 +1,7 @@
 import useSWR from 'swr';
 
 import { useFetcher } from '@/hooks/use-fetcher';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { OpeningHoursType, Spot, TransportNodeType } from '@/types/plan';
 
 type VisitedSpotResponse = {
   id: number;
@@ -26,7 +26,7 @@ type VisitedSpotResponse = {
       address: string;
       rating: number | null;
       catchphrase: string | null;
-      openingHours: string | null;
+      openingHours: OpeningHoursType;
     };
   };
   // 計画から取得した場合に含まれる可能性のある情報
@@ -101,7 +101,7 @@ export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
     prefecture: item.spot.meta.prefecture ?? undefined,
     address: item.spot.meta.address,
     catchphrase: item.spot.meta.catchphrase ?? undefined,
-    regularOpeningHours: item.spot.meta.openingHours ? [{ day: '', hours: item.spot.meta.openingHours }] : undefined,
+    regularOpeningHours: item.spot.meta.openingHours ? item.spot.meta.openingHours : undefined,
     // 訪問・計画情報
     visitedAt: item.visitedAt ?? undefined,
     visitCount: item.visitCount ?? undefined,
