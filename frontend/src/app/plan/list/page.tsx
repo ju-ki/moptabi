@@ -32,7 +32,8 @@ export default function TripsPage() {
             data-testid="plan-count-display"
           />
         </div>
-        <TripSearchForm />
+        {/* TODO: 対応できていない機能のためコメントアウト */}
+        {/* <TripSearchForm /> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

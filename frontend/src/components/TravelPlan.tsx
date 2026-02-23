@@ -27,7 +27,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
     ? fields.simulationStatus.filter((val) => val.date == travelPlan.date)[0]?.status
     : null;
 
-  const spots = fields.getSpotInfo(travelPlan.date, TransportNodeType.ALL);
+  const spots = fields.getSpotInfo(travelPlan.date, null);
 
   const handleDeleteSpot = (id: string) => {
     const updatedSpots = spots.filter((spot) => spot.id == id)[0];
@@ -43,9 +43,9 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
           <Clock className="w-5 h-5 text-gray-400" />
         )}
         {!targetSimulationStatus || targetSimulationStatus === 0 ? (
-          <span>観光地を選択して、上記のシミュレーションボタンを押下してください</span>
+          <span>観光地を選択して、上記のプラン作成ボタンを押下してください</span>
         ) : (
-          <span>シミュレーション中です</span>
+          <span>プラン作成中です</span>
         )}
       </div>
     );

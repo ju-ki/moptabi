@@ -22,10 +22,11 @@ const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
   const { toast } = useToast();
   const { getFetcher, postFetcher } = useFetcher();
-  const { trigger: uploadImageTrigger } = useSWRMutation(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
-    postFetcher,
-  );
+  // TODO: 対応できていない機能のためコメントアウト
+  // const { trigger: uploadImageTrigger } = useSWRMutation(
+  //   `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
+  //   postFetcher,
+  // );
 
   const { trigger: getDepartureAndDepartmentTrigger } = useSWRMutation(
     `${process.env.NEXT_PUBLIC_API_BASE_URL}/spots`,
@@ -51,26 +52,27 @@ const TravelPlanCreate = () => {
     fetchDepartureAndDestination();
   }, []);
 
-  const onUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const formData = new FormData();
-    if (!event.target.files || event.target.files.length === 0) {
-      toast({ title: '画像が選択されていません', description: '画像を選択してください', variant: 'destructive' });
-      return;
-    }
-    formData.append('file', event.target.files[0]);
+  // TODO: 対応できていない機能のためコメントアウト
+  // const onUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  //   const formData = new FormData();
+  //   if (!event.target.files || event.target.files.length === 0) {
+  //     toast({ title: '画像が選択されていません', description: '画像を選択してください', variant: 'destructive' });
+  //     return;
+  //   }
+  //   formData.append('file', event.target.files[0]);
 
-    try {
-      const response = await uploadImageTrigger({ data: formData, isMulti: true });
-      fields.setFields('imageUrl', response.fileName);
-      toast({
-        title: '画像がアップロードされました',
-        description: '画像のアップロードに成功しました。',
-        variant: 'success',
-      });
-    } catch (error) {
-      console.error('Error uploading image:', error);
-    }
-  };
+  //   try {
+  //     const response = await uploadImageTrigger({ data: formData, isMulti: true });
+  //     fields.setFields('imageUrl', response.fileName);
+  //     toast({
+  //       title: '画像がアップロードされました',
+  //       description: '画像のアップロードに成功しました。',
+  //       variant: 'success',
+  //     });
+  //   } catch (error) {
+  //     console.error('Error uploading image:', error);
+  //   }
+  // };
 
   return (
     <div>
@@ -96,7 +98,8 @@ const TravelPlanCreate = () => {
               {fields.errors.title && <span className="text-red-500">{fields.errors.title.toString()}</span>}
             </div>
             {/* イメージ画像 */}
-            <div className="space-y-2">
+            {/*  TODO: 対応できていない機能のためコメントアウト */}
+            {/* <div className="space-y-2">
               <Label>イメージ画像</Label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
                 {fields.imageUrl ? (
@@ -121,7 +124,7 @@ const TravelPlanCreate = () => {
                 )}
                 <Input type="file" multiple accept="image/*" onChange={onUploadImage} />
               </div>
-            </div>
+            </div> */}
             {/* 予定日 */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
