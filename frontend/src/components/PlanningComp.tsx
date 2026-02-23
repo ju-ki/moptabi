@@ -67,11 +67,12 @@ const PlanningComp = ({ date }: { date: string }) => {
       </div>
 
       {/* 作成ボタン */}
-      <div className="space-y-2">
+      {/* TODO: 対応できていない機能のためコメントアウト */}
+      {/* <div className="space-y-2">
         <Button type="button" variant={'outline'} role="button" className="w-full">
           AIによるシミュレート
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 };

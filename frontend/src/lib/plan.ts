@@ -101,7 +101,7 @@ interface FormState {
     name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
     value: string | number,
   ) => void;
-  getSpotInfo: (date: string, type: TransportNodeType) => Spot[];
+  getSpotInfo: (date: string, type: TransportNodeType | null) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
   setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
@@ -166,7 +166,7 @@ export const useStoreForPlanning = create<FormState>()(
       destinationHistory: [],
       setDepartureHistory: (history) => set((state) => ({ ...state, departureHistory: history })),
       setDestinationHistory: (history) => set((state) => ({ ...state, destinationHistory: history })),
-      getSpotInfo: (date, type) => {
+      getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
         if (plansForDate.length > 0) {
           if (type === TransportNodeType.DEPARTURE) {
