@@ -22,7 +22,7 @@ export default auth((req) => {
     // auth()が提供するセッション情報を使用
     if (!req.auth) {
       const signInUrl = new URL('/api/auth/signin', req.url);
-      signInUrl.searchParams.set('callbackUrl', pathname);
+      signInUrl.searchParams.set('callbackUrl', 'mypage'); // サインイン後にリダイレクトするURL
       return NextResponse.redirect(signInUrl);
     }
   }
