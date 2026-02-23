@@ -8,13 +8,23 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import { ResponseTripType } from '@/types/plan';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
 import { APP_LIMITS } from '@/data/constants';
+import LoadingState from '@/components/common/LoadingState';
 
 export default function TripsPage() {
-  const { getFetcher } = useFetcher();
-  const { data: trips, error, isLoading } = useSWR(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips`, getFetcher);
+  const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
 
-  if (error) return <div>エラーが発生しました</div>;
-  if (isLoading) return <div>読み込み中...</div>;
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const shouldFetch = isAuthenticated && !isSessionLoading;
+
+  const {
+    data: trips,
+    error,
+    isLoading,
+  } = useSWR(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
+
+  if (isLoading || error || !trips) {
+    return <LoadingState isLoading={isLoading} error={error} />;
+  }
 
   const tripCount = (trips as ResponseTripType[])?.length ?? 0;
 

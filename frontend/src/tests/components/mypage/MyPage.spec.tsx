@@ -117,7 +117,7 @@ describe('マイページ', () => {
       });
 
       render(<MyPage />);
-      expect(screen.getByTestId('mypage-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-state')).toBeInTheDocument();
       expect(screen.getByText('データの取得に失敗しました')).toBeInTheDocument();
     });
 

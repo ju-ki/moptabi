@@ -8,6 +8,7 @@ import ListView from '@/components/wishlist/ListView';
 import MapView from '@/components/wishlist/MapView';
 import WishlistHeader from '@/components/wishlist/Header';
 import { useFetchWishlist } from '@/hooks/use-wishlist';
+import LoadingState from '@/components/common/LoadingState';
 
 const TravelWishlistApp = () => {
   const { data: wishlist, isLoading, error } = useFetchWishlist();
@@ -20,11 +21,8 @@ const TravelWishlistApp = () => {
     }
   }, [isLoading, wishlist]);
 
-  if (error) {
-    return <div>エラーが発生しました</div>;
-  }
-  if (isLoading) {
-    return <div>読み込み中...</div>;
+  if (error || isLoading) {
+    return <LoadingState isLoading={isLoading} error={!!error} />;
   }
 
   return (

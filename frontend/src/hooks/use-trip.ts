@@ -6,13 +6,25 @@ import { TripType } from '@/types/trip';
 import { useFetcher } from './use-fetcher';
 
 export const useFetchTripDetail = (tripId?: string) => {
-  const { getFetcher, getAuthHeaders } = useFetcher();
+  const { getFetcher, getAuthHeaders, isAuthenticated, isSessionLoading } = useFetcher();
+
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const shouldFetch = isAuthenticated && !isSessionLoading;
 
   const {
     data: trip,
-    isLoading,
-    error,
-  } = useSWR<ResponseTripType>(tripId ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${tripId}` : null, getFetcher);
+    isLoading: isTripLoading,
+    error: tripError,
+  } = useSWR<ResponseTripType>(
+    shouldFetch && tripId ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${tripId}` : null,
+    getFetcher,
+  );
+
+  const {
+    data: departureDestinationData,
+    isLoading: isDepartureDepartmentLoading,
+    error: departureDepartmentError,
+  } = useSWR(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/spots` : null, getFetcher);
 
   const postTrip = async (newTrip: TripType): Promise<number> => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/create`, {
@@ -33,5 +45,8 @@ export const useFetchTripDetail = (tripId?: string) => {
     return result.id; // 作成された旅行計画のIDを返す
   };
 
-  return { trip, isLoading, error, postTrip };
+  const isLoading = isSessionLoading || isTripLoading || isDepartureDepartmentLoading;
+  const error = tripError || departureDepartmentError || null;
+
+  return { trip, departureDestinationData, isLoading, error, postTrip };
 };

@@ -1,5 +1,5 @@
 'use client';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -24,8 +24,7 @@ interface UserData {
 
 const Header = () => {
   const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
-  const { data: session, status } = useSession();
-  const { getFetcher } = useFetcher();
+  const { getFetcher, isSessionLoading, isAuthenticated } = useFetcher();
   const router = useRouter();
 
   // ログアウト処理（本番環境での問題を回避）
@@ -37,14 +36,12 @@ const Header = () => {
 
   // ユーザー情報を取得（roleを含む）
   const { data: userData } = useSWR<UserData>(
-    session ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` : null,
+    isAuthenticated && !isSessionLoading ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` : null,
     getFetcher,
   );
 
   // ADMINロールかどうかをチェック
   const isAdmin = userData?.user.role === 'ADMIN';
-  const isAuthenticated = status === 'authenticated';
-  const isLoading = status === 'loading';
 
   return (
     <header className="flex h-16 w-full items-center justify-between px-4 md:px-6 border-b border-gray-200 dark:border-gray-800">
@@ -84,7 +81,7 @@ const Header = () => {
             <Button onClick={handleSignOut}>ログアウト</Button>
           </>
         )}
-        {!isAuthenticated && !isLoading && (
+        {!isAuthenticated && !isSessionLoading && (
           <Button onClick={async () => await signIn('google', { redirectTo: '/mypage' })}>ログイン</Button>
         )}
       </div>
@@ -166,7 +163,7 @@ const Header = () => {
             </SheetContent>
           </Sheet>
         )}
-        {!isAuthenticated && !isLoading && (
+        {!isAuthenticated && !isSessionLoading && (
           <Button onClick={async () => await signIn('google', { redirectTo: '/mypage' })}>ログイン</Button>
         )}
       </div>

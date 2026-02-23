@@ -1,7 +1,12 @@
 import { useSession } from 'next-auth/react';
 
 export const useFetcher = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  // セッションがロード中かどうか
+  const isSessionLoading = status === 'loading';
+  // 認証済みかどうか
+  const isAuthenticated = status === 'authenticated';
 
   // ユーザーIDを取得してヘッダーに付与
   const getAuthHeaders = () => {
@@ -79,5 +84,5 @@ export const useFetcher = () => {
     return response.json();
   };
 
-  return { getFetcher, postFetcher, deleteFetcher, getAuthHeaders };
+  return { getFetcher, postFetcher, deleteFetcher, getAuthHeaders, isSessionLoading, isAuthenticated, session };
 };
