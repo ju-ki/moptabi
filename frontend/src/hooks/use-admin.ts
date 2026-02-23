@@ -20,8 +20,13 @@ export type NotificationType = 'SYSTEM' | 'INFO';
  * ユーザーリスト・通知リストは別フック（use-user-list, use-notification-list）で管理
  */
 export function useAdminData() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { getFetcher } = useFetcher();
+
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const isSessionLoading = status === 'loading';
+  const isAuthenticated = status === 'authenticated';
+  const shouldFetch = isAuthenticated && !isSessionLoading;
 
   // 認証ヘッダーを生成
   const getAuthHeaders = (): Record<string, string> => {
@@ -49,9 +54,9 @@ export function useAdminData() {
     data: dashboardData,
     error: dashboardError,
     isLoading: dashboardLoading,
-  } = useSWR<StatsType>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/dashboard`, getFetcher);
+  } = useSWR<StatsType>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/dashboard` : null, getFetcher);
 
-  const isLoading = dashboardLoading;
+  const isLoading = isSessionLoading || dashboardLoading;
   const error = dashboardError;
 
   const postNotification = async (newNotification: NotificationCreate) => {

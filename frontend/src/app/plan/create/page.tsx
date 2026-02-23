@@ -1,7 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { Asterisk } from 'lucide-react';
-import useSWRMutation from 'swr/mutation';
+import { Asterisk, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,46 +10,31 @@ import { getDatesBetween } from '@/lib/utils';
 import { useStoreForPlanning } from '@/lib/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
-import { useToast } from '@/hooks/use-toast';
-import { useFetcher } from '@/hooks/use-fetcher';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
 import { APP_LIMITS } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
+import { useFetchTripDetail } from '@/hooks/use-trip';
+import { Button } from '@/components/ui/button';
+import LoadingState from '@/components/common/LoadingState';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
-  const { toast } = useToast();
-  const { getFetcher, postFetcher } = useFetcher();
+  const { departureDestinationData, isLoading, error } = useFetchTripDetail();
+
+  // 画面描画時に履歴データを取得してセット
+  useEffect(() => {
+    if (departureDestinationData) {
+      fields.setDepartureHistory(departureDestinationData.departure);
+      fields.setDestinationHistory(departureDestinationData.destination);
+    }
+  }, [departureDestinationData]);
+
   // TODO: 対応できていない機能のためコメントアウト
   // const { trigger: uploadImageTrigger } = useSWRMutation(
   //   `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
   //   postFetcher,
   // );
-
-  const { trigger: getDepartureAndDepartmentTrigger } = useSWRMutation(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/spots`,
-    getFetcher,
-  );
-
-  useEffect(() => {
-    const fetchDepartureAndDestination = async () => {
-      try {
-        const response = await getDepartureAndDepartmentTrigger();
-
-        fields.setDepartureHistory(response.departure);
-        fields.setDestinationHistory(response.destination);
-      } catch (error) {
-        console.error('Error fetching departure and destination:', error);
-        toast({
-          title: '出発地と目的地の取得に失敗しました',
-          description: 'もう一度お試しください。',
-          variant: 'destructive',
-        });
-      }
-    };
-    fetchDepartureAndDestination();
-  }, []);
 
   // TODO: 対応できていない機能のためコメントアウト
   // const onUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,6 +57,10 @@ const TravelPlanCreate = () => {
   //     console.error('Error uploading image:', error);
   //   }
   // };
+
+  if (error || isLoading) {
+    return <LoadingState isLoading={isLoading} error={error} />;
+  }
 
   return (
     <div>

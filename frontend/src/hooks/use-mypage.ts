@@ -128,35 +128,38 @@ function isFutureDate(dateStr: string): boolean {
  * マイページに必要なデータを一括で取得・整形するカスタムフック
  */
 export function useMypageData(): MypageData {
-  const { getFetcher } = useFetcher();
+  const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
+
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const shouldFetch = isAuthenticated && !isSessionLoading;
 
   // APIからデータを取得
   const {
     data: trips,
     error: tripsError,
     isLoading: tripsLoading,
-  } = useSWR<Trip[]>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips`, getFetcher);
+  } = useSWR<Trip[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
 
   const {
     data: tripsCount,
     error: tripsCountError,
     isLoading: tripsCountLoading,
-  } = useSWR<CountResponse>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/count`, getFetcher);
+  } = useSWR<CountResponse>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/count` : null, getFetcher);
 
   const {
     data: wishlist,
     error: wishlistError,
     isLoading: wishlistLoading,
-  } = useSWR<WishlistItem[]>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`, getFetcher);
+  } = useSWR<WishlistItem[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist` : null, getFetcher);
 
   const {
     data: wishlistCount,
     error: wishlistCountError,
     isLoading: wishlistCountLoading,
-  } = useSWR<CountResponse>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist/count`, getFetcher);
+  } = useSWR<CountResponse>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist/count` : null, getFetcher);
 
-  // ローディング状態
-  const isLoading = tripsLoading || tripsCountLoading || wishlistLoading || wishlistCountLoading;
+  // ローディング状態（セッションローディングも含める）
+  const isLoading = isSessionLoading || tripsLoading || tripsCountLoading || wishlistLoading || wishlistCountLoading;
 
   // エラー状態
   const error = tripsError || tripsCountError || wishlistError || wishlistCountError || null;

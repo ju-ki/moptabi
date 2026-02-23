@@ -7,7 +7,9 @@ import { useFetcher } from './use-fetcher';
 
 export const useFetchWishlist = () => {
   const { data: session } = useSession();
-  const { getFetcher } = useFetcher();
+  const { getFetcher, isSessionLoading } = useFetcher();
+
+  const shouldFetch = !!session && !isSessionLoading;
 
   // 認証ヘッダーを生成
   const getAuthHeaders = (): Record<string, string> => {
@@ -31,7 +33,7 @@ export const useFetchWishlist = () => {
   };
 
   const { data, isLoading, error } = useSWR<WishlistType[]>(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`,
+    shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist` : null,
     getFetcher,
   );
 
