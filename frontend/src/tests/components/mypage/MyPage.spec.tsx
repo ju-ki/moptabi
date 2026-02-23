@@ -35,6 +35,11 @@ vi.mock('@/hooks/use-mypage', () => ({
   useMypageData: () => mockUseMypageData(),
 }));
 
+// next/navigationのモック
+vi.mock('next/navigation', () => ({
+  useRouter: () => vi.fn(),
+}));
+
 // useFetcherフックのモック
 vi.mock('@/hooks/use-fetcher', () => ({
   useFetcher: () => ({

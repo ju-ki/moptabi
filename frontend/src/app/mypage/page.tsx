@@ -2,6 +2,7 @@
 
 import { signOut } from 'next-auth/react';
 import { LogOut, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,13 @@ export default function MyPage() {
     isLoading,
     error,
   } = useMypageData();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut({ redirect: false });
+    router.push('/');
+    router.refresh();
+  };
 
   // ローディング状態
   if (isLoading) {
@@ -99,7 +107,7 @@ export default function MyPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Button variant="outline" className="w-full" onClick={() => signOut()}>
+            <Button variant="outline" className="w-full" onClick={async () => handleSignOut()}>
               ログアウト
             </Button>
           </CardContent>
