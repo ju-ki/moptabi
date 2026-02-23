@@ -1,6 +1,6 @@
 'use client';
 import { useEffect } from 'react';
-import { Asterisk, Loader2 } from 'lucide-react';
+import { Asterisk } from 'lucide-react';
 import Image from 'next/image';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,20 +15,21 @@ import { LimitDisplay } from '@/components/common/LimitDisplay';
 import { APP_LIMITS } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
 import { useFetchTripDetail } from '@/hooks/use-trip';
-import { Button } from '@/components/ui/button';
 import LoadingState from '@/components/common/LoadingState';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
+  const setDepartureHistory = useStoreForPlanning((s) => s.setDepartureHistory);
+  const setDestinationHistory = useStoreForPlanning((s) => s.setDestinationHistory);
   const { departureDestinationData, isLoading, error } = useFetchTripDetail();
 
   // 画面描画時に履歴データを取得してセット
   useEffect(() => {
     if (departureDestinationData) {
-      fields.setDepartureHistory(departureDestinationData.departure);
-      fields.setDestinationHistory(departureDestinationData.destination);
+      setDepartureHistory(departureDestinationData.departure);
+      setDestinationHistory(departureDestinationData.destination);
     }
-  }, [departureDestinationData]);
+  }, [departureDestinationData, setDepartureHistory, setDestinationHistory]);
 
   // TODO: 対応できていない機能のためコメントアウト
   // const { trigger: uploadImageTrigger } = useSWRMutation(

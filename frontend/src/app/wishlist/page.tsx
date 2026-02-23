@@ -22,7 +22,7 @@ const TravelWishlistApp = () => {
   }, [isLoading, wishlist]);
 
   if (error || isLoading) {
-    return <LoadingState isLoading={isLoading} error={error} />;
+    return <LoadingState isLoading={isLoading} error={!!error} />;
   }
 
   return (
