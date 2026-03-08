@@ -17,6 +17,8 @@ import { sql } from 'drizzle-orm';
 export const notificationType = pgEnum('NotificationType', ['SYSTEM', 'INFO']);
 export const roleType = pgEnum('RoleType', ['ADMIN', 'USER', 'GUEST']);
 export const transportNodeType = pgEnum('TransportNodeType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
+// 地点の種別（出発地、目的地、または両方）
+export const locationType = pgEnum('LocationType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
 
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),
@@ -50,20 +52,6 @@ export const transport = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-    foreignKey({
-      columns: [table.fromSpotId],
-      foreignColumns: [planSpot.id],
-      name: 'Transport_fromSpotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
-    foreignKey({
-      columns: [table.toSpotId],
-      foreignColumns: [planSpot.id],
-      name: 'Transport_toSpotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
   ],
 );
 
@@ -138,6 +126,36 @@ export const user = pgTable('User', {
   lastLoginAt: timestamp({ precision: 3, mode: 'string' }),
   name: varchar({ length: 255 }),
 });
+
+export const userLocation = pgTable(
+  'UserLocation',
+  {
+    id: serial().primaryKey().notNull(),
+    userId: varchar({ length: 255 }).notNull(),
+    latitude: doublePrecision().notNull(),
+    longitude: doublePrecision().notNull(),
+    name: varchar({ length: 255 }),
+    address: varchar({ length: 255 }),
+    label: varchar({ length: 255 }),
+    usageCount: integer().default(0).notNull(),
+    isDefault: boolean().default(false).notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'string' })
+      .$defaultFn(() => new Date().toISOString())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'UserLocation_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
 
 export const plan = pgTable(
   'Plan',
@@ -314,3 +332,49 @@ export const notification = pgTable('Notification', {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+/**
+ * PlanLocation: プラン作成時の出発地・目的地履歴用テーブル
+ * - 従来のSpotテーブルから分離して管理
+ * - 履歴として扱うため、UserLocationを編集しても影響なし
+ */
+export const planLocation = pgTable(
+  'PlanLocation',
+  {
+    id: serial().primaryKey().notNull(),
+    userId: varchar({ length: 255 }).notNull(),
+    // 地点の名前: 任意で設定、未入力の場合は「日付_出発地」など
+    name: varchar({ length: 100 }).notNull(),
+    // 位置情報
+    latitude: doublePrecision().notNull(),
+    longitude: doublePrecision().notNull(),
+    // 住所（任意）
+    address: varchar({ length: 255 }),
+    // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）
+    locationType: locationType().notNull(),
+    // 関連するPlanのID（任意: どのプランで使用されたかの追跡用）
+    planId: integer(),
+    createdAt: timestamp({ precision: 3, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'string' })
+      .$defaultFn(() => new Date().toISOString())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'PlanLocation_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+    foreignKey({
+      columns: [table.planId],
+      foreignColumns: [plan.id],
+      name: 'PlanLocation_planId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('set null'),
+  ],
+);

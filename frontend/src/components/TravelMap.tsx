@@ -24,22 +24,12 @@ interface TravelMapProps {
 
 const TravelMap = ({ date }: TravelMapProps) => {
   const fields = useStoreForPlanning();
-  const allSpots = fields.getSpotInfo(date, TransportNodeType.ALL);
+  const allSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
+  const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+  const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [routes, setRoutes] = useState<RouteResult[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [departureCoordination, setDepartureCoordination] = useState<Coordination>({
-    id: '0',
-    lat: 0,
-    lng: 0,
-    name: '',
-  });
-  const [destinationCoordination, setDestinationCoordination] = useState<Coordination>({
-    id: '0',
-    lat: 0,
-    lng: 0,
-    name: '',
-  });
   const [spotCoordination, setSpotCoordination] = useState<Coordination[]>([]);
   const controlDivRef = useRef<HTMLDivElement | null>(null);
 
@@ -47,27 +37,6 @@ const TravelMap = ({ date }: TravelMapProps) => {
     const result = fields.getSpotCoordination(date);
     if (!result) {
       return;
-    }
-
-    if (result?.departureCoordination) {
-      const departure = result.departureCoordination;
-
-      setDepartureCoordination({
-        id: departure.id,
-        lat: departure.location.lat,
-        lng: departure.location.lng,
-        name: departure.location.name,
-      });
-    }
-
-    if (result?.destinationCoordination) {
-      const destination = result.destinationCoordination;
-      setDestinationCoordination({
-        id: destination.id,
-        lat: destination.location.lat,
-        lng: destination.location.lng,
-        name: destination.location.name,
-      });
     }
 
     if (result?.spotCoordination && Array.isArray(result.spotCoordination)) {
@@ -86,14 +55,14 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
   // ルートを計算
   useEffect(() => {
-    if (!map || !departureCoordination || !destinationCoordination || !spotCoordination.length) return;
+    if (!map || !departureData || !destinationData || !spotCoordination.length) return;
 
     // マップの表示範囲を計算
     const bounds = new google.maps.LatLngBounds();
     const path = [
-      { lat: departureCoordination.lat, lng: departureCoordination.lng },
+      { lat: departureData.latitude, lng: departureData.longitude },
       ...spotCoordination.map((spot) => ({ lat: spot.lat, lng: spot.lng })),
-      { lat: destinationCoordination.lat, lng: destinationCoordination.lng },
+      { lat: destinationData.latitude, lng: destinationData.longitude },
     ];
     path.forEach((point) => bounds.extend(point));
 
@@ -113,9 +82,14 @@ const TravelMap = ({ date }: TravelMapProps) => {
       let orderNumber = 0;
 
       // 出発地から最初の観光地
-      const firstRoute = await calcRoutes(departureCoordination, spotCoordination[0], targetTransportMethod);
+      const firstRoute = await calcRoutes(
+        { id: departureData.name, lat: departureData.latitude, lng: departureData.longitude, name: departureData.name },
+        spotCoordination[0],
+        targetTransportMethod,
+      );
 
-      fields.editSpots(date, departureCoordination.id, {
+      fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
+        ...departureData,
         transports: {
           transportMethod: TransportMethods[firstRoute.travelMode].id,
           name: firstRoute.travelMode || 'DEFAULT',
@@ -123,7 +97,6 @@ const TravelMap = ({ date }: TravelMapProps) => {
           fromType: TransportNodeType.DEPARTURE,
           toType: TransportNodeType.SPOT,
         },
-        order: orderNumber,
       });
 
       routeResults.push(firstRoute);
@@ -133,7 +106,16 @@ const TravelMap = ({ date }: TravelMapProps) => {
         orderNumber += 1;
         // 最後の観光地は目的地のルートを生成する
         if (i == spotCoordination.length - 1) {
-          const lastRoute = await calcRoutes(spotCoordination[i], destinationCoordination, targetTransportMethod);
+          const lastRoute = await calcRoutes(
+            spotCoordination[i],
+            {
+              id: destinationData.name,
+              lat: destinationData.latitude,
+              lng: destinationData.longitude,
+              name: destinationData.name,
+            },
+            targetTransportMethod,
+          );
           routeResults.push(lastRoute);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
@@ -148,15 +130,15 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
           orderNumber += 1;
           // 目的のスポットの情報更新
-          fields.editSpots(date, destinationCoordination.id, {
+          fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+            ...destinationData,
             transports: {
-              transportMethod: TransportMethods['WALKING'].id,
-              name: 'DEFAULT',
-              travelTime: '',
-              fromType: TransportNodeType.DESTINATION,
+              transportMethod: TransportMethods[lastRoute.travelMode].id,
+              name: lastRoute.travelMode || 'DEFAULT',
+              travelTime: lastRoute.duration || '',
+              fromType: TransportNodeType.SPOT,
               toType: TransportNodeType.DESTINATION,
             },
-            order: orderNumber,
           });
         } else {
           const route = await calcRoutes(spotCoordination[i], spotCoordination[i + 1], targetTransportMethod);
@@ -216,7 +198,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
   return (
     <div className="relative">
       <GoogleMap
-        center={{ lat: departureCoordination.lat, lng: departureCoordination.lng }}
+        center={{ lat: departureData.latitude, lng: departureData.longitude }}
         mapContainerStyle={containerStyle}
         options={{
           zoom: 12,
@@ -240,17 +222,17 @@ const TravelMap = ({ date }: TravelMapProps) => {
         }}
       >
         {createPortal(
-          <DistanceInfo spots={allSpots} />,
+          <DistanceInfo spots={allSpots} date={date} />,
           controlDivRef.current || (controlDivRef.current = document.createElement('div')),
         )}
         {/* 出発地のマーカー */}
         <Marker
-          position={{ lat: departureCoordination.lat, lng: departureCoordination.lng }}
+          position={{ lat: departureData.latitude, lng: departureData.longitude }}
           icon={createCustomMarker(SpotMakerColors.DEPARTURE, '出発')}
           onClick={() =>
             setSelectedMarker({
-              lat: departureCoordination.lat,
-              lng: departureCoordination.lng,
+              lat: departureData.latitude,
+              lng: departureData.longitude,
               name: '出発地',
             })
           }
@@ -269,12 +251,12 @@ const TravelMap = ({ date }: TravelMapProps) => {
         ))}
         {/* 目的地のマーカー */}
         <Marker
-          position={{ lat: destinationCoordination.lat, lng: destinationCoordination.lng }}
+          position={{ lat: destinationData.latitude, lng: destinationData.longitude }}
           icon={createCustomMarker(SpotMakerColors.DESTINATION, '到着')}
           onClick={() =>
             setSelectedMarker({
-              lat: destinationCoordination.lat,
-              lng: destinationCoordination.lng,
+              lat: destinationData.latitude,
+              lng: destinationData.longitude,
               name: '目的地',
             })
           }

@@ -17,6 +17,8 @@ import {
   userNotification,
   notification,
   transport,
+  userLocation,
+  planLocation,
 } from '@db';
 
 // DBインスタンスを再エクスポート
@@ -36,6 +38,8 @@ export {
   userNotification,
   notification,
   transport,
+  userLocation,
+  planLocation,
 };
 
 // Drizzle演算子を再エクスポート
@@ -63,6 +67,7 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(transport);
     await db.delete(planSpot);
     await db.delete(tripInfo);
+    await db.delete(planLocation);
     await db.delete(plan);
     await db.delete(trip);
     await db.delete(wishlist);
@@ -71,6 +76,7 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(spot);
     await db.delete(userNotification);
     await db.delete(notification);
+    await db.delete(userLocation);
     // userは削除しない（テスト間で共有）
   } catch (err) {
     console.warn('clearAllTestData: failed:', (err as Error).message);
@@ -117,6 +123,8 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
 
     await db.delete(wishlist).where(eq(wishlist.userId, userId));
     await db.delete(userNotification).where(eq(userNotification.userId, userId));
+    await db.delete(userLocation).where(eq(userLocation.userId, userId));
+    await db.delete(planLocation).where(eq(planLocation.userId, userId));
 
     if (deleteSpots) {
       if (typeof deleteSpots === 'string') {
@@ -547,6 +555,131 @@ export async function findSpotById(spotId: string) {
   return { ...found, meta: meta ?? null };
 }
 
+// ========================================
+// UserLocation（お気に入り地点）のヘルパー
+// ========================================
+
+/**
+ * UserLocationを作成
+ */
+export async function createUserLocation(data: {
+  userId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  address?: string | null;
+  label?: string | null;
+  usageCount?: number;
+  isDefault?: boolean;
+}) {
+  const [created] = await db
+    .insert(userLocation)
+    .values({
+      userId: data.userId,
+      name: data.name,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      address: data.address ?? null,
+      label: data.label ?? null,
+      usageCount: data.usageCount ?? 0,
+      isDefault: data.isDefault ?? false,
+    })
+    .returning();
+  return created;
+}
+
+/**
+ * UserLocationを取得（IDで検索）
+ */
+export async function findUserLocationById(id: number) {
+  const [found] = await db.select().from(userLocation).where(eq(userLocation.id, id)).limit(1);
+  return found ?? null;
+}
+
+/**
+ * UserLocationを取得（ユーザーIDで検索）
+ */
+export async function findUserLocationsByUserId(userId: string) {
+  return await db.select().from(userLocation).where(eq(userLocation.userId, userId));
+}
+
+/**
+ * 特定ユーザーのUserLocation削除
+ */
+export async function deleteUserLocationByUser(userId: string) {
+  await db.delete(userLocation).where(eq(userLocation.userId, userId));
+}
+
+/**
+ * 特定ユーザーのUserLocationカウント
+ */
+export async function countUserLocations(userId: string): Promise<number> {
+  const result = await db.select().from(userLocation).where(eq(userLocation.userId, userId));
+  return result.length;
+}
+
+// ========================================
+// PlanLocation（出発地・目的地履歴）のヘルパー
+// ========================================
+
+/**
+ * PlanLocationを作成
+ */
+export async function createPlanLocation(data: {
+  userId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  address?: string | null;
+  locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
+  usageCount?: number;
+  planId?: number | null;
+}) {
+  const [created] = await db
+    .insert(planLocation)
+    .values({
+      userId: data.userId,
+      name: data.name,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      address: data.address ?? null,
+      locationType: data.locationType,
+      planId: data.planId ?? null,
+    })
+    .returning();
+  return created;
+}
+
+/**
+ * PlanLocationを取得（IDで検索）
+ */
+export async function findPlanLocationById(id: number) {
+  const [found] = await db.select().from(planLocation).where(eq(planLocation.id, id)).limit(1);
+  return found ?? null;
+}
+
+/**
+ * PlanLocationを取得（ユーザーIDで検索）
+ */
+export async function findPlanLocationsByUserId(userId: string) {
+  return await db.select().from(planLocation).where(eq(planLocation.userId, userId));
+}
+
+/**
+ * 特定ユーザーのPlanLocation削除
+ */
+export async function deletePlanLocationByUser(userId: string) {
+  await db.delete(planLocation).where(eq(planLocation.userId, userId));
+}
+
+/**
+ * 特定ユーザーのPlanLocationカウント
+ */
+export async function countPlanLocations(userId: string): Promise<number> {
+  const result = await db.select().from(planLocation).where(eq(planLocation.userId, userId));
+  return result.length;
+}
+
 // 後方互換性のためのエイリアス（段階的に削除）
 export const connectPrisma = connectDb;
 export const disconnectPrisma = disconnectDb;
@@ -573,6 +706,18 @@ export default {
   deleteAllNotifications,
   deleteAllWishlists,
   deleteAllTrips,
+  // UserLocation関連
+  createUserLocation,
+  findUserLocationById,
+  findUserLocationsByUserId,
+  deleteUserLocationByUser,
+  countUserLocations,
+  // PlanLocation関連
+  createPlanLocation,
+  findPlanLocationById,
+  findPlanLocationsByUserId,
+  deletePlanLocationByUser,
+  countPlanLocations,
   // 後方互換性
   connectPrisma,
   disconnectPrisma,

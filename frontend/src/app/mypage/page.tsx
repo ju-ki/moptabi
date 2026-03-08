@@ -13,6 +13,7 @@ import { UsageStatus } from '@/components/mypage/UsageStatus';
 import { RecentTrips } from '@/components/mypage/RecentTrips';
 import { useMypageData } from '@/hooks/use-mypage';
 import LoadingState from '@/components/common/LoadingState';
+import { UserLocation } from '@/components/mypage';
 
 /**
  * マイページ
@@ -29,8 +30,12 @@ export default function MyPage() {
     wishlistLimit,
     wishlistTotalCount,
     recentTrips,
+    userLocations,
     isLoading,
     error,
+    postUserLocation,
+    updateUserLocation,
+    deleteUserLocation,
   } = useMypageData();
   const router = useRouter();
 
@@ -55,6 +60,14 @@ export default function MyPage() {
             <ProfileSection />
           </CardContent>
         </Card>
+
+        {/* ユーザーお気に入り地点セクション */}
+        <UserLocation
+          userLocationList={userLocations}
+          postUserLocation={postUserLocation}
+          updateUserLocation={updateUserLocation}
+          deleteUserLocation={deleteUserLocation}
+        />
 
         {/* 次の旅セクション */}
         <NextTripSection nextTrip={nextTrip} wishlistCount={wishlistCount} />

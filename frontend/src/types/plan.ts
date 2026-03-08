@@ -2,6 +2,7 @@ import z from 'zod';
 
 import { placeTypeMap } from '@/data/constants';
 import { OpeningHoursSchema } from '@/models/spot';
+import { DepartureAndDestinationType } from '@/models/planLocation';
 
 export type Location = {
   name: string;
@@ -20,9 +21,9 @@ export type Transport = {
   transportMethod: number;
   name: TravelModeType; // 例: "電車" | "バス"
   cost?: number;
-  travelTime: string; // 例: "30分"
-  fromType: TransportNodeType;
-  toType: TransportNodeType;
+  travelTime?: string; // 例: "30分"
+  fromType: SpotType;
+  toType: SpotType;
 };
 
 export type TransportMethods = {
@@ -35,6 +36,8 @@ export enum TransportNodeType {
   DESTINATION = 'DESTINATION',
   SPOT = 'SPOT',
 }
+
+export type SpotType = 'SPOT' | 'DEPARTURE' | 'DESTINATION';
 
 type NearestStation = {
   name: string; // 最寄駅の名前
@@ -82,6 +85,8 @@ export type Spot = {
 export type TravelPlanType = {
   date: string;
   spots: Spot[];
+  departure: DepartureAndDestinationType;
+  destination: DepartureAndDestinationType;
 };
 
 export type PlanErrorType = 'spots' | 'departure' | 'destination' | 'transportationMethod' | 'genreId' | 'memo';

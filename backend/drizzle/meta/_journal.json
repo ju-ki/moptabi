@@ -15,6 +15,20 @@
       "when": 1771331909447,
       "tag": "0001_fix_operator_class",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771844225435,
+      "tag": "0002_add_departure_department",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1772530726975,
+      "tag": "0003_noisy_sersi",
+      "breakpoints": true
     }
   ]
 }
