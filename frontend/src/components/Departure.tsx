@@ -37,9 +37,6 @@ const Departure = ({ date }: { date: string }) => {
     <div>
       <Label className="text-lg font-semibold text-gray-800 my-2 flex space-x-2">
         <span>出発地</span>
-        <div>
-          {departureData.latitude} {departureData.longitude}
-        </div>
         <div className="flex items-center space-x-1">
           <Info className="w-3 h-3" />
           <span className="text-sm font-normal">未選択の場合は地図で選択されている場所が選択されます</span>
