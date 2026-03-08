@@ -74,16 +74,16 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
           </Button> */}
 
           {/*  TODO: 対応できていない機能のためコメントアウト */}
-          <Button variant="ghost-subtle" size="sm" onClick={() => {}} className="flex items-center gap-1">
+          {/* <Button variant="ghost-subtle" size="sm" onClick={() => {}} className="flex items-center gap-1">
             <Printer className="w-4 h-4" />
             印刷
-          </Button>
+          </Button> */}
 
           {/*  TODO: 対応できていない機能のためコメントアウト */}
-          <Button variant="secondary-outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
+          {/* <Button variant="secondary-outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
             <Pencil className="w-4 h-4" />
             編集
-          </Button>
+          </Button> */}
 
           <Button onClick={handleDeletePlan} variant="destructive" size="sm" className="flex items-center gap-1">
             <Trash2 className="w-4 h-4" />
