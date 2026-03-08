@@ -40,6 +40,20 @@ import {
 } from './routes/notification';
 import { notificationHandler } from './controllers/notification';
 import { requireAuth, optionalAuth } from './middleware/auth';
+import { userLocationHandler } from './controllers/userLocation';
+import {
+  createUserLocationRoute,
+  deleteUserLocationRoute,
+  getUserLocationRoute,
+  updateUserLocationRoute,
+} from './routes/userLocation';
+import { planLocationHandler } from './controllers/planLocation';
+import {
+  getPlanLocationListRoute,
+  getPlanLocationCandidatesRoute,
+  createPlanLocationRoute,
+  deletePlanLocationRoute,
+} from './routes/planLocation';
 
 // Cloudflare Workers用のBindings型
 type Bindings = {
@@ -102,6 +116,8 @@ const spotApp = new OpenAPIHono();
 const authApp = new OpenAPIHono();
 const wishListApp = new OpenAPIHono();
 const notificationApp = new OpenAPIHono();
+const userLocationApp = new OpenAPIHono();
+const planLocationApp = new OpenAPIHono();
 
 // 認証が必要なルート
 tripApp.use('*', requireAuth);
@@ -109,6 +125,8 @@ spotApp.use('*', requireAuth);
 imageApp.use('*', requireAuth);
 wishListApp.use('*', requireAuth);
 notificationApp.use('*', requireAuth);
+userLocationApp.use('*', requireAuth);
+planLocationApp.use('*', requireAuth);
 
 // authAppは認証なしでアクセス可能（ユーザー登録・検索など）
 authApp.use('*', optionalAuth);
@@ -147,12 +165,26 @@ notificationApp.openapi(markAsReadRoute, notificationHandler.markAsRead);
 notificationApp.openapi(updateNotificationRoute, notificationHandler.updateNotification);
 notificationApp.openapi(deleteNotificationRoute, notificationHandler.deleteNotification);
 
+// ユーザーのお気に入りルートの登録
+userLocationApp.openapi(getUserLocationRoute, userLocationHandler.getUserLocationList);
+userLocationApp.openapi(createUserLocationRoute, userLocationHandler.createUserLocation);
+userLocationApp.openapi(updateUserLocationRoute, userLocationHandler.updateUserLocation);
+userLocationApp.openapi(deleteUserLocationRoute, userLocationHandler.deleteUserLocation);
+
+// プラン作成時の出発地・目的地履歴ルートの登録
+// 注意: 具体的なパス（/candidates）を先に登録し、動的パラメータを含むルートを後に登録
+planLocationApp.openapi(getPlanLocationCandidatesRoute, planLocationHandler.getCandidates);
+planLocationApp.openapi(createPlanLocationRoute, planLocationHandler.create);
+planLocationApp.openapi(deletePlanLocationRoute, planLocationHandler.delete);
+
 app.route('/images', imageApp);
 app.route('/trips', tripApp);
 app.route('/spots', spotApp);
 app.route('/auth', authApp);
 app.route('/wishlist', wishListApp);
 app.route('/notification', notificationApp);
+app.route('/userLocation', userLocationApp);
+app.route('/plan-location', planLocationApp);
 
 // APIドキュメントの登録
 app

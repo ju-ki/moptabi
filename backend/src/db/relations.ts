@@ -13,22 +13,14 @@ import {
   wishlist,
   spotMeta,
   nearestStation,
+  userLocation,
+  planLocation,
 } from './schema';
 
 export const transportRelations = relations(transport, ({ one }) => ({
   plan: one(plan, {
     fields: [transport.planId],
     references: [plan.id],
-  }),
-  planSpot_fromSpotId: one(planSpot, {
-    fields: [transport.fromSpotId],
-    references: [planSpot.id],
-    relationName: 'transport_fromSpotId_planSpot_id',
-  }),
-  planSpot_toSpotId: one(planSpot, {
-    fields: [transport.toSpotId],
-    references: [planSpot.id],
-    relationName: 'transport_toSpotId_planSpot_id',
   }),
 }));
 
@@ -39,15 +31,10 @@ export const planRelations = relations(plan, ({ one, many }) => ({
     references: [trip.id],
   }),
   planSpots: many(planSpot),
+  planLocations: many(planLocation),
 }));
 
 export const planSpotRelations = relations(planSpot, ({ one, many }) => ({
-  transports_fromSpotId: many(transport, {
-    relationName: 'transport_fromSpotId_planSpot_id',
-  }),
-  transports_toSpotId: many(transport, {
-    relationName: 'transport_toSpotId_planSpot_id',
-  }),
   plan: one(plan, {
     fields: [planSpot.planId],
     references: [plan.id],
@@ -89,6 +76,8 @@ export const userRelations = relations(user, ({ many }) => ({
   userNotifications: many(userNotification),
   trips: many(trip),
   wishlists: many(wishlist),
+  userLocations: many(userLocation),
+  planLocations: many(planLocation),
 }));
 
 export const notificationRelations = relations(notification, ({ many }) => ({
@@ -124,5 +113,25 @@ export const nearestStationRelations = relations(nearestStation, ({ one }) => ({
   spot: one(spot, {
     fields: [nearestStation.spotId],
     references: [spot.id],
+  }),
+}));
+
+// UserLocation: マイページでのお気に入り地点登録用
+export const userLocationRelations = relations(userLocation, ({ one }) => ({
+  user: one(user, {
+    fields: [userLocation.userId],
+    references: [user.id],
+  }),
+}));
+
+// PlanLocation: プラン作成時の出発地・目的地履歴用
+export const planLocationRelations = relations(planLocation, ({ one }) => ({
+  user: one(user, {
+    fields: [planLocation.userId],
+    references: [user.id],
+  }),
+  plan: one(plan, {
+    fields: [planLocation.planId],
+    references: [plan.id],
   }),
 }));

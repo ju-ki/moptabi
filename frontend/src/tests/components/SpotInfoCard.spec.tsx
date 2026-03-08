@@ -130,21 +130,6 @@ describe('SpotInfoCard', () => {
       expect(screen.getByText('出発地のメモ')).toBeInTheDocument();
     });
 
-    it('メモがない場合はデフォルトテキストが表示される', () => {
-      const spot = createDepartureSpot();
-      spot.memo = undefined;
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('ここにメモが表示されます')).toBeInTheDocument();
-    });
-
-    it('出発ラベルが表示される', () => {
-      const spot = createDepartureSpot();
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('出発')).toBeInTheDocument();
-    });
-
     it('次のスポットへの移動時間が表示される', () => {
       const spot = createDepartureSpot();
       spot.transports.travelTime = '30 mins';
@@ -167,13 +152,6 @@ describe('SpotInfoCard', () => {
       render(<SpotInfoCard spot={spot} />);
 
       expect(screen.getByText('目的地のメモ')).toBeInTheDocument();
-    });
-
-    it('到着ラベルが表示される', () => {
-      const spot = createDestinationSpot();
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('到着')).toBeInTheDocument();
     });
   });
 

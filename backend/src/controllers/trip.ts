@@ -1,11 +1,22 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { eq, and, count, notInArray, asc } from 'drizzle-orm';
-import { getDbFromContext, trip, tripInfo, plan, planSpot, spot, spotMeta, transport, nearestStation } from '@db';
+import { eq, and, count, notInArray, asc, sql, inArray } from 'drizzle-orm';
+import {
+  getDbFromContext,
+  trip,
+  tripInfo,
+  plan,
+  planSpot,
+  spot,
+  spotMeta,
+  transport,
+  planLocation,
+  userLocation,
+} from '@db';
 
 import { getUserId } from '@/middleware/auth';
 
-import { TripSchema } from '../models/trip';
+import { DepartureAndDestinationType, TransportType, TripSchema, TripType } from '../models/trip';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
 
 /**
@@ -82,21 +93,143 @@ export const getTripHandler = {
       throw new HTTPException(404, { message: 'No trip found' });
     }
 
+    const transportDataList: Record<string, TransportType[]> = {};
+    const planLocationDataList: Record<string, DepartureAndDestinationType[]> = {};
+
+    for (const plan of targetTrip.plans) {
+      const rawTransportData = await db.query.transport.findMany({
+        where: eq(transport.planId, plan.id),
+      });
+
+      const rawPlanLocationData = await db.query.planLocation.findMany({
+        where: eq(planLocation.planId, plan.id),
+      });
+
+      const transportData = rawTransportData.map((t) => ({
+        transportMethod: t.transportMethod,
+        travelTime: t.travelTime || '',
+        cost: t.cost || 0,
+        fromType: t.fromType,
+        toType: t.toType,
+        fromSpotId: t.fromSpotId || 0,
+        toSpotId: t.toSpotId || 0,
+        name: '',
+      }));
+      transportDataList[plan.date] = transportData;
+
+      // PlanLocationデータをDepartureAndDestinationType形式に変換
+      const planLocationData: DepartureAndDestinationType[] = rawPlanLocationData.map((pl) => {
+        // この出発地/目的地に対応するtransportを検索
+        const relatedTransport = rawTransportData.find((t) => {
+          if (pl.locationType === 'DEPARTURE') {
+            return t.fromType === 'DEPARTURE' && t.fromSpotId === pl.id;
+          } else if (pl.locationType === 'DESTINATION') {
+            return t.toType === 'DESTINATION' && t.toSpotId === pl.id;
+          }
+          return false;
+        });
+
+        return {
+          name: pl.name,
+          latitude: pl.latitude,
+          longitude: pl.longitude,
+          address: pl.address,
+          label: null,
+          isDefault: false,
+          locationType: pl.locationType as 'DEPARTURE' | 'DESTINATION',
+          usageCount: 0,
+          userLocationId: null,
+          planLocationId: pl.id,
+          transports: relatedTransport
+            ? {
+                transportMethod: relatedTransport.transportMethod,
+                travelTime: relatedTransport.travelTime || '',
+                cost: relatedTransport.cost || 0,
+                fromType: relatedTransport.fromType,
+                toType: relatedTransport.toType,
+                fromSpotId: relatedTransport.fromSpotId || undefined,
+                toSpotId: relatedTransport.toSpotId || undefined,
+              }
+            : undefined,
+        };
+      });
+      planLocationDataList[plan.date] = planLocationData;
+    }
     // planSpotsをorderでソート、metaを単一オブジェクトに変換
-    const formattedTrip = {
-      ...targetTrip,
-      tripInfo: targetTrip.tripInfos,
-      plans: targetTrip.plans.map((p) => ({
-        ...p,
-        planSpots: p.planSpots
+    const formattedTrip: TripType = {
+      title: targetTrip.title,
+      imageUrl: targetTrip.imageUrl ?? undefined,
+      startDate: targetTrip.startDate,
+      endDate: targetTrip.endDate,
+      tripInfo: targetTrip.tripInfos.map((tripInfo) => ({
+        date: tripInfo.date,
+        genreId: tripInfo.genreId,
+        transportationMethod: tripInfo.transportationMethods,
+        memo: tripInfo.memo || '',
+      })),
+      plans: targetTrip.plans.map((plan) => ({
+        date: plan.date,
+        spots: plan.planSpots
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-          .map((ps) => ({
-            ...ps,
-            spot: {
-              ...ps.spot,
-              meta: getMeta(ps.spot),
+          .map((planSpot) => ({
+            id: planSpot.spotId,
+            location: {
+              id: planSpot.spot.id || '',
+              name: planSpot.spot.meta[0]?.name || '',
+              lat: planSpot.spot.meta[0]?.latitude || 0,
+              lng: planSpot.spot.meta[0]?.longitude || 0,
             },
+            stayStart: planSpot.stayStart,
+            stayEnd: planSpot.stayEnd,
+            memo: planSpot.memo || '',
+            image: planSpot.spot.meta[0]?.image || '',
+            url: planSpot.spot.meta[0]?.url || '',
+            prefecture: planSpot.spot.meta[0]?.prefecture || '',
+            address: planSpot.spot.meta[0]?.address || '',
+            rating: planSpot.spot.meta[0]?.rating || 0,
+            category: planSpot.spot.meta[0]?.categories || [],
+            catchphrase: planSpot.spot.meta[0]?.catchphrase || '',
+            description: planSpot.spot.meta[0]?.description || '',
+            regularOpeningHours: planSpot.spot.meta[0]?.openingHours as { day: string; hours: string }[],
+            transports: transportDataList[plan.date]?.find(
+              (t) => t.fromType === 'SPOT' && t.toType === 'SPOT' && t.fromSpotId == planSpot.id,
+            ) ?? {
+              transportMethod: 0,
+              fromType: 'SPOT' as const,
+              toType: 'SPOT' as const,
+              travelTime: '',
+              cost: 0,
+              name: '',
+            },
+            order: planSpot.order,
+            nearestStation: planSpot.spot.nearestStations[0] || null,
           })),
+        departure: planLocationDataList[plan.date]?.find((pl) => pl.locationType === 'DEPARTURE') ?? {
+          name: '',
+          latitude: 0,
+          longitude: 0,
+          address: null,
+          label: null,
+          isDefault: false,
+          locationType: 'DEPARTURE' as const,
+          usageCount: null,
+          userLocationId: null,
+          planLocationId: null,
+          transports: undefined,
+        },
+        destination: planLocationDataList[plan.date]?.find((pl) => pl.locationType === 'DESTINATION') ?? {
+          name: '',
+          latitude: 0,
+          longitude: 0,
+          address: null,
+          label: null,
+          isDefault: false,
+          locationType: 'DESTINATION' as const,
+          usageCount: null,
+          userLocationId: null,
+          planLocationId: null,
+          transports: undefined,
+        },
       })),
     };
 
@@ -229,6 +362,25 @@ export const getTripHandler = {
         });
       }
 
+      // planDataからUserLocationIdを抽出して、重複を除去
+      const userLocationIds = new Set<number>();
+      tripData.plans.forEach((plan) => {
+        if (plan.departure.userLocationId) {
+          userLocationIds.add(plan.departure.userLocationId);
+        }
+        if (plan.destination.userLocationId) {
+          userLocationIds.add(plan.destination.userLocationId);
+        }
+      });
+
+      // userLocationIdsをもとにUserLocationのusageCountを更新
+      if (userLocationIds.size > 0) {
+        await tx
+          .update(userLocation)
+          .set({ usageCount: sql`${userLocation.usageCount} + 1` })
+          .where(and(eq(userLocation.userId, userId), inArray(userLocation.id, Array.from(userLocationIds))));
+      }
+
       // Plans と PlanSpots を作成
       for (const planData of tripData.plans) {
         const [newPlan] = await tx
@@ -256,49 +408,95 @@ export const getTripHandler = {
           createdPlanSpots.push(newPlanSpot);
         }
 
+        // 出発地の情報をplanLocationに登録する
+        const [newDeparturePlanLocation] = await tx
+          .insert(planLocation)
+          .values({
+            planId: newPlan.id,
+            userId,
+            name: planData.departure.name,
+            latitude: planData.departure.latitude,
+            longitude: planData.departure.longitude,
+            address: planData.departure.address ?? null,
+            locationType: 'DEPARTURE',
+          })
+          .returning();
+        // 目的地の情報をplanLocationに登録する
+        const [newDestinationPlanLocation] = await tx
+          .insert(planLocation)
+          .values({
+            planId: newPlan.id,
+            userId,
+            name: planData.destination.name,
+            latitude: planData.destination.latitude,
+            longitude: planData.destination.longitude,
+            address: planData.destination.address ?? null,
+            locationType: 'DESTINATION',
+          })
+          .returning();
+        // 最初のスポットへの交通手段（出発地から）- スポットがある場合のみ
+        if (planData.departure.transports && createdPlanSpots.length > 0) {
+          const departureTransport = planData.departure.transports;
+          const firstSpot = createdPlanSpots[0];
+          await tx.insert(transport).values({
+            planId: newPlan.id,
+            fromType: departureTransport.fromType,
+            toType: departureTransport.toType,
+            fromSpotId: newDeparturePlanLocation.id,
+            toSpotId: firstSpot.id,
+            cost: 0,
+            travelTime: departureTransport.travelTime ?? '不明',
+            transportMethod: departureTransport.transportMethod ?? 1,
+          });
+
+          // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
+          if (planData.departure.userLocationId) {
+            await tx
+              .update(userLocation)
+              .set({ usageCount: (planData.departure.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
+              .where(and(eq(userLocation.id, planData.departure.userLocationId), eq(userLocation.userId, userId)));
+          }
+        }
+        // 最後のスポットからの目的地への交通手段（目的地へ）- スポットがある場合のみ
+        if (planData.destination.transports && createdPlanSpots.length > 0) {
+          const destinationTransport = planData.destination.transports;
+          const lastSpot = createdPlanSpots[createdPlanSpots.length - 1];
+          await tx.insert(transport).values({
+            planId: newPlan.id,
+            fromType: destinationTransport.fromType,
+            toType: destinationTransport.toType,
+            fromSpotId: lastSpot.id,
+            toSpotId: newDestinationPlanLocation.id,
+            cost: 0,
+            travelTime: destinationTransport.travelTime ?? '不明',
+            transportMethod: destinationTransport.transportMethod ?? 1,
+          });
+
+          // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
+          if (planData.destination.userLocationId) {
+            await tx
+              .update(userLocation)
+              .set({ usageCount: (planData.destination.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
+              .where(and(eq(userLocation.id, planData.destination.userLocationId), eq(userLocation.userId, userId)));
+          }
+        }
+
         // スポット間の交通手段を作成
         for (let i = 0; i < createdPlanSpots.length - 1; i++) {
-          const fromSpot = createdPlanSpots[i];
-          const toSpot = createdPlanSpots[i + 1];
+          const fromSpotId = createdPlanSpots[i].id;
+          const toSpotId = createdPlanSpots[i + 1].id;
+
           const transportData = planData.spots[i].transports;
 
           await tx.insert(transport).values({
             planId: newPlan.id,
-            fromType: 'SPOT',
-            toType: 'SPOT',
-            fromSpotId: fromSpot.id,
-            toSpotId: toSpot.id,
+            fromType: transportData.fromType,
+            toType: transportData.toType,
+            fromSpotId: fromSpotId,
+            toSpotId: toSpotId,
             cost: transportData.cost ?? 0,
             travelTime: transportData.travelTime ?? '不明',
             transportMethod: transportData.transportMethod,
-          });
-        }
-
-        // 最初のスポットへの交通手段（出発地から）
-        if (createdPlanSpots.length > 0) {
-          const firstSpot = createdPlanSpots[0];
-          await tx.insert(transport).values({
-            planId: newPlan.id,
-            fromType: 'DEPARTURE',
-            toType: 'SPOT',
-            toSpotId: firstSpot.id,
-            cost: 0,
-            travelTime: '出発',
-            transportMethod: 1,
-          });
-        }
-
-        // 最後のスポットからの交通手段（目的地へ）
-        if (createdPlanSpots.length > 0) {
-          const lastSpot = createdPlanSpots[createdPlanSpots.length - 1];
-          await tx.insert(transport).values({
-            planId: newPlan.id,
-            fromType: 'SPOT',
-            toType: 'DESTINATION',
-            fromSpotId: lastSpot.id,
-            cost: 0,
-            travelTime: '帰宅',
-            transportMethod: 1,
           });
         }
       }

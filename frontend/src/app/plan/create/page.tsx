@@ -1,7 +1,6 @@
 'use client';
-import { useEffect } from 'react';
 import { Asterisk } from 'lucide-react';
-import Image from 'next/image';
+import { useEffect, useMemo } from 'react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,24 +11,58 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS } from '@/data/constants';
+import { APP_LIMITS, DEFAULT_DEPARTURE_AND_DESTINATION } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
-import { useFetchTripDetail } from '@/hooks/use-trip';
-import LoadingState from '@/components/common/LoadingState';
+import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
+import { TransportNodeType } from '@/types/plan';
 
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
-  const setDepartureHistory = useStoreForPlanning((s) => s.setDepartureHistory);
-  const setDestinationHistory = useStoreForPlanning((s) => s.setDestinationHistory);
-  const { departureDestinationData, isLoading, error } = useFetchTripDetail();
+  const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
+    TransportNodeType.DEPARTURE,
+  );
+  const { candidates: destinationCandidates, isLoading: isDestinationCandidatesLoading } = usePlanLocationCandidates(
+    TransportNodeType.DESTINATION,
+  );
 
-  // 画面描画時に履歴データを取得してセット
+  // 日付の範囲を取得
+  const dates = useMemo(
+    () => getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)),
+    [fields.startDate, fields.endDate],
+  );
+
+  // 取得した候補からデフォルトの地点を当日の出発地・目的地にセットする
+  // 出発地と目的地のデフォルト値を設定
+  // addDateWithDefaultLocationを使用することで、既存の日付は上書きされず、新規日付のみデフォルト値が設定される
   useEffect(() => {
-    if (departureDestinationData) {
-      setDepartureHistory(departureDestinationData.departure);
-      setDestinationHistory(departureDestinationData.destination);
+    if (
+      !isDepartureCandidatesLoading &&
+      departureCandidates &&
+      !isDestinationCandidatesLoading &&
+      destinationCandidates
+    ) {
+      const defaultDeparture = departureCandidates.favorites.find((fav) => fav.isDefault);
+      const defaultDestination = destinationCandidates.favorites.find((fav) => fav.isDefault);
+
+      // 新規日付に対してのみデフォルト値を設定（既存日付は上書きしない）
+      dates.forEach((date) => {
+        fields.addDateWithDefaultLocation(
+          date,
+          {
+            ...(defaultDeparture ?? DEFAULT_DEPARTURE_AND_DESTINATION),
+            locationType: TransportNodeType.DEPARTURE,
+          },
+          {
+            ...(defaultDestination ?? DEFAULT_DEPARTURE_AND_DESTINATION),
+            locationType: TransportNodeType.DESTINATION,
+          },
+        );
+      });
+
+      fields.setDepartureList(departureCandidates);
+      fields.setDestinationList(destinationCandidates);
     }
-  }, [departureDestinationData, setDepartureHistory, setDestinationHistory]);
+  }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
 
   // TODO: 対応できていない機能のためコメントアウト
   // const { trigger: uploadImageTrigger } = useSWRMutation(
@@ -58,10 +91,6 @@ const TravelPlanCreate = () => {
   //     console.error('Error uploading image:', error);
   //   }
   // };
-
-  if (error || isLoading) {
-    return <LoadingState isLoading={isLoading} error={error} />;
-  }
 
   return (
     <div>
@@ -148,21 +177,17 @@ const TravelPlanCreate = () => {
             {/* 選択した日付分だけタブが生成されるようにする */}
             <Tabs defaultValue={fields.startDate && fields.startDate} defaultChecked={true}>
               <TabsList className="flex justify-start space-x-2">
-                {fields.startDate &&
-                  fields.endDate &&
-                  getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).map((date) => (
-                    <TabsTrigger key={date} value={date}>
-                      {date}
-                    </TabsTrigger>
-                  ))}
-              </TabsList>
-              {fields.startDate &&
-                fields.endDate &&
-                getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).map((date) => (
-                  <TabsContent key={date} value={date}>
-                    <PlanningComp date={date} />
-                  </TabsContent>
+                {dates.map((date) => (
+                  <TabsTrigger key={date} value={date}>
+                    {date}
+                  </TabsTrigger>
                 ))}
+              </TabsList>
+              {dates.map((date) => (
+                <TabsContent key={date} value={date}>
+                  <PlanningComp date={date} />
+                </TabsContent>
+              ))}
             </Tabs>
 
             {/* 作成ボタン */}

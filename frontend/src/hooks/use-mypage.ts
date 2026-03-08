@@ -1,6 +1,7 @@
 import useSWR from 'swr';
 
 import { useFetcher } from '@/hooks/use-fetcher';
+import { CreateUserLocationRequest, UpdateUserLocationRequest, UserLocation } from '@/models/userLocation';
 
 /**
  * Tripの型定義
@@ -71,6 +72,14 @@ export type MypageData = {
 
   // 最近の旅
   recentTrips: RecentTrip[];
+
+  // ユーザーお気に入り地点
+  userLocations: UserLocation[];
+
+  // ユーザーお気に入り地点の操作関数
+  postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<Response>;
+  updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
+  deleteUserLocation: (id: number) => Promise<Response>;
 };
 
 /**
@@ -128,7 +137,7 @@ function isFutureDate(dateStr: string): boolean {
  * マイページに必要なデータを一括で取得・整形するカスタムフック
  */
 export function useMypageData(): MypageData {
-  const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
+  const { getFetcher, isAuthenticated, isSessionLoading, getAuthHeaders } = useFetcher();
 
   // セッションが確立されている場合のみAPIリクエストを発行
   const shouldFetch = isAuthenticated && !isSessionLoading;
@@ -158,11 +167,67 @@ export function useMypageData(): MypageData {
     isLoading: wishlistCountLoading,
   } = useSWR<CountResponse>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist/count` : null, getFetcher);
 
+  const {
+    data: userLocations,
+    error: userLocationsError,
+    isLoading: userLocationsLoading,
+  } = useSWR(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation` : null, getFetcher);
+
+  const postUserLocation = async (newUserLocation: CreateUserLocationRequest) => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newUserLocation),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create user location: ${response.status}`);
+    }
+
+    return response;
+  };
+
+  const updateUserLocation = async (updatedUserLocation: UpdateUserLocationRequest) => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation/${updatedUserLocation.id}`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updatedUserLocation),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update user location: ${response.status}`);
+    }
+
+    return response;
+  };
+
+  const deleteUserLocation = async (id: number) => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete user location: ${response.status}`);
+    }
+
+    return response;
+  };
+
   // ローディング状態（セッションローディングも含める）
-  const isLoading = isSessionLoading || tripsLoading || tripsCountLoading || wishlistLoading || wishlistCountLoading;
+  const isLoading =
+    isSessionLoading ||
+    tripsLoading ||
+    tripsCountLoading ||
+    wishlistLoading ||
+    wishlistCountLoading ||
+    userLocationsLoading;
 
   // エラー状態
-  const error = tripsError || tripsCountError || wishlistError || wishlistCountError || null;
+  const error = tripsError || tripsCountError || wishlistError || wishlistCountError || userLocationsError || null;
 
   // 次の旅の計算
   const nextTrip: NextTrip | null = (() => {
@@ -233,5 +298,9 @@ export function useMypageData(): MypageData {
     wishlistTotalCount: wishlistCount?.count ?? 0,
     wishlistLimit: wishlistCount?.limit ?? 100,
     recentTrips,
+    userLocations: userLocations ?? [],
+    postUserLocation,
+    updateUserLocation,
+    deleteUserLocation,
   };
 }

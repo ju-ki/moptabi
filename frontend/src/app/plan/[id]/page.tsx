@@ -15,7 +15,7 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import { useToast } from '@/hooks/use-toast';
 import { useFetchTripDetail } from '@/hooks/use-trip';
 import { useStoreForPlanning } from '@/lib/plan';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { TransportNodeType } from '@/types/plan';
 
 const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
@@ -32,41 +32,11 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     }
 
     trip.plans.forEach((plan) => {
-      plan.planSpots.forEach((planSpot) => {
-        const type = planSpot.spot.id.split('_')[0];
-        const spot: Spot = {
-          id: planSpot.spot.id,
-          location: {
-            id: planSpot.spot.id,
-            lat: planSpot.spot.meta.latitude,
-            lng: planSpot.spot.meta.longitude,
-            name: planSpot.spot.meta.name,
-          },
-          image: planSpot.spot.meta.image,
-          rating: planSpot.spot.meta.rating,
-          catchphrase: planSpot.spot.meta.catchphrase,
-          description: planSpot.spot.meta.description,
-          category: planSpot.spot.meta.categories,
-          address: planSpot.spot.meta.address,
-          prefecture: planSpot.spot.meta.prefecture ?? undefined,
-          url: planSpot.spot.meta.url ?? undefined,
-          regularOpeningHours: planSpot.spot.meta.openingHours ? planSpot.spot.meta.openingHours : undefined,
-          memo: planSpot.memo,
-          stayStart: planSpot.stayStart,
-          stayEnd: planSpot.stayEnd,
-          order: planSpot.order,
-          nearestStation: planSpot.spot.nearestStation,
-          transports: {
-            fromType: type === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.SPOT,
-            toType: type === 'destination' ? TransportNodeType.DESTINATION : TransportNodeType.SPOT,
-            transportMethod: planSpot.fromLocation[0].transportMethod,
-            name: planSpot.fromLocation[0].name,
-            travelTime: planSpot.fromLocation[0].travelTime,
-            cost: planSpot.fromLocation[0].cost,
-          },
-        };
+      plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
       });
+      fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
+      fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
     });
   }, [trip, error]);
 

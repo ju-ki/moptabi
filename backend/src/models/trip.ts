@@ -1,6 +1,33 @@
 import { z } from '@hono/zod-openapi';
 
 import { OpeningHoursSchema } from './spot';
+import { LocationTypeEnum } from './planLocation';
+
+const TransportSchema = z.object({
+  transportMethod: z.number().min(1, { message: '移動手段を選択してください' }),
+  travelTime: z.string().optional(),
+  name: z.string().optional(),
+  cost: z.number().optional(),
+  planId: z.number().optional(),
+  toSpotId: z.number().optional(),
+  fromSpotId: z.number().optional(),
+  fromType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),
+  toType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),
+});
+
+const DepartureAndDestinationSchema = z.object({
+  name: z.string(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  address: z.string().nullable(),
+  label: z.string().nullable(),
+  isDefault: z.boolean(),
+  locationType: LocationTypeEnum,
+  usageCount: z.number().nullable(),
+  userLocationId: z.number().nullable(),
+  planLocationId: z.number().nullable(),
+  transports: TransportSchema.optional(),
+});
 
 export const TripSchema = z.object({
   title: z
@@ -42,13 +69,7 @@ export const TripSchema = z.object({
           catchphrase: z.string().optional(),
           description: z.string().optional(),
           regularOpeningHours: OpeningHoursSchema.optional(),
-          transports: z.object({
-            transportMethod: z.number().min(1, { message: '移動手段を選択してください' }),
-            travelTime: z.string().optional(),
-            cost: z.number().optional(),
-            fromType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),
-            toType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),
-          }),
+          transports: TransportSchema,
           order: z.number().default(0),
           nearestStation: z
             .object({
@@ -60,7 +81,12 @@ export const TripSchema = z.object({
             .optional(),
         }),
       ),
+      departure: DepartureAndDestinationSchema,
+      destination: DepartureAndDestinationSchema,
     }),
   ),
 });
-export type Trip = z.infer<typeof TripSchema>;
+
+export type TransportType = z.infer<typeof TransportSchema>;
+export type TripType = z.infer<typeof TripSchema>;
+export type DepartureAndDestinationType = z.infer<typeof DepartureAndDestinationSchema>;

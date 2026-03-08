@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { useStoreForPlanning } from '@/lib/plan';
+import { getDatesBetween } from '@/lib/utils';
 
 import { Label } from './ui/label';
 import Transportation from './Transportation';
@@ -12,9 +13,16 @@ import { Button } from './ui/button';
 import PlanningButton from './PlanningButton';
 import TravelPlan from './TravelPlan';
 import SpotSelectionDialog from './spot-selection/SpotSelectionDialog';
+import LocationLinkCheckbox from './LocationLinkCheckbox';
 
 const PlanningComp = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
+
+  // 日数を計算して単一日か複数日かを判定
+  const dates =
+    fields.startDate && fields.endDate ? getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)) : [];
+  const isSingleDay = dates.length === 1;
+
   return (
     <div>
       <h1 className="text-2xl py-4">{date}の計画設定</h1>
@@ -22,6 +30,15 @@ const PlanningComp = ({ date }: { date: string }) => {
       {/* メインとなる移動手段 */}
       <div className="space-y-4">
         <Transportation date={date} />
+      </div>
+
+      {/* 出発地・目的地連動チェックボックス */}
+      <div className="space-y-4 my-4">
+        <LocationLinkCheckbox
+          isSingleDay={isSingleDay}
+          checked={fields.isLocationLinked}
+          onCheckedChange={fields.setIsLocationLinked}
+        />
       </div>
 
       {/* 出発地 */}

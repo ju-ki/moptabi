@@ -4,80 +4,23 @@ import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 import {
-  Coordination,
   PlanErrorType,
   SearchSpotByCategoryParams,
   Spot,
-  TransportMethods,
   TransportNodeType,
   TravelModeType,
   TravelPlanType,
   TripInfo,
 } from '@/types/plan';
+import { TripSchema } from '@/models/trip';
+import { DepartureAndDestinationType, PlanLocationCandidatesResponse } from '@/models/planLocation';
+import { DEFAULT_DEPARTURE_AND_DESTINATION } from '@/data/constants';
 
-import { formatOpeningHours } from './google-maps';
 import { getPrefectures } from './algorithm';
+import { formatOpeningHours } from './google-maps';
+import { getDatesBetween } from './utils';
 
-export const schema = z.object({
-  title: z
-    .string()
-    .min(1, { message: 'タイトルは必須です' })
-    .max(50, { message: 'タイトルの上限を超えています。50文字以下で入力してください' }),
-  imageUrl: z.string().url().optional(),
-  startDate: z.string().date('予定日の終了日を入力してください'),
-  endDate: z.string().date('予定日の終了日を入力してください'),
-  tripInfo: z.array(
-    z.object({
-      date: z.string(),
-      genreId: z.number().default(1),
-      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }),
-      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-    }),
-  ),
-  plans: z.array(
-    z.object({
-      date: z.string().date(),
-      spots: z.array(
-        z.object({
-          id: z.string(),
-          location: z.object({
-            name: z.string().min(1, { message: '観光地名は必須です' }),
-            lat: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-            lng: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
-          }),
-          stayStart: z.string().time().optional(),
-          stayEnd: z.string().time().optional(),
-          memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-          image: z.string().url().optional(),
-          rating: z.number().optional(),
-          category: z.array(z.string()).optional(),
-          catchphrase: z.string().optional(),
-          description: z.string().optional(),
-          transports: z
-            .object({
-              transportMethodIds: z.array(z.number()).min(1, { message: '少なくとも1つの移動手段を選択してください' }),
-              travelTime: z.string().optional(),
-              cost: z.number().optional(),
-              fromType: z.nativeEnum(TransportNodeType),
-              toType: z.nativeEnum(TransportNodeType),
-            })
-            .optional(),
-          order: z.number().default(0),
-          nearestStation: z
-            .object({
-              name: z.string(),
-              walkingTime: z.number(),
-              latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
-              longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
-            })
-            .optional(),
-        }),
-      ),
-    }),
-  ),
-});
-
-export type FormData = z.infer<typeof schema>;
+export type FormData = z.infer<typeof TripSchema>;
 
 interface FormState {
   id?: string;
@@ -87,14 +30,18 @@ interface FormState {
   endDate: string;
   tripInfo: TripInfo[];
   plans: TravelPlanType[];
-  departureHistory: Coordination[];
-  destinationHistory: Coordination[];
+  departureList: PlanLocationCandidatesResponse;
+  destinationList: PlanLocationCandidatesResponse;
+  /** 出発地・目的地連動チェックボックスの状態 */
+  isLocationLinked: boolean;
   errors: Partial<Record<keyof FormData, string>>;
   tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
   planErrors: Record<string, Record<PlanErrorType, string>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
-  setDepartureHistory: (history: Coordination[]) => void;
-  setDestinationHistory: (history: Coordination[]) => void;
+  setDepartureList: (list: PlanLocationCandidatesResponse) => void;
+  setDestinationList: (list: PlanLocationCandidatesResponse) => void;
+  /** 出発地・目的地連動チェックボックスの状態を設定 */
+  setIsLocationLinked: (isLinked: boolean) => void;
   getTripInfo: (date: string) => TripInfo;
   setTripInfo: (
     date: string,
@@ -104,6 +51,8 @@ interface FormState {
   getSpotInfo: (date: string, type: TransportNodeType | null) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
+  getDepartureAndDestination: (date: string, type: TransportNodeType) => DepartureAndDestinationType;
+  setDepartureAndDestination: (date: string, type: TransportNodeType, value: DepartureAndDestinationType) => void;
   setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
   editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
   getSortedSpots: (date: string) => Spot[];
@@ -114,6 +63,12 @@ interface FormState {
   setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
   getSpotCoordination: (date: string) => Record<string, Spot>;
+  /** 新規日付を追加。既存の日付は変更せず、新規日付にのみデフォルト値を設定 */
+  addDateWithDefaultLocation: (
+    date: string,
+    defaultDeparture: DepartureAndDestinationType,
+    defaultDestination: DepartureAndDestinationType,
+  ) => void;
   resetErrors: () => void;
   resetForm: () => void;
 }
@@ -123,15 +78,10 @@ export const useStoreForPlanning = create<FormState>()(
     devtools((set, get) => ({
       title: '',
       imageUrl: '',
-      startDate: new Date().toLocaleDateString('sv-SE'),
-      endDate: new Date().toLocaleDateString('sv-SE'),
+      startDate: '',
+      endDate: '',
       tripInfo: [],
-      plans: [
-        {
-          date: new Date().toLocaleDateString('sv-SE'),
-          spots: [],
-        },
-      ],
+      plans: [],
       simulationStatus: null,
       setSimulationStatus: (status) => {
         set((state) => {
@@ -162,10 +112,12 @@ export const useStoreForPlanning = create<FormState>()(
       tripInfoErrors: {},
       spotErrors: {},
       planErrors: {},
-      departureHistory: [],
-      destinationHistory: [],
-      setDepartureHistory: (history) => set((state) => ({ ...state, departureHistory: history })),
-      setDestinationHistory: (history) => set((state) => ({ ...state, destinationHistory: history })),
+      departureList: [],
+      destinationList: [],
+      setDepartureList: (list) => set((state) => ({ ...state, departureList: list })),
+      setDestinationList: (list) => set((state) => ({ ...state, destinationList: list })),
+      isLocationLinked: false,
+      setIsLocationLinked: (isLinked) => set((state) => ({ ...state, isLocationLinked: isLinked })),
       getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
         if (plansForDate.length > 0) {
@@ -205,6 +157,86 @@ export const useStoreForPlanning = create<FormState>()(
           }
         });
       },
+      setDepartureAndDestination: (date, type, value) => {
+        set((state) => {
+          // 日数を計算
+          const dates = getDatesBetween(new Date(state.startDate), new Date(state.endDate));
+          const isSingleDay = dates.length === 1;
+          const currentDayIndex = dates.indexOf(date);
+          const previousDate = dates[currentDayIndex - 1];
+          const previousDayPlan = state.plans.find((plan) => plan.date === previousDate);
+          const existingPlansIndex = state.plans.findIndex((info) => info.date === date);
+          if (existingPlansIndex < 0 && type == TransportNodeType.DEPARTURE) {
+            state.plans.push({
+              date: date,
+              spots: [],
+              departure: value,
+              destination: {} as DepartureAndDestinationType,
+            });
+            return;
+          } else if (existingPlansIndex < 0 && type == TransportNodeType.DESTINATION) {
+            state.plans.push({
+              date: date,
+              spots: [],
+              departure: {} as DepartureAndDestinationType,
+              destination: value,
+            });
+            return;
+          }
+          if (type === TransportNodeType.DEPARTURE) {
+            state.plans[existingPlansIndex].departure = {
+              ...value,
+              name: value.name === '' ? '出発地_' + date : value.name,
+            };
+          }
+          if (type === TransportNodeType.DESTINATION) {
+            state.plans[existingPlansIndex].destination = {
+              ...value,
+              name: value.name === '' ? '目的地_' + date : value.name,
+            };
+          }
+
+          if (isSingleDay && state.isLocationLinked) {
+            const oppositeType = type === TransportNodeType.DEPARTURE ? 'destination' : 'departure';
+
+            // 名前が空の場合は、登録値に合わせたデフォルトの名前を入れる
+            if (value.name === '') {
+              state.plans[existingPlansIndex][oppositeType] = {
+                ...value,
+                name: oppositeType === 'departure' ? '出発地_' + date : '目的地_' + date,
+              };
+              return;
+            }
+            state.plans[existingPlansIndex][oppositeType] = {
+              ...value,
+            };
+          }
+          if (state.isLocationLinked && type === TransportNodeType.DESTINATION) {
+            // 複数日の場合は、当日の目的地を翌日の出発地に連動させる(片方向)
+            const nextDate = dates[currentDayIndex + 1];
+            const nextDayPlanIndex = state.plans.findIndex((plan) => plan.date === nextDate);
+            if (!isSingleDay && nextDayPlanIndex > 0) {
+              state.plans[nextDayPlanIndex].departure = {
+                ...value,
+                name: value.name === '' ? '出発地_' + nextDate : value.name,
+                locationType: TransportNodeType.DEPARTURE,
+              };
+            }
+          }
+        });
+      },
+      getDepartureAndDestination: (date, type) => {
+        if (type == TransportNodeType.DEPARTURE) {
+          return get().plans.filter((val) => val.date == date)[0]
+            ? get().plans.filter((val) => val.date == date)[0].departure
+            : DEFAULT_DEPARTURE_AND_DESTINATION;
+        }
+        if (type == TransportNodeType.DESTINATION) {
+          return get().plans.filter((val) => val.date == date)[0]
+            ? get().plans.filter((val) => val.date == date)[0].destination
+            : DEFAULT_DEPARTURE_AND_DESTINATION;
+        }
+      },
       setSpots: (date, spot, isDeleted = false) => {
         set((state) => {
           const existingPlansIndex = state.plans.findIndex((info) => info.date === date);
@@ -212,6 +244,8 @@ export const useStoreForPlanning = create<FormState>()(
             state.plans.push({
               date: date,
               spots: [spot],
+              departure: DEFAULT_DEPARTURE_AND_DESTINATION,
+              destination: DEFAULT_DEPARTURE_AND_DESTINATION,
             });
             return;
           }
@@ -231,6 +265,33 @@ export const useStoreForPlanning = create<FormState>()(
           state[field] = value;
         }),
       setRangeDate: (date) => set((state) => ({ ...state, startDate: date?.from, endDate: date?.to })),
+      addDateWithDefaultLocation: (date, defaultDeparture, defaultDestination) => {
+        set((state) => {
+          // 既存のプランかどうかを確認
+          const existingPlanIndex = state.plans.findIndex((plan) => plan.date === date);
+          // 既存のプランがある場合は何もしない（上書きしない）
+          if (existingPlanIndex >= 0) {
+            return;
+          }
+          // 新規日付の場合のみ、デフォルト値を設定したプランを追加
+          state.plans.push({
+            date: date,
+            spots: [],
+            departure: {
+              ...defaultDeparture,
+              name: defaultDeparture.name === '' ? '出発地_' + date : defaultDeparture.name,
+              locationType: TransportNodeType.DEPARTURE,
+            },
+            destination: {
+              ...defaultDestination,
+              name: defaultDestination.name === '' ? '目的地_' + date : defaultDestination.name,
+              locationType: TransportNodeType.DESTINATION,
+            },
+          });
+          // 日付順にソート
+          state.plans.sort((a, b) => a.date.localeCompare(b.date));
+        });
+      },
       setErrors: (errors) => set((state) => ({ ...state, errors })),
       setTripInfoErrors: (date, errors) =>
         set((state) => {

@@ -1,6 +1,5 @@
 import useSWR from 'swr';
 
-import { ResponseTripType } from '@/types/plan';
 import { TripType } from '@/types/trip';
 
 import { useFetcher } from './use-fetcher';
@@ -15,7 +14,7 @@ export const useFetchTripDetail = (tripId?: string) => {
     data: trip,
     isLoading: isTripLoading,
     error: tripError,
-  } = useSWR<ResponseTripType>(
+  } = useSWR<TripType>(
     shouldFetch && tripId ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${tripId}` : null,
     getFetcher,
   );

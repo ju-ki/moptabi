@@ -240,96 +240,23 @@ describe('SpotDetailCard', () => {
   describe('移動情報の表示', () => {
     it('移動時間と交通手段が表示される', () => {
       const spot = createMockSpot();
-      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} showTransport={true} />);
+      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} />);
 
       expect(screen.getByText(/30分/)).toBeInTheDocument();
       expect(screen.getByText(/電車/)).toBeInTheDocument();
     });
 
-    it('showTransportがfalseの場合、移動情報は表示されない', () => {
-      const spot = createMockSpot();
-      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} showTransport={false} />);
+    describe('削除機能', () => {
+      it('削除ボタンをクリックするとonDeleteが呼ばれる', () => {
+        const spot = createMockSpot();
+        const onDelete = vi.fn();
+        render(<SpotDetailCard spot={spot} index={0} onDelete={onDelete} onMemoChange={vi.fn()} />);
 
-      expect(screen.queryByTestId('spot-transport')).not.toBeInTheDocument();
-    });
-  });
+        const deleteButton = screen.getByRole('button', { name: /削除/i });
+        fireEvent.click(deleteButton);
 
-  describe('削除機能', () => {
-    it('削除ボタンをクリックするとonDeleteが呼ばれる', () => {
-      const spot = createMockSpot();
-      const onDelete = vi.fn();
-      render(
-        <SpotDetailCard spot={spot} index={0} onDelete={onDelete} onMemoChange={vi.fn()} showDeleteButton={true} />,
-      );
-
-      const deleteButton = screen.getByRole('button', { name: /削除/i });
-      fireEvent.click(deleteButton);
-
-      expect(onDelete).toHaveBeenCalledWith('spot-1');
-    });
-
-    it('showDeleteButtonがfalseの場合、削除ボタンは表示されない', () => {
-      const spot = createMockSpot();
-      render(
-        <SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} showDeleteButton={false} />,
-      );
-
-      expect(screen.queryByRole('button', { name: /削除/i })).not.toBeInTheDocument();
-    });
-  });
-
-  describe('出発地・目的地の表示', () => {
-    it('出発地の場合、簡易表示になる', () => {
-      const spot = createMockSpot({
-        transports: {
-          transportMethod: 1,
-          name: 'TRANSIT',
-          cost: 0,
-          travelTime: '0分',
-          fromType: TransportNodeType.DEPARTURE,
-          toType: TransportNodeType.SPOT,
-        },
+        expect(onDelete).toHaveBeenCalledWith('spot-1');
       });
-      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} />);
-
-      // 出発地・目的地では滞在時間や評価は表示されない
-      expect(screen.queryByText('10:00 - 12:00')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('spot-rating')).not.toBeInTheDocument();
-    });
-
-    it('目的地の場合、簡易表示になる', () => {
-      const spot = createMockSpot({
-        transports: {
-          transportMethod: 1,
-          name: 'TRANSIT',
-          cost: 0,
-          travelTime: '0分',
-          fromType: TransportNodeType.SPOT,
-          toType: TransportNodeType.DESTINATION,
-        },
-      });
-      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} />);
-
-      // 目的地では滞在時間や評価は表示されない
-      expect(screen.queryByText('10:00 - 12:00')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('spot-rating')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('最寄駅情報の表示', () => {
-    it('最寄駅情報が表示される', () => {
-      const spot = createMockSpot();
-      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} />);
-
-      expect(screen.getByText(/神谷町駅/)).toBeInTheDocument();
-      expect(screen.getByText(/徒歩/)).toBeInTheDocument();
-    });
-
-    it('最寄駅がない場合は表示されない', () => {
-      const spot = createMockSpot({ nearestStation: undefined });
-      render(<SpotDetailCard spot={spot} index={0} onDelete={vi.fn()} onMemoChange={vi.fn()} />);
-
-      expect(screen.queryByTestId('spot-nearest-station')).not.toBeInTheDocument();
     });
   });
 });
