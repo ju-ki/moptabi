@@ -270,7 +270,7 @@ export const getTripHandler = {
             toSpotId: toSpot.id,
             cost: transportData.cost ?? 0,
             travelTime: transportData.travelTime ?? '不明',
-            transportMethod: transportData.transportMethod,
+            transportMethodIds: transportData.transportMethodIds,
           });
         }
 
@@ -284,7 +284,7 @@ export const getTripHandler = {
             toSpotId: firstSpot.id,
             cost: 0,
             travelTime: '出発',
-            transportMethod: 1,
+            transportMethodIds: [1],
           });
         }
 
@@ -298,7 +298,7 @@ export const getTripHandler = {
             fromSpotId: lastSpot.id,
             cost: 0,
             travelTime: '帰宅',
-            transportMethod: 1,
+            transportMethodIds: [1],
           });
         }
       }

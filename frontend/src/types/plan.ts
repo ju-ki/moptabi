@@ -17,7 +17,7 @@ export type Coordination = {
 };
 
 export type Transport = {
-  transportMethod: number;
+  transportMethodIds: number[];
   name: TravelModeType; // 例: "電車" | "バス"
   cost?: number;
   travelTime: string; // 例: "30分"

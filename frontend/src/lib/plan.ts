@@ -357,7 +357,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     ratingCount: place.userRatingCount ?? 0,
     regularOpeningHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
     transports: {
-      transportMethod: 1,
+      transportMethodIds: [1],
       name: 'WALKING',
       travelTime: '不明',
       fromType: TransportNodeType.SPOT,

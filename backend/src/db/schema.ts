@@ -40,7 +40,7 @@ export const transport = pgTable(
     fromSpotId: integer(),
     planId: integer().notNull(),
     toSpotId: integer(),
-    transportMethod: integer().notNull(),
+    transportMethodIds: integer().array().notNull(),
   },
   (table) => [
     foreignKey({

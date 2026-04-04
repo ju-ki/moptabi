@@ -59,10 +59,10 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
           transports: {
             fromType: type === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.SPOT,
             toType: type === 'destination' ? TransportNodeType.DESTINATION : TransportNodeType.SPOT,
-            transportMethod: planSpot.fromLocation[0].transportMethod,
-            name: planSpot.fromLocation[0].name,
-            travelTime: planSpot.fromLocation[0].travelTime,
-            cost: planSpot.fromLocation[0].cost,
+            transportMethodIds: planSpot.fromLocation[0]?.transportMethodIds ?? [1],
+            name: planSpot.fromLocation[0]?.name ?? 'DEFAULT',
+            travelTime: planSpot.fromLocation[0]?.travelTime ?? '不明',
+            cost: planSpot.fromLocation[0]?.cost,
           },
         };
         fields.setSpots(plan.date, spot, false);

@@ -117,7 +117,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
       fields.editSpots(date, departureCoordination.id, {
         transports: {
-          transportMethod: TransportMethods[firstRoute.travelMode].id,
+          transportMethodIds: [TransportMethods[firstRoute.travelMode].id],
           name: firstRoute.travelMode || 'DEFAULT',
           travelTime: firstRoute.duration || '',
           fromType: TransportNodeType.DEPARTURE,
@@ -137,7 +137,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           routeResults.push(lastRoute);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
-              transportMethod: TransportMethods[lastRoute.travelMode].id,
+              transportMethodIds: [TransportMethods[lastRoute.travelMode].id],
               name: lastRoute.travelMode || 'DEFAULT',
               travelTime: lastRoute.duration || '',
               fromType: TransportNodeType.SPOT,
@@ -150,7 +150,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           // 目的のスポットの情報更新
           fields.editSpots(date, destinationCoordination.id, {
             transports: {
-              transportMethod: TransportMethods['WALKING'].id,
+              transportMethodIds: [TransportMethods['WALKING'].id],
               name: 'DEFAULT',
               travelTime: '',
               fromType: TransportNodeType.DESTINATION,
@@ -162,7 +162,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
           const route = await calcRoutes(spotCoordination[i], spotCoordination[i + 1], targetTransportMethod);
           fields.editSpots(date, spotCoordination[i].id, {
             transports: {
-              transportMethod: TransportMethods[route.travelMode].id,
+              transportMethodIds: [TransportMethods[route.travelMode].id],
               name: route.travelMode || 'DEFAULT',
               travelTime: route.duration || '',
               fromType: TransportNodeType.SPOT,

@@ -89,7 +89,7 @@ const mockPlanData = [
         spotId: 'departure_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethod: 1,
+          transportMethodIds: [1],
           travelTime: '15分',
           cost: 300,
           fromType: 'DEPARTURE',
@@ -126,7 +126,7 @@ const mockPlanData = [
           { day: '日', hours: '10:00-18:00' },
         ],
         transports: {
-          transportMethod: 1,
+          transportMethodIds: [1],
           travelTime: '30分',
           cost: 500,
           fromType: 'SPOT',
@@ -163,7 +163,7 @@ const mockPlanData = [
           { day: '日', hours: '6:00-22:00' },
         ],
         transports: {
-          transportMethod: 2,
+          transportMethodIds: [2],
           travelTime: '45分',
           cost: 700,
           fromType: 'SPOT',
@@ -184,7 +184,7 @@ const mockPlanData = [
         spotId: 'destination_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethod: 1,
+          transportMethodIds: [1],
           travelTime: '15分',
           cost: 300,
           fromType: 'SPOT',
@@ -210,7 +210,7 @@ const mockPlanData = [
         spotId: 'departure_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethod: 1,
+          transportMethodIds: [1],
           travelTime: '15分',
           cost: 300,
           fromType: 'DEPARTURE',
@@ -247,7 +247,7 @@ const mockPlanData = [
           { day: '日', hours: '9:00-20:00' },
         ],
         transports: {
-          transportMethod: 3,
+          transportMethodIds: [3],
           travelTime: '60分',
           cost: 1000,
           fromType: 'SPOT',
@@ -268,7 +268,7 @@ const mockPlanData = [
         spotId: 'destination_spot' + Math.random().toString(36).substring(2, 15),
         regularOpeningHours: [],
         transports: {
-          transportMethod: 1,
+          transportMethodIds: [1],
           travelTime: '15分',
           cost: 300,
           fromType: 'SPOT',

@@ -256,7 +256,7 @@ describe('🔒 上限チェック機能', () => {
         stayStart: `${10 + i}:00`,
         stayEnd: `${11 + i}:00`,
         transports: {
-          transportMethod: 1,
+          transportMethodIds: [1],
           name: 'TRANSIT',
           travelTime: '30 mins',
           fromType: 'SPOT',

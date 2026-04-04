@@ -43,7 +43,7 @@ export const TripSchema = z.object({
           description: z.string().optional(),
           regularOpeningHours: OpeningHoursSchema.optional(),
           transports: z.object({
-            transportMethod: z.number().min(1, { message: '移動手段を選択してください' }),
+            transportMethodIds: z.array(z.number()).min(1, { message: '移動手段を選択してください' }),
             travelTime: z.string().optional(),
             cost: z.number().optional(),
             fromType: z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']),

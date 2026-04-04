@@ -41,7 +41,8 @@
     "eslint": "^9.39.2",
     "hono": "^3.10.0",
     "pg": "^8.18.0",
-    "prisma": "^7.3.0"
+    "prisma": "^7.3.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260124.0",

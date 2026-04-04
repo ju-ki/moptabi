@@ -111,7 +111,7 @@ export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
     stayStart: '09:00',
     stayEnd: '10:00',
     transports: {
-      transportMethod: 0,
+      transportMethodIds: [0],
       name: 'DEFAULT',
       travelTime: '不明',
       fromType: TransportNodeType.SPOT,

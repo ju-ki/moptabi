@@ -39,7 +39,7 @@ const Destination = ({ date }: { date: string }) => {
       travelTime: '不明',
       cost: 0,
       name: 'DEFAULT',
-      transportMethod: 1,
+      transportMethodIds: [1],
       fromType: TransportNodeType.SPOT,
       toType: TransportNodeType.DESTINATION,
     },

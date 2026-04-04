@@ -96,7 +96,7 @@ async function createTripViaTripService(params: {
       spotId: spot.spotId,
       regularOpeningHours: [],
       transports: {
-        transportMethod: 1,
+        transportMethodIds: [1],
         travelTime: '15分',
         cost: 300,
         fromType,
@@ -566,7 +566,7 @@ describe('🧾 スポットサービス', () => {
         toType: 'SPOT',
         fromSpotId: departurePlanSpot.id,
         toSpotId: normalPlanSpot.id,
-        transportMethod: 1,
+        transportMethodIds: [1],
       });
 
       // 通常スポット → 目的地
@@ -576,7 +576,7 @@ describe('🧾 スポットサービス', () => {
         toType: 'DESTINATION',
         fromSpotId: normalPlanSpot.id,
         toSpotId: destinationPlanSpot.id,
-        transportMethod: 1,
+        transportMethodIds: [1],
       });
 
       const results = await getVisitedSpots(TEST_USER_ID);
