@@ -137,7 +137,6 @@ tripApp.openapi(getTripCountRoute, getTripHandler.getTripCount);
 tripApp.openapi(createTripRoute, getTripHandler.createTrip);
 tripApp.openapi(getTripDetailRoute, getTripHandler.getTripDetail);
 tripApp.openapi(deleteTripRoute, getTripHandler.deleteTrip);
-spotApp.openapi(getDepartureAndDepartment, getTripHandler.getDepartureAndDepartment);
 imageApp.openapi(uploadImageRoute, getImageHandler.uploadImage);
 imageApp.openapi(getImageRoute, getImageHandler.getImage);
 

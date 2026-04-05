@@ -90,3 +90,46 @@ export const TripSchema = z.object({
 export type TransportType = z.infer<typeof TransportSchema>;
 export type TripType = z.infer<typeof TripSchema>;
 export type DepartureAndDestinationType = z.infer<typeof DepartureAndDestinationSchema>;
+
+// --- Trip詳細取得レスポンス用スキーマ（placeIdのみ返す）---
+const TripDetailSpotSchema = z.object({
+  id: z.string(), // placeId のみ
+  stayStart: z.string(),
+  stayEnd: z.string(),
+  memo: z.string().optional(),
+  order: z.number(),
+  transports: TransportSchema,
+  nearestStation: z
+    .object({
+      name: z.string(),
+      walkingTime: z.number(),
+      latitude: z.number(),
+      longitude: z.number(),
+    })
+    .nullable(),
+});
+
+const TripDetailPlanSchema = z.object({
+  date: z.string(),
+  spots: z.array(TripDetailSpotSchema),
+  departure: DepartureAndDestinationSchema,
+  destination: DepartureAndDestinationSchema,
+});
+
+export const TripDetailResponseSchema = z.object({
+  title: z.string(),
+  imageUrl: z.string().optional(),
+  startDate: z.string(),
+  endDate: z.string(),
+  tripInfo: z.array(
+    z.object({
+      date: z.string(),
+      genreId: z.number(),
+      transportationMethod: z.number(),
+      memo: z.string().optional(),
+    }),
+  ),
+  plans: z.array(TripDetailPlanSchema),
+});
+
+export type TripDetailResponseType = z.infer<typeof TripDetailResponseSchema>;

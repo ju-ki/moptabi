@@ -20,6 +20,7 @@
     "db:push:prod": "drizzle-kit push --config=./drizzle-production.config.ts",
     "db:push:test": "drizzle-kit push --config=./drizzle-test.config.ts",
     "db:push:staging": "drizzle-kit push --config=./drizzle-staging.config.ts",
+    "db:reset:test": "bun run src/tests/reset-test-db.ts",
     "prepare": "husky"
   },
   "dependencies": {

@@ -1,22 +1,11 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { eq, and, count, notInArray, asc, sql, inArray } from 'drizzle-orm';
-import {
-  getDbFromContext,
-  trip,
-  tripInfo,
-  plan,
-  planSpot,
-  spot,
-  spotMeta,
-  transport,
-  planLocation,
-  userLocation,
-} from '@db';
+import { eq, and, count, sql, inArray } from 'drizzle-orm';
+import { getDbFromContext, trip, tripInfo, plan, planSpot, transport, planLocation, userLocation } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 
-import { DepartureAndDestinationType, TransportType, TripSchema, TripType } from '../models/trip';
+import { DepartureAndDestinationType, TransportType, TripDetailResponseType, TripSchema } from '../models/trip';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
 
 /**
@@ -74,16 +63,7 @@ export const getTripHandler = {
         tripInfos: true,
         plans: {
           with: {
-            planSpots: {
-              with: {
-                spot: {
-                  with: {
-                    meta: true,
-                    nearestStations: true,
-                  },
-                },
-              },
-            },
+            planSpots: true,
           },
         },
       },
@@ -155,8 +135,8 @@ export const getTripHandler = {
       });
       planLocationDataList[plan.date] = planLocationData;
     }
-    // planSpotsをorderでソート、metaを単一オブジェクトに変換
-    const formattedTrip: TripType = {
+    // planSpotsをorderでソート、placeIdのみ返す（SpotMetaは返さない）
+    const formattedTrip: TripDetailResponseType = {
       title: targetTrip.title,
       imageUrl: targetTrip.imageUrl ?? undefined,
       startDate: targetTrip.startDate,
@@ -172,25 +152,11 @@ export const getTripHandler = {
         spots: plan.planSpots
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((planSpot) => ({
-            id: planSpot.spotId,
-            location: {
-              id: planSpot.spot.id || '',
-              name: planSpot.spot.meta[0]?.name || '',
-              lat: planSpot.spot.meta[0]?.latitude || 0,
-              lng: planSpot.spot.meta[0]?.longitude || 0,
-            },
+            id: planSpot.spotId, // placeIdのみ
             stayStart: planSpot.stayStart,
             stayEnd: planSpot.stayEnd,
             memo: planSpot.memo || '',
-            image: planSpot.spot.meta[0]?.image || '',
-            url: planSpot.spot.meta[0]?.url || '',
-            prefecture: planSpot.spot.meta[0]?.prefecture || '',
-            address: planSpot.spot.meta[0]?.address || '',
-            rating: planSpot.spot.meta[0]?.rating || 0,
-            category: planSpot.spot.meta[0]?.categories || [],
-            catchphrase: planSpot.spot.meta[0]?.catchphrase || '',
-            description: planSpot.spot.meta[0]?.description || '',
-            regularOpeningHours: planSpot.spot.meta[0]?.openingHours as { day: string; hours: string }[],
+            order: planSpot.order,
             transports: transportDataList[plan.date]?.find(
               (t) => t.fromType === 'SPOT' && t.toType === 'SPOT' && t.fromSpotId == planSpot.id,
             ) ?? {
@@ -201,8 +167,7 @@ export const getTripHandler = {
               cost: 0,
               name: '',
             },
-            order: planSpot.order,
-            nearestStation: planSpot.spot.nearestStations[0] || null,
+            nearestStation: null,
           })),
         departure: planLocationDataList[plan.date]?.find((pl) => pl.locationType === 'DEPARTURE') ?? {
           name: '',
@@ -307,38 +272,6 @@ export const getTripHandler = {
 
     // Drizzleのtransactionを使用
     const createdTrip = await db.transaction(async (tx) => {
-      // 既存のスポット一覧を取得
-      const allSpotsList = await tx
-        .select({ id: spot.id })
-        .from(spot)
-        .where(notInArray(spot.id, ['departure', 'destination']));
-
-      const existingSpotIds = new Set(allSpotsList.map((s) => s.id));
-
-      // 新規スポットを特定
-      const nonExistingSpots = tripData.plans.flatMap((p) => p.spots.filter((s) => !existingSpotIds.has(s.id)));
-
-      // 新規スポットを作成
-      for (const spotData of nonExistingSpots) {
-        await tx.insert(spot).values({ id: spotData.id });
-        await tx.insert(spotMeta).values({
-          id: spotData.id,
-          spotId: spotData.id,
-          name: spotData.location.name,
-          latitude: spotData.location.lat,
-          longitude: spotData.location.lng,
-          image: spotData.image ?? '',
-          url: spotData.url ?? '',
-          prefecture: spotData.prefecture ?? '',
-          address: spotData.address ?? '',
-          rating: spotData.rating ?? 0,
-          categories: spotData.category,
-          catchphrase: spotData.catchphrase ?? '',
-          description: spotData.description ?? '',
-          openingHours: spotData.regularOpeningHours ? spotData.regularOpeningHours : null,
-        });
-      }
-
       // Tripを作成
       const [newTrip] = await tx
         .insert(trip)
@@ -508,16 +441,7 @@ export const getTripHandler = {
           tripInfos: true,
           plans: {
             with: {
-              planSpots: {
-                with: {
-                  spot: {
-                    with: {
-                      meta: true,
-                      nearestStations: true,
-                    },
-                  },
-                },
-              },
+              planSpots: true,
             },
           },
         },
@@ -530,80 +454,6 @@ export const getTripHandler = {
         id: createdTrip.id,
       };
       return c.json(responseTrip, 201);
-    }
-  },
-
-  /**
-   * ユーザーの出発地と目的地の取得
-   */
-  getDepartureAndDepartment: async (c: Context) => {
-    try {
-      const db = getDbFromContext(c);
-      const userId = getUserId(c);
-      if (!userId) {
-        return c.json({ error: 'Unauthorized' }, 401);
-      }
-
-      // PlanSpotをSpotとMetaと共に取得
-      const planSpots = await db.query.planSpot.findMany({
-        with: {
-          spot: {
-            with: {
-              meta: true,
-            },
-          },
-          plan: {
-            with: {
-              trip: true,
-            },
-          },
-        },
-      });
-
-      // フィルタリング: ユーザーIDとdeparture/destinationで始まるスポット
-      const departureAndDestinationSpots = planSpots.filter((ps) => {
-        if (ps.plan?.trip?.userId !== userId) return false;
-        return ps.spotId.startsWith('departure') || ps.spotId.startsWith('destination');
-      });
-
-      const allDeparture: { id: string; name: string; lat: number; lng: number }[] = [];
-      const allDestination: { id: string; name: string; lat: number; lng: number }[] = [];
-      const seenDeparture = new Set<string>();
-      const seenDestination = new Set<string>();
-
-      departureAndDestinationSpots.forEach((item) => {
-        const meta = getMeta(item.spot);
-        if (!meta) return;
-
-        if (item.spotId.startsWith('departure') && !seenDeparture.has(meta.name)) {
-          seenDeparture.add(meta.name);
-          allDeparture.push({
-            id: meta.id,
-            name: meta.name,
-            lat: meta.latitude,
-            lng: meta.longitude,
-          });
-        }
-        if (item.spotId.startsWith('destination') && !seenDestination.has(meta.name)) {
-          seenDestination.add(meta.name);
-          allDestination.push({
-            id: meta.id,
-            name: meta.name,
-            lat: meta.latitude,
-            lng: meta.longitude,
-          });
-        }
-      });
-
-      const response = {
-        departure: allDeparture,
-        destination: allDestination,
-      };
-      return c.json(response, 200);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error(errorMessage);
-      return c.json({ error: 'Internal Server Error', details: errorMessage }, 500);
     }
   },
 

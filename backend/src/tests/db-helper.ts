@@ -11,8 +11,6 @@ import {
   planSpot,
   tripInfo,
   wishlist,
-  spot,
-  spotMeta,
   nearestStation,
   userNotification,
   notification,
@@ -32,8 +30,6 @@ export {
   planSpot,
   tripInfo,
   wishlist,
-  spot,
-  spotMeta,
   nearestStation,
   userNotification,
   notification,
@@ -72,12 +68,11 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(trip);
     await db.delete(wishlist);
     await db.delete(nearestStation);
-    await db.delete(spotMeta);
-    await db.delete(spot);
     await db.delete(userNotification);
     await db.delete(notification);
     await db.delete(userLocation);
     // userは削除しない（テスト間で共有）
+    // spot/spotMetaテーブルはNo.230対応で削除済み
   } catch (err) {
     console.warn('clearAllTestData: failed:', (err as Error).message);
   }
@@ -126,17 +121,14 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
     await db.delete(userLocation).where(eq(userLocation.userId, userId));
     await db.delete(planLocation).where(eq(planLocation.userId, userId));
 
+    // spot/spotMetaテーブルはNo.230対応で削除済みのため削除処理不要
     if (deleteSpots) {
       if (typeof deleteSpots === 'string') {
-        await db.delete(spotMeta).where(like(spotMeta.spotId, `${deleteSpots}%`));
         await db.delete(nearestStation).where(like(nearestStation.spotId, `${deleteSpots}%`));
-        await db.delete(spot).where(like(spot.id, `${deleteSpots}%`));
       } else {
         const allSpotIds = [...new Set([...wishlistSpotIds, ...planSpotIdList])];
         if (allSpotIds.length > 0) {
-          await db.delete(spotMeta).where(inArray(spotMeta.spotId, allSpotIds));
           await db.delete(nearestStation).where(inArray(nearestStation.spotId, allSpotIds));
-          await db.delete(spot).where(inArray(spot.id, allSpotIds));
         }
       }
     }
@@ -190,7 +182,12 @@ export async function deleteUsersExcept(excludeIds: string[]) {
 }
 
 /**
- * SpotとSpotMetaを同時に作成
+ * SpotとSpotMetaのモックオブジェクトを返す（DBへの登録は不要）
+ *
+ * No.230対応: SpotテーブルおよびSpotMetaテーブルは削除済み。
+ * placeId（spotId）は Wishlist.spotId / PlanSpot.spotId に直接格納されるため、
+ * このヘルパーはDB操作を行わずモックオブジェクトのみ返す。
+ * テストコードとの後方互換のために関数シグネチャは維持する。
  */
 export async function createSpotWithMeta(
   spotId: string,
@@ -210,33 +207,30 @@ export async function createSpotWithMeta(
     url?: string | null;
   },
 ) {
-  const metaId = meta?.id ?? `${spotId}_meta`;
+  // Spot/SpotMetaテーブルはNo.230対応で削除済みのため、モックオブジェクトのみ返す
   const name = meta?.name ?? 'テストスポット';
   const latitude = meta?.latitude ?? 35.0;
   const longitude = meta?.longitude ?? 135.0;
   const categories = meta?.categories ?? ['park'];
-
-  await db.insert(spot).values({ id: spotId });
-  await db.insert(spotMeta).values({
-    id: metaId,
-    spotId,
-    name,
-    latitude,
-    longitude,
-    image: meta?.image ?? null,
-    rating: meta?.rating ?? null,
-    categories,
-    prefecture: meta?.prefecture ?? null,
-    address: meta?.address ?? null,
-    catchphrase: meta?.catchphrase ?? null,
-    description: meta?.description ?? null,
-    openingHours: meta?.openingHours ?? null,
-    url: meta?.url ?? null,
-  });
-
-  const [createdSpot] = await db.select().from(spot).where(eq(spot.id, spotId));
-  const [createdMeta] = await db.select().from(spotMeta).where(eq(spotMeta.spotId, spotId));
-  return { ...createdSpot, meta: createdMeta };
+  return {
+    id: spotId,
+    meta: {
+      id: meta?.id ?? `${spotId}_meta`,
+      spotId,
+      name,
+      latitude,
+      longitude,
+      image: meta?.image ?? null,
+      rating: meta?.rating ?? null,
+      categories,
+      prefecture: meta?.prefecture ?? null,
+      address: meta?.address ?? null,
+      catchphrase: meta?.catchphrase ?? null,
+      description: meta?.description ?? null,
+      openingHours: meta?.openingHours ?? null,
+      url: meta?.url ?? null,
+    },
+  };
 }
 
 /**
@@ -396,11 +390,10 @@ export async function deleteAllTrips() {
 // ========================================
 
 /**
- * Spotのカウント
+ * Spotのカウント（No.230対応: Spotテーブル削除済みのため常に0を返す）
  */
 export async function countSpots(): Promise<number> {
-  const result = await db.select().from(spot);
-  return result.length;
+  return 0;
 }
 
 /**
@@ -547,12 +540,10 @@ export async function findUserById(userId: string) {
 
 /**
  * Spotを検索（ID）
+ * No.230対応: SpotテーブルおよびSpotMetaテーブルは削除済みのため常にnullを返す
  */
-export async function findSpotById(spotId: string) {
-  const [found] = await db.select().from(spot).where(eq(spot.id, spotId)).limit(1);
-  if (!found) return null;
-  const [meta] = await db.select().from(spotMeta).where(eq(spotMeta.spotId, spotId)).limit(1);
-  return { ...found, meta: meta ?? null };
+export async function findSpotById(_spotId: string) {
+  return null;
 }
 
 // ========================================

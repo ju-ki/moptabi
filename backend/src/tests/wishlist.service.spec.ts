@@ -1,11 +1,12 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
 
-import { WishlistCreateSchema, WishlistListResponseSchema, WishlistUpdateSchema } from '@/models/wishlist';
+import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 
 import app from '..';
 import {
   db,
+  eq,
   wishlist,
   connectDb as connectPrisma,
   disconnectDb as disconnectPrisma,
@@ -118,9 +119,11 @@ describe('🧾 行きたいリストサービス', () => {
       const res = await response.json();
       expect(Array.isArray(res)).toBe(true);
       expect((res as any[]).length).toBeGreaterThanOrEqual(1);
-      // レスポンスのスキーマがAPI仕様の一致すること
-      const parseResult = WishlistListResponseSchema.safeParse(res);
-      expect(parseResult.success).toBe(true);
+      // placeIdのみ返す新レスポンス構造を確認（SpotMetaは含まない）
+      const firstItem = (res as any[])[0];
+      expect(firstItem.spotId).toBeDefined();
+      expect(firstItem.spot.id).toBeDefined();
+      expect(firstItem.spot.meta).toBeUndefined();
     });
     // 行きたいリストの中身が複数件のテスト
     it('複数件が存在する場合は配列で返す', async () => {
@@ -152,9 +155,12 @@ describe('🧾 行きたいリストサービス', () => {
       const res = await response.json();
       expect(Array.isArray(res)).toBe(true);
       expect((res as any[]).length).toBeGreaterThanOrEqual(2);
-      // レスポンスのスキーマがAPI仕様の一致すること
-      const parseResult = WishlistListResponseSchema.safeParse(res);
-      expect(parseResult.success).toBe(true);
+      // placeIdのみ返す新レスポンス構造を確認（SpotMetaは含まない）
+      for (const item of res as any[]) {
+        expect(item.spotId).toBeDefined();
+        expect(item.spot.id).toBeDefined();
+        expect(item.spot.meta).toBeUndefined();
+      }
     });
 
     // 行きたいリスト取得時に他のユーザーのデータが混入しないことを確認するテスト
@@ -261,9 +267,7 @@ describe('🧾 行きたいリストサービス', () => {
       expect(afterSpotCount).toBe(beforeSpotCount);
     });
 
-    it('スポットがDBに登録されていない場合は先にスポットを登録してから wishlist を作成する', async () => {
-      const beforeSpotCount = await countSpots();
-
+    it('スポットがDBに登録されていない場合も wishlist を作成できる（No.230対応: SpotテーブルはなくなりplaceIdのみ保持）', async () => {
       const payload = {
         spotId: 'new_spot_99',
         spot: {
@@ -296,12 +300,8 @@ describe('🧾 行きたいリストサービス', () => {
       expect(res.status).toBe(201);
       const body = await res.json();
       expect(body).toHaveProperty('spotId', payload.spotId);
-
-      // spot が作成されていること
-      const afterSpotCount = await countSpots();
-      expect(afterSpotCount).toBeGreaterThan(beforeSpotCount);
-      const spotInDb = await findSpotById(payload.spotId);
-      expect(spotInDb).not.toBeNull();
+      // No.230対応: Spot/SpotMetaテーブルは削除済み。placeIdはWishlist.spotIdに直接格納される。
+      // スポットDB登録の検証は不要。
     });
 
     it('セッションが切れた場合は 401 を返す', async () => {
@@ -610,7 +610,9 @@ describe('🧾 行きたいリストサービス', () => {
 
       const addedWishlist = (wishlists as any[]).find((w) => w.spotId === spotWithHoursId);
       expect(addedWishlist).toBeDefined();
-      expect(addedWishlist.spot.meta.openingHours).toBeDefined();
+      // SpotMetaは返さない。spot.idのみ確認（詳細はフロントでGoogle Maps APIから取得）
+      expect(addedWishlist.spot.id).toBe(spotWithHoursId);
+      expect(addedWishlist.spot.meta).toBeUndefined();
     });
 
     it('営業時間が null のスポットも正しく作成できること', async () => {
@@ -878,6 +880,66 @@ describe('🧾 行きたいリストサービス', () => {
       expect(stats.totalWishlist).toBe(3);
       expect(stats.wishlistIncreaseFromLastMonth).toBe(2);
       setSystemTime();
+    });
+  });
+
+  // --- POST /wishlist: SpotMeta未登録テスト ---
+  describe('POST /wishlist - SpotMeta登録検証', () => {
+    it('Wishlist作成時にSpotMetaが登録されないこと', async () => {
+      const newPlaceId = 'wishlist_no_meta_place_001';
+
+      const payload = {
+        spotId: newPlaceId,
+        spot: {
+          id: newPlaceId,
+          meta: {
+            id: newPlaceId,
+            spotId: newPlaceId,
+            name: 'TDDテスト行きたいリストスポット',
+            latitude: 35.6895,
+            longitude: 139.6917,
+            rating: 4.0,
+            categories: ['park'],
+          },
+        },
+        memo: 'テストメモ',
+        priority: 3,
+        visited: 0,
+        visitedAt: null,
+      };
+
+      const res = await client.api.wishlist.$post({ json: payload }, { headers: getAuthHeaders() });
+      expect(res.status).toBe(201);
+    });
+  });
+
+  // --- GET /wishlist: placeIdのみレスポンス検証 ---
+  describe('GET /wishlist - レスポンス構造検証', () => {
+    it('行きたいリスト取得時のスポットにSpotMetaの情報（name/latitude/longitude等）が含まれないこと', async () => {
+      const placeId = 'wishlist_response_check_001';
+
+      // 直接DBにspot+wishlistを作成（SpotMetaなし）
+      const { db: testDb, wishlist: wishlistTable } = await import('@db');
+      await testDb.insert(wishlistTable).values({
+        spotId: placeId,
+        userId: TEST_USER_ID,
+        memo: 'テスト',
+        priority: 1,
+        visited: 0,
+        visitedAt: null,
+      });
+
+      const response = await client.api.wishlist.$get({}, { headers: getAuthHeaders() });
+      const items = await response.json();
+
+      const target = (items as any[]).find((w) => w.spotId === placeId);
+      expect(target).toBeDefined();
+
+      // placeIdが返ること
+      expect(target.spotId).toBe(placeId);
+
+      // SpotMetaの情報が返らないこと
+      expect(target.spot?.meta).toBeUndefined();
     });
   });
 });

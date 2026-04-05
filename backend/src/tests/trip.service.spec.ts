@@ -5,6 +5,7 @@ import { TripSchema } from '@/models/trip';
 
 import app from '..';
 import {
+  eq,
   clearAllTestData as clearTestData,
   clearUserTestData as clearTestDataForUser,
   connectDb as connectPrisma,
@@ -415,6 +416,100 @@ describe('旅行計画サービス', () => {
       const res = await client.api.trips[9999].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(404);
+    });
+
+    it('スポットはplaceIdのみ返し、SpotMetaの情報（name/latitude/longitude等）を含まないこと', async () => {
+      // 事前に旅行計画を作成
+      const createdTrip = await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
+
+      const result = await createdTrip.json();
+      const res = await client.api.trips[result.id].$get({}, { headers: getAuthHeaders() });
+
+      expect(res.status).toBe(200);
+      const trip = await res.json();
+
+      const firstSpot = trip.plans[0].spots[0];
+
+      // placeIdが返ること
+      expect(firstSpot).toHaveProperty('id');
+      // スケジュール情報が返ること
+      expect(firstSpot).toHaveProperty('stayStart');
+      expect(firstSpot).toHaveProperty('stayEnd');
+      expect(firstSpot).toHaveProperty('order');
+
+      // SpotMetaの情報が返らないこと
+      expect(firstSpot.location).toBeUndefined();
+      expect(firstSpot.image).toBeUndefined();
+      expect(firstSpot.url).toBeUndefined();
+      expect(firstSpot.rating).toBeUndefined();
+      expect(firstSpot.address).toBeUndefined();
+      expect(firstSpot.prefecture).toBeUndefined();
+      expect(firstSpot.category).toBeUndefined();
+      expect(firstSpot.description).toBeUndefined();
+      expect(firstSpot.catchphrase).toBeUndefined();
+      expect(firstSpot.regularOpeningHours).toBeUndefined();
+    });
+  });
+
+  // --- POST /trips: SpotMeta未登録テスト ---
+  describe('POST /trips - SpotMeta登録検証', () => {
+    it('Trip作成時にSpotMetaが登録されないこと', async () => {
+      const newPlaceId = `${SPOT_PREFIX}no_meta_check`;
+
+      const tripWithNewSpot = {
+        ...mockTripData,
+        tripInfo: [mockTripInfoData[0]],
+        plans: [
+          {
+            date: '2024-01-01',
+            spots: [
+              {
+                id: newPlaceId,
+                location: {
+                  name: 'TDDテストスポット',
+                  lat: 35.6895,
+                  lng: 139.6917,
+                },
+                image: 'https://example.com/test.jpg',
+                url: 'https://example.com',
+                prefecture: '東京都',
+                address: '東京都新宿区',
+                rating: 4.0,
+                categories: ['park'],
+                catchphrase: 'テストキャッチコピー',
+                description: 'テスト説明',
+                transports: {
+                  transportMethod: 1,
+                  travelTime: '10分',
+                  cost: 200,
+                  fromType: 'SPOT',
+                  toType: 'SPOT',
+                },
+                stayStart: '10:00',
+                stayEnd: '11:00',
+                memo: '',
+                order: 1,
+              },
+            ],
+            departure: mockPlanData[0].departure,
+            destination: mockPlanData[0].destination,
+          },
+        ],
+      };
+
+      const res = await client.api.trips.create.$post({ json: tripWithNewSpot }, { headers: getAuthHeaders() });
+      expect(res.status).toBe(201);
+      // No.230対応: SpotMeta/Spotテーブルは削除済み。placeIdはPlanSpot.spotIdに直接格納される。
+      // テーブルへの直接クエリは不要。
     });
   });
 
