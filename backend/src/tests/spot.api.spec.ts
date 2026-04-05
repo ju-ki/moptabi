@@ -99,7 +99,7 @@ describe('🗺️ スポットAPI統合テスト', () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.length).toBe(1);
-      expect(data[0].spot.meta.name).toBe('スポットA');
+      expect(data[0].spot.id).toBe(spotId('1'));
       expect(data[0].visited).toBe(0);
     });
 
@@ -140,9 +140,9 @@ describe('🗺️ スポットAPI統合テスト', () => {
       const data = await res.json();
       expect(data.length).toBe(3);
       // 優先度が高い順: 3 > 2 > 1
-      expect(data[0].spot.meta.name).toBe('スポットE');
-      expect(data[1].spot.meta.name).toBe('スポットC');
-      expect(data[2].spot.meta.name).toBe('スポットD');
+      expect(data[0].spot.id).toBe(spotId('5'));
+      expect(data[1].spot.id).toBe(spotId('3'));
+      expect(data[2].spot.id).toBe(spotId('4'));
     });
 
     it('認証されていない場合は401を返す', async () => {
@@ -180,7 +180,7 @@ describe('🗺️ スポットAPI統合テスト', () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.length).toBe(1);
-      expect(data[0].spot.meta.name).toBe('スポットA');
+      expect(data[0].spot.id).toBe(spotId('1'));
     });
 
     it('訪問済みスポットは訪問日時が新しい順に並んでいる', async () => {
@@ -217,9 +217,9 @@ describe('🗺️ スポットAPI統合テスト', () => {
       const data = await res.json();
       expect(data.length).toBe(3);
       // 新しい順: スポットB(3月) > スポットC(2月) > スポットA(1月)
-      expect(data[0].spot.meta.name).toBe('スポットB');
-      expect(data[1].spot.meta.name).toBe('スポットC');
-      expect(data[2].spot.meta.name).toBe('スポットA');
+      expect(data[0].spot.id).toBe(spotId('2'));
+      expect(data[1].spot.id).toBe(spotId('3'));
+      expect(data[2].spot.id).toBe(spotId('1'));
     });
 
     it('過去の計画スポットを計画日時が新しい順に返す', async () => {
@@ -263,8 +263,8 @@ describe('🗺️ スポットAPI統合テスト', () => {
       const data = await res.json();
       expect(data.length).toBe(2);
       // 新しい順: スポットB(3月) > スポットA(1月)
-      expect(data[0].spot.meta.name).toBe('スポットB');
-      expect(data[1].spot.meta.name).toBe('スポットA');
+      expect(data[0].spot.id).toBe(spotId('2'));
+      expect(data[1].spot.id).toBe(spotId('1'));
     });
 
     it('訪問済みと計画スポットが混在する場合は訪問済み優先で返す', async () => {
@@ -300,8 +300,8 @@ describe('🗺️ スポットAPI統合テスト', () => {
       const data = await res.json();
       expect(data.length).toBe(2);
       // 訪問済み→計画の順: スポットA → スポットB
-      expect(data[0].spot.meta.name).toBe('スポットA');
-      expect(data[1].spot.meta.name).toBe('スポットB');
+      expect(data[0].spot.id).toBe(spotId('1'));
+      expect(data[1].spot.id).toBe(spotId('2'));
     });
 
     it('重複するスポットは片方のみを返す', async () => {
@@ -337,7 +337,7 @@ describe('🗺️ スポットAPI統合テスト', () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.length).toBe(1);
-      expect(data[0].spot.meta.name).toBe('スポットA');
+      expect(data[0].spot.id).toBe(spotId('1'));
     });
 
     it('認証されていない場合は401を返す', async () => {
@@ -399,7 +399,7 @@ describe('🗺️ スポットAPI統合テスト', () => {
         const data = await res.json();
         // 範囲内のスポット（スポットB）のみ返される
         expect(data.length).toBe(1);
-        expect(data[0].spot.meta.name).toBe('スポットB');
+        expect(data[0].spot.id).toBe(spotId('2'));
       });
 
       it('dateFromのみ指定で計画スポットをフィルタリングできること', async () => {
@@ -451,7 +451,7 @@ describe('🗺️ スポットAPI統合テスト', () => {
         const data = await res.json();
         // 2024-05-01以降のスポット（スポットB）のみ返される
         expect(data.length).toBe(1);
-        expect(data[0].spot.meta.name).toBe('スポットB');
+        expect(data[0].spot.id).toBe(spotId('2'));
       });
 
       it('訪問済みスポットのvisitedAtに対して期間指定でフィルタリングできること', async () => {
@@ -488,7 +488,7 @@ describe('🗺️ スポットAPI統合テスト', () => {
         const data = await res.json();
         // 範囲内のスポット（スポットB）のみ返される
         expect(data.length).toBe(1);
-        expect(data[0].spot.meta.name).toBe('スポットB');
+        expect(data[0].spot.id).toBe(spotId('2'));
       });
     });
   });

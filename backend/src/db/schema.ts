@@ -111,10 +111,6 @@ export const userNotification = pgTable(
   ],
 );
 
-export const spot = pgTable('Spot', {
-  id: varchar({ length: 255 }).primaryKey().notNull(),
-});
-
 export const user = pgTable('User', {
   id: varchar({ length: 255 }).primaryKey().notNull(),
   role: roleType().default('USER').notNull(),
@@ -194,13 +190,6 @@ export const planSpot = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-    foreignKey({
-      columns: [table.spotId],
-      foreignColumns: [spot.id],
-      name: 'PlanSpot_spotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
   ],
 );
 
@@ -261,66 +250,17 @@ export const wishlist = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-    foreignKey({
-      columns: [table.spotId],
-      foreignColumns: [spot.id],
-      name: 'Wishlist_spotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
   ],
 );
 
-export const spotMeta = pgTable(
-  'SpotMeta',
-  {
-    id: varchar({ length: 255 }).primaryKey().notNull(),
-    spotId: text().notNull(),
-    name: varchar({ length: 255 }).notNull(),
-    latitude: doublePrecision().notNull(),
-    longitude: doublePrecision().notNull(),
-    image: text(),
-    rating: doublePrecision(),
-    categories: text().array(),
-    catchphrase: text(),
-    description: text(),
-    openingHours: jsonb(),
-    address: varchar({ length: 255 }),
-    prefecture: varchar({ length: 50 }),
-    url: text(),
-  },
-  (table) => [
-    uniqueIndex('SpotMeta_spotId_key').using('btree', table.spotId.asc().nullsLast().op('text_ops')),
-    foreignKey({
-      columns: [table.spotId],
-      foreignColumns: [spot.id],
-      name: 'SpotMeta_spotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('restrict'),
-  ],
-);
-
-export const nearestStation = pgTable(
-  'NearestStation',
-  {
-    id: serial().primaryKey().notNull(),
-    spotId: text(),
-    name: varchar({ length: 255 }).notNull(),
-    walkingTime: integer().notNull(),
-    latitude: doublePrecision().notNull(),
-    longitude: doublePrecision().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.spotId],
-      foreignColumns: [spot.id],
-      name: 'NearestStation_spotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
-  ],
-);
+export const nearestStation = pgTable('NearestStation', {
+  id: serial().primaryKey().notNull(),
+  spotId: text(),
+  name: varchar({ length: 255 }).notNull(),
+  walkingTime: integer().notNull(),
+  latitude: doublePrecision().notNull(),
+  longitude: doublePrecision().notNull(),
+});
 
 export const notification = pgTable('Notification', {
   id: serial().primaryKey().notNull(),

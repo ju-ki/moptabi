@@ -9,10 +9,7 @@ import {
   user,
   userNotification,
   notification,
-  spot,
   wishlist,
-  spotMeta,
-  nearestStation,
   userLocation,
   planLocation,
 } from './schema';
@@ -38,10 +35,6 @@ export const planSpotRelations = relations(planSpot, ({ one, many }) => ({
   plan: one(plan, {
     fields: [planSpot.planId],
     references: [plan.id],
-  }),
-  spot: one(spot, {
-    fields: [planSpot.spotId],
-    references: [spot.id],
   }),
 }));
 
@@ -84,35 +77,10 @@ export const notificationRelations = relations(notification, ({ many }) => ({
   userNotifications: many(userNotification),
 }));
 
-export const spotRelations = relations(spot, ({ many }) => ({
-  planSpots: many(planSpot),
-  wishlists: many(wishlist),
-  meta: many(spotMeta),
-  nearestStations: many(nearestStation),
-}));
-
 export const wishlistRelations = relations(wishlist, ({ one }) => ({
   user: one(user, {
     fields: [wishlist.userId],
     references: [user.id],
-  }),
-  spot: one(spot, {
-    fields: [wishlist.spotId],
-    references: [spot.id],
-  }),
-}));
-
-export const spotMetaRelations = relations(spotMeta, ({ one }) => ({
-  spot: one(spot, {
-    fields: [spotMeta.spotId],
-    references: [spot.id],
-  }),
-}));
-
-export const nearestStationRelations = relations(nearestStation, ({ one }) => ({
-  spot: one(spot, {
-    fields: [nearestStation.spotId],
-    references: [spot.id],
   }),
 }));
 
