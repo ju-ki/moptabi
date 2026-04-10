@@ -47,107 +47,113 @@ describe('KeywordSearchWithMap', () => {
     };
   });
 
-  it('レンダリング時に入力とボタンが表示され、初期は無効であること', () => {
-    render(<KeywordSearchWithMap />);
+  describe('初期表示', () => {
+    it('初期表示時に入力と検索ボタンが表示され検索ボタンが無効であること', () => {
+      render(<KeywordSearchWithMap />);
 
-    const input = screen.getByPlaceholderText('例: 渋谷 カフェ');
-    expect(input).toBeDefined();
+      const input = screen.getByPlaceholderText('例: 渋谷 カフェ');
+      expect(input).toBeDefined();
 
-    const btn = screen.getByRole('button', { name: /検索/ });
-    expect(btn).toBeDisabled();
-  });
-
-  it('入力に文字を入れると setSearchKeyword が呼ばれ、ボタンが有効になること', () => {
-    const { rerender } = render(<KeywordSearchWithMap />);
-
-    const input = screen.getByPlaceholderText('例: 渋谷 カフェ');
-    const btn = screen.getByRole('button', { name: /検索/ });
-
-    fireEvent.change(input, { target: { value: '渋谷' } });
-    expect(setSearchKeyword).toHaveBeenCalledWith('渋谷');
-
-    // storeState を操作してレンダリングに反映させるケース
-    storeState.searchKeyword = '渋谷';
-    // 再レンダーしてボタンが有効になることを検証
-    rerender(<KeywordSearchWithMap />);
-    expect(screen.getByRole('button', { name: /検索/ })).toBeEnabled();
-  });
-
-  it('検索成功時に結果がセットされ、地図中心が最初のスポットに設定されること', async () => {
-    const fake = [
-      { id: 'k1', location: { lat: 1, lng: 2 }, rating: 4.2 },
-      { id: 'k2', location: { lat: 3, lng: 4 }, rating: 3.1 },
-    ];
-    mockSearchSpots.mockResolvedValueOnce(fake);
-
-    storeState.searchKeyword = '渋谷';
-
-    const { rerender } = render(<KeywordSearchWithMap />);
-
-    const btn = screen.getByRole('button', { name: /検索/ });
-    fireEvent.click(btn);
-
-    await waitFor(() => expect(mockSearchSpots).toHaveBeenCalled());
-
-    // 第一引数に searchWord が含まれていることを確認
-    expect(
-      (mockSearchSpots.mock.calls[0] || [])[0]?.searchWord || (mockSearchSpots.mock.calls[0] || [])[0],
-    ).toBeDefined();
-
-    expect(setKeywordSearchResults).toHaveBeenCalledWith(fake);
-    expect(setKeywordMapCenter).toHaveBeenCalledWith(fake[0].location);
-
-    // storeState に反映した上で再レンダーすると SearchResultsView に結果が表示される
-    rerender(<KeywordSearchWithMap />);
-    expect(screen.getByTestId('search-results').textContent).toBe('2');
-  });
-
-  it('検索中はボタンが無効化され、完了後に再度有効化されること（ローディング）', async () => {
-    let resolveFn: any;
-    const pending = new Promise((resolve) => {
-      resolveFn = resolve;
+      const btn = screen.getByRole('button', { name: /検索/ });
+      expect(btn).toBeDisabled();
     });
-    mockSearchSpots.mockImplementationOnce(() => pending as any);
-
-    storeState.searchKeyword = '渋谷';
-    render(<KeywordSearchWithMap />);
-
-    const btn = screen.getByRole('button', { name: /検索/ });
-    fireEvent.click(btn);
-
-    expect(btn).toBeDisabled();
-
-    // 解決して完了
-    resolveFn([]);
-    await waitFor(() => expect(setKeywordSearchResults).toHaveBeenCalled());
-    await waitFor(() => expect(btn).toBeEnabled());
   });
 
-  it('searchSpots がエラーのときは結果がセットされずボタンが再度有効になること', async () => {
-    mockSearchSpots.mockRejectedValueOnce(new Error('network'));
-    storeState.searchKeyword = '渋谷';
+  describe('入力操作', () => {
+    it('キーワードを入力した場合setSearchKeywordが呼ばれ検索ボタンが有効になること', () => {
+      const { rerender } = render(<KeywordSearchWithMap />);
 
-    render(<KeywordSearchWithMap />);
+      const input = screen.getByPlaceholderText('例: 渋谷 カフェ');
+      const btn = screen.getByRole('button', { name: /検索/ });
 
-    const btn = screen.getByRole('button', { name: /検索/ });
-    fireEvent.click(btn);
+      fireEvent.change(input, { target: { value: '渋谷' } });
+      expect(setSearchKeyword).toHaveBeenCalledWith('渋谷');
 
-    await waitFor(() => expect(mockSearchSpots).toHaveBeenCalled());
-    expect(setKeywordSearchResults).not.toHaveBeenCalled();
-    await waitFor(() => expect(btn).toBeEnabled());
+      // storeState を操作してレンダリングに反映させるケース
+      storeState.searchKeyword = '渋谷';
+      // 再レンダーしてボタンが有効になることを検証
+      rerender(<KeywordSearchWithMap />);
+      expect(screen.getByRole('button', { name: /検索/ })).toBeEnabled();
+    });
+
+    it('検索成功時に結果がセットされ、地図中心が最初のスポットに設定されること', async () => {
+      const fake = [
+        { id: 'k1', location: { lat: 1, lng: 2 }, rating: 4.2 },
+        { id: 'k2', location: { lat: 3, lng: 4 }, rating: 3.1 },
+      ];
+      mockSearchSpots.mockResolvedValueOnce(fake);
+
+      storeState.searchKeyword = '渋谷';
+
+      const { rerender } = render(<KeywordSearchWithMap />);
+
+      const btn = screen.getByRole('button', { name: /検索/ });
+      fireEvent.click(btn);
+
+      await waitFor(() => expect(mockSearchSpots).toHaveBeenCalled());
+
+      // 第一引数に searchWord が含まれていることを確認
+      expect(
+        (mockSearchSpots.mock.calls[0] || [])[0]?.searchWord || (mockSearchSpots.mock.calls[0] || [])[0],
+      ).toBeDefined();
+
+      expect(setKeywordSearchResults).toHaveBeenCalledWith(fake);
+      expect(setKeywordMapCenter).toHaveBeenCalledWith(fake[0].location);
+
+      // storeState に反映した上で再レンダーすると SearchResultsView に結果が表示される
+      rerender(<KeywordSearchWithMap />);
+      expect(screen.getByTestId('search-results').textContent).toBe('2');
+    });
   });
 
-  it('検索結果が0件の場合は空配列がセットされ、地図中心は変更されないこと', async () => {
-    mockSearchSpots.mockResolvedValueOnce([]);
-    storeState.searchKeyword = '渋谷';
+  describe('検索実行', () => {
+    it('検索中は検索ボタンが無効となり完了後に再度有効になること', async () => {
+      let resolveFn: any;
+      const pending = new Promise((resolve) => {
+        resolveFn = resolve;
+      });
+      mockSearchSpots.mockImplementationOnce(() => pending as any);
 
-    render(<KeywordSearchWithMap />);
+      storeState.searchKeyword = '渋谷';
+      render(<KeywordSearchWithMap />);
 
-    const btn = screen.getByRole('button', { name: /検索/ });
-    fireEvent.click(btn);
+      const btn = screen.getByRole('button', { name: /検索/ });
+      fireEvent.click(btn);
 
-    await waitFor(() => expect(mockSearchSpots).toHaveBeenCalled());
-    expect(setKeywordSearchResults).toHaveBeenCalledWith([]);
-    expect(setKeywordMapCenter).not.toHaveBeenCalled();
+      expect(btn).toBeDisabled();
+
+      // 解決して完了
+      resolveFn([]);
+      await waitFor(() => expect(setKeywordSearchResults).toHaveBeenCalled());
+      await waitFor(() => expect(btn).toBeEnabled());
+    });
+
+    it('searchSpotsがエラーのときは結果がセットされずボタンが再度有効になること', async () => {
+      mockSearchSpots.mockRejectedValueOnce(new Error('network'));
+      storeState.searchKeyword = '渋谷';
+
+      render(<KeywordSearchWithMap />);
+
+      const btn = screen.getByRole('button', { name: /検索/ });
+      fireEvent.click(btn);
+
+      await waitFor(() => expect(mockSearchSpots).toHaveBeenCalled());
+      expect(setKeywordSearchResults).not.toHaveBeenCalled();
+      await waitFor(() => expect(btn).toBeEnabled());
+    });
+
+    it('検索結果が0件の場合空配列がセットされ地図中心は変更されないこと', async () => {
+      mockSearchSpots.mockResolvedValueOnce([]);
+      storeState.searchKeyword = '渋谷';
+
+      render(<KeywordSearchWithMap />);
+
+      const btn = screen.getByRole('button', { name: /検索/ });
+      fireEvent.click(btn);
+
+      await waitFor(() => expect(mockSearchSpots).toHaveBeenCalled());
+      expect(setKeywordSearchResults).toHaveBeenCalledWith([]);
+      expect(setKeywordMapCenter).not.toHaveBeenCalled();
+    });
   });
 });

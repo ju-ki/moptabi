@@ -45,19 +45,6 @@ export interface PlanLocation {
 }
 
 // 候補として表示する地点（お気に入り/履歴の両方で使用）
-export interface PlanLocationCandidate {
-  planLocationId: number | null;
-  userLocationId: number | null;
-  name: string;
-  latitude: number;
-  longitude: number;
-  address: string | null;
-  usageCount: number;
-  isFavorite: boolean;
-  isDefault?: boolean;
-  label?: string | null;
-  locationType?: LocationType;
-}
 
 // 候補取得APIのレスポンス
 export interface PlanLocationCandidatesResponse {

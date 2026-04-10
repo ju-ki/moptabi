@@ -61,83 +61,89 @@ describe('MapView', () => {
     vi.clearAllMocks();
   });
 
-  it('wishlist の数だけ Marker が描画されること、クリックで setSelectedWishlist が呼ばれること', () => {
-    const items = [
-      { spotId: 1, spot: { meta: { latitude: 10, longitude: 11, name: 'A' } }, priority: 1, visited: 0 },
-      { spotId: 2, spot: { meta: { latitude: 20, longitude: 21, name: 'B' } }, priority: 2, visited: 1 },
-    ];
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
-    wishlistStoreMock.getSelectedWishlist.mockReturnValue(undefined);
+  describe('マーカー表示とスポット選択', () => {
+    it('wishlistの数だけMarkerが描画されクリックでsetSelectedWishlistが呼ばれること', () => {
+      const items = [
+        { spotId: 1, spot: { meta: { latitude: 10, longitude: 11, name: 'A' } }, priority: 1, visited: 0 },
+        { spotId: 2, spot: { meta: { latitude: 20, longitude: 21, name: 'B' } }, priority: 2, visited: 1 },
+      ];
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
+      wishlistStoreMock.getSelectedWishlist.mockReturnValue(undefined);
 
-    render(<MapView />);
+      render(<MapView />);
 
-    // two markers
-    expect(screen.getByTestId('marker-10')).toBeDefined();
-    expect(screen.getByTestId('marker-20')).toBeDefined();
+      // two markers
+      expect(screen.getByTestId('marker-10')).toBeDefined();
+      expect(screen.getByTestId('marker-20')).toBeDefined();
 
-    // click first marker
-    fireEvent.click(screen.getByTestId('marker-10'));
-    expect(wishlistStoreMock.setSelectedWishlist).toHaveBeenCalledWith(items[0]);
-  });
-
-  it('selectedWishlist があると InfoWindow が表示され、ボタン操作で update/delete が呼ばれること', async () => {
-    const selected = {
-      id: 3,
-      spotId: 3,
-      spot: { meta: { latitude: 30, longitude: 31, name: 'C', description: 'desc', rating: 4.4 } },
-      memo: 'memoC',
-      priority: 5,
-      visited: 0,
-    } as any;
-
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue([selected]);
-    wishlistStoreMock.getSelectedWishlist.mockReturnValue(selected);
-
-    render(<MapView />);
-
-    // InfoWindow should show
-    expect(screen.getByTestId('info-window')).toBeDefined();
-    expect(screen.getByText('C')).toBeDefined();
-    expect(screen.getByText('desc')).toBeDefined();
-    expect(screen.getByText('優先度:')).toBeDefined();
-
-    // click visit toggle (first button in InfoWindow)
-    const info = screen.getByTestId('info-window');
-    const buttons = within(info).getAllByRole('button');
-    // first button toggles visited
-    fireEvent.click(buttons[1]); // buttons[0] is close button we added in mock
-
-    await waitFor(() => {
-      expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
-      expect(updateWishlistApi).toHaveBeenCalled();
-    });
-
-    // click delete (destructive) - last button
-    fireEvent.click(buttons[2]);
-    await waitFor(() => {
-      expect(wishlistStoreMock.setWishlist).toHaveBeenCalled();
-      expect(deleteWishlistApi).toHaveBeenCalled();
+      // click first marker
+      fireEvent.click(screen.getByTestId('marker-10'));
+      expect(wishlistStoreMock.setSelectedWishlist).toHaveBeenCalledWith(items[0]);
     });
   });
 
-  it('フィルタを適用したとき、フィルタ一致するスポットのみマーカーが表示されること', () => {
-    const items = [
-      { spotId: 1, spot: { meta: { latitude: 10, longitude: 11, name: 'A' } }, priority: 1, visited: 0 },
-      { spotId: 2, spot: { meta: { latitude: 20, longitude: 21, name: 'B' } }, priority: 2, visited: 1 },
-    ];
+  describe('InfoWindowの操作', () => {
+    it('selectedWishlistがある場合InfoWindowが表示されボタン操作でupdate/deleteが呼ばれること', async () => {
+      const selected = {
+        id: 3,
+        spotId: 3,
+        spot: { meta: { latitude: 30, longitude: 31, name: 'C', description: 'desc', rating: 4.4 } },
+        memo: 'memoC',
+        priority: 5,
+        visited: 0,
+      } as any;
 
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
-    const { rerender } = rtlRender(<MapView />);
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue([selected]);
+      wishlistStoreMock.getSelectedWishlist.mockReturnValue(selected);
 
-    // both markers present
-    expect(screen.getByTestId('marker-10')).toBeDefined();
-    expect(screen.getByTestId('marker-20')).toBeDefined();
+      render(<MapView />);
 
-    // now simulate filter that returns only the second item
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue([items[1]]);
-    rerender(<MapView />);
+      // InfoWindow should show
+      expect(screen.getByTestId('info-window')).toBeDefined();
+      expect(screen.getByText('C')).toBeDefined();
+      expect(screen.getByText('desc')).toBeDefined();
+      expect(screen.getByText('優先度:')).toBeDefined();
 
-    expect(screen.queryByTestId('marker-10')).toBeNull();
-    expect(screen.getByTestId('marker-20')).toBeDefined();
+      // click visit toggle (first button in InfoWindow)
+      const info = screen.getByTestId('info-window');
+      const buttons = within(info).getAllByRole('button');
+      // first button toggles visited
+      fireEvent.click(buttons[1]); // buttons[0] is close button we added in mock
+
+      await waitFor(() => {
+        expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
+        expect(updateWishlistApi).toHaveBeenCalled();
+      });
+
+      // click delete (destructive) - last button
+      fireEvent.click(buttons[2]);
+      await waitFor(() => {
+        expect(wishlistStoreMock.setWishlist).toHaveBeenCalled();
+        expect(deleteWishlistApi).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('フィルター適用', () => {
+    it('フィルタを適用した場合フィルタ一致するスポットのみマーカーが表示されること', () => {
+      const items = [
+        { spotId: 1, spot: { meta: { latitude: 10, longitude: 11, name: 'A' } }, priority: 1, visited: 0 },
+        { spotId: 2, spot: { meta: { latitude: 20, longitude: 21, name: 'B' } }, priority: 2, visited: 1 },
+      ];
+
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
+      const { rerender } = rtlRender(<MapView />);
+
+      // both markers present
+      expect(screen.getByTestId('marker-10')).toBeDefined();
+      expect(screen.getByTestId('marker-20')).toBeDefined();
+
+      // now simulate filter that returns only the second item
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue([items[1]]);
+      rerender(<MapView />);
+
+      expect(screen.queryByTestId('marker-10')).toBeNull();
+      expect(screen.getByTestId('marker-20')).toBeDefined();
+    });
   });
 });

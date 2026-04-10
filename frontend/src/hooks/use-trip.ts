@@ -80,12 +80,6 @@ export const useFetchTripDetail = (tripId?: string) => {
 
   const { data: trip, isLoading: isTripLoading, error: tripError } = useSWR<TripType>(url, tripFetcher);
 
-  const {
-    data: departureDestinationData,
-    isLoading: isDepartureDepartmentLoading,
-    error: departureDepartmentError,
-  } = useSWR(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/spots` : null, getFetcher);
-
   const postTrip = async (newTrip: TripType): Promise<number> => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/create`, {
       method: 'POST',
@@ -105,8 +99,8 @@ export const useFetchTripDetail = (tripId?: string) => {
     return result.id; // 作成された旅行計画のIDを返す
   };
 
-  const isLoading = isSessionLoading || isTripLoading || isDepartureDepartmentLoading;
-  const error = tripError || departureDepartmentError || null;
+  const isLoading = isSessionLoading || isTripLoading;
+  const error = tripError || null;
 
-  return { trip, departureDestinationData, isLoading, error, postTrip };
+  return { trip, isLoading, error, postTrip };
 };

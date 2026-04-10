@@ -31,10 +31,13 @@ const mockCandidatesResponse = {
       latitude: 35.6895,
       longitude: 139.6917,
       address: '東京都渋谷区1-1-1',
-      usageCount: 5,
-      isFavorite: true,
-      isDefault: true,
       label: '自宅',
+      isDefault: true,
+      locationType: 'BOTH' as const,
+      usageCount: 5,
+      userLocationId: 1,
+      planLocationId: null,
+      planName: null,
     },
   ],
   history: [
@@ -45,8 +48,10 @@ const mockCandidatesResponse = {
       longitude: 139.7671,
       address: null,
       usageCount: 3,
-      isFavorite: false,
       locationType: 'DEPARTURE',
+      userLocationId: 1,
+      planLocationId: null,
+      planName: null,
     },
   ],
 };
@@ -67,11 +72,8 @@ const mockListResponse = [
   },
 ];
 
+// テストの独立性を保つため、各テスト前にモック呼び出し履歴をリセットする
 beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-afterEach(() => {
   vi.clearAllMocks();
 });
 
@@ -108,34 +110,6 @@ describe('usePlanLocationCandidates', () => {
 
     expect(result.current.isLoading).toBe(true);
     expect(result.current.candidates).toBeUndefined();
-  });
-
-  it('お気に入り地点にisFavorite: trueが設定される', () => {
-    mockUseSWR.mockReturnValue({
-      data: mockCandidatesResponse,
-      error: undefined,
-      isLoading: false,
-      isValidating: false,
-      mutate: vi.fn(),
-    });
-
-    const { result } = renderHook(() => usePlanLocationCandidates());
-
-    expect(result.current.candidates?.favorites[0].isFavorite).toBe(true);
-  });
-
-  it('履歴地点にisFavorite: falseが設定される', () => {
-    mockUseSWR.mockReturnValue({
-      data: mockCandidatesResponse,
-      error: undefined,
-      isLoading: false,
-      isValidating: false,
-      mutate: vi.fn(),
-    });
-
-    const { result } = renderHook(() => usePlanLocationCandidates());
-
-    expect(result.current.candidates?.history[0].isFavorite).toBe(false);
   });
 
   it('エラー時はerrorが設定される', () => {
