@@ -24,123 +24,117 @@ vi.mock('@/store/wishlist/wishlistStore', () => ({
 
 // Import component after mocking so it receives the mocked store
 
-describe('行きたいリストのヘッダーのテスト', () => {
+describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // ensure getViewMode returns 'list' by default for each test
     getViewModeMock.mockReturnValue('list');
     getFilteredTypeMock.mockReturnValue('all');
   });
 
-  it('タイトルとビュー切り替えボタンが表示されること', () => {
-    render(<WishlistHeader />);
+  describe('初期表示', () => {
+    it('タイトルとビュー切り替えボタンが表示されること', () => {
+      render(<WishlistHeader />);
 
-    // Title
-    expect(screen.getByText('行きたいリスト')).toBeDefined();
-
-    // Buttons by aria-label
-    expect(screen.getByLabelText('リストビューに切り替え')).toBeDefined();
-    expect(screen.getByLabelText('マップビューに切り替え')).toBeDefined();
+      expect(screen.getByText('行きたいリスト')).toBeDefined();
+      expect(screen.getByLabelText('リストビューに切り替え')).toBeDefined();
+      expect(screen.getByLabelText('マップビューに切り替え')).toBeDefined();
+    });
   });
 
-  it('ビュー切り替えボタンをクリックするとsetViewModeが正しい値で呼ばれること', () => {
-    render(<WishlistHeader />);
+  describe('ビュー切り替え', () => {
+    it('ビュー切り替えボタンをクリックした場合setViewModeが正しい値で呼ばれること', () => {
+      render(<WishlistHeader />);
 
-    const listBtn = screen.getByLabelText('リストビューに切り替え');
-    const mapBtn = screen.getByLabelText('マップビューに切り替え');
+      const listBtn = screen.getByLabelText('リストビューに切り替え');
+      const mapBtn = screen.getByLabelText('マップビューに切り替え');
 
-    fireEvent.click(mapBtn);
-    expect(setViewModeMock).toHaveBeenCalledWith('map');
+      fireEvent.click(mapBtn);
+      expect(setViewModeMock).toHaveBeenCalledWith('map');
 
-    fireEvent.click(listBtn);
-    expect(setViewModeMock).toHaveBeenCalledWith('list');
+      fireEvent.click(listBtn);
+      expect(setViewModeMock).toHaveBeenCalledWith('list');
+    });
+
+    it('ビュー切り替え後もフィルターの状態が維持されること', () => {
+      getFilteredTypeMock.mockReturnValue('unvisited');
+      render(<WishlistHeader />);
+
+      const unvisitedBtn = screen.getByLabelText('未訪問フィルター');
+      fireEvent.click(unvisitedBtn);
+      expect(setFilteredTypeMock).toHaveBeenCalledWith('unvisited');
+
+      const mapBtn = screen.getByLabelText('マップビューに切り替え');
+      fireEvent.click(mapBtn);
+      expect(setViewModeMock).toHaveBeenCalledWith('map');
+
+      expect(setFilteredTypeMock).toHaveBeenCalledWith('unvisited');
+
+      const visitedBtn = screen.getByLabelText('訪問済みフィルター');
+      fireEvent.click(visitedBtn);
+      expect(setFilteredTypeMock).toHaveBeenCalledWith('visited');
+      const listBtn = screen.getByLabelText('リストビューに切り替え');
+      fireEvent.click(listBtn);
+      expect(setViewModeMock).toHaveBeenCalledWith('list');
+
+      expect(setFilteredTypeMock).toHaveBeenCalledWith('visited');
+    });
+
+    it('ビュー切り替え後も優先度と評価の状態が維持されること', () => {
+      render(<WishlistHeader />);
+
+      const prioritySelect = screen.getByLabelText('優先度');
+      const ratingSelect = screen.getByLabelText('評価');
+
+      fireEvent.change(prioritySelect, { target: { value: '3' } });
+      expect(setPriorityFilterMock).toHaveBeenCalledWith(3);
+      fireEvent.change(ratingSelect, { target: { value: '4' } });
+      expect(setRatingFilterMock).toHaveBeenCalledWith(4);
+
+      const mapBtn = screen.getByLabelText('マップビューに切り替え');
+      fireEvent.click(mapBtn);
+      expect(setViewModeMock).toHaveBeenCalledWith('map');
+
+      expect(setPriorityFilterMock).toHaveBeenCalledWith(3);
+      expect(setRatingFilterMock).toHaveBeenCalledWith(4);
+
+      const listBtn = screen.getByLabelText('リストビューに切り替え');
+      fireEvent.click(listBtn);
+      expect(setViewModeMock).toHaveBeenCalledWith('list');
+
+      expect(setPriorityFilterMock).toHaveBeenCalledWith(3);
+      expect(setRatingFilterMock).toHaveBeenCalledWith(4);
+    });
   });
 
-  it('優先度と評価のセレクトを変更すると対応するストアのSetterが呼ばれること', () => {
-    render(<WishlistHeader />);
+  describe('フィルター操作', () => {
+    it('優先度と評価のセレクトを変更した場合、対応するストアのSetterが呼ばれること', () => {
+      render(<WishlistHeader />);
 
-    const prioritySelect = screen.getByLabelText('優先度');
-    const ratingSelect = screen.getByLabelText('評価');
-    // change rating to 1
-    fireEvent.change(ratingSelect, { target: { value: '1' } });
-    expect(setRatingFilterMock).toHaveBeenCalledWith(1);
-    // change rating to 5
-    fireEvent.change(ratingSelect, { target: { value: '5' } });
-    expect(setRatingFilterMock).toHaveBeenCalledWith(5);
+      const prioritySelect = screen.getByLabelText('優先度');
+      const ratingSelect = screen.getByLabelText('評価');
 
-    // change priority to 1
-    fireEvent.change(prioritySelect, { target: { value: '1' } });
-    expect(setPriorityFilterMock).toHaveBeenCalledWith(1);
-    // change priority to 5
-    fireEvent.change(prioritySelect, { target: { value: '5' } });
-    expect(setPriorityFilterMock).toHaveBeenCalledWith(5);
-  });
+      fireEvent.change(ratingSelect, { target: { value: '1' } });
+      expect(setRatingFilterMock).toHaveBeenCalledWith(1);
+      fireEvent.change(ratingSelect, { target: { value: '5' } });
+      expect(setRatingFilterMock).toHaveBeenCalledWith(5);
 
-  it('フィルタータイプのボタンをクリックするとsetFilteredTypeが呼ばれること', () => {
-    render(<WishlistHeader />);
+      fireEvent.change(prioritySelect, { target: { value: '1' } });
+      expect(setPriorityFilterMock).toHaveBeenCalledWith(1);
+      fireEvent.change(prioritySelect, { target: { value: '5' } });
+      expect(setPriorityFilterMock).toHaveBeenCalledWith(5);
+    });
 
-    const unvisitedBtn = screen.getByText('未訪問');
-    const visitedBtn = screen.getByText('訪問済み');
+    it('フィルタータイプのボタンをクリックした場合setFilteredTypeが呼ばれること', () => {
+      render(<WishlistHeader />);
 
-    fireEvent.click(unvisitedBtn);
-    expect(setFilteredTypeMock).toHaveBeenCalledWith('unvisited');
+      const unvisitedBtn = screen.getByText('未訪問');
+      const visitedBtn = screen.getByText('訪問済み');
 
-    fireEvent.click(visitedBtn);
-    expect(setFilteredTypeMock).toHaveBeenCalledWith('visited');
-  });
+      fireEvent.click(unvisitedBtn);
+      expect(setFilteredTypeMock).toHaveBeenCalledWith('unvisited');
 
-  it('ビュー切り替え後、フィルターの状態が維持されていること', () => {
-    getFilteredTypeMock.mockReturnValue('unvisited');
-    render(<WishlistHeader />);
-
-    const unvisitedBtn = screen.getByLabelText('未訪問フィルター');
-    fireEvent.click(unvisitedBtn);
-    expect(setFilteredTypeMock).toHaveBeenCalledWith('unvisited');
-
-    const mapBtn = screen.getByLabelText('マップビューに切り替え');
-    fireEvent.click(mapBtn);
-    expect(setViewModeMock).toHaveBeenCalledWith('map');
-
-    expect(setFilteredTypeMock).toHaveBeenCalledWith('unvisited');
-
-    const visitedBtn = screen.getByLabelText('訪問済みフィルター');
-    fireEvent.click(visitedBtn);
-    expect(setFilteredTypeMock).toHaveBeenCalledWith('visited');
-    const listBtn = screen.getByLabelText('リストビューに切り替え');
-    fireEvent.click(listBtn);
-    expect(setViewModeMock).toHaveBeenCalledWith('list');
-
-    expect(setFilteredTypeMock).toHaveBeenCalledWith('visited');
-  });
-
-  it('ビュー切り替え後、優先度と評価の状態が維持されていること', () => {
-    render(<WishlistHeader />);
-
-    const prioritySelect = screen.getByLabelText('優先度');
-    const ratingSelect = screen.getByLabelText('評価');
-
-    // 優先度と評価値のフィルターを設定
-    fireEvent.change(prioritySelect, { target: { value: '3' } });
-    expect(setPriorityFilterMock).toHaveBeenCalledWith(3);
-    fireEvent.change(ratingSelect, { target: { value: '4' } });
-    expect(setRatingFilterMock).toHaveBeenCalledWith(4);
-
-    // マップビューに切り替え
-    const mapBtn = screen.getByLabelText('マップビューに切り替え');
-    fireEvent.click(mapBtn);
-    expect(setViewModeMock).toHaveBeenCalledWith('map');
-
-    // フィルターが維持されていることを確認
-    expect(setPriorityFilterMock).toHaveBeenCalledWith(3);
-    expect(setRatingFilterMock).toHaveBeenCalledWith(4);
-
-    // リストビューに切り替え
-    const listBtn = screen.getByLabelText('リストビューに切り替え');
-    fireEvent.click(listBtn);
-    expect(setViewModeMock).toHaveBeenCalledWith('list');
-
-    // フィルターが引き続き維持されていることを確認
-    expect(setPriorityFilterMock).toHaveBeenCalledWith(3);
-    expect(setRatingFilterMock).toHaveBeenCalledWith(4);
+      fireEvent.click(visitedBtn);
+      expect(setFilteredTypeMock).toHaveBeenCalledWith('visited');
+    });
   });
 });

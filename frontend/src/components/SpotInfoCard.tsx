@@ -29,7 +29,9 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
 
         <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
           🚗
-          <span className="font-semibold">{convertHHmmToJpFormat(spot.transports.travelTime)}</span>
+          <span className="font-semibold">
+            {spot && spot.transports && spot.transports.travelTime && convertHHmmToJpFormat(spot.transports.travelTime)}
+          </span>
         </div>
       </div>
 

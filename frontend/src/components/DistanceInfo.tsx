@@ -87,7 +87,10 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                     {transportIcons[spot.transports.name]?.icon || 'ℹ️'}
                   </div>
                   <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-                    {convertHHmmToJpFormat(spot.transports.travelTime)}
+                    {spot &&
+                      spot.transports &&
+                      spot.transports.travelTime &&
+                      convertHHmmToJpFormat(spot.transports.travelTime)}
                   </div>
                   <div className="text-xs text-gray-500 flex-shrink-0">
                     {calcDistance(spot.location, spots[idx + 1].location)}
