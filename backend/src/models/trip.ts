@@ -91,9 +91,8 @@ export type TransportType = z.infer<typeof TransportSchema>;
 export type TripType = z.infer<typeof TripSchema>;
 export type DepartureAndDestinationType = z.infer<typeof DepartureAndDestinationSchema>;
 
-// --- Trip詳細取得レスポンス用スキーマ（placeIdのみ返す）---
 const TripDetailSpotSchema = z.object({
-  id: z.string(), // placeId のみ
+  id: z.string(),
   stayStart: z.string(),
   stayEnd: z.string(),
   memo: z.string().optional(),
@@ -133,3 +132,8 @@ export const TripDetailResponseSchema = z.object({
 });
 
 export type TripDetailResponseType = z.infer<typeof TripDetailResponseSchema>;
+
+export type {
+  TripDetailResponseType as TripDetailResponseContractType,
+  TripType as TripContractType,
+} from '@shared/trip/types';

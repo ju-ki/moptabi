@@ -5,18 +5,18 @@ import * as importPlugin from 'eslint-plugin-import';
 
 const config = [
   {
-    files: ['backend/src/**/*.{js,ts,tsx,jsx}', 'frontend/src/**/*.{js,ts,tsx,jsx}'],
+    files: ['src/**/*.{js,ts,tsx,jsx}'],
   },
   {
     ignores: [
-      '**/eslint.config.mjs',
-      '**/prettier.config.js',
-      '**/next.config.mjs',
-      '**/next.config.ts',
-      '**/tailwind.config.ts',
-      '**/tsconfig.json',
-      '**/postcss.config.mjs',
-      '**/next-env.d.ts',
+      'eslint.config.mjs',
+      'prettier.config.js',
+      'next.config.mjs',
+      'next.config.ts',
+      'tailwind.config.ts',
+      'tsconfig.json',
+      'postcss.config.mjs',
+      'next-env.d.ts',
       '**/build/',
       '**/bin/',
       '**/obj/',

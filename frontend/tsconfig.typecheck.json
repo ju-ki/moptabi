@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "src/tests",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "vitest.config.mts",
+    "eslint.config.mts",
+    "postcss.config.mts",
+    "next.config.mts",
+    "tailwind.config.mts",
+    "wrangler.toml",
+    "dist",
+    "build",
+    "bin",
+    "obj",
+    "out",
+    ".open-next",
+    ".next",
+    ".vscode",
+    "generated",
+    "dist",
+  ]
+}

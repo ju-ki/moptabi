@@ -1,5 +1,12 @@
 import { z } from '@hono/zod-openapi';
 
+import type { OpeningHoursType, SpotMetaType, SpotType, SpotWithMetaType } from '@shared/spot/types';
+import type {
+  SpotWithWishlistType,
+  UnvisitedSpotsResponseType,
+  VisitedSpotsResponseType,
+} from '@shared/wishlist/types';
+
 // ========================================
 // クエリパラメータスキーマ
 // ========================================
@@ -135,3 +142,14 @@ export const UnvisitedSpotsResponseSchema = z.array(SpotWithWishlistSchema).open
 export const VisitedSpotsResponseSchema = z.array(SpotWithWishlistSchema).openapi({
   description: '訪問済み・過去に登録したスポット',
 });
+
+// コントラクト型エイリアス（shared-types との契約）
+export type {
+  OpeningHoursType,
+  SpotMetaType,
+  SpotType,
+  SpotWithMetaType,
+  SpotWithWishlistType,
+  UnvisitedSpotsResponseType,
+  VisitedSpotsResponseType,
+};

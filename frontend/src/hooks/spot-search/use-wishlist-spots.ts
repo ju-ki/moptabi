@@ -5,20 +5,9 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import { Spot, TransportNodeType } from '@/types/plan';
 import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
 import { defaultLocation } from '@/data/constants';
+import { SpotWithWishlistType } from '@/models/wishlist';
 
-type WishlistSpot = {
-  id: number;
-  spotId: string;
-  userId: string;
-  memo: string | null;
-  priority: number;
-  visited: number;
-  visitedAt: string | null;
-  createdAt: string | null;
-  spot: {
-    id: string;
-  };
-};
+type WishlistSpot = SpotWithWishlistType;
 
 /**
  * 未訪問スポットのフィルター・ソートオプション

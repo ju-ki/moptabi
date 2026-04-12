@@ -3,13 +3,10 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 
 import { Card, CardContent } from '@/components/ui/card';
+import type { TripListItem } from '@/models/trip';
 
-type TripCardProps = {
+type TripCardProps = Omit<TripListItem, 'id'> & {
   id: string | number;
-  title: string;
-  startDate: string;
-  endDate: string;
-  imageUrl?: string;
 };
 
 export const TripCard = ({ id, title, startDate, endDate, imageUrl }: TripCardProps) => {

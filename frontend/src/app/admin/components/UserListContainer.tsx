@@ -3,32 +3,20 @@
 import { useState } from 'react';
 import { Search, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pagination, PaginationInfo } from '@/components/common/Pagination';
+import { Pagination } from '@/components/common/Pagination';
+import type { AdminUser } from '@/models/admin';
+import type { PaginationInfo } from '@/models/pagination';
 
-type RoleType = 'ADMIN' | 'USER' | 'GUEST';
-type UserSortBy = 'lastLoginAt' | 'registeredAt' | 'planCount' | 'wishlistCount';
-type SortOrder = 'asc' | 'desc';
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: { emailAddress: string };
-  imageUrl: string;
-  registeredAt: number;
-  lastLoginAt: number;
-  role: RoleType;
-  planCount: number;
-  wishlistCount: number;
-}
+import type { SortOrder, UserSortBy } from '@shared/admin/types';
 
 interface UserListContainerProps {
-  users: User[];
+  users: AdminUser[];
   pagination?: PaginationInfo;
   sortBy: UserSortBy;
   sortOrder: SortOrder;
@@ -65,7 +53,7 @@ const SORT_OPTIONS: { value: UserSortBy; label: string }[] = [
  * ユーザーリストテーブル部分（ローディング対応）
  * リスト部分のみをローディング表示するためのサブコンポーネント
  */
-function UserListTable({ users, isLoading }: { users: User[]; isLoading: boolean }) {
+function UserListTable({ users, isLoading }: { users: AdminUser[]; isLoading: boolean }) {
   if (isLoading) {
     return (
       <Card>

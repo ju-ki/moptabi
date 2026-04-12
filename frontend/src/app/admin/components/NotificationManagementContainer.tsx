@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Info, AlertTriangle, Search, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
 
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,17 +21,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { NotificationAdminType, NotificationType, NotificationUpdate } from '@/models/notification';
-import { Pagination, PaginationInfo } from '@/components/common/Pagination';
+import { Pagination } from '@/components/common/Pagination';
+import type { NotificationFilter } from '@/models/admin';
+import type { PaginationInfo } from '@/models/pagination';
 
-type NotificationSortBy = 'publishedAt' | 'createdAt' | 'readRate';
-type SortOrder = 'asc' | 'desc';
-
-export interface NotificationFilter {
-  title?: string;
-  type?: NotificationType | '';
-  publishedFrom?: string;
-  publishedTo?: string;
-}
+import type { NotificationSortBy, SortOrder } from '@shared/admin/types';
 
 interface NotificationManagementContainerProps {
   notificationList: NotificationAdminType[];

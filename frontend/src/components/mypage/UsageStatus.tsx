@@ -4,12 +4,10 @@ import { BarChart3 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import type { MypageData } from '@/models/mypage';
 
-type UsageStatusProps = {
-  planCount: number;
-  planLimit: number;
-  wishlistCount: number;
-  wishlistLimit: number;
+type UsageStatusProps = Pick<MypageData, 'planCount' | 'planLimit' | 'wishlistLimit'> & {
+  wishlistCount: MypageData['wishlistTotalCount'];
 };
 
 /**

@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi';
 
+import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType } from '@shared/user/types';
+
 // 地点の種別
 export const LocationTypeEnum = z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']);
 export type LocationType = z.infer<typeof LocationTypeEnum>;
@@ -107,3 +109,6 @@ export const PlanLocationCandidateResponseSchema = z.object({
 });
 
 export type CreatePlanLocationType = z.infer<typeof CreatePlanLocationSchema>;
+
+// コントラクト型エイリアス（shared-types との契約）
+export type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType };

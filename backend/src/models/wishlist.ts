@@ -2,6 +2,8 @@ import { z } from '@hono/zod-openapi';
 
 import { SpotSchema } from '@/models/spot';
 
+import type { WishlistItemType, WishlistCreateType, WishlistUpdateType } from '@shared/wishlist/types';
+
 // 行きたいリスト単体のスキーマ
 export const WishlistSchema = z.object({
   id: z.number().openapi({ example: 1 }),
@@ -37,3 +39,6 @@ export const WishlistUpdateSchema = z.object({
   visited: z.number().openapi({ example: 0 }),
   visitedAt: z.coerce.date().nullable().openapi({ example: null }),
 });
+
+// コントラクト型エイリアス（shared-types との契約）
+export type { WishlistItemType, WishlistCreateType, WishlistUpdateType };

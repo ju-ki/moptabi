@@ -9,7 +9,7 @@ import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
 import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
 import { useFetchTripDetail } from '@/hooks/use-trip';
-import { TripType } from '@/types/trip';
+import { TripType } from '@/models/trip';
 
 import { Button } from './ui/button';
 

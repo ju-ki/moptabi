@@ -1,15 +1,26 @@
-import { z } from 'zod';
+/**
+ * 行きたいリスト型定義 — shared-types/wishlist ドメインの re-export
+ */
+import type { SpotWithWishlistType } from '@shared/wishlist/types';
 
-import { SpotSchema } from './spot';
+export {
+  WishlistSchema,
+  WishlistListResponseSchema,
+  WishlistCreateSchema,
+  WishlistUpdateSchema,
+  SpotWithWishlistSchema,
+} from '@shared/wishlist/schema';
 
-export const WishlistSchema = z.object({
-  id: z.number().optional(),
-  spotId: z.string(),
-  memo: z.string().nullable(),
-  priority: z.number().min(1).max(5),
-  visited: z.number(),
-  visitedAt: z.string().datetime().nullable(),
-  spot: SpotSchema,
-});
+export type {
+  WishlistItemType,
+  WishlistListResponseType,
+  WishlistCreateType,
+  WishlistUpdateType,
+  SpotWithWishlistType,
+} from '@shared/wishlist/types';
 
-export const WishlistListResponseSchema = z.array(WishlistSchema);
+// frontend 専用: visited API の拡張レスポンス型
+export type VisitedSpotWithWishlistType = SpotWithWishlistType & {
+  visitCount?: number;
+  planDate?: string;
+};

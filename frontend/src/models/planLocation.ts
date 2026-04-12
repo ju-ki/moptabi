@@ -1,9 +1,9 @@
 /**
  * プラン作成時の出発地・目的地履歴の型定義
  */
-import z from 'zod';
+import { PlanLocationCandidateItemSchema, PlanLocationCandidateResponseSchema } from '@shared/user/schema';
 
-import { LocationTypeEnum, TransportSchema } from './transport';
+import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType } from '@shared/user/types';
 
 // 地点タイプ
 export const LOCATION_TYPE = {
@@ -11,22 +11,11 @@ export const LOCATION_TYPE = {
   DESTINATION: 'DESTINATION',
 } as const;
 
-export const DepartureAndDestinationSchema = z.object({
-  name: z.string(),
-  latitude: z.number().min(-90).max(90),
-  longitude: z.number().min(-180).max(180),
-  address: z.string().nullable(),
-  label: z.string().nullable(),
-  isDefault: z.boolean(),
-  locationType: LocationTypeEnum,
-  usageCount: z.number().nullable(),
-  userLocationId: z.number().nullable(),
-  planLocationId: z.number().nullable(),
-  planName: z.string().nullable(),
-  transports: TransportSchema.optional(),
-});
+export { PlanLocationCandidateItemSchema as DepartureAndDestinationSchema };
+export { PlanLocationCandidateResponseSchema };
 
-export type DepartureAndDestinationType = z.infer<typeof DepartureAndDestinationSchema>;
+export type DepartureAndDestinationType = PlanLocationCandidateItemType;
+export type { PlanLocationCandidateResponseType as PlanLocationCandidatesResponse };
 
 export type LocationType = (typeof LOCATION_TYPE)[keyof typeof LOCATION_TYPE];
 
@@ -42,14 +31,6 @@ export interface PlanLocation {
   usageCount: number;
   createdAt: string;
   updatedAt: string;
-}
-
-// 候補として表示する地点（お気に入り/履歴の両方で使用）
-
-// 候補取得APIのレスポンス
-export interface PlanLocationCandidatesResponse {
-  favorites: DepartureAndDestinationType[];
-  history: DepartureAndDestinationType[];
 }
 
 // 作成時のリクエスト

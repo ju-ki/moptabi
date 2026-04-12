@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi';
 
+import type { CreateUserLocationType, UpdateUserLocationType, UserLocationType } from '@shared/user/types';
+
 // 定数: マイページでのお気に入り登録は最大5件
 export const MAX_USER_LOCATIONS = 5;
 
@@ -77,3 +79,6 @@ export const DeleteUserLocationParamSchema = z.object({
 export const UserLocationIdParamSchema = z.object({
   id: z.string().regex(/^\d+$/, { message: 'IDは数値である必要があります' }).openapi({ example: '1' }),
 });
+
+// コントラクト型エイリアス（shared-types との契約）
+export type { UserLocationType, CreateUserLocationType, UpdateUserLocationType };

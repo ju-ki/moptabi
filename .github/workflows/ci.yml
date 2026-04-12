@@ -37,6 +37,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run Type Check
+        run: npm run typecheck
+
       - name: Run Prettier check
         run: npm run format:check
 
@@ -102,6 +105,9 @@ jobs:
 
       - name: Run ESLint
         run: bun run lint
+
+      - name: Run Type Check
+        run: bun run typecheck
 
       - name: Run Prettier check
         run: bun run format:check
