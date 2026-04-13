@@ -7,7 +7,6 @@ import { PlanListSchema } from './plan';
 import type { TripDetailResponseType as TripDetailResponseContractType } from '@shared/trip/types';
 import type { DepartureAndDestinationType } from './planLocation';
 
-
 export const TripSchema = z.object({
   title: z
     .string()

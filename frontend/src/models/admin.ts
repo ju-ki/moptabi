@@ -1,6 +1,5 @@
 import z from 'zod';
 
-
 import type { NotificationAdminType } from '@/models/notification';
 import type { PaginationInfo } from '@/models/pagination';
 
