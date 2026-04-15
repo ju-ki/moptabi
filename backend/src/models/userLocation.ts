@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi';
 
+import type { CreateUserLocationType, UpdateUserLocationType, UserLocationType } from '@shared/user/types';
+
 // 定数: マイページでのお気に入り登録は最大5件
 export const MAX_USER_LOCATIONS = 5;
 
@@ -14,8 +16,8 @@ export const UserLocationSchema = z.object({
   label: z.string().nullable().openapi({ example: '自宅' }),
   usageCount: z.number().min(0).openapi({ example: 5 }),
   isDefault: z.boolean().openapi({ example: false }),
-  createdAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
-  updatedAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
+  createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
+  updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
 });
 
 // ユーザーのお気に入り地点の一覧スキーマ
@@ -77,3 +79,6 @@ export const DeleteUserLocationParamSchema = z.object({
 export const UserLocationIdParamSchema = z.object({
   id: z.string().regex(/^\d+$/, { message: 'IDは数値である必要があります' }).openapi({ example: '1' }),
 });
+
+// コントラクト型エイリアス（shared-types との契約）
+export type { UserLocationType, CreateUserLocationType, UpdateUserLocationType };

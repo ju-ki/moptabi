@@ -20,17 +20,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { NotificationAdminType, NotificationType, NotificationUpdate } from '@/models/notification';
-import { Pagination, PaginationInfo } from '@/components/common/Pagination';
+import { Pagination } from '@/components/common/Pagination';
+import type { NotificationFilter } from '@/models/admin';
+import type { PaginationInfo } from '@/models/pagination';
 
-type NotificationSortBy = 'publishedAt' | 'createdAt' | 'readRate';
-type SortOrder = 'asc' | 'desc';
-
-export interface NotificationFilter {
-  title?: string;
-  type?: NotificationType | '';
-  publishedFrom?: string;
-  publishedTo?: string;
-}
+import type { NotificationSortBy, SortOrder } from '@shared/admin/types';
 
 interface NotificationManagementContainerProps {
   notificationList: NotificationAdminType[];

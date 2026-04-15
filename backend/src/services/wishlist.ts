@@ -77,7 +77,7 @@ export const createWishList = async (c: Context) => {
       priority: wishListResult.priority,
       memo: wishListResult.memo,
       visited: wishListResult.visited,
-      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt.toISOString() : null,
+      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt : null,
     })
     .returning();
 
@@ -111,7 +111,7 @@ export const updateWishList = async (c: Context) => {
       memo: wishListResult.memo,
       priority: wishListResult.priority,
       visited: wishListResult.visited,
-      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt.toISOString() : null,
+      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt : null,
     })
     .where(and(eq(wishlist.id, wishListResult.id), eq(wishlist.userId, userId)))
     .returning();

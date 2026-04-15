@@ -411,7 +411,7 @@ describe('🧾 行きたいリストサービス', () => {
         memo: '更新後のメモ',
         priority: 5,
         visited: 1,
-        visitedAt: new Date().toISOString(),
+        visitedAt: null,
       };
 
       const parseResult = WishlistUpdateSchema.safeParse(updatePayload);

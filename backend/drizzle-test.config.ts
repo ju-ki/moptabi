@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import { defineConfig } from 'drizzle-kit';
 
 // テスト用: .env.test を読み込む
-config({ path: '.env.test' });
+config({ path: '.env.test', override: true });
 
 // 環境変数から DATABASE_URL を取得（コマンドライン指定またはファイルから）
 const databaseUrl =

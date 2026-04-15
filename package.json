@@ -4,10 +4,14 @@
   "scripts": {
     "lint:frontend": "npm --prefix frontend run lint",
     "lint:backend": "npm --prefix backend run lint",
+    "typecheck:frontend": "npm --prefix frontend run typecheck",
+    "typecheck:backend": "npm --prefix backend run typecheck",
     "lint": "npm run lint:frontend && npm run lint:backend",
+    "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
     "prepare": "husky install"
   },
   "devDependencies": {
-    "husky": "^8.0.0"
+    "husky": "^8.0.0",
+    "zod": "^3.23.8"
   }
 }

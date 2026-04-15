@@ -5,11 +5,6 @@ import { NotificationListResponseSchema, UnreadCountResponseSchema } from '@/mod
 
 import app from '..';
 import {
-  db,
-  notification,
-  userNotification,
-  eq,
-  and,
   connectDb as connectPrisma,
   disconnectDb as disconnectPrisma,
   clearUserTestData as clearTestDataForUser,

@@ -33,6 +33,7 @@ export const DEFAULT_DEPARTURE_AND_DESTINATION: DepartureAndDestinationType = {
   isDefault: false,
   usageCount: 0,
   userLocationId: null,
+  planId: null,
   planName: null,
   planLocationId: null,
 };

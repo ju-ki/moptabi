@@ -1,5 +1,7 @@
 import { z } from '@hono/zod-openapi';
 
+import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType } from '@shared/user/types';
+
 // 地点の種別
 export const LocationTypeEnum = z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']);
 export type LocationType = z.infer<typeof LocationTypeEnum>;
@@ -14,8 +16,8 @@ export const PlanLocationSchema = z.object({
   address: z.string().nullable().openapi({ example: '東京都千代田区千代田1-1' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
   planId: z.number().nullable().openapi({ example: 1 }),
-  createdAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
-  updatedAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
+  createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
+  updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
 });
 
 // プラン作成時の出発地・目的地履歴一覧スキーマ
@@ -107,3 +109,6 @@ export const PlanLocationCandidateResponseSchema = z.object({
 });
 
 export type CreatePlanLocationType = z.infer<typeof CreatePlanLocationSchema>;
+
+// コントラクト型エイリアス（shared-types との契約）
+export type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType };

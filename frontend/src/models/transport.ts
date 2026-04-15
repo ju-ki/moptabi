@@ -15,5 +15,3 @@ export const TransportSchema = z.object({
   fromType: LocationTypeEnum,
   toType: LocationTypeEnum,
 });
-
-export type TransportType = z.infer<typeof TransportSchema>;

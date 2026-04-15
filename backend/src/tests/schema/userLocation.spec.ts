@@ -21,8 +21,8 @@ const mockUserLocation = {
   label: '自宅',
   usageCount: 5,
   isDefault: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {

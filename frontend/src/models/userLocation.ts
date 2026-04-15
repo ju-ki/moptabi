@@ -1,15 +1,14 @@
 /**
  * ユーザーお気に入り地点の型定義
  */
+import { LOCATION_LABELS, MAX_USER_LOCATIONS } from '@shared/user/types';
 
-// ラベルの選択肢
-export const LOCATION_LABELS = ['自宅', '駅・バス停', '実家', '旅の拠点', 'その他'] as const;
-export type LocationLabel = (typeof LOCATION_LABELS)[number];
+import type { CreateUserLocationType, LocationLabel, UpdateUserLocationType } from '@shared/user/types';
 
-// 最大登録件数
-export const MAX_USER_LOCATIONS = 5;
+export { LOCATION_LABELS, MAX_USER_LOCATIONS };
+export type { LocationLabel };
 
-// ユーザーお気に入り地点
+// ユーザーお気に入り地点（フロントエンド表示用: 日付フィールドは文字列として扱う）
 export interface UserLocation {
   id: number;
   userId: string;
@@ -25,22 +24,7 @@ export interface UserLocation {
 }
 
 // 作成時のリクエスト
-export interface CreateUserLocationRequest {
-  name: string;
-  latitude: number;
-  longitude: number;
-  address?: string | null;
-  label?: string | null;
-  isDefault?: boolean;
-}
+export type CreateUserLocationRequest = CreateUserLocationType;
 
-// 更新時のリクエスト
-export interface UpdateUserLocationRequest {
-  id: number;
-  name?: string;
-  latitude?: number;
-  longitude?: number;
-  address?: string | null;
-  label?: string | null;
-  isDefault?: boolean;
-}
+// 更新時のリクエスト（id は URL パスパラメータから取得するため追加）
+export type UpdateUserLocationRequest = UpdateUserLocationType & { id: number };

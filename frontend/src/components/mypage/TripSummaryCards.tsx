@@ -3,12 +3,9 @@
 import { MapPin, Heart, Calendar } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
+import type { MypageData } from '@/models/mypage';
 
-type TripSummaryCardsProps = {
-  visitedCount: number;
-  wishlistCount: number;
-  totalTripDays: number;
-};
+type TripSummaryCardsProps = Pick<MypageData, 'visitedCount' | 'wishlistCount' | 'totalTripDays'>;
 
 /**
  * 旅のサマリーカードコンポーネント

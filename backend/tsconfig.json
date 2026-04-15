@@ -7,11 +7,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "baseUrl": ".",
+    "rootDir": "./src",
+    "outDir": "dist",
     "paths": {
       "@/*": ["./src/*"],
       "~/*": ["./src/*"],
+      "@shared/*": ["../packages/shared-types/dist/*"],
       "@db": ["./src/db/index.ts"],
       "@db/*": ["./src/db/*"]
     },

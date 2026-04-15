@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { TripCard } from '@/components/TripCard';
 import { TripSearchForm } from '@/components/TripSearchForm';
 import { useFetcher } from '@/hooks/use-fetcher';
-import { ResponseTripType } from '@/types/plan';
+import { TripListItem } from '@/models/trip';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
 import { APP_LIMITS } from '@/data/constants';
 import LoadingState from '@/components/common/LoadingState';
@@ -20,13 +20,13 @@ export default function TripsPage() {
     data: trips,
     error,
     isLoading,
-  } = useSWR(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
+  } = useSWR<TripListItem[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
 
   if (isLoading || error || !trips) {
     return <LoadingState isLoading={isLoading} error={error} />;
   }
 
-  const tripCount = (trips as ResponseTripType[])?.length ?? 0;
+  const tripCount = trips.length;
 
   return (
     <div className="container mx-auto py-8">
@@ -47,7 +47,7 @@ export default function TripsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(trips as ResponseTripType[]).map((trip, idx) => (
+        {trips.map((trip) => (
           <TripCard
             key={trip.id}
             id={trip.id}

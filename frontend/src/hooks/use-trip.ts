@@ -1,7 +1,7 @@
 import useSWR from 'swr';
 
 import { Spot } from '@/types/plan';
-import { TripDetailAPISpot, TripDetailAPIType, TripType } from '@/types/trip';
+import { TripDetailApiResponse, TripDetailApiSpot, TripType } from '@/models/trip';
 import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
 import { defaultLocation } from '@/data/constants';
 
@@ -11,7 +11,7 @@ import { useFetcher } from './use-fetcher';
  * バックエンドから取得した placeId のみのスポット情報を
  * Google Maps Places API で補完して Spot 型に変換する
  */
-async function enrichSpot(spot: TripDetailAPISpot): Promise<Spot> {
+async function enrichSpot(spot: TripDetailApiSpot): Promise<Spot> {
   const result = await fetchPlaceDetailsWithRetry(spot.id);
   const meta = result.data;
   return {
@@ -41,10 +41,10 @@ async function enrichSpot(spot: TripDetailAPISpot): Promise<Spot> {
 }
 
 /**
- * バックエンドから取得した TripDetailAPIType を
+ * バックエンドから取得した TripDetailApiResponse を
  * Google Maps データで補完した TripType に変換する
  */
-async function enrichTripWithPlaceDetails(raw: TripDetailAPIType): Promise<TripType> {
+async function enrichTripWithPlaceDetails(raw: TripDetailApiResponse): Promise<TripType> {
   const enrichedPlans = await Promise.all(
     raw.plans.map(async (plan) => ({
       date: plan.date,
@@ -74,7 +74,7 @@ export const useFetchTripDetail = (tripId?: string) => {
 
   /** Google Maps Places API でスポット情報を補完するカスタムフェッチャー */
   const tripFetcher = async (key: string): Promise<TripType> => {
-    const raw = (await getFetcher(key)) as TripDetailAPIType;
+    const raw = (await getFetcher(key)) as TripDetailApiResponse;
     return enrichTripWithPlaceDetails(raw);
   };
 

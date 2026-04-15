@@ -2,6 +2,14 @@ import { z } from '@hono/zod-openapi';
 
 import { PaginationInfoSchema, PaginationQuerySchema, SortOrderSchema } from './pagination';
 
+import type {
+  NotificationItemType,
+  NotificationListResponseType,
+  NotificationCreateType,
+  NotificationUpdateType,
+  NotificationAdminType as NotificationAdminContractType,
+} from '@shared/notification/types';
+
 /**
  * お知らせの種類
  */
@@ -213,3 +221,12 @@ export type NotificationAdminListResponse = z.infer<typeof NotificationAdminList
 export type NotificationAdminSortBy = z.infer<typeof NotificationAdminSortBySchema>;
 export type NotificationAdminQuery = z.infer<typeof NotificationAdminQuerySchema>;
 export type NotificationAdminPaginatedResponse = z.infer<typeof NotificationAdminPaginatedResponseSchema>;
+
+// コントラクト型エイリアス（shared-types との契約）
+export type {
+  NotificationItemType,
+  NotificationListResponseType,
+  NotificationCreateType,
+  NotificationUpdateType,
+  NotificationAdminContractType,
+};

@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "bun run --hot src/dev.ts",
     "dev:wrangler": "wrangler dev src/index.ts",
-    "build": "tsc",
+    "typecheck": "bunx tsc --noEmit",
     "lint": "eslint .",
     "fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,ts}\"",
@@ -21,7 +21,10 @@
     "db:push:test": "drizzle-kit push --config=./drizzle-test.config.ts",
     "db:push:staging": "drizzle-kit push --config=./drizzle-staging.config.ts",
     "db:reset:test": "bun run src/tests/reset-test-db.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "prebuild": "npm --prefix ../packages/shared-types run build",
+    "build": "bunx tsc -p tsconfig.json"
+
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

@@ -2,85 +2,9 @@ import useSWR from 'swr';
 
 import { useFetcher } from '@/hooks/use-fetcher';
 import { CreateUserLocationRequest, UpdateUserLocationRequest, UserLocation } from '@/models/userLocation';
+import { CountResponse, MypageData, NextTrip, RecentTrip, TripSummary, WishlistSummary } from '@/models/mypage';
 
-/**
- * Tripの型定義
- */
-type Trip = {
-  id: number;
-  title: string;
-  startDate: string;
-  endDate: string;
-};
-
-/**
- * Wishlistの型定義
- */
-type WishlistItem = {
-  id: number;
-  visited: number;
-};
-
-/**
- * CountResponseの型定義
- */
-type CountResponse = {
-  count: number;
-  limit: number;
-};
-
-/**
- * 次の旅の型定義
- */
-type NextTrip = {
-  id: number;
-  title: string;
-  startDate: string;
-  daysUntil: number;
-};
-
-/**
- * 最近の旅の型定義
- */
-type RecentTrip = {
-  id: number;
-  title: string;
-  startDate: string;
-};
-
-/**
- * マイページデータの型定義
- */
-export type MypageData = {
-  // ローディング・エラー状態
-  isLoading: boolean;
-  error: Error | null;
-
-  // 次の旅
-  nextTrip: NextTrip | null;
-
-  // サマリー
-  visitedCount: number;
-  wishlistCount: number;
-  totalTripDays: number;
-
-  // 利用状況
-  planCount: number;
-  planLimit: number;
-  wishlistTotalCount: number;
-  wishlistLimit: number;
-
-  // 最近の旅
-  recentTrips: RecentTrip[];
-
-  // ユーザーお気に入り地点
-  userLocations: UserLocation[];
-
-  // ユーザーお気に入り地点の操作関数
-  postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<Response>;
-  updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
-  deleteUserLocation: (id: number) => Promise<Response>;
-};
+export type { MypageData };
 
 /**
  * 日付間の日数を計算する関数
@@ -147,7 +71,7 @@ export function useMypageData(): MypageData {
     data: trips,
     error: tripsError,
     isLoading: tripsLoading,
-  } = useSWR<Trip[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
+  } = useSWR<TripSummary[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
 
   const {
     data: tripsCount,
@@ -159,7 +83,7 @@ export function useMypageData(): MypageData {
     data: wishlist,
     error: wishlistError,
     isLoading: wishlistLoading,
-  } = useSWR<WishlistItem[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist` : null, getFetcher);
+  } = useSWR<WishlistSummary[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist` : null, getFetcher);
 
   const {
     data: wishlistCount,
@@ -171,7 +95,7 @@ export function useMypageData(): MypageData {
     data: userLocations,
     error: userLocationsError,
     isLoading: userLocationsLoading,
-  } = useSWR(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation` : null, getFetcher);
+  } = useSWR<UserLocation[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation` : null, getFetcher);
 
   const postUserLocation = async (newUserLocation: CreateUserLocationRequest) => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation`, {

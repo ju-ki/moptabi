@@ -1,30 +1,14 @@
 import useSWR, { KeyedMutator } from 'swr';
 import { useCallback } from 'react';
+import { NotificationType } from '@shared/admin/types';
 
 import { useFetcher } from '@/hooks/use-fetcher';
+import { NotificationItem, UnreadCountResponse } from '@/models/notification';
 
 /**
  * お知らせの型定義
  */
-export type NotificationType = 'SYSTEM' | 'INFO';
-
-export type NotificationItem = {
-  id: number;
-  title: string;
-  content: string;
-  type: NotificationType;
-  publishedAt: string;
-  createdAt: string;
-  isRead: boolean;
-  readAt: string | null;
-};
-
-/**
- * 未読件数レスポンスの型定義
- */
-type UnreadCountResponse = {
-  count: number;
-};
+export type { NotificationType };
 
 /**
  * useNotificationの戻り値の型定義

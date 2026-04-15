@@ -5,13 +5,7 @@ import { Calendar, MapPin, Sparkles } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
-type NextTrip = {
-  id: number;
-  title: string;
-  startDate: string;
-  daysUntil: number;
-};
+import type { NextTrip } from '@/models/mypage';
 
 type NextTripSectionProps = {
   nextTrip: NextTrip | null;
