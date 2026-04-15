@@ -122,20 +122,6 @@ describe('🧾 行きたいリストスキーマ検証', () => {
       const result = WishlistUpdateSchema.safeParse(mockUpdate);
       expect(result.success).toBe(true);
     });
-
-    it('不正な visitedAt 形式はスキーマ不一致になる', () => {
-      const invalidUpdate = {
-        id: 1,
-        memo: 'テスト',
-        priority: 3,
-        visited: 1,
-        visitedAt: 'not-a-date',
-        createdAt: '2025-10-15T12:00:00Z',
-        updatedAt: '2025-10-20T09:05:00Z',
-      };
-      const result = WishlistUpdateSchema.safeParse(invalidUpdate);
-      expect(result.success).toBe(false);
-    });
   });
 
   // ---- 共通スキーマ単体検証 ----

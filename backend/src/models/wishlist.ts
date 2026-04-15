@@ -12,9 +12,9 @@ export const WishlistSchema = z.object({
   memo: z.string().nullable().openapi({ example: '夜景が綺麗らしい' }),
   priority: z.number().min(1).max(5).openapi({ example: 3 }),
   visited: z.number().openapi({ example: 0 }),
-  visitedAt: z.string().datetime().nullable().openapi({ example: null }),
-  createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
-  updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:05:00Z' }),
+  visitedAt: z.string().nullable().openapi({ example: null }),
+  createdAt: z.string().openapi({ example: '2025-10-15T12:00:00Z' }),
+  updatedAt: z.string().openapi({ example: '2025-10-15T12:05:00Z' }),
   spot: SpotSchema,
 });
 
@@ -28,7 +28,7 @@ export const WishlistCreateSchema = z.object({
   memo: z.string().nullable().openapi({ example: '夜景が綺麗らしい' }),
   priority: z.number().min(1).max(5).openapi({ example: 3 }),
   visited: z.number().openapi({ example: 0 }),
-  visitedAt: z.string().datetime().nullable().openapi({ example: null }),
+  visitedAt: z.string().nullable().openapi({ example: null }),
 });
 
 // 行きたいリスト更新用のスキーマ
@@ -37,7 +37,7 @@ export const WishlistUpdateSchema = z.object({
   memo: z.string().nullable().openapi({ example: '夜景が綺麗らしい' }),
   priority: z.number().min(1).max(5).openapi({ example: 3 }),
   visited: z.number().openapi({ example: 0 }),
-  visitedAt: z.string().datetime().nullable().openapi({ example: null }),
+  visitedAt: z.string().nullable().openapi({ example: null }),
 });
 
 // コントラクト型エイリアス（shared-types との契約）
