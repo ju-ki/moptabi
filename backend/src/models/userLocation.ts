@@ -16,8 +16,8 @@ export const UserLocationSchema = z.object({
   label: z.string().nullable().openapi({ example: '自宅' }),
   usageCount: z.number().min(0).openapi({ example: 5 }),
   isDefault: z.boolean().openapi({ example: false }),
-  createdAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
-  updatedAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
+  createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
+  updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
 });
 
 // ユーザーのお気に入り地点の一覧スキーマ

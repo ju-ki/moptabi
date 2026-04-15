@@ -20,6 +20,5 @@
     ".next",
     ".vscode",
     "generated",
-    "dist",
   ]
 }

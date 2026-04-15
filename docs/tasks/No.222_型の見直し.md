@@ -396,7 +396,7 @@
 
 * backend は `@hono/zod-openapi` を使用するため、実行スキーマは既存を維持。共有型は「コントラクト型エイリアス」として re-export する Phase 2 と同様のパターンを踏襲
 * `transports` フィールドは API レスポンスには含まれないが、フロントエンドのストア/UI ステート管理で使用されているため shared 側スキーマに optional として含めることで型互換を維持
-* `UserLocation.createdAt/updatedAt` はフロントエンドでは `string` として扱う（`z.coerce.date()` 型の `Date` とは別に interface を定義）
+* `UserLocation.createdAt/updatedAt` はフロントエンドでは `string` として扱う（`z.string().datetime()` 型の `Date` とは別に interface を定義）
 
 **検証結果（完了）**
 

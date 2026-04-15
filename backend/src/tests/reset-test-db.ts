@@ -17,7 +17,7 @@ import { config } from 'dotenv';
 import { Client } from 'pg';
 
 // .env.test を読み込む
-config({ path: '.env.test' });
+config({ path: '.env.test', override: true });
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||

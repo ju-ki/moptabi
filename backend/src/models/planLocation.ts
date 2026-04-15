@@ -16,8 +16,8 @@ export const PlanLocationSchema = z.object({
   address: z.string().nullable().openapi({ example: '東京都千代田区千代田1-1' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
   planId: z.number().nullable().openapi({ example: 1 }),
-  createdAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
-  updatedAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
+  createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
+  updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
 });
 
 // プラン作成時の出発地・目的地履歴一覧スキーマ

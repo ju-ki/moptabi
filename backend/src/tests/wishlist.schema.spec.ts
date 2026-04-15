@@ -35,8 +35,8 @@ const mockWishlist = {
   priority: 3,
   visited: 0,
   visitedAt: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
   spot: mockSpot,
 };
 
@@ -115,9 +115,9 @@ describe('🧾 行きたいリストスキーマ検証', () => {
         memo: '感想を更新',
         priority: 4,
         visited: 1,
-        visitedAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        visitedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       const result = WishlistUpdateSchema.safeParse(mockUpdate);
       expect(result.success).toBe(true);

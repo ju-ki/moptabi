@@ -1,7 +1,4 @@
 /**
- * お知らせ型定義 — shared-types/notification ドメインの re-export
- */
-/**
  * 通知型定義 — shared-types/notification ドメインの再利用
  */
 export {

@@ -13,8 +13,8 @@ export const UserLocationSchema = z.object({
   label: z.string().nullable(),
   usageCount: z.number(),
   isDefault: z.boolean(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 });
 
 // 作成リクエストスキーマ

@@ -20,8 +20,8 @@ const mockPlanLocation = {
   address: '東京都千代田区千代田1-1',
   locationType: 'DEPARTURE' as const,
   planId: 1,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 describe('🧾 プラン作成時の出発地・目的地スキーマ検証', () => {

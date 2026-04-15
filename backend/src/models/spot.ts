@@ -124,9 +124,9 @@ export const SpotWithWishlistSchema = z.object({
   memo: z.string().nullable().openapi({ example: 'メモ' }),
   priority: z.number().min(1).max(5).openapi({ example: 3 }),
   visited: z.number().openapi({ example: 0 }),
-  visitedAt: z.coerce.date().nullable().openapi({ example: null }),
-  createdAt: z.coerce.date().openapi({ example: '2025-10-15T12:00:00Z' }),
-  updatedAt: z.coerce.date().openapi({ example: '2025-10-15T12:05:00Z' }),
+  visitedAt: z.string().datetime().nullable().openapi({ example: null }),
+  createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
+  updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:05:00Z' }),
   spot: z.object({
     id: z.string().openapi({ example: 'spot_abc123' }),
     meta: SpotMetaSchema.nullable(),
