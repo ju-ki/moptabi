@@ -62,27 +62,19 @@ jobs:
       - name: Prime backend worker
         run: |
           set -euo pipefail
-          if ! bunx wrangler deploy \
+          bunx wrangler deploy \
             --config wrangler.toml \
             --name "${{ steps.meta.outputs.worker_name }}" \
             --keep-vars \
             --var NODE_ENV:staging \
             --var ALLOWED_ORIGIN_SUFFIXES:.pages.dev,.workers.dev \
-            2>&1 | tee /tmp/backend-prime.log; then
-            echo "Prime backend worker failed. Dumping /tmp/backend-prime.log" >&2
-            cat /tmp/backend-prime.log >&2 || true
-            exit 1
-          fi
+            >/tmp/backend-prime.log 2>&1
 
       - name: Upload backend secrets
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${STAGING_DATABASE_URL:-}" ]; then
-            echo "STAGING_DATABASE_URL is empty. Check GitHub Actions secrets." >&2
-            exit 1
-          fi
           secrets_file="$(mktemp)"
           printf 'DATABASE_URL=%s\n' "$STAGING_DATABASE_URL" > "$secrets_file"
           bunx wrangler secret bulk "$secrets_file" \
@@ -139,7 +131,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --include=dev
 
       - name: Install root dependencies for shared-types
         run: npm --prefix .. ci --ignore-scripts
