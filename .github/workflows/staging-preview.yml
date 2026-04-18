@@ -134,7 +134,7 @@ jobs:
         run: npm ci --include=dev
 
       - name: Install root dependencies for shared-types
-        run: npm --prefix .. ci --ignore-scripts
+        run: npm --prefix .. ci --ignore-scripts --include=dev
 
       - name: Build shared-types
         run: npm exec -- tsc -p ../packages/shared-types/tsconfig.json
