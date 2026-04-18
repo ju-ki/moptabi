@@ -58,6 +58,8 @@ import {
 // Cloudflare Workers用のBindings型
 type Bindings = {
   DATABASE_URL: string;
+  ALLOWED_ORIGINS?: string;
+  ALLOWED_ORIGIN_SUFFIXES?: string;
 };
 
 // DBをContextに追加する型
@@ -67,28 +69,58 @@ type Variables = {
 
 const app = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>().basePath('/api');
 
-// 静的ファイル配信の設定
+const defaultAllowedOrigins = ['https://moptabi.moptabi.workers.dev', 'http://localhost:3000', 'https://moptabi.com'];
 
-// 許可するオリジンのリスト
-const allowedOrigins = ['https://moptabi.moptabi.workers.dev', 'http://localhost:3000', 'https://moptabi.com'];
+function parseCsv(value?: string): string[] {
+  if (!value) return [];
 
-app.use(
-  '*',
-  cors({
-    origin: (origin) => {
-      // リクエストのオリジンが許可リストに含まれていればそのオリジンを返す
-      if (allowedOrigins.includes(origin)) {
-        return origin;
-      }
-      // 含まれていない場合は最初のオリジンを返す（または空文字でブロック）
-      return allowedOrigins[0];
-    },
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function isAllowedBySuffix(origin: string, allowedSuffixes: string[]): boolean {
+  if (!allowedSuffixes.length) return false;
+
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'https:') return false;
+
+    const hostname = url.hostname;
+
+    return allowedSuffixes.some((suffix) => {
+      const normalizedSuffix = suffix.trim().replace(/^\.+/, '');
+      if (!normalizedSuffix) return false;
+
+      // 完全一致、またはサブドメインとして正しく終わる場合のみ許可
+      return hostname === normalizedSuffix || hostname.endsWith(`.${normalizedSuffix}`);
+    });
+  } catch {
+    return false;
+  }
+}
+
+app.use('*', async (c, next) => {
+  const requestOrigin = c.req.header('Origin');
+  const allowedOrigins = [...defaultAllowedOrigins, ...parseCsv(c.env.ALLOWED_ORIGINS)];
+  const allowedOriginSuffixes = parseCsv(c.env.ALLOWED_ORIGIN_SUFFIXES);
+
+  const resolvedOrigin =
+    requestOrigin && (allowedOrigins.includes(requestOrigin) || isAllowedBySuffix(requestOrigin, allowedOriginSuffixes))
+      ? requestOrigin
+      : defaultAllowedOrigins[0];
+
+  const corsMiddleware = cors({
+    origin: resolvedOrigin,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
     maxAge: 600,
-  }),
-);
+  });
+
+  return corsMiddleware(c, next);
+});
 
 // DBミドルウェア：リクエストごとにDB接続を設定
 app.use('*', async (c, next) => {
@@ -107,6 +139,10 @@ app.use('*', async (c, next) => {
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {
   return c.text('', 204);
+});
+
+app.get('/health', (c) => {
+  return c.json({ status: 'ok' }, 200);
 });
 
 //ルートの登録
