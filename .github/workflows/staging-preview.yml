@@ -50,6 +50,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install root dependencies for shared-types
+        run: npm --prefix .. ci --ignore-scripts
+
       - name: Build shared-types
         run: bunx tsc -p ../packages/shared-types/tsconfig.json
 
@@ -129,6 +132,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install root dependencies for shared-types
+        run: npm --prefix .. ci --ignore-scripts
 
       - name: Build shared-types
         run: npm exec -- tsc -p ../packages/shared-types/tsconfig.json
