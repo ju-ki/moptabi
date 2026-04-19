@@ -2,6 +2,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
+import { sql } from 'drizzle-orm';
 import { getDbFromEnv, setRequestScopeDb, clearRequestScopeDb } from '@db/index';
 
 import {
@@ -10,7 +11,6 @@ import {
   getTripDetailRoute,
   deleteTripRoute,
   uploadImageRoute,
-  getDepartureAndDepartment,
   getTripCountRoute,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
@@ -49,7 +49,6 @@ import {
 } from './routes/userLocation';
 import { planLocationHandler } from './controllers/planLocation';
 import {
-  getPlanLocationListRoute,
   getPlanLocationCandidatesRoute,
   createPlanLocationRoute,
   deletePlanLocationRoute,
@@ -58,6 +57,9 @@ import {
 // Cloudflare Workers用のBindings型
 type Bindings = {
   DATABASE_URL: string;
+  NODE_ENV?: string;
+  ALLOWED_ORIGINS?: string;
+  ALLOWED_ORIGIN_SUFFIXES?: string;
 };
 
 // DBをContextに追加する型
@@ -67,28 +69,68 @@ type Variables = {
 
 const app = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>().basePath('/api');
 
-// 静的ファイル配信の設定
+const defaultAllowedOrigins = [
+  'https://moptabi.moptabi.workers.dev', // 本番用
+  'http://localhost:3000', // ローカル用
+  'https://moptabi.com', // 未定
+  'https://moptabi-frontend-staging.moptabi.workers.dev', // ステージング用
+];
 
-// 許可するオリジンのリスト
-const allowedOrigins = ['https://moptabi.moptabi.workers.dev', 'http://localhost:3000', 'https://moptabi.com'];
+function parseCsv(value?: string): string[] {
+  if (!value) return [];
 
-app.use(
-  '*',
-  cors({
-    origin: (origin) => {
-      // リクエストのオリジンが許可リストに含まれていればそのオリジンを返す
-      if (allowedOrigins.includes(origin)) {
-        return origin;
-      }
-      // 含まれていない場合は最初のオリジンを返す（または空文字でブロック）
-      return allowedOrigins[0];
-    },
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function isAllowedBySuffix(origin: string, allowedSuffixes: string[]): boolean {
+  if (!allowedSuffixes.length) return false;
+
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== 'https:') return false;
+
+    const hostname = url.hostname;
+
+    return allowedSuffixes.some((suffix) => {
+      const normalizedSuffix = suffix.trim().replace(/^\.+/, '');
+      if (!normalizedSuffix) return false;
+
+      // 完全一致、またはサブドメインとして正しく終わる場合のみ許可
+      return hostname === normalizedSuffix || hostname.endsWith(`.${normalizedSuffix}`);
+    });
+  } catch {
+    return false;
+  }
+}
+
+function resolveAllowedOrigin(requestOrigin: string | undefined, env?: Partial<Bindings>): string | null {
+  if (!requestOrigin) return null;
+
+  const allowedOrigins = [...defaultAllowedOrigins, ...parseCsv(env?.ALLOWED_ORIGINS)];
+  const allowedOriginSuffixes = parseCsv(env?.ALLOWED_ORIGIN_SUFFIXES);
+
+  const isAllowed = allowedOrigins.includes(requestOrigin) || isAllowedBySuffix(requestOrigin, allowedOriginSuffixes);
+
+  return isAllowed ? requestOrigin : null;
+}
+
+app.use('*', async (c, next) => {
+  const requestOrigin = c.req.header('Origin');
+  const resolvedOrigin = resolveAllowedOrigin(requestOrigin, c.env) ?? defaultAllowedOrigins[0];
+
+  const corsMiddleware = cors({
+    origin: resolvedOrigin,
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id', 'X-User-Email', 'X-User-Name', 'X-User-Image'],
     credentials: true,
     maxAge: 600,
-  }),
-);
+  });
+
+  return corsMiddleware(c, next);
+});
 
 // DBミドルウェア：リクエストごとにDB接続を設定
 app.use('*', async (c, next) => {
@@ -107,6 +149,16 @@ app.use('*', async (c, next) => {
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {
   return c.text('', 204);
+});
+
+app.get('/health', (c) => {
+  return c.json({ status: 'ok' }, 200);
+});
+
+app.get('/health/db', async (c) => {
+  const db = c.get('db');
+  await db.execute(sql`select 1`);
+  return c.json({ status: 'ok', db: 'ok' }, 200);
 });
 
 //ルートの登録
@@ -195,12 +247,24 @@ app
 
 app.onError((error: Error, c) => {
   console.log(error.message);
+  const resolvedOrigin = resolveAllowedOrigin(c.req.header('Origin'), c.env);
+
+  const withCorsHeaders = (response: Response): Response => {
+    if (resolvedOrigin) {
+      response.headers.set('Access-Control-Allow-Origin', resolvedOrigin);
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      response.headers.set('Vary', 'Origin');
+    }
+    return response;
+  };
+
   if (error instanceof HTTPException) {
-    return c.text(error.message, error.status);
+    return withCorsHeaders(c.text(error.message, error.status));
   }
-  const isDevelopment = import.meta.env.NODE_ENV === 'development';
+  const runtimeNodeEnv = c.env?.NODE_ENV ?? process.env.NODE_ENV;
+  const isDevelopment = runtimeNodeEnv === 'development';
   const message = isDevelopment ? error.message : 'Internal Server Error';
-  return c.text(message, 500);
+  return withCorsHeaders(c.text(message, 500));
 });
 
 export default app;

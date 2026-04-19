@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npm --prefix ../packages/shared-types run build",
+    "prebuild": "npm exec -- tsc -p ../packages/shared-types/tsconfig.json",
     "build": "next build",
-    "build:cloudflare": "next build && opennextjs-cloudflare build",
+    "build:cloudflare": "next build && opennextjs-cloudflare build --skipNextBuild",
     "build:staging": "next build",
     "build:production": "next build",
     "start": "next start",
@@ -21,8 +21,8 @@
     "test:ui": "vitest --ui",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
-    "deploy:staging": "opennextjs-cloudflare build && wrangler pages deploy .open-next/assets --project-name=moptabi-staging",
-    "deploy:production": "opennextjs-cloudflare build && wrangler pages deploy .open-next/assets --project-name=moptabi",
+    "deploy:staging": "opennextjs-cloudflare build && wrangler deploy --config wrangler.jsonc --name moptabi-staging",
+    "deploy:production": "opennextjs-cloudflare build && wrangler deploy --config wrangler.jsonc --name moptabi",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {

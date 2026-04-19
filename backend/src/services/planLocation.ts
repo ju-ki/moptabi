@@ -1,7 +1,12 @@
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 
 import { db, plan, planLocation, trip, userLocation } from '@/db';
+import type { AnyDbType } from '@/db';
 import { CreatePlanLocationType, LocationType } from '@/models/planLocation';
+
+function hasSelect(value: unknown): value is AnyDbType {
+  return !!value && typeof value === 'object' && 'select' in (value as Record<string, unknown>);
+}
 
 /**
  * デフォルトの地点名を生成
@@ -23,17 +28,30 @@ function generateDefaultName(locationType: LocationType): string {
  * @returns { favorites: UserLocation[], history: PlanLocation[] }
  */
 export async function getPlanLocationCandidates(
-  userId: string,
-  options?: {
+  databaseOrUserId: AnyDbType | string,
+  userIdOrOptions?:
+    | string
+    | {
+        locationType?: LocationType;
+        search?: string;
+        limit?: number;
+      },
+  maybeOptions?: {
     locationType?: LocationType;
     search?: string;
     limit?: number;
   },
 ) {
+  const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
+  const userId = hasSelect(databaseOrUserId) ? (userIdOrOptions as string) : (databaseOrUserId as string);
+  const options = hasSelect(databaseOrUserId)
+    ? maybeOptions
+    : (userIdOrOptions as { locationType?: LocationType; search?: string; limit?: number } | undefined);
+
   const limit = options?.limit ?? 10;
 
   // UserLocationを取得（お気に入り）- 使用回数降順 → ID昇順
-  const favorites = await db
+  const favorites = await database
     .select()
     .from(userLocation)
     .where(eq(userLocation.userId, userId))
@@ -47,7 +65,7 @@ export async function getPlanLocationCandidates(
     historyConditions.push(eq(planLocation.locationType, options.locationType));
   }
 
-  const history = await db
+  const history = await database
     .select()
     .from(planLocation)
     .leftJoin(plan, eq(plan.id, planLocation.planId))
@@ -93,9 +111,19 @@ export async function getPlanLocationCandidates(
  * @param userId ユーザーID
  * @param data 作成/更新データ
  */
-export async function createOrUpdatePlanLocation(userId: string, data: CreatePlanLocationType) {
+export async function createOrUpdatePlanLocation(
+  databaseOrUserId: AnyDbType | string,
+  userIdOrData: string | CreatePlanLocationType,
+  maybeData?: CreatePlanLocationType,
+) {
+  const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
+  const userId = hasSelect(databaseOrUserId) ? (userIdOrData as string) : (databaseOrUserId as string);
+  const data = hasSelect(databaseOrUserId)
+    ? (maybeData as CreatePlanLocationType)
+    : (userIdOrData as CreatePlanLocationType);
+
   if (data.planLocationId) {
-    const [updated] = await db
+    const [updated] = await database
       .update(planLocation)
       .set({
         name: data.name,
@@ -111,7 +139,7 @@ export async function createOrUpdatePlanLocation(userId: string, data: CreatePla
   // 新規作成
   const defaultName = data.name || generateDefaultName(data.locationType);
 
-  const [created] = await db
+  const [created] = await database
     .insert(planLocation)
     .values({
       userId,
@@ -130,9 +158,17 @@ export async function createOrUpdatePlanLocation(userId: string, data: CreatePla
  * PlanLocationを削除
  * @returns 削除された地点、または存在しない/権限がない場合はnull
  */
-export async function deletePlanLocation(userId: string, id: number) {
+export async function deletePlanLocation(
+  databaseOrUserId: AnyDbType | string,
+  userIdOrId: string | number,
+  maybeId?: number,
+) {
+  const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
+  const userId = hasSelect(databaseOrUserId) ? (userIdOrId as string) : (databaseOrUserId as string);
+  const id = hasSelect(databaseOrUserId) ? (maybeId as number) : (userIdOrId as number);
+
   // 自分の地点かどうか確認
-  const existing = await db
+  const existing = await database
     .select()
     .from(planLocation)
     .where(and(eq(planLocation.id, id), eq(planLocation.userId, userId)))
@@ -142,7 +178,7 @@ export async function deletePlanLocation(userId: string, id: number) {
     return null;
   }
 
-  const [deleted] = await db.delete(planLocation).where(eq(planLocation.id, id)).returning();
+  const [deleted] = await database.delete(planLocation).where(eq(planLocation.id, id)).returning();
 
   return deleted;
 }

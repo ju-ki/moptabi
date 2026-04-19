@@ -270,10 +270,11 @@ export const getTripHandler = {
       }
     }
 
-    // Drizzleのtransactionを使用
-    const createdTrip = await db.transaction(async (tx) => {
+    type TripWriteExecutor = Pick<typeof db, 'insert' | 'update' | 'query'>;
+
+    const persistTrip = async (executor: TripWriteExecutor) => {
       // Tripを作成
-      const [newTrip] = await tx
+      const [newTrip] = await executor
         .insert(trip)
         .values({
           title: tripData.title,
@@ -286,7 +287,7 @@ export const getTripHandler = {
 
       // TripInfoを作成
       for (const info of tripData.tripInfo) {
-        await tx.insert(tripInfo).values({
+        await executor.insert(tripInfo).values({
           tripId: newTrip.id,
           date: info.date,
           genreId: info.genreId,
@@ -308,7 +309,7 @@ export const getTripHandler = {
 
       // userLocationIdsをもとにUserLocationのusageCountを更新
       if (userLocationIds.size > 0) {
-        await tx
+        await executor
           .update(userLocation)
           .set({ usageCount: sql`${userLocation.usageCount} + 1` })
           .where(and(eq(userLocation.userId, userId), inArray(userLocation.id, Array.from(userLocationIds))));
@@ -316,7 +317,7 @@ export const getTripHandler = {
 
       // Plans と PlanSpots を作成
       for (const planData of tripData.plans) {
-        const [newPlan] = await tx
+        const [newPlan] = await executor
           .insert(plan)
           .values({
             tripId: newTrip.id,
@@ -327,7 +328,7 @@ export const getTripHandler = {
         // PlanSpotsを作成
         const createdPlanSpots = [];
         for (const spotData of planData.spots) {
-          const [newPlanSpot] = await tx
+          const [newPlanSpot] = await executor
             .insert(planSpot)
             .values({
               planId: newPlan.id,
@@ -342,7 +343,7 @@ export const getTripHandler = {
         }
 
         // 出発地の情報をplanLocationに登録する
-        const [newDeparturePlanLocation] = await tx
+        const [newDeparturePlanLocation] = await executor
           .insert(planLocation)
           .values({
             planId: newPlan.id,
@@ -355,7 +356,7 @@ export const getTripHandler = {
           })
           .returning();
         // 目的地の情報をplanLocationに登録する
-        const [newDestinationPlanLocation] = await tx
+        const [newDestinationPlanLocation] = await executor
           .insert(planLocation)
           .values({
             planId: newPlan.id,
@@ -371,7 +372,7 @@ export const getTripHandler = {
         if (planData.departure.transports && createdPlanSpots.length > 0) {
           const departureTransport = planData.departure.transports;
           const firstSpot = createdPlanSpots[0];
-          await tx.insert(transport).values({
+          await executor.insert(transport).values({
             planId: newPlan.id,
             fromType: departureTransport.fromType,
             toType: departureTransport.toType,
@@ -384,7 +385,7 @@ export const getTripHandler = {
 
           // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
           if (planData.departure.userLocationId) {
-            await tx
+            await executor
               .update(userLocation)
               .set({ usageCount: (planData.departure.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
               .where(and(eq(userLocation.id, planData.departure.userLocationId), eq(userLocation.userId, userId)));
@@ -394,7 +395,7 @@ export const getTripHandler = {
         if (planData.destination.transports && createdPlanSpots.length > 0) {
           const destinationTransport = planData.destination.transports;
           const lastSpot = createdPlanSpots[createdPlanSpots.length - 1];
-          await tx.insert(transport).values({
+          await executor.insert(transport).values({
             planId: newPlan.id,
             fromType: destinationTransport.fromType,
             toType: destinationTransport.toType,
@@ -407,7 +408,7 @@ export const getTripHandler = {
 
           // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
           if (planData.destination.userLocationId) {
-            await tx
+            await executor
               .update(userLocation)
               .set({ usageCount: (planData.destination.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
               .where(and(eq(userLocation.id, planData.destination.userLocationId), eq(userLocation.userId, userId)));
@@ -421,7 +422,7 @@ export const getTripHandler = {
 
           const transportData = planData.spots[i].transports;
 
-          await tx.insert(transport).values({
+          await executor.insert(transport).values({
             planId: newPlan.id,
             fromType: transportData.fromType,
             toType: transportData.toType,
@@ -435,7 +436,7 @@ export const getTripHandler = {
       }
 
       // 作成したTripを取得して返す
-      return await tx.query.trip.findFirst({
+      return await executor.query.trip.findFirst({
         where: eq(trip.id, newTrip.id),
         with: {
           tripInfos: true,
@@ -446,7 +447,19 @@ export const getTripHandler = {
           },
         },
       });
-    });
+    };
+
+    let createdTrip;
+    try {
+      createdTrip = await db.transaction(async (tx) => persistTrip(tx));
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('No transactions support in neon-http driver')) {
+        console.log('Transaction fallback: executing create trip flow without transaction.');
+        createdTrip = await persistTrip(db);
+      } else {
+        throw error;
+      }
+    }
 
     // 作成した旅行計画のidを渡してリダイレクト用に使用させる
     if (createdTrip) {
