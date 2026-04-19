@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
+import { getDbFromContext } from '@/db';
 import { getUserId } from '@/middleware/auth';
 import { CreatePlanLocationSchema, LocationType } from '@/models/planLocation';
 import { getPlanLocationCandidates, createOrUpdatePlanLocation, deletePlanLocation } from '@/services/planLocation';
@@ -10,6 +11,7 @@ export const planLocationHandler = {
    * 候補を取得（お気に入り + 履歴）
    */
   getCandidates: async (c: Context) => {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
     const query = c.req.query();
 
@@ -19,7 +21,7 @@ export const planLocationHandler = {
       limit: query.limit ? Number(query.limit) : undefined,
     };
 
-    const response = await getPlanLocationCandidates(userId, options);
+    const response = await getPlanLocationCandidates(db, userId, options);
     return c.json(response, 200);
   },
 
@@ -27,6 +29,7 @@ export const planLocationHandler = {
    * 作成（または使用回数更新）
    */
   create: async (c: Context) => {
+    const db = getDbFromContext(c);
     const body = await c.req.json();
     const userId = getUserId(c);
 
@@ -35,7 +38,7 @@ export const planLocationHandler = {
       throw new HTTPException(400, { message: 'リクエストが不正です' });
     }
 
-    const response = await createOrUpdatePlanLocation(userId, parsed.data);
+    const response = await createOrUpdatePlanLocation(db, userId, parsed.data);
     return c.json(response, 201);
   },
 
@@ -43,6 +46,7 @@ export const planLocationHandler = {
    * 削除
    */
   delete: async (c: Context) => {
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
     const idParam = c.req.param('id');
 
@@ -51,7 +55,7 @@ export const planLocationHandler = {
     }
 
     const id = Number(idParam);
-    const deleted = await deletePlanLocation(userId, id);
+    const deleted = await deletePlanLocation(db, userId, id);
 
     if (!deleted) {
       throw new HTTPException(404, { message: '指定されたIDが存在しないか、削除権限がありません' });
