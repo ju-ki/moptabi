@@ -59,6 +59,13 @@ jobs:
       - name: Build backend
         run: bun run build
 
+      - name: Generate database migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          bun run db:generate
+
       - name: Prime backend worker
         run: |
           set -euo pipefail
