@@ -57,6 +57,7 @@ import {
 // Cloudflare Workers用のBindings型
 type Bindings = {
   DATABASE_URL: string;
+  NODE_ENV?: string;
   ALLOWED_ORIGINS?: string;
   ALLOWED_ORIGIN_SUFFIXES?: string;
 };
@@ -105,15 +106,21 @@ function isAllowedBySuffix(origin: string, allowedSuffixes: string[]): boolean {
   }
 }
 
+function resolveAllowedOrigin(requestOrigin: string | undefined, env?: Partial<Bindings>): string | null {
+  if (!requestOrigin) return null;
+
+  const allowedOrigins = [...defaultAllowedOrigins, ...parseCsv(env?.ALLOWED_ORIGINS)];
+  const allowedOriginSuffixes = parseCsv(env?.ALLOWED_ORIGIN_SUFFIXES);
+
+  const isAllowed =
+    allowedOrigins.includes(requestOrigin) || isAllowedBySuffix(requestOrigin, allowedOriginSuffixes);
+
+  return isAllowed ? requestOrigin : null;
+}
+
 app.use('*', async (c, next) => {
   const requestOrigin = c.req.header('Origin');
-  const allowedOrigins = [...defaultAllowedOrigins, ...parseCsv(c.env.ALLOWED_ORIGINS)];
-  const allowedOriginSuffixes = parseCsv(c.env.ALLOWED_ORIGIN_SUFFIXES);
-
-  const resolvedOrigin =
-    requestOrigin && (allowedOrigins.includes(requestOrigin) || isAllowedBySuffix(requestOrigin, allowedOriginSuffixes))
-      ? requestOrigin
-      : defaultAllowedOrigins[0];
+  const resolvedOrigin = resolveAllowedOrigin(requestOrigin, c.env) ?? defaultAllowedOrigins[0];
 
   const corsMiddleware = cors({
     origin: resolvedOrigin,
@@ -241,12 +248,24 @@ app
 
 app.onError((error: Error, c) => {
   console.log(error.message);
+  const resolvedOrigin = resolveAllowedOrigin(c.req.header('Origin'), c.env);
+
+  const withCorsHeaders = (response: Response): Response => {
+    if (resolvedOrigin) {
+      response.headers.set('Access-Control-Allow-Origin', resolvedOrigin);
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      response.headers.set('Vary', 'Origin');
+    }
+    return response;
+  };
+
   if (error instanceof HTTPException) {
-    return c.text(error.message, error.status);
+    return withCorsHeaders(c.text(error.message, error.status));
   }
-  const isDevelopment = import.meta.env.NODE_ENV === 'development';
+  const runtimeNodeEnv = c.env?.NODE_ENV ?? process.env.NODE_ENV;
+  const isDevelopment = runtimeNodeEnv === 'development';
   const message = isDevelopment ? error.message : 'Internal Server Error';
-  return c.text(message, 500);
+  return withCorsHeaders(c.text(message, 500));
 });
 
 export default app;
