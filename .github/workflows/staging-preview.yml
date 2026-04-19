@@ -169,7 +169,6 @@ jobs:
 
           secrets_file="$(mktemp)"
           {
-            printf 'AUTH_URL=%s\n' "https://${FRONTEND_WORKER_NAME}.workers.dev"
             printf 'AUTH_SECRET=%s\n' "$STAGING_AUTH_SECRET"
             printf 'AUTH_GOOGLE_ID=%s\n' "$STAGING_AUTH_GOOGLE_ID"
             printf 'AUTH_GOOGLE_SECRET=%s\n' "$STAGING_AUTH_GOOGLE_SECRET"
