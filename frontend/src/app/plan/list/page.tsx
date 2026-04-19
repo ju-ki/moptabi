@@ -5,18 +5,28 @@ import useSWR from 'swr';
 import { TripCard } from '@/components/TripCard';
 import { TripSearchForm } from '@/components/TripSearchForm';
 import { useFetcher } from '@/hooks/use-fetcher';
-import { ResponseTripType } from '@/types/plan';
+import { TripListItem } from '@/models/trip';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
 import { APP_LIMITS } from '@/data/constants';
+import LoadingState from '@/components/common/LoadingState';
 
 export default function TripsPage() {
-  const { getFetcher } = useFetcher();
-  const { data: trips, error, isLoading } = useSWR(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips`, getFetcher);
+  const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
 
-  if (error) return <div>エラーが発生しました</div>;
-  if (isLoading) return <div>読み込み中...</div>;
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const shouldFetch = isAuthenticated && !isSessionLoading;
 
-  const tripCount = (trips as ResponseTripType[])?.length ?? 0;
+  const {
+    data: trips,
+    error,
+    isLoading,
+  } = useSWR<TripListItem[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips` : null, getFetcher);
+
+  if (isLoading || error || !trips) {
+    return <LoadingState isLoading={isLoading} error={error} />;
+  }
+
+  const tripCount = trips.length;
 
   return (
     <div className="container mx-auto py-8">
@@ -32,11 +42,12 @@ export default function TripsPage() {
             data-testid="plan-count-display"
           />
         </div>
-        <TripSearchForm />
+        {/* TODO: 対応できていない機能のためコメントアウト */}
+        {/* <TripSearchForm /> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(trips as ResponseTripType[]).map((trip, idx) => (
+        {trips.map((trip) => (
           <TripCard
             key={trip.id}
             id={trip.id}

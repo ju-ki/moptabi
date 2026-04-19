@@ -101,18 +101,18 @@ describe('住所処理ユーティリティ', () => {
         },
       ] as google.maps.places.AddressComponent[];
 
-      expect(getPrefectures(addressComponents)).toBeNull();
+      expect(getPrefectures(addressComponents)).toBe('');
     });
 
-    it('空配列の場合はnullを返す', () => {
-      expect(getPrefectures([])).toBeNull();
+    it('空配列の場合は空文字を返す', () => {
+      expect(getPrefectures([])).toBe('');
     });
 
-    it('undefinedの場合はnullを返す', () => {
-      expect(getPrefectures(undefined)).toBeNull();
+    it('undefinedの場合は空文字を返す', () => {
+      expect(getPrefectures(undefined)).toBe('');
     });
 
-    it('longTextが存在しない場合はnullを返す', () => {
+    it('longTextが存在しない場合は空文字を返す', () => {
       const addressComponents = [
         {
           shortText: '東京都',
@@ -120,7 +120,7 @@ describe('住所処理ユーティリティ', () => {
         },
       ] as google.maps.places.AddressComponent[];
 
-      expect(getPrefectures(addressComponents)).toBeNull();
+      expect(getPrefectures(addressComponents)).toBe('');
     });
 
     it('実際のGoogle Maps APIレスポンスに近い形式で都道府県を抽出できる', () => {

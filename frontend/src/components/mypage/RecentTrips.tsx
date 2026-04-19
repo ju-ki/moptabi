@@ -4,15 +4,10 @@ import Link from 'next/link';
 import { Clock, ChevronRight } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-type Trip = {
-  id: number;
-  title: string;
-  startDate: string;
-};
+import type { RecentTrip } from '@/models/mypage';
 
 type RecentTripsProps = {
-  trips: Trip[];
+  trips: RecentTrip[];
 };
 
 /**

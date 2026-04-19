@@ -1,30 +1,14 @@
 import useSWR, { KeyedMutator } from 'swr';
 import { useCallback } from 'react';
+import { NotificationType } from '@shared/admin/types';
 
 import { useFetcher } from '@/hooks/use-fetcher';
+import { NotificationItem, UnreadCountResponse } from '@/models/notification';
 
 /**
  * お知らせの型定義
  */
-export type NotificationType = 'SYSTEM' | 'INFO';
-
-export type NotificationItem = {
-  id: number;
-  title: string;
-  content: string;
-  type: NotificationType;
-  publishedAt: string;
-  createdAt: string;
-  isRead: boolean;
-  readAt: string | null;
-};
-
-/**
- * 未読件数レスポンスの型定義
- */
-type UnreadCountResponse = {
-  count: number;
-};
+export type { NotificationType };
 
 /**
  * useNotificationの戻り値の型定義
@@ -57,7 +41,10 @@ export type UseNotificationReturn = {
  * - エラーハンドリング
  */
 export function useNotification(): UseNotificationReturn {
-  const { getFetcher } = useFetcher();
+  const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
+
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const shouldFetch = isAuthenticated && !isSessionLoading;
 
   // お知らせ一覧を取得
   const {
@@ -65,10 +52,14 @@ export function useNotification(): UseNotificationReturn {
     error: notificationsError,
     isLoading: isNotificationsLoading,
     mutate: mutateNotifications,
-  } = useSWR<NotificationItem[]>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification`, getFetcher, {
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-  });
+  } = useSWR<NotificationItem[]>(
+    shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/notification` : null,
+    getFetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+    },
+  );
 
   // 未読件数を取得
   const {
@@ -76,14 +67,18 @@ export function useNotification(): UseNotificationReturn {
     error: unreadCountError,
     isLoading: isUnreadCountLoading,
     mutate: mutateUnreadCount,
-  } = useSWR<UnreadCountResponse>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/unread-count`, getFetcher, {
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-  });
+  } = useSWR<UnreadCountResponse>(
+    shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/unread-count` : null,
+    getFetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+    },
+  );
 
   const unreadCount = unreadCountData?.count ?? 0;
   const hasMoreUnread = unreadCount > 99;
-  const isLoading = isNotificationsLoading || isUnreadCountLoading;
+  const isLoading = isSessionLoading || isNotificationsLoading || isUnreadCountLoading;
   const error = notificationsError || unreadCountError || null;
 
   /**

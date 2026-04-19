@@ -1,42 +1,13 @@
 import useSWR from 'swr';
 import { useState, useCallback, useMemo } from 'react';
+import { RoleType, SortOrder, UserSortBy } from '@shared/admin/types';
 
-import { PaginationInfo } from '@/components/common/Pagination';
+import type { AdminUser, UserListQuery, UserListResponse } from '@/models/admin';
 
 import { useFetcher } from './use-fetcher';
 
-// APIから取得するユーザーの型定義
-export type RoleType = 'ADMIN' | 'USER' | 'GUEST';
-export type UserSortBy = 'lastLoginAt' | 'registeredAt' | 'planCount' | 'wishlistCount';
-export type SortOrder = 'asc' | 'desc';
-
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: { emailAddress: string };
-  imageUrl: string;
-  registeredAt: number;
-  lastLoginAt: number;
-  role: RoleType;
-  planCount: number;
-  wishlistCount: number;
-}
-
-// ユーザーリストAPIレスポンス
-interface UserListResponse {
-  users: User[];
-  pagination: PaginationInfo;
-}
-
-// ユーザーリストクエリパラメータ
-export interface UserListQuery {
-  page: number;
-  limit: number;
-  search: string;
-  sortBy: UserSortBy;
-  sortOrder: SortOrder;
-}
+export type { RoleType, SortOrder, UserSortBy };
+export type { AdminUser as User, UserListQuery };
 
 /**
  * クエリパラメータをURLに変換するヘルパー関数

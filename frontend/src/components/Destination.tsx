@@ -1,66 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { Check, Info, MapPinIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Info, MapPinIcon, Star, History } from 'lucide-react';
+import { GoogleMap, Marker } from '@react-google-maps/api';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { Coordination, Spot, TransportNodeType } from '@/types/plan';
-import { buildSpotId } from '@/lib/utils';
+import { TransportNodeType } from '@/types/plan';
+import { DepartureAndDestinationType } from '@/models/planLocation';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
-import { Command, CommandInput, CommandItem, CommandList } from './ui/command';
+import { Command, CommandInput, CommandItem, CommandList, CommandGroup, CommandEmpty } from './ui/command';
 import { Checkbox } from './ui/checkbox';
-import GoogleMapComponent from './GoogleMap';
 import { Input } from './ui/input';
+import AddressSearch from './AddressSearch';
+import SpotLocationSelector from './SpotLocationSelector';
+
+const containerStyle = {
+  width: '100%',
+  height: '500px',
+  borderRadius: '8px',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+};
 
 const Destination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
-  const destinations = fields.destinationHistory;
-  const [destinationName, setDestinationName] = useState<string>('');
-  const [selectedMapCoordinate, setSelectedMapCoordinate] = useState<Coordination | undefined>(undefined);
+  const candidates = fields.destinationList;
   const [isCheckCurrentLocation, setIsCheckCurrentLocation] = useState<boolean>(false);
-  const destinationData = fields.plans
-    .filter((val) => val.date == date)[0]
-    ?.spots.filter((spot) => spot.transports?.toType === TransportNodeType.DESTINATION)[0];
-  const [open, setOpen] = useState(false);
+  const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
+  const [open, setOpen] = useState<boolean>(false);
 
-  const DESTINATION_DATA: Spot = {
-    id: buildSpotId('destination', date),
-    location: {
-      id: buildSpotId('destination', date),
-      name: destinationData?.location.name || '目的地',
-      lat: selectedMapCoordinate?.lat || 0,
-      lng: selectedMapCoordinate?.lng || 0,
-    },
-    order: 0,
-    stayStart: '00:00',
-    stayEnd: '00:00',
-    transports: {
-      travelTime: '不明',
-      cost: 0,
-      name: 'DEFAULT',
-      transportMethod: 1,
-      fromType: TransportNodeType.SPOT,
-      toType: TransportNodeType.DESTINATION,
-    },
-  };
-
-  useEffect(() => {
-    if (!selectedMapCoordinate) return;
-    fields.setSpots(date, DESTINATION_DATA, false);
-  }, [selectedMapCoordinate]);
+  // 日付に対応するスポット情報を取得
+  const currentDayPlan = fields.plans.find((p) => p.date === date);
+  const currentDaySpots = currentDayPlan?.spots || [];
 
   return (
     <div>
-      <div className="flex items-center my-2 space-y-1">
-        <Label className="text-lg font-semibold text-gray-800 my-2 flex space-x-2">
-          <span>目的地</span>
-          <div className="flex items-center space-x-1">
-            <Info className="w-3 h-3" />
-            <span className="text-sm font-normal">未選択の場合は地図で選択されている場所が選択されます</span>
-          </div>
-        </Label>
-      </div>
+      <Label className="text-lg font-semibold text-gray-800 my-2 flex space-x-2">
+        <span>目的地</span>
+        <div className="flex items-center space-x-1">
+          <Info className="w-3 h-3" />
+          <span className="text-sm font-normal">未選択の場合は地図で選択されている場所が選択されます</span>
+        </div>
+      </Label>
       {fields.planErrors[date]?.destination && (
         <div className="mb-2 text-sm text-red-600">{fields.planErrors[date]?.destination}</div>
       )}
@@ -70,7 +51,11 @@ const Destination = ({ date }: { date: string }) => {
             {destinationData ? (
               <>
                 <MapPinIcon className="mr-2 h-4 w-4" />
-                <span>{destinationData.location.name}</span>
+                <span>
+                  {destinationData.userLocationId || destinationData.planLocationId
+                    ? destinationData.name
+                    : '候補以外の地点を選択中'}
+                </span>
               </>
             ) : (
               <>
@@ -84,23 +69,79 @@ const Destination = ({ date }: { date: string }) => {
           <Command>
             <CommandInput placeholder="検索..." />
             <CommandList>
-              {destinations.map((destination) => (
-                <CommandItem
-                  key={destination.name}
-                  onSelect={() => {
-                    DESTINATION_DATA.location.name = destination.name || '目的地';
-                    fields.setSpots(date, DESTINATION_DATA, false);
-                    setSelectedMapCoordinate(destination);
-                    setOpen(false);
-                  }}
-                  className="flex items-center"
+              <CommandEmpty>候補が見つかりません</CommandEmpty>
+              {/* お気に入りグループ */}
+              {candidates?.favorites && candidates.favorites.length > 0 && (
+                <CommandGroup
+                  heading={
+                    <span className="flex items-center gap-1">
+                      <Star className="h-3 w-3" />
+                      お気に入り
+                    </span>
+                  }
                 >
-                  {destinationData && destinationData.location.name == destination.name && (
-                    <Check className="mr-2 h-4 w-4" />
-                  )}
-                  {destination.name}
-                </CommandItem>
-              ))}
+                  {candidates.favorites.map((candidate: DepartureAndDestinationType) => (
+                    <CommandItem
+                      key={`favorite-${candidate.userLocationId}`}
+                      onSelect={() => {
+                        fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                          ...candidate,
+                          locationType: TransportNodeType.DESTINATION,
+                        });
+                        setOpen(false);
+                      }}
+                      className="flex items-center"
+                    >
+                      {destinationData && destinationData.userLocationId === candidate.userLocationId && (
+                        <Check className="mr-2 h-4 w-4" />
+                      )}
+                      <div className="flex flex-col">
+                        <span>{candidate.name}</span>
+                        {candidate.label && <span className="text-xs text-muted-foreground">{candidate.label}</span>}
+                      </div>
+                      {candidate.isDefault && <span className="ml-auto text-xs text-blue-500">デフォルト</span>}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {/* 履歴グループ */}
+              {candidates?.history && candidates.history.length > 0 && (
+                <CommandGroup
+                  heading={
+                    <span className="flex items-center gap-1">
+                      <History className="h-3 w-3" />
+                      履歴
+                    </span>
+                  }
+                >
+                  {candidates.history.map((candidate: DepartureAndDestinationType) => (
+                    <CommandItem
+                      key={`history-${candidate.planLocationId}`}
+                      onSelect={() => {
+                        fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                          ...candidate,
+                          locationType: TransportNodeType.DESTINATION,
+                        });
+                        setOpen(false);
+                      }}
+                      className="flex items-center"
+                    >
+                      {destinationData && destinationData.planLocationId === candidate.planLocationId && (
+                        <Check className="mr-2 h-4 w-4" />
+                      )}
+                      <div className="flex flex-col">
+                        <span>{candidate.name}</span>
+                        {candidate.planName && (
+                          <span className="text-xs text-muted-foreground">
+                            使用プラン名:{candidate.planName} 使用種別:
+                            {candidate.locationType === TransportNodeType.DEPARTURE ? '出発地' : '目的地'}
+                          </span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>
@@ -113,16 +154,54 @@ const Destination = ({ date }: { date: string }) => {
           <Input
             id="destination-input"
             type="text"
-            value={destinationName}
+            value={destinationData.name || ''}
             placeholder="目的地の名前を設定する"
             className="mt-2 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             onInput={(e) => {
-              DESTINATION_DATA.location.name = e.currentTarget.value;
-              fields.setSpots(date, DESTINATION_DATA, false);
-              setDestinationName(e.currentTarget.value);
+              const destinationName = e.currentTarget.value;
+              fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                ...destinationData,
+                name: destinationName,
+                locationType: TransportNodeType.DESTINATION,
+              });
             }}
           />
         </div>
+
+        {/* 住所検索 */}
+        <AddressSearch
+          label="住所から目的地を検索"
+          placeholder="住所を入力（例: 東京都渋谷区渋谷1-1-1）"
+          onCoordinateFound={(coord) => {
+            fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+              ...destinationData,
+              planLocationId: null,
+              userLocationId: null,
+              name: '',
+              latitude: coord.lat,
+              longitude: coord.lng,
+              locationType: TransportNodeType.DESTINATION,
+            });
+          }}
+        />
+
+        {/* 観光スポット周辺から目的地を選択 */}
+        <SpotLocationSelector
+          spots={currentDaySpots}
+          label="観光スポット周辺から目的地を選択する"
+          placeholder="スポットを選択"
+          onSelect={(spot) => {
+            fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+              ...destinationData,
+              planLocationId: null,
+              userLocationId: null,
+              name: spot.location.name,
+              latitude: spot.location.lat,
+              longitude: spot.location.lng,
+              locationType: TransportNodeType.DESTINATION,
+            });
+          }}
+        />
 
         <div className="flex items-center space-x-2">
           <Checkbox
@@ -131,11 +210,23 @@ const Destination = ({ date }: { date: string }) => {
             className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             onCheckedChange={(checked) => {
               setIsCheckCurrentLocation((prev) => !prev);
-              DESTINATION_DATA.location.name = checked ? '目的地(' + date + ')' : '';
-              DESTINATION_DATA.location.lat = selectedMapCoordinate?.lat || 0;
-              DESTINATION_DATA.location.lng = selectedMapCoordinate?.lng || 0;
-              fields.setSpots(date, DESTINATION_DATA, false);
-              setDestinationName(checked ? '目的地(' + date + ')' : '');
+              if (checked) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                  const newCoordinate = {
+                    id: '',
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                    name: '',
+                  };
+                  fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                    ...destinationData,
+                    ...newCoordinate,
+                    planLocationId: null,
+                    userLocationId: null,
+                    locationType: TransportNodeType.DESTINATION,
+                  });
+                });
+              }
             }}
           />
           <Label
@@ -147,11 +238,45 @@ const Destination = ({ date }: { date: string }) => {
         </div>
 
         <div className="mt-4">
-          <GoogleMapComponent
-            isSetCurrentLocation={isCheckCurrentLocation}
-            extraCoordinate={selectedMapCoordinate}
-            setCoordinate={setSelectedMapCoordinate}
-          ></GoogleMapComponent>
+          <GoogleMap
+            center={{ lat: destinationData.latitude, lng: destinationData.longitude }}
+            mapContainerStyle={containerStyle}
+            onClick={(coord) => {
+              const clickedCoord = {
+                id: `clicked-${coord.latLng?.lat()}-${coord.latLng?.lng()}`,
+                name: '',
+                lat: coord.latLng?.lat() || 0,
+                lng: coord.latLng?.lng() || 0,
+              };
+              fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                ...destinationData,
+                name: clickedCoord.name,
+                latitude: clickedCoord.lat,
+                longitude: clickedCoord.lng,
+                planLocationId: null,
+                userLocationId: null,
+                locationType: TransportNodeType.DESTINATION,
+              });
+            }}
+            options={{
+              zoom: 12,
+              styles: [
+                {
+                  featureType: 'poi',
+                  elementType: 'labels',
+                  stylers: [{ visibility: 'on' }],
+                },
+                {
+                  featureType: 'transit',
+                  elementType: 'labels',
+                  stylers: [{ visibility: 'on' }],
+                },
+              ],
+            }}
+          >
+            {/* 目的地のマーカー */}
+            <Marker position={{ lat: destinationData.latitude, lng: destinationData.longitude }} />
+          </GoogleMap>
         </div>
       </div>
     </div>

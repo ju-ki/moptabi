@@ -72,35 +72,36 @@ vi.mock('@/store/wishlist/wishlistStore', () => ({
 }));
 
 describe('WishlistCreateModal', () => {
-  it('検索ボタンを押すとモーダルが開く', async () => {
-    renderWithProviders(<WishlistCreateModal />);
+  describe('モーダルの開閉', () => {
+    it('スポットを検索ボタンをクリックした場合スポット追加モーダルが開くこと', async () => {
+      renderWithProviders(<WishlistCreateModal />);
 
-    // ボタンのアクセシブルネームから取得（表示が遅延する可能性に備えて非同期）
-    const openButton = await screen.findByRole('button', { name: 'スポットを検索' });
-    fireEvent.click(openButton);
+      const openButton = await screen.findByRole('button', { name: 'スポットを検索' });
+      fireEvent.click(openButton);
 
-    expect(await screen.findByText('行きたいスポットを追加')).toBeInTheDocument();
+      expect(await screen.findByText('行きたいスポットを追加')).toBeInTheDocument();
+    });
   });
 
-  it('初期状態でエリア検索タブが表示される', async () => {
-    render(<WishlistCreateModal />);
+  describe('タブ表示', () => {
+    it('初期表示時にエリア検索タブが表示されること', async () => {
+      render(<WishlistCreateModal />);
 
-    const openButton = screen.getByLabelText('スポットを検索');
-    fireEvent.click(openButton);
+      const openButton = screen.getByLabelText('スポットを検索');
+      fireEvent.click(openButton);
 
-    // AreaSearch が表示されていること
-    expect(await screen.findByText('エリアから探す')).toBeInTheDocument();
-  });
+      expect(await screen.findByText('エリアから探す')).toBeInTheDocument();
+    });
 
-  it('タブ切り替えでKeywordSearchWithMapが表示される', async () => {
-    render(<WishlistCreateModal />);
+    it('キーワードで探すタブをクリックした場合KeywordSearchWithMapが表示されること', async () => {
+      render(<WishlistCreateModal />);
 
-    fireEvent.click(screen.getByLabelText('スポットを検索'));
+      fireEvent.click(screen.getByLabelText('スポットを検索'));
 
-    const keywordTab = await screen.findByRole('tab', { name: 'キーワードで探す' });
-    fireEvent.click(keywordTab);
+      const keywordTab = await screen.findByRole('tab', { name: 'キーワードで探す' });
+      fireEvent.click(keywordTab);
 
-    // KeywordSearchWithMap が表示されている想定。
-    expect(await screen.findByText('キーワードで探す')).toBeInTheDocument();
+      expect(await screen.findByText('キーワードで探す')).toBeInTheDocument();
+    });
   });
 });

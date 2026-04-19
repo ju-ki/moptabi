@@ -1,18 +1,13 @@
 import useSWR from 'swr';
 import { useSession } from 'next-auth/react';
+import { NotificationSortBy, NotificationType, RoleType, SortOrder, UserSortBy } from '@shared/admin/types';
 
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 import { StatsType } from '@/models/admin';
 
 import { useFetcher } from './use-fetcher';
 
-// 型定義はuse-user-list.tsとuse-notification-list.tsに移動
-// これらの型はエクスポートして他のファイルで使用可能
-export type RoleType = 'ADMIN' | 'USER' | 'GUEST';
-export type UserSortBy = 'lastLoginAt' | 'registeredAt' | 'planCount' | 'wishlistCount';
-export type NotificationSortBy = 'publishedAt' | 'createdAt' | 'readRate';
-export type SortOrder = 'asc' | 'desc';
-export type NotificationType = 'SYSTEM' | 'INFO';
+export type { NotificationSortBy, NotificationType, RoleType, SortOrder, UserSortBy };
 
 /**
  * 管理画面用のカスタムフック
@@ -20,8 +15,13 @@ export type NotificationType = 'SYSTEM' | 'INFO';
  * ユーザーリスト・通知リストは別フック（use-user-list, use-notification-list）で管理
  */
 export function useAdminData() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const { getFetcher } = useFetcher();
+
+  // セッションが確立されている場合のみAPIリクエストを発行
+  const isSessionLoading = status === 'loading';
+  const isAuthenticated = status === 'authenticated';
+  const shouldFetch = isAuthenticated && !isSessionLoading;
 
   // 認証ヘッダーを生成
   const getAuthHeaders = (): Record<string, string> => {
@@ -49,9 +49,9 @@ export function useAdminData() {
     data: dashboardData,
     error: dashboardError,
     isLoading: dashboardLoading,
-  } = useSWR<StatsType>(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/dashboard`, getFetcher);
+  } = useSWR<StatsType>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/dashboard` : null, getFetcher);
 
-  const isLoading = dashboardLoading;
+  const isLoading = isSessionLoading || dashboardLoading;
   const error = dashboardError;
 
   const postNotification = async (newNotification: NotificationCreate) => {

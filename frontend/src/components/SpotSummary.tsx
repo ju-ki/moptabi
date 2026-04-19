@@ -10,11 +10,11 @@ interface SpotSummaryProps {
 
 const SpotSummary = ({ date }: SpotSummaryProps) => {
   const fields = useStoreForPlanning();
-  const departureSpot = fields.getSpotInfo(date, TransportNodeType.DEPARTURE);
-  const destinationSpot = fields.getSpotInfo(date, TransportNodeType.DESTINATION);
+  const departureSpot = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+  const destinationSpot = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const sightseeingSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
 
-  if (!departureSpot.length || !destinationSpot.length || !sightseeingSpots.length) {
+  if (!departureSpot || !destinationSpot || !sightseeingSpots.length) {
     return <>Loading</>;
   }
 
@@ -26,7 +26,7 @@ const SpotSummary = ({ date }: SpotSummaryProps) => {
         <button className="w-full text-left px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors">
           <div className="flex items-center gap-2">
             <Home className="w-4 h-4 text-gray-500 flex-shrink-0" />
-            <span className="text-sm font-medium text-gray-900 truncate">{departureSpot[0].location.name}</span>
+            <span className="text-sm font-medium text-gray-900 truncate">{departureSpot.name}</span>
           </div>
         </button>
 
@@ -49,7 +49,7 @@ const SpotSummary = ({ date }: SpotSummaryProps) => {
         <button className="w-full text-left px-3 py-2 rounded-lg bg-green-50 border border-green-200 hover:bg-green-100 transition-colors">
           <div className="flex items-center gap-2">
             <Flag className="w-4 h-4 text-green-600 flex-shrink-0" />
-            <span className="text-sm font-medium text-gray-900 truncate">{destinationSpot[0].location.name}</span>
+            <span className="text-sm font-medium text-gray-900 truncate">{destinationSpot.name}</span>
           </div>
         </button>
       </div>

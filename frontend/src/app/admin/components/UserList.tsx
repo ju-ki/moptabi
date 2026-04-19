@@ -8,27 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Pagination, PaginationInfo } from '@/components/common/Pagination';
+import { Pagination } from '@/components/common/Pagination';
+import type { AdminUser } from '@/models/admin';
+import type { PaginationInfo } from '@/models/pagination';
 
-type RoleType = 'ADMIN' | 'USER' | 'GUEST';
-type UserSortBy = 'lastLoginAt' | 'registeredAt' | 'planCount' | 'wishlistCount';
-type SortOrder = 'asc' | 'desc';
-
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: { emailAddress: string };
-  imageUrl: string;
-  registeredAt: number;
-  lastLoginAt: number;
-  role: RoleType;
-  planCount: number;
-  wishlistCount: number;
-}
+import type { SortOrder, UserSortBy } from '@shared/admin/types';
 
 interface UserListProps {
-  users: User[];
+  users: AdminUser[];
   pagination?: PaginationInfo;
   sortBy?: UserSortBy;
   sortOrder?: SortOrder;

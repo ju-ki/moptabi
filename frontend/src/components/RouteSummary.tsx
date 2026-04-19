@@ -14,14 +14,15 @@ interface RouteSummaryProps {
 
 const RouteSummary = ({ date }: RouteSummaryProps) => {
   const fields = useStoreForPlanning();
-  const allSpots = fields.getSpotInfo(date, TransportNodeType.ALL);
+  const allSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
+  const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const sightseeingSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
   const [totalDuration, setTotalDuration] = useState<string>('不明');
   const [totalDistance, setTotalDistance] = useState<number>(0);
 
   useEffect(() => {
     if (allSpots.length) {
-      setTotalDuration(calcTotalTransportTime(allSpots));
+      setTotalDuration(calcTotalTransportTime(departureData, allSpots));
       let totalDistance = 0;
       allSpots.map((spot, idx) => {
         if (idx != allSpots.length - 1) {

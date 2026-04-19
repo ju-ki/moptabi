@@ -7,6 +7,8 @@ import { useStoreForPlanning } from '@/lib/plan';
 
 import TravelMap from './TravelMap';
 import SpotDetailCard from './travel-plan/SpotDetailCard';
+import DestinationDetailCard from './travel-plan/DestinationDetailCard';
+import DepartureDetailCard from './travel-plan/DepartureDetailCard';
 
 // transportIconsをエクスポート（他の場所で使われている可能性があるため）
 export const transportIcons: TravelModeTypeForDisplay = {
@@ -27,7 +29,9 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
     ? fields.simulationStatus.filter((val) => val.date == travelPlan.date)[0]?.status
     : null;
 
-  const spots = fields.getSpotInfo(travelPlan.date, TransportNodeType.ALL);
+  const spots = fields.getSpotInfo(travelPlan.date, null);
+  const departureData = fields.getDepartureAndDestination(travelPlan.date, TransportNodeType.DEPARTURE);
+  const destinationData = fields.getDepartureAndDestination(travelPlan.date, TransportNodeType.DESTINATION);
 
   const handleDeleteSpot = (id: string) => {
     const updatedSpots = spots.filter((spot) => spot.id == id)[0];
@@ -43,9 +47,9 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
           <Clock className="w-5 h-5 text-gray-400" />
         )}
         {!targetSimulationStatus || targetSimulationStatus === 0 ? (
-          <span>観光地を選択して、上記のシミュレーションボタンを押下してください</span>
+          <span>観光地を選択して、上記のプラン作成ボタンを押下してください</span>
         ) : (
-          <span>シミュレーション中です</span>
+          <span>プラン作成中です</span>
         )}
       </div>
     );
@@ -72,28 +76,24 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
         <TravelMap date={travelPlan.date} />
       </div>
 
+      {/* 出発地 */}
+      {departureData && <DepartureDetailCard departure={departureData} index={0} />}
+
       {/* 観光スポット */}
       {spots.map((spot, index) => {
-        // 出発地・目的地かどうかを判定
-        const isDepartureOrDestination =
-          spot.transports.fromType === TransportNodeType.DEPARTURE ||
-          spot.transports.toType === TransportNodeType.DESTINATION;
-
-        // 最後のスポット（目的地）の場合は移動情報を表示しない
-        const showTransport = index !== spots.length - 1;
-
         return (
           <SpotDetailCard
             key={spot.id}
             spot={spot}
-            index={index}
+            index={index == spots.length - 1 ? -1 : index}
             onDelete={handleDeleteSpot}
             onMemoChange={(memo) => fields.setSpots(travelPlan.date, { ...spot, memo }, false)}
-            showTransport={showTransport}
-            showDeleteButton={!isDepartureOrDestination}
           />
         );
       })}
+
+      {/* 目的地 */}
+      {destinationData && <DestinationDetailCard destination={destinationData} index={spots.length + 1} />}
     </div>
   );
 };

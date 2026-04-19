@@ -7,6 +7,7 @@ import { NextTripSection } from '@/components/mypage/NextTripSection';
 import { TripSummaryCards } from '@/components/mypage/TripSummaryCards';
 import { UsageStatus } from '@/components/mypage/UsageStatus';
 import { RecentTrips } from '@/components/mypage/RecentTrips';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 // NextAuthのモック
 vi.mock('next-auth/react', async () => {
@@ -29,10 +30,19 @@ vi.mock('next-auth/react', async () => {
   };
 });
 
+function renderWithProviders(ui: React.ReactElement) {
+  return render(<TooltipProvider>{ui}</TooltipProvider>);
+}
+
 // useMypageDataフックのモック
 const mockUseMypageData = vi.fn();
 vi.mock('@/hooks/use-mypage', () => ({
   useMypageData: () => mockUseMypageData(),
+}));
+
+// next/navigationのモック
+vi.mock('next/navigation', () => ({
+  useRouter: () => vi.fn(),
 }));
 
 // useFetcherフックのモック
@@ -112,7 +122,7 @@ describe('マイページ', () => {
       });
 
       render(<MyPage />);
-      expect(screen.getByTestId('mypage-error')).toBeInTheDocument();
+      expect(screen.getByTestId('error-state')).toBeInTheDocument();
       expect(screen.getByText('データの取得に失敗しました')).toBeInTheDocument();
     });
 
@@ -133,10 +143,11 @@ describe('マイページ', () => {
         planLimit: 20,
         wishlistLimit: 100,
         wishlistTotalCount: 32,
+        userLocations: [],
         recentTrips: [{ id: 1, title: '東京散策', startDate: '2024-12-10' }],
       });
 
-      render(<MyPage />);
+      renderWithProviders(<MyPage />);
       expect(screen.getByText('マイページ')).toBeInTheDocument();
       expect(screen.getByText('京都日帰り旅行')).toBeInTheDocument();
     });

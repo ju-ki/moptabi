@@ -9,5 +9,16 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "github.copilot.chat.codeGeneration.useInstructionFiles": true,
-  "prisma.pinToPrisma6": true
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/.DS_Store": true,
+    "**/coverage": true
+  },
+  "editor.renderWhitespace": "none",
+  "editor.minimap.enabled": false,
+  "files.autoSave": "onWindowChange",
+  "explorer.compactFolders": false
 }

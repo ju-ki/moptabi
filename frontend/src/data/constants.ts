@@ -1,3 +1,4 @@
+import { DepartureAndDestinationType } from '@/models/planLocation';
 import { Coordination, PlaceTypeGroupKey, TransportNodeType } from '@/types/plan';
 
 /**
@@ -22,6 +23,21 @@ export const defaultLocation: Coordination = {
   name: '東京駅',
 };
 
+export const DEFAULT_DEPARTURE_AND_DESTINATION: DepartureAndDestinationType = {
+  name: '',
+  latitude: 35.6813,
+  longitude: 139.7671,
+  address: null,
+  label: null,
+  locationType: 'SPOT',
+  isDefault: false,
+  usageCount: 0,
+  userLocationId: null,
+  planId: null,
+  planName: null,
+  planLocationId: null,
+};
+
 export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {
   culture: ['cultural_landmark', 'historical_place', 'monument'],
   nature: ['beach', 'park'],
@@ -42,7 +58,6 @@ export const SpotMakerColors: Record<TransportNodeType, string> = {
   DEPARTURE: '#34A853',
   SPOT: '#4285F4',
   DESTINATION: '#FF0000',
-  ALL: '#ffffff',
 };
 
 export const placeTypeMap: Record<string, string> = {

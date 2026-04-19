@@ -1,41 +1,28 @@
 import z from 'zod';
 
 import { placeTypeMap } from '@/data/constants';
+import type { CoordinationType } from '@/models/plan';
 import { OpeningHoursSchema } from '@/models/spot';
+import { DepartureAndDestinationType } from '@/models/planLocation';
 
-export type Location = {
-  name: string;
-  latitude: number;
-  longitude: number;
-};
-
-export type Coordination = {
-  id: string;
-  lat: number;
-  lng: number;
-  name: string;
-};
+export type Coordination = CoordinationType;
 
 export type Transport = {
   transportMethod: number;
   name: TravelModeType; // 例: "電車" | "バス"
   cost?: number;
-  travelTime: string; // 例: "30分"
-  fromType: TransportNodeType;
-  toType: TransportNodeType;
-};
-
-export type TransportMethods = {
-  id: number;
-  name: TravelModeType; // 例: "電車" | "バス"
+  travelTime?: string; // 例: "30分"
+  fromType: SpotType;
+  toType: SpotType;
 };
 
 export enum TransportNodeType {
   DEPARTURE = 'DEPARTURE',
   DESTINATION = 'DESTINATION',
   SPOT = 'SPOT',
-  ALL = 'ALL',
 }
+
+export type SpotType = 'SPOT' | 'DEPARTURE' | 'DESTINATION';
 
 type NearestStation = {
   name: string; // 最寄駅の名前
@@ -64,7 +51,7 @@ export type Spot = {
   category?: string[]; // 例: ["文化", "歴史"]
   catchphrase?: string; // キャッチコピー
   description?: string; // 説明文
-  prefecture?: string | null;
+  prefecture?: string; // 都道府県
   address?: string;
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;
@@ -83,71 +70,11 @@ export type Spot = {
 export type TravelPlanType = {
   date: string;
   spots: Spot[];
+  departure: DepartureAndDestinationType;
+  destination: DepartureAndDestinationType;
 };
 
 export type PlanErrorType = 'spots' | 'departure' | 'destination' | 'transportationMethod' | 'genreId' | 'memo';
-
-export type ResponseTripType = {
-  id: number;
-  title: string;
-  imageUrl?: string;
-  startDate: string;
-  endDate: string;
-  tripInfo: ResponseTripInfoType[];
-  plans: ResponsePlanType[];
-};
-
-export type ResponseTripInfoType = {
-  date: string;
-  genreId: number;
-  transportationMethod: number;
-  memo?: string;
-};
-
-export type ResponsePlanType = {
-  id: number;
-  tripId: number;
-  date: string;
-  planSpots: ResponsePlanSpotType[];
-};
-
-export type ResponsePlanSpotType = {
-  id: number;
-  plan: ResponsePlanType;
-  planId: number;
-  spot: ResponseSpotType;
-  spotId: string;
-  stayStart: string;
-  stayEnd: string;
-  fromLocation: Transport[];
-  toLocation: Transport[];
-  memo?: string;
-  order: number;
-};
-
-export type ResponseSpotType = {
-  id: string;
-  meta: ResponseSpotMetaType;
-  nearestStation: NearestStation;
-};
-
-export type ResponseSpotMetaType = {
-  id: string;
-  spotId: string;
-  name: string;
-  latitude: number;
-  longitude: number;
-  image?: string;
-  url?: string;
-  rating: number;
-  prefecture?: string | null;
-  address?: string;
-  ratingCount?: number;
-  openingHours?: OpeningHoursType;
-  categories: string[];
-  catchphrase?: string;
-  description?: string;
-};
 
 export type PlaceTypeGroupKey = keyof typeof placeTypeMap;
 
@@ -162,14 +89,6 @@ export type SearchSpotByCategoryParams = {
   sortOption: SortOption; //ソートオプション
   maxResultLimit: number; //最大取得件数
   searchWord?: string; //検索ワード
-};
-
-export type Notification = {
-  id: string;
-  title: string;
-  description: string;
-  createdAt: Date;
-  isRead: boolean;
 };
 
 export type TravelModeType = 'DRIVING' | 'TRANSIT' | 'WALKING' | 'BICYCLING' | 'DEFAULT';

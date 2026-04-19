@@ -1,7 +1,7 @@
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 import { eq, and, count, lt, inArray } from 'drizzle-orm';
-import { db, wishlist, spot, spotMeta } from '@db';
+import { db, wishlist } from '@db';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
@@ -12,22 +12,14 @@ export const getWishList = async (c: Context) => {
 
   const rows = await db.query.wishlist.findMany({
     where: eq(wishlist.userId, userId),
-    with: {
-      spot: {
-        with: {
-          meta: true,
-        },
-      },
-    },
     orderBy: (wishlist, { desc }) => [desc(wishlist.priority)],
   });
 
-  // レスポンス形式を既存のPrisma形式に合わせる
+  // placeIdのみ返す（SpotMetaは返さない。詳細情報はフロントエンドでGoogle Maps APIから取得）
   return rows.map((row) => ({
     ...row,
     spot: {
-      id: row.spot?.id,
-      meta: row.spot?.meta?.[0] || null,
+      id: row.spotId,
     },
   }));
 };
@@ -66,30 +58,6 @@ export const createWishList = async (c: Context) => {
   }
   const wishListResult = result.data;
 
-  // spotが登録されているかを確認する
-  const [existingSpot] = await db.select().from(spot).where(eq(spot.id, wishListResult.spotId)).limit(1);
-
-  // spotが登録されていない場合はまずスポットを登録する
-  if (!existingSpot) {
-    await db.insert(spot).values({ id: wishListResult.spotId });
-    await db.insert(spotMeta).values({
-      id: wishListResult.spotId,
-      spotId: wishListResult.spotId,
-      name: wishListResult.spot.meta.name,
-      description: wishListResult.spot.meta.description,
-      latitude: wishListResult.spot.meta.latitude,
-      longitude: wishListResult.spot.meta.longitude,
-      categories: wishListResult.spot.meta.categories,
-      image: wishListResult.spot.meta.image,
-      url: wishListResult.spot.meta.url,
-      prefecture: wishListResult.spot.meta.prefecture,
-      address: wishListResult.spot.meta.address,
-      rating: wishListResult.spot.meta.rating,
-      catchphrase: wishListResult.spot.meta.catchphrase,
-      openingHours: wishListResult.spot.meta.openingHours || null,
-    });
-  }
-
   // 既存の行きたいリストの重複チェック
   const [existingWishlist] = await db
     .select()
@@ -109,7 +77,7 @@ export const createWishList = async (c: Context) => {
       priority: wishListResult.priority,
       memo: wishListResult.memo,
       visited: wishListResult.visited,
-      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt.toISOString() : null,
+      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt : null,
     })
     .returning();
 
@@ -143,7 +111,7 @@ export const updateWishList = async (c: Context) => {
       memo: wishListResult.memo,
       priority: wishListResult.priority,
       visited: wishListResult.visited,
-      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt.toISOString() : null,
+      visitedAt: wishListResult.visitedAt ? wishListResult.visitedAt : null,
     })
     .where(and(eq(wishlist.id, wishListResult.id), eq(wishlist.userId, userId)))
     .returning();
