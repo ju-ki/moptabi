@@ -34,8 +34,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install root dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Build shared-types
+        run: npm exec -- tsc -p ../packages/shared-types/tsconfig.json
+
       - name: Run ESLint
         run: npm run lint
+
+      - name: Run Type Check
+        run: npm run typecheck
 
       - name: Run Prettier check
         run: npm run format:check
@@ -100,8 +110,18 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install root dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Build shared-types
+        run: bunx tsc -p ../packages/shared-types/tsconfig.json
+
       - name: Run ESLint
         run: bun run lint
+
+      - name: Run Type Check
+        run: bun run typecheck
 
       - name: Run Prettier check
         run: bun run format:check

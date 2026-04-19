@@ -1,5 +1,5 @@
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { db, wishlist, spot, spotMeta, planSpot, plan, trip } from '@db';
+import { db, wishlist } from '@db';
 
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
 
@@ -7,7 +7,8 @@ import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
  * 未訪問の行きたいリストに登録しているスポットを取得
  * - ユーザー単位で抽出
  * - フィルター・ソートに対応
- * - Spot と SpotMeta を含めて返却
+ * - placeId のみ返却（スポット詳細はフロントエンドで Google Maps API から取得）
+ * - 都道府県フィルターはフロントエンド側で処理
  * @param userId ユーザーID
  * @param query フィルター・ソートパラメータ
  */
@@ -15,31 +16,16 @@ export async function getUnvisitedWishlistSpots(
   userId: string,
   query: UnvisitedSpotsQuery = { sortBy: 'priority', sortOrder: 'desc' },
 ) {
-  const { prefecture, priority, sortBy, sortOrder } = query;
+  const { priority, sortBy, sortOrder } = query;
 
-  // Drizzle relational queryで取得
-  let rows = await db.query.wishlist.findMany({
+  // spotMetaへのJOINは不要（placeIdのみ返す）
+  const rows = await db.query.wishlist.findMany({
     where: and(
       eq(wishlist.userId, userId),
       eq(wishlist.visited, 0),
       priority !== undefined ? eq(wishlist.priority, priority) : undefined,
     ),
-    with: {
-      spot: {
-        with: {
-          meta: true,
-        },
-      },
-    },
   });
-
-  // 都道府県フィルター（metaは配列なので最初の要素を使用）
-  if (prefecture) {
-    rows = rows.filter((w) => {
-      const meta = Array.isArray(w.spot?.meta) ? w.spot.meta[0] : w.spot?.meta;
-      return meta?.prefecture === prefecture;
-    });
-  }
 
   // ソート（JavaScript側でソート）
   rows.sort((a, b) => {
@@ -58,13 +44,9 @@ export async function getUnvisitedWishlistSpots(
     return a.id - b.id;
   });
 
-  // レスポンス形式を既存のPrisma形式に合わせる（meta配列を単一オブジェクトに変換）
   return rows.map((row) => ({
     ...row,
-    spot: {
-      id: row.spot?.id,
-      meta: Array.isArray(row.spot?.meta) ? row.spot.meta[0] || null : row.spot?.meta || null,
-    },
+    spot: { id: row.spotId },
   }));
 }
 
@@ -74,6 +56,8 @@ export async function getUnvisitedWishlistSpots(
  * - 計画として登録したスポット（出発地・目的地は除外）
  * - 重複は除外（訪問済み優先、計画内の重複も除外）
  * - フィルター・ソートに対応
+ * - placeId のみ返却（スポット詳細はフロントエンドで Google Maps API から取得）
+ * - 都道府県フィルターはフロントエンド側で処理
  * @param userId ユーザーID
  * @param query フィルター・ソートパラメータ
  */
@@ -81,38 +65,18 @@ export async function getVisitedSpots(
   userId: string,
   query: VisitedSpotsQuery = { sortBy: 'visitedAt', sortOrder: 'desc' },
 ) {
-  const { prefecture, dateFrom, dateTo, minVisitCount, sortBy, sortOrder } = query;
+  const { dateFrom, dateTo, minVisitCount, sortBy, sortOrder } = query;
+  // prefecture フィルターはフロントエンド側で実施するため除外
 
-  // ヘルパー関数：配列のmetaを単一オブジェクトに変換
-  const getMeta = (spotData: { meta?: unknown[] | unknown } | null | undefined) => {
-    if (!spotData) return null;
-    return Array.isArray(spotData.meta) ? spotData.meta[0] || null : spotData.meta || null;
-  };
-
-  // 1. 訪問済みのwishlistを取得
-  let visitedWishlist = await db.query.wishlist.findMany({
+  // 1. 訪問済みのwishlistを取得（spotMetaへのJOINは不要）
+  const visitedWishlist = await db.query.wishlist.findMany({
     where: and(
       eq(wishlist.userId, userId),
       eq(wishlist.visited, 1),
       dateFrom ? gte(wishlist.visitedAt, dateFrom) : undefined,
       dateTo ? lte(wishlist.visitedAt, dateTo) : undefined,
     ),
-    with: {
-      spot: {
-        with: {
-          meta: true,
-        },
-      },
-    },
   });
-
-  // 都道府県フィルター
-  if (prefecture) {
-    visitedWishlist = visitedWishlist.filter((w) => {
-      const meta = getMeta(w.spot);
-      return meta?.prefecture === prefecture;
-    });
-  }
 
   // ソート
   visitedWishlist.sort((a, b) => {
@@ -132,14 +96,9 @@ export async function getVisitedSpots(
     return a.id - b.id;
   });
 
-  // 2. 過去の計画から登録したスポットを取得（出発地・目的地を除外）
+  // 2. 過去の計画から登録したスポットを取得（出発地・目的地を除外、spotMetaへのJOINは不要）
   let planSpots = await db.query.planSpot.findMany({
     with: {
-      spot: {
-        with: {
-          meta: true,
-        },
-      },
       plan: {
         with: {
           trip: true,
@@ -154,10 +113,6 @@ export async function getVisitedSpots(
     if (ps.spotId.startsWith('departure') || ps.spotId.startsWith('destination')) return false;
     if (dateFrom && ps.plan.date && ps.plan.date < dateFrom) return false;
     if (dateTo && ps.plan.date && ps.plan.date > dateTo) return false;
-    if (prefecture) {
-      const meta = getMeta(ps.spot);
-      if (meta?.prefecture !== prefecture) return false;
-    }
     return true;
   });
 
@@ -222,7 +177,7 @@ export async function getVisitedSpots(
     spotVisitCounts.set(ps.spotId, (spotVisitCounts.get(ps.spotId) || 0) + 1);
   });
 
-  // 7. wishlist形式に変換（型を統一、metaを単一オブジェクトに変換）
+  // 7. wishlist形式に変換（spotMetaなし、placeIdのみ）
   const planSpotResults = uniquePlanSpots.map((ps) => ({
     id: ps.id,
     spotId: ps.spotId,
@@ -233,22 +188,16 @@ export async function getVisitedSpots(
     visitedAt: ps.plan?.date,
     createdAt: new Date(),
     updatedAt: new Date(),
-    spot: {
-      id: ps.spot?.id,
-      meta: getMeta(ps.spot),
-    },
+    spot: { id: ps.spotId },
     user: { id: userId },
     planDate: ps.plan?.date, // ソート用に計画日を保持
     visitCount: spotVisitCounts.get(ps.spotId) || 1,
   }));
 
-  // 訪問済みにも回数情報を追加 + metaを単一オブジェクトに変換
+  // 訪問済みにも回数情報を追加
   const visitedWithCount = visitedWishlist.map((w) => ({
     ...w,
-    spot: {
-      id: w.spot?.id,
-      meta: getMeta(w.spot),
-    },
+    spot: { id: w.spotId },
     visitCount: spotVisitCounts.get(w.spotId) || 1,
   }));
 

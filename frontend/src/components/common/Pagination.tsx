@@ -3,15 +3,9 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import type { PaginationInfo } from '@/models/pagination';
 
-export interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  limit: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+export type { PaginationInfo };
 
 interface PaginationProps {
   pagination: PaginationInfo;

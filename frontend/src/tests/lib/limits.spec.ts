@@ -9,7 +9,7 @@ import {
   getLimitErrorMessage,
 } from '@/lib/limits';
 
-describe('🔒 上限チェックユーティリティ関数', () => {
+describe('上限チェックユーティリティ', () => {
   describe('isWishlistLimitReached - 行きたいリスト上限チェック', () => {
     it('上限未満の場合はfalseを返す', () => {
       expect(isWishlistLimitReached(0)).toBe(false);

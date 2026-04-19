@@ -7,6 +7,8 @@ import { useLoadScript } from '@react-google-maps/api';
 
 import { Toaster } from '@/components/ui/toaster';
 import Header from '@/components/common/header';
+import LoadingState from '@/components/common/LoadingState';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const { isLoaded } = useLoadScript({
@@ -22,8 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <>
           <SessionProvider>
-            <Header />
-            {!isLoaded ? <div>Loading...</div> : <main>{children}</main>}
+            <TooltipProvider>
+              <Header />
+              {!isLoaded ? <LoadingState isLoading={true} error={false} /> : <main>{children}</main>}
+            </TooltipProvider>
           </SessionProvider>
           <Toaster />
         </>

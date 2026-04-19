@@ -1,4 +1,5 @@
 import { Coordination, Spot, TransportNodeType, TravelModeType } from '@/types/plan';
+import { DepartureAndDestinationType } from '@/models/planLocation';
 
 import { getRoute, RouteResult } from './plan';
 
@@ -110,64 +111,109 @@ export const calcDistance = (baseCoordinate: Coordination, targetCoordination: C
 };
 
 /**
+ * 様々なフォーマットの時間文字列から日・時間・分を抽出する
+ * 対応フォーマット例:
+ * - 日本語: "1日2時間30分", "2時間30分", "45分", "1時間"
+ * - 英語: "1 day 2 hours 30 mins", "2 hours 30 minutes", "45 mins", "1 hour"
+ * - 短縮形: "1d 2h 30m", "2h 30m", "30m", "1h"
+ * - Google Maps形式: "1 day 2 hrs 30 mins", "2 hrs", "30 min"
+ * @param timeString - 時間を表す文字列
+ * @returns { days: number, hours: number, minutes: number } 抽出された時間情報
+ */
+export const parseTimeString = (
+  timeString: string,
+): {
+  days: number;
+  hours: number;
+  minutes: number;
+} => {
+  if (!timeString || typeof timeString !== 'string') {
+    return { days: 0, hours: 0, minutes: 0 };
+  }
+
+  // 日（days）を抽出する正規表現
+  // マッチ例: "1日", "2 days", "1 day", "3d"
+  const dayRegex = /(\d+)\s*(?:日|days?|d\b)/i;
+
+  // 時間（hours）を抽出する正規表現
+  // マッチ例: "2時間", "3 hours", "1 hour", "2 hrs", "1 hr", "4h"
+  const hourRegex = /(\d+)\s*(?:時間|hours?|hrs?|h\b)/i;
+
+  // 分（minutes）を抽出する正規表現
+  // マッチ例: "30分", "45 minutes", "15 mins", "10 min", "5m"
+  const minuteRegex = /(\d+)\s*(?:分|minutes?|mins?|m\b)/i;
+
+  const dayMatch = timeString.match(dayRegex);
+  const hourMatch = timeString.match(hourRegex);
+  const minuteMatch = timeString.match(minuteRegex);
+
+  return {
+    days: dayMatch ? parseInt(dayMatch[1], 10) : 0,
+    hours: hourMatch ? parseInt(hourMatch[1], 10) : 0,
+    minutes: minuteMatch ? parseInt(minuteMatch[1], 10) : 0,
+  };
+};
+
+/**
+ * 時間情報を合計分に変換する
+ * @param time - { days, hours, minutes } オブジェクト
+ * @returns 合計分数
+ */
+export const timeToTotalMinutes = (time: { days: number; hours: number; minutes: number }): number => {
+  return time.days * 24 * 60 + time.hours * 60 + time.minutes;
+};
+
+/**
  * 所要時間の合計値を計算する処理
+ * @param departure - 出発地の情報
  * @param spots - スポット一覧
  * @returns 文字列化した合計値
  */
-export const calcTotalTransportTime = (spots: Spot[]): string => {
+export const calcTotalTransportTime = (departure: DepartureAndDestinationType, spots: Spot[]): string => {
   let totalMinutes = 0;
-  // TODO: travelTimeのフォーマットが多様化した場合はここを拡張する
-  // 1. 正規表現: HH hours mm minutes から数値と単位を抽出
-  const regex = /(?:(\d+)\s*hours?)?\s*(?:(\d+)\s*mins?)?/;
 
+  // 出発地から最初のスポットへの移動時間を加算
+  if (departure.transports?.travelTime) {
+    const parsedTime = parseTimeString(departure.transports.travelTime);
+    totalMinutes += timeToTotalMinutes(parsedTime);
+  }
+
+  // 観光地間の移動時間を合算する
   spots.forEach((spot) => {
-    if (!spot.transports) {
+    if (!spot.transports?.travelTime) {
       return;
     }
-    const rawTime = spot.transports.travelTime;
-
-    // travelTimeが文字列で存在しない場合はスキップ
-    if (!rawTime) return;
-
-    const match = rawTime.match(regex);
-
-    if (match) {
-      // 正規表現のキャプチャグループから時間と分を取得
-      const hours = parseInt(match[1] || '0', 10);
-      const minutes = parseInt(match[2] || '0', 10);
-
-      // 2.すべて分に換算して合計に追加
-      totalMinutes += hours * 60 + minutes;
-    }
+    const parsedTime = parseTimeString(spot.transports.travelTime);
+    totalMinutes += timeToTotalMinutes(parsedTime);
   });
 
-  // 3. 合計分を "HH hours mm minutes" 形式に変換
+  // 合計分を表示形式に変換
+  const totalDays = Math.floor(totalMinutes / (24 * 60));
+  const remainingAfterDays = totalMinutes % (24 * 60);
+  const finalHours = Math.floor(remainingAfterDays / 60);
+  const finalMinutes = remainingAfterDays % 60;
 
-  // 合計分から時間と分を算出
-  const finalHours = Math.floor(totalMinutes / 60);
-  const finalMinutes = totalMinutes % 60;
-
-  // 4. 結果の整形
+  // 結果の整形
   const resultParts: string[] = [];
 
+  if (totalDays > 0) {
+    resultParts.push(`${totalDays} day${totalDays > 1 ? 's' : ''}`);
+  }
+
   if (finalHours > 0) {
-    // 1時間以上の場合、"hours" を追加
     resultParts.push(`${finalHours} hour${finalHours > 1 ? 's' : ''}`);
   }
 
   if (finalMinutes > 0 || totalMinutes === 0) {
-    // 0分ではない、または合計時間が0（初期値）の場合に分を追加
-    // totalMinutesが0のときに '0 minutes' と表示されるようにする
     const minuteLabel = finalMinutes === 1 ? 'min' : 'mins';
     resultParts.push(`${finalMinutes} ${minuteLabel}`);
   }
 
-  // 時間も分もなかった場合（データ不正）のフォールバック
+  // 時間も分もなかった場合のフォールバック
   if (resultParts.length === 0) {
     return '0 mins';
   }
 
-  // 最終的な文字列をスペースで結合して返す
   return resultParts.join(' ');
 };
 
@@ -233,11 +279,11 @@ export const calcRoutes = async (
 /**
  * Google Maps APIのAddressComponentから都道府県を取得する
  * @param addressComponents google Map Apiから提供された住所コンポーネント配列
- * @returns マッチした都道府県、見つからない場合はnull
+ * @returns マッチした都道府県、見つからない場合は空文字
  */
-export function getPrefectures(addressComponents: google.maps.places.AddressComponent[] | undefined): string | null {
+export function getPrefectures(addressComponents: google.maps.places.AddressComponent[] | undefined): string {
   if (!addressComponents || addressComponents.length === 0) {
-    return null;
+    return '';
   }
 
   // administrative_area_level_1 タイプが都道府県を示す
@@ -245,5 +291,5 @@ export function getPrefectures(addressComponents: google.maps.places.AddressComp
     component.types.includes('administrative_area_level_1'),
   );
 
-  return prefectureComponent?.longText ?? null;
+  return prefectureComponent?.longText ?? '';
 }

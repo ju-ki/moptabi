@@ -51,114 +51,120 @@ describe('SearchResultsView', () => {
     };
   });
 
-  it('検索結果が空のときは空状態が表示されること', () => {
-    render(<SearchResultsView searchResults={[]} searchType="area" />);
-    expect(screen.getByText('検索結果がありません')).toBeDefined();
+  describe('初期表示', () => {
+    it('検索結果が空の場合空状態が表示されること', () => {
+      render(<SearchResultsView searchResults={[]} searchType="area" />);
+      expect(screen.getByText('検索結果がありません')).toBeDefined();
+    });
+
+    it('検索結果がある場合件数とリストが表示されること', () => {
+      const results = [
+        { id: 'a1', location: { lat: 1, lng: 2, name: 'スポットA' }, rating: 4.1, address: 'addrA' },
+        { id: 'a2', location: { lat: 3, lng: 4, name: 'スポットB' }, rating: 3.2, address: 'addrB' },
+      ] as any;
+
+      render(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 1, lng: 2 }} />);
+
+      expect(screen.getByText('2件のスポット')).toBeDefined();
+      // list items should contain place names
+      expect(screen.getByText('スポットA')).toBeDefined();
+      expect(screen.getByText('スポットB')).toBeDefined();
+    });
   });
 
-  it('検索結果があると件数とリストが表示されること', () => {
-    const results = [
-      { id: 'a1', location: { lat: 1, lng: 2, name: 'スポットA' }, rating: 4.1, address: 'addrA' },
-      { id: 'a2', location: { lat: 3, lng: 4, name: 'スポットB' }, rating: 3.2, address: 'addrB' },
-    ] as any;
+  describe('スポット選択', () => {
+    it('リスト項目をクリックした場合setSelectedSpotが呼ばれること', () => {
+      const results = [
+        { id: 'a1', location: { lat: 1, lng: 2, name: 'スポットA' }, rating: 4.1, address: 'addrA' },
+      ] as any;
 
-    render(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 1, lng: 2 }} />);
+      render(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 1, lng: 2 }} />);
 
-    expect(screen.getByText('2件のスポット')).toBeDefined();
-    // list items should contain place names
-    expect(screen.getByText('スポットA')).toBeDefined();
-    expect(screen.getByText('スポットB')).toBeDefined();
+      const item = screen.getByText('スポットA');
+      fireEvent.click(item);
+      expect(setSelectedSpot).toHaveBeenCalledWith(results[0]);
+    });
+
+    it('Markerをクリックした場合setSelectedSpotが呼ばれること', () => {
+      const results = [
+        { id: 'm1', location: { lat: 10, lng: 20, name: 'Mスポット' }, rating: 4.0, address: 'addrM' },
+      ] as any;
+      // render map view so Marker is mounted
+      storeState.viewMode = 'map';
+      render(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 10, lng: 20 }} />);
+      const mapMocks = mockInstances.get(Map);
+      const markerMocks = mockInstances.get(Marker);
+
+      expect(mapMocks).toHaveLength(1);
+      expect(markerMocks).toHaveLength(1);
+      const addListener = mapMocks[0].addListener;
+      addListener('click', () =>
+        // ここにmarkerMocksの0番目がテストデータになるようにする
+        setSelectedSpot(results[0]),
+      );
+      const lastCall = addListener.mock.lastCall as any[];
+      expect(addListener).toHaveBeenCalledTimes(1);
+      const [eventType, listener] = lastCall;
+      expect(eventType).toBe('click');
+
+      // simulate click
+      listener();
+
+      expect(setSelectedSpot).toHaveBeenCalledWith(results[0]);
+
+      // location（lat, lng）が正しいかチェック
+      const selected = setSelectedSpot.mock.lastCall?.[0];
+      expect(selected.location.lat).toBe(10);
+      expect(selected.location.lng).toBe(20);
+    }, 1000);
   });
 
-  it('リスト項目をクリックすると setSelectedSpot が呼ばれること', () => {
-    const results = [
-      { id: 'a1', location: { lat: 1, lng: 2, name: 'スポットA' }, rating: 4.1, address: 'addrA' },
-    ] as any;
+  describe('InfoWindowの表示', () => {
+    it('markerをクリック後にinfoWindowが表示されスポット名が表示されること', async () => {
+      const results = [
+        { id: 'a1', location: { lat: 1, lng: 2, name: 'スポットA' }, rating: 4.1, address: 'addrA' },
+      ] as any;
 
-    render(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 1, lng: 2 }} />);
+      // render map view so Marker is mounted
+      storeState.viewMode = 'map';
+      const { rerender } = render(
+        <SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 10, lng: 20 }} />,
+      );
+      const mapMocks = mockInstances.get(Map);
+      const markerMocks = mockInstances.get(Marker);
+      expect(markerMocks.length).toBe(1);
 
-    const item = screen.getByText('スポットA');
-    fireEvent.click(item);
-    expect(setSelectedSpot).toHaveBeenCalledWith(results[0]);
+      const marker = markerMocks[0] as any;
+      const addListener = mapMocks[0].addListener;
+      addListener('click', () =>
+        // ここにmarkerMocksの0番目がテストデータになるようにする
+        setSelectedSpot(results[0]),
+      );
+      const lastCall = addListener.mock.lastCall as any[];
+      const [eventName, listener] = lastCall;
+
+      expect(eventName).toBe('click');
+
+      // ---- クリックをシミュレート ----
+      listener();
+
+      storeState.selectedSpot = results[0];
+
+      rerender(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 10, lng: 20 }} />);
+
+      // InfoWindow が作成されていることを確認
+      const infoWindowMocks = mockInstances.get(InfoWindow);
+      expect(infoWindowMocks.length).toBe(1);
+
+      const infoWindow = infoWindowMocks[0] as any;
+
+      expect(infoWindow.setContent).toHaveBeenCalledTimes(1);
+
+      const contentArg = infoWindow.setContent.mock.lastCall[0];
+      // InfoWindow の内容にスポット名が含まれていることを確認
+      expect(contentArg).toHaveTextContent('スポットA');
+      expect(contentArg).toHaveTextContent('4.1');
+      expect(contentArg).toHaveTextContent('addrA');
+    }, 1000);
   });
-
-  it('Marker をクリックすると setSelectedSpot が呼ばれること', () => {
-    const results = [
-      { id: 'm1', location: { lat: 10, lng: 20, name: 'Mスポット' }, rating: 4.0, address: 'addrM' },
-    ] as any;
-    // render map view so Marker is mounted
-    storeState.viewMode = 'map';
-    render(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 10, lng: 20 }} />);
-    const mapMocks = mockInstances.get(Map);
-    const markerMocks = mockInstances.get(Marker);
-
-    expect(mapMocks).toHaveLength(1);
-    expect(markerMocks).toHaveLength(1);
-    const addListener = mapMocks[0].addListener;
-    addListener('click', () =>
-      // ここにmarkerMocksの0番目がテストデータになるようにする
-      setSelectedSpot(results[0]),
-    );
-    const lastCall = addListener.mock.lastCall as any[];
-    expect(addListener).toHaveBeenCalledTimes(1);
-    const [eventType, listener] = lastCall;
-    expect(eventType).toBe('click');
-
-    // simulate click
-    listener();
-
-    expect(setSelectedSpot).toHaveBeenCalledWith(results[0]);
-
-    // location（lat, lng）が正しいかチェック
-    const selected = setSelectedSpot.mock.lastCall?.[0];
-    expect(selected.location.lat).toBe(10);
-    expect(selected.location.lng).toBe(20);
-  }, 1000);
-
-  it('markerをクリック後、infoWindowが表示され、infoWindow内にスポット名が表示されていること', async () => {
-    const results = [
-      { id: 'a1', location: { lat: 1, lng: 2, name: 'スポットA' }, rating: 4.1, address: 'addrA' },
-    ] as any;
-
-    // render map view so Marker is mounted
-    storeState.viewMode = 'map';
-    const { rerender } = render(
-      <SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 10, lng: 20 }} />,
-    );
-    const mapMocks = mockInstances.get(Map);
-    const markerMocks = mockInstances.get(Marker);
-    expect(markerMocks.length).toBe(1);
-
-    const marker = markerMocks[0] as any;
-    const addListener = mapMocks[0].addListener;
-    addListener('click', () =>
-      // ここにmarkerMocksの0番目がテストデータになるようにする
-      setSelectedSpot(results[0]),
-    );
-    const lastCall = addListener.mock.lastCall as any[];
-    const [eventName, listener] = lastCall;
-
-    expect(eventName).toBe('click');
-
-    // ---- クリックをシミュレート ----
-    listener();
-
-    storeState.selectedSpot = results[0];
-
-    rerender(<SearchResultsView searchResults={results} searchType="area" mapCenter={{ lat: 10, lng: 20 }} />);
-
-    // InfoWindow が作成されていることを確認
-    const infoWindowMocks = mockInstances.get(InfoWindow);
-    expect(infoWindowMocks.length).toBe(1);
-
-    const infoWindow = infoWindowMocks[0] as any;
-
-    expect(infoWindow.setContent).toHaveBeenCalledTimes(1);
-
-    const contentArg = infoWindow.setContent.mock.lastCall[0];
-    // InfoWindow の内容にスポット名が含まれていることを確認
-    expect(contentArg).toHaveTextContent('スポットA');
-    expect(contentArg).toHaveTextContent('4.1');
-    expect(contentArg).toHaveTextContent('addrA');
-  }, 1000);
 });

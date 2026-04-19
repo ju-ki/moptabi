@@ -4,21 +4,26 @@ import { format } from 'date-fns';
 import { MapPin } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ResponsePlanType, TransportNodeType } from '@/types/plan';
+import { TransportNodeType } from '@/types/plan';
 import { useStoreForPlanning } from '@/lib/plan';
+import { PlanType } from '@/models/plan';
 
 import { SpotInfoCard } from './SpotInfoCard';
 import RouteSummary from './RouteSummary';
 import SpotSummary from './SpotSummary';
+import { DepartureInfoCard } from './DepartureInfoCard';
+import { DestinationInfoCard } from './DestinationInfoCard';
 
 interface DayPlanProps {
-  plan: ResponsePlanType;
+  plan: PlanType;
   dayNumber: number;
 }
 
 export function DayPlan({ plan, dayNumber }: DayPlanProps) {
   const fields = useStoreForPlanning();
-  const allSpots = fields.getSpotInfo(plan.date, TransportNodeType.ALL);
+  const allSpots = fields.getSpotInfo(plan.date, TransportNodeType.SPOT);
+  const departureData = fields.getDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE);
+  const destinationData = fields.getDepartureAndDestination(plan.date, TransportNodeType.DESTINATION);
 
   return (
     <Card>
@@ -36,9 +41,11 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
             <MapPin className="w-5 h-5 text-blue-500" />
             タイムライン
           </h2>
+          {departureData && <DepartureInfoCard departure={departureData} />}
           {allSpots.map((planSpot) => (
             <SpotInfoCard key={planSpot.id} spot={planSpot} />
           ))}
+          {destinationData && <DestinationInfoCard destination={destinationData} />}
           <RouteSummary date={plan.date} />
 
           <SpotSummary date={plan.date} />

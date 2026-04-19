@@ -24,6 +24,9 @@ vi.mock('swr', () => ({
 vi.mock('@/hooks/use-fetcher', () => ({
   useFetcher: () => ({
     getFetcher: vi.fn(),
+    isAuthenticated: true,
+    isSessionLoading: false,
+    session: { user: { id: 'test-user' } },
   }),
 }));
 

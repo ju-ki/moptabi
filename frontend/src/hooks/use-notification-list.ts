@@ -1,38 +1,13 @@
 import useSWR from 'swr';
 import { useState, useCallback, useMemo } from 'react';
+import { NotificationFilter, NotificationSortBy, SortOrder } from '@shared/admin/types';
 
-import { PaginationInfo } from '@/components/common/Pagination';
-import { NotificationAdminType, NotificationType } from '@/models/notification';
+import type { NotificationAdminListResponse, NotificationListQuery } from '@/models/admin';
 
 import { useFetcher } from './use-fetcher';
 
-export type NotificationSortBy = 'publishedAt' | 'createdAt' | 'readRate';
-export type SortOrder = 'asc' | 'desc';
-
-export interface NotificationFilter {
-  title?: string;
-  type?: NotificationType | '';
-  publishedFrom?: string;
-  publishedTo?: string;
-}
-
-// お知らせリストAPIレスポンス
-interface NotificationListResponse {
-  notifications: NotificationAdminType[];
-  pagination: PaginationInfo;
-}
-
-// お知らせリストクエリパラメータ
-export interface NotificationListQuery {
-  page: number;
-  limit: number;
-  title?: string;
-  type?: NotificationType | '';
-  publishedFrom?: string;
-  publishedTo?: string;
-  sortBy: NotificationSortBy;
-  sortOrder: SortOrder;
-}
+export type { NotificationFilter, NotificationSortBy, SortOrder };
+export type { NotificationListQuery };
 
 /**
  * クエリパラメータをURLに変換するヘルパー関数
@@ -82,7 +57,7 @@ export function useNotificationList() {
     return `${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/admin${queryString}`;
   }, [query]);
 
-  const { data, error, isLoading, mutate } = useSWR<NotificationListResponse>(notificationListUrl, getFetcher);
+  const { data, error, isLoading, mutate } = useSWR<NotificationAdminListResponse>(notificationListUrl, getFetcher);
 
   // ハンドラー
   const handlePageChange = useCallback((page: number) => {

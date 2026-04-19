@@ -127,6 +127,44 @@ async function createTripViaTripService(params: {
           {
             date: startDate,
             spots: planSpots,
+            departure: {
+              name: '出発地',
+              latitude: 35.6895,
+              longitude: 139.6917,
+              address: '東京都千代田区千代田1-1',
+              label: '東京駅',
+              isDefault: true,
+              locationType: 'DEPARTURE',
+              usageCount: 0,
+              userLocationId: null,
+              planLocationId: null,
+              transports: {
+                transportMethod: 1,
+                travelTime: '15分',
+                cost: 300,
+                fromType: 'DEPARTURE',
+                toType: 'SPOT',
+              },
+            },
+            destination: {
+              name: '目的地',
+              latitude: 35.6895,
+              longitude: 139.6917,
+              address: '東京都千代田区千代田1-1',
+              label: '東京駅',
+              isDefault: true,
+              locationType: 'DESTINATION',
+              usageCount: 0,
+              userLocationId: null,
+              planLocationId: null,
+              transports: {
+                transportMethod: 1,
+                travelTime: '15分',
+                cost: 300,
+                fromType: 'SPOT',
+                toType: 'DESTINATION',
+              },
+            },
           },
         ],
       },
@@ -223,7 +261,7 @@ describe('🧾 スポットサービス', () => {
       const results = await getUnvisitedWishlistSpots(TEST_USER_ID);
 
       expect(results.length).toBe(1);
-      expect(results[0].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('1'));
       expect(results[0].visited).toBe(0);
     });
 
@@ -265,9 +303,9 @@ describe('🧾 スポットサービス', () => {
 
       expect(results.length).toBe(3);
       // 優先度が高い順: 3 > 2 > 1
-      expect(results[0].spot.meta?.name).toBe('スポットE');
-      expect(results[1].spot.meta?.name).toBe('スポットC');
-      expect(results[2].spot.meta?.name).toBe('スポットD');
+      expect(results[0].spot.id).toBe(spotId('5'));
+      expect(results[1].spot.id).toBe(spotId('3'));
+      expect(results[2].spot.id).toBe(spotId('4'));
     });
   });
 
@@ -299,7 +337,7 @@ describe('🧾 スポットサービス', () => {
       const results = await getVisitedSpots(TEST_USER_ID);
 
       expect(results.length).toBe(1);
-      expect(results[0].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('1'));
     });
 
     it('訪問済みのいきたいリストが複数件存在する場合は訪問日時が新しい順に並んでいること', async () => {
@@ -337,9 +375,9 @@ describe('🧾 スポットサービス', () => {
 
       expect(results.length).toBe(3);
       // 新しい順: スポットB(3月) > スポットC(2月) > スポットA(1月)
-      expect(results[0].spot.meta?.name).toBe('スポットB');
-      expect(results[1].spot.meta?.name).toBe('スポットC');
-      expect(results[2].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('2'));
+      expect(results[1].spot.id).toBe(spotId('3'));
+      expect(results[2].spot.id).toBe(spotId('1'));
     });
 
     it('過去に登録したスポットデータが複数件存在する場合はプランの計画日時が新しい順に並んでいること', async () => {
@@ -384,8 +422,8 @@ describe('🧾 スポットサービス', () => {
 
       expect(results.length).toBe(2);
       // 新しい順: スポットB(3月) > スポットA(1月)
-      expect(results[0].spot.meta?.name).toBe('スポットB');
-      expect(results[1].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('2'));
+      expect(results[1].spot.id).toBe(spotId('1'));
     });
 
     it('訪問済みと過去に登録したスポットが混在している場合は訪問済み→過去に登録したスポットの順に並んでいること', async () => {
@@ -422,8 +460,8 @@ describe('🧾 スポットサービス', () => {
 
       expect(results.length).toBe(2);
       // 訪問済み→計画の順: スポットA → スポットB
-      expect(results[0].spot.meta?.name).toBe('スポットA');
-      expect(results[1].spot.meta?.name).toBe('スポットB');
+      expect(results[0].spot.id).toBe(spotId('1'));
+      expect(results[1].spot.id).toBe(spotId('2'));
     });
 
     it('訪問済みと計画策定に登録したスポットが重複している場合は片方のみを取得する', async () => {
@@ -460,7 +498,7 @@ describe('🧾 スポットサービス', () => {
       const results = await getVisitedSpots(TEST_USER_ID);
 
       expect(results.length).toBe(1);
-      expect(results[0].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('1'));
     });
 
     it('過去の計画に登録したスポットが重複している場合は片方のみを取得する', async () => {
@@ -506,7 +544,7 @@ describe('🧾 スポットサービス', () => {
 
       // 重複が除去されて1件のみ
       expect(results.length).toBe(1);
-      expect(results[0].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('1'));
     });
 
     it('過去に計画したスポットに出発地と目的地として登録したスポットが含まれている場合は除外する', async () => {
@@ -583,14 +621,14 @@ describe('🧾 スポットサービス', () => {
 
       // 通常のスポットのみが取得される（出発地・目的地は除外）
       expect(results.length).toBe(1);
-      expect(results[0].spot.meta?.name).toBe('スポットA');
+      expect(results[0].spot.id).toBe(spotId('1'));
     });
   });
 
   // ---- フィルター・ソート機能のテスト ----
   describe('フィルター機能', () => {
     describe('GET /unvisited - 未訪問スポットのフィルター', () => {
-      it('都道府県でフィルタリングできること', async () => {
+      it('都道府県でフィルタリングできること（注意: 都道府県フィルターはフロントエンド側で実施するため、バックエンドは全件返却）', async () => {
         await clearTestData();
         await createTestUser(TEST_USER_ID, 'ADMIN');
 
@@ -621,14 +659,14 @@ describe('🧾 スポットサービス', () => {
         });
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 1, visited: 0 });
 
+        // prefectureパラメータはバックエンドでは無視され、全件返却される
         const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
           prefecture: '東京都',
           sortBy: 'priority',
           sortOrder: 'desc',
         });
 
-        expect(results.length).toBe(2);
-        expect(results.every((r) => r.spot.meta?.prefecture === '東京都')).toBe(true);
+        expect(results.length).toBe(3);
       });
 
       it('優先度でフィルタリングできること', async () => {
@@ -673,6 +711,7 @@ describe('🧾 スポットサービス', () => {
         await createSpotWithMeta(spotId('3'), { name: 'スポットC', prefecture: '大阪府' });
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 3, visited: 0 });
 
+        // 両方の条件を指定: priority=3が有効、prefectureはバックエンドでは無視される
         const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
           prefecture: '東京都',
           priority: 3,
@@ -680,15 +719,14 @@ describe('🧾 スポットサービス', () => {
           sortOrder: 'desc',
         });
 
-        expect(results.length).toBe(1);
-        expect(results[0].spot.meta?.name).toBe('スポットA');
-        expect(results[0].spot.meta?.prefecture).toBe('東京都');
-        expect(results[0].priority).toBe(3);
+        // priority=3のスポット（都道府県問わず）: spotId('1')とspotId('3')
+        expect(results.length).toBe(2);
+        expect(results.every((r) => r.priority === 3)).toBe(true);
       });
     });
 
     describe('GET /visited - 訪問済みスポットのフィルター', () => {
-      it('都道府県でフィルタリングできること', async () => {
+      it('都道府県でフィルタリングできること（注意: 都道府県フィルターはフロントエンド側で実施するため、バックエンドは全件返却）', async () => {
         await clearTestData();
         await createTestUser(TEST_USER_ID, 'ADMIN');
 
@@ -719,14 +757,14 @@ describe('🧾 スポットサービス', () => {
           visitedAt: new Date('2024-03-01'),
         });
 
+        // prefectureパラメータはバックエンドでは無視され、全件返却される
         const results = await getVisitedSpots(TEST_USER_ID, {
           prefecture: '東京都',
           sortBy: 'visitedAt',
           sortOrder: 'desc',
         });
 
-        expect(results.length).toBe(2);
-        expect(results.every((r) => r.spot.meta?.prefecture === '東京都')).toBe(true);
+        expect(results.length).toBe(3);
       });
       it('訪問済みスポットの訪問日時に対して期間指定でフィルタリングできること', async () => {
         await clearTestData();
@@ -767,8 +805,8 @@ describe('🧾 スポットサービス', () => {
         });
 
         expect(results.length).toBe(2);
-        expect(results[0].spot.meta?.name).toBe('スポットC');
-        expect(results[1].spot.meta?.name).toBe('スポットB');
+        expect(results[0].spot.id).toBe(spotId('3'));
+        expect(results[1].spot.id).toBe(spotId('2'));
       });
       it('過去に計画したスポットに対して期間指定でフィルタリングできること', async () => {
         await clearTestData();
@@ -816,7 +854,7 @@ describe('🧾 スポットサービス', () => {
         });
 
         expect(results.length).toBe(1);
-        expect(results[0].spot.meta?.name).toBe('スポットB');
+        expect(results[0].spot.id).toBe(spotId('2'));
       });
       it('訪問済みスポットと過去に計画したスポットに対して期間指定でフィルタリングできること', async () => {
         await clearTestData();
@@ -884,11 +922,11 @@ describe('🧾 スポットサービス', () => {
         // 範囲内の訪問済み(1件) + 範囲内の計画(1件) = 2件
         expect(results.length).toBe(2);
         // 訪問済みが先
-        expect(results[0].spot.meta?.name).toBe('スポットB');
-        expect(results[1].spot.meta?.name).toBe('スポットD');
+        expect(results[0].spot.id).toBe(spotId('2'));
+        expect(results[1].spot.id).toBe(spotId('4'));
       });
 
-      it('都道府県と期間指定を組み合わせてフィルタリングできること', async () => {
+      it('都道府県と期間指定を組み合わせてフィルタリングできること（注意: 都道府県フィルターはフロントエンド側で実施、期間フィルターはバックエンド側で実施）', async () => {
         await clearTestData();
         await createTestUser(TEST_USER_ID, 'ADMIN');
 
@@ -936,11 +974,11 @@ describe('🧾 スポットサービス', () => {
           sortOrder: 'desc',
         });
 
-        // 東京都 かつ 期間内 = 2件
-        expect(results.length).toBe(2);
-        expect(results[0].spot.meta?.name).toBe('スポットD');
-        expect(results[1].spot.meta?.name).toBe('スポットA');
-        expect(results.every((r) => r.spot.meta?.prefecture === '東京都')).toBe(true);
+        // prefectureフィルターはバックエンドでは無視されるため、期間フィルターのみが適用: 2024-05-01以降 = 3件 (東京都2件+大阪府1件を含む)
+        expect(results.length).toBe(3);
+        expect(results[0].spot.id).toBe(spotId('4'));
+        expect(results[1].spot.id).toBe(spotId('3'));
+        expect(results[2].spot.id).toBe(spotId('1'));
       });
 
       it('計画したスポットと訪問済みのスポットで、登録されているスポットの回数でフィルタリングできること', async () => {
@@ -992,7 +1030,7 @@ describe('🧾 スポットサービス', () => {
 
         // スポットAのみ（3回登録）
         expect(results.length).toBe(1);
-        expect(results[0].spot.meta?.name).toBe('スポットA');
+        expect(results[0].spot.id).toBe(spotId('1'));
       });
     });
   });
@@ -1025,11 +1063,12 @@ describe('🧾 スポットサービス', () => {
           sortOrder: 'asc',
         });
 
+        // 追加日時でのソートテスト
         expect(results.length).toBe(3);
         // 古い順: A → B → C
-        expect(results[0].spot.meta?.name).toBe('スポットA');
-        expect(results[1].spot.meta?.name).toBe('スポットB');
-        expect(results[2].spot.meta?.name).toBe('スポットC');
+        expect(results[0].spot.id).toBe(spotId('1'));
+        expect(results[1].spot.id).toBe(spotId('2'));
+        expect(results[2].spot.id).toBe(spotId('3'));
 
         const results2 = await getUnvisitedWishlistSpots(TEST_USER_ID, {
           sortBy: 'createdAt',
@@ -1038,9 +1077,9 @@ describe('🧾 スポットサービス', () => {
 
         expect(results2.length).toBe(3);
         // 新しい順: C → B → A
-        expect(results2[0].spot.meta?.name).toBe('スポットC');
-        expect(results2[1].spot.meta?.name).toBe('スポットB');
-        expect(results2[2].spot.meta?.name).toBe('スポットA');
+        expect(results2[0].spot.id).toBe(spotId('3'));
+        expect(results2[1].spot.id).toBe(spotId('2'));
+        expect(results2[2].spot.id).toBe(spotId('1'));
       });
 
       it('優先度の昇順でソートできること', async () => {
@@ -1063,9 +1102,9 @@ describe('🧾 スポットサービス', () => {
 
         expect(results.length).toBe(3);
         // 優先度が低い順: 1 → 2 → 3
-        expect(results[0].spot.meta?.name).toBe('スポットB');
-        expect(results[1].spot.meta?.name).toBe('スポットC');
-        expect(results[2].spot.meta?.name).toBe('スポットA');
+        expect(results[0].spot.id).toBe(spotId('2'));
+        expect(results[1].spot.id).toBe(spotId('3'));
+        expect(results[2].spot.id).toBe(spotId('1'));
       });
     });
 
@@ -1105,9 +1144,9 @@ describe('🧾 スポットサービス', () => {
 
         expect(results.length).toBe(3);
         // 訪問日が古い順: B(1月) → C(2月) → A(3月)
-        expect(results[0].spot.meta?.name).toBe('スポットB');
-        expect(results[1].spot.meta?.name).toBe('スポットC');
-        expect(results[2].spot.meta?.name).toBe('スポットA');
+        expect(results[0].spot.id).toBe(spotId('2'));
+        expect(results[1].spot.id).toBe(spotId('3'));
+        expect(results[2].spot.id).toBe(spotId('1'));
       });
 
       it('追加日時でソートできること', async () => {
@@ -1152,9 +1191,9 @@ describe('🧾 スポットサービス', () => {
 
         expect(results.length).toBe(3);
         // 追加日が新しい順: C → B → A
-        expect(results[0].spot.meta?.name).toBe('スポットC');
-        expect(results[1].spot.meta?.name).toBe('スポットB');
-        expect(results[2].spot.meta?.name).toBe('スポットA');
+        expect(results[0].spot.id).toBe(spotId('3'));
+        expect(results[1].spot.id).toBe(spotId('2'));
+        expect(results[2].spot.id).toBe(spotId('1'));
       });
 
       it('計画日時でソートできること', async () => {
@@ -1219,9 +1258,9 @@ describe('🧾 スポットサービス', () => {
 
         expect(results.length).toBe(3);
         // 計画日が新しい順: B(3月) → C(2月) → A(1月)
-        expect(results[0].spot.meta?.name).toBe('スポットB');
-        expect(results[1].spot.meta?.name).toBe('スポットC');
-        expect(results[2].spot.meta?.name).toBe('スポットA');
+        expect(results[0].spot.id).toBe(spotId('2'));
+        expect(results[1].spot.id).toBe(spotId('3'));
+        expect(results[2].spot.id).toBe(spotId('1'));
       });
 
       it('訪問日時でソートできること', async () => {
@@ -1260,9 +1299,9 @@ describe('🧾 スポットサービス', () => {
         });
 
         expect(resultsAsc.length).toBe(3);
-        expect(resultsAsc[0].spot.meta?.name).toBe('スポットB'); // 1月
-        expect(resultsAsc[1].spot.meta?.name).toBe('スポットC'); // 2月
-        expect(resultsAsc[2].spot.meta?.name).toBe('スポットA'); // 3月
+        expect(resultsAsc[0].spot.id).toBe(spotId('2')); // 1月
+        expect(resultsAsc[1].spot.id).toBe(spotId('3')); // 2月
+        expect(resultsAsc[2].spot.id).toBe(spotId('1')); // 3月
       });
 
       it('計画日時と訪問日時でソートできること', async () => {
@@ -1313,9 +1352,9 @@ describe('🧾 スポットサービス', () => {
         expect(results.length).toBe(3);
         // 訪問済みが先、その後計画スポット
         // 訪問済み: A(2月) → C(1月)、計画: B(3月)
-        expect(results[0].spot.meta?.name).toBe('スポットA');
-        expect(results[1].spot.meta?.name).toBe('スポットC');
-        expect(results[2].spot.meta?.name).toBe('スポットB');
+        expect(results[0].spot.id).toBe(spotId('1'));
+        expect(results[1].spot.id).toBe(spotId('3'));
+        expect(results[2].spot.id).toBe(spotId('2'));
       });
 
       it('過去に計画した回数が多いスポット順でソートできること', async () => {
@@ -1384,9 +1423,9 @@ describe('🧾 スポットサービス', () => {
 
         expect(results.length).toBe(3);
         // 回数が多い順: C(3回) → A(2回) → B(1回)
-        expect(results[0].spot.meta?.name).toBe('スポットC');
-        expect(results[1].spot.meta?.name).toBe('スポットA');
-        expect(results[2].spot.meta?.name).toBe('スポットB');
+        expect(results[0].spot.id).toBe(spotId('3'));
+        expect(results[1].spot.id).toBe(spotId('1'));
+        expect(results[2].spot.id).toBe(spotId('2'));
       });
     });
   });

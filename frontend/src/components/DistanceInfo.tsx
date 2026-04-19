@@ -1,25 +1,30 @@
 import React, { useEffect, useState } from 'react';
 
-import { Spot } from '@/types/plan';
+import { Spot, TransportNodeType, TravelModeType } from '@/types/plan';
 import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
+import { useStoreForPlanning } from '@/lib/plan';
 
 import { transportIcons } from './TravelPlan';
 import { convertHHmmToJpFormat } from '../lib/utils';
 
 interface SpotProps {
+  date: string;
   spots: Spot[];
 }
 
-const DistanceInfo = ({ spots }: SpotProps) => {
+const DistanceInfo = ({ date, spots }: SpotProps) => {
+  const fields = useStoreForPlanning();
   const MAX_HEIGHT_CLASS = 'max-h-[300px]';
+  const departure = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+  const destination = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [totalDuration, setTotalDuration] = useState<string>('不明');
 
   useEffect(() => {
-    if (spots.length) {
-      setTotalDuration(calcTotalTransportTime(spots));
+    if (spots.length && departure) {
+      setTotalDuration(calcTotalTransportTime(departure, spots));
     }
-  }, [spots]);
+  }, [spots, departure]);
 
   const renderDetails = () => (
     <div
@@ -28,12 +33,45 @@ const DistanceInfo = ({ spots }: SpotProps) => {
       }`}
     >
       <div className="flex flex-col space-y-3">
+        {/* 出発地から最初の観光地への移動情報 */}
+        <div className="border-b last:border-b-0 pb-3">
+          <div className="text-xs font-semibold text-indigo-600 mb-1">移動 1 / {spots.length + 1}</div>
+          <div
+            className="text-sm font-medium text-gray-800 truncate max-w-full mb-2"
+            title={`${departure.name} → ${spots[0].location.name}`}
+          >
+            <span className="text-gray-500 mr-1">📍</span>
+            {departure.name} <span className="mx-1 text-xs">→</span> {spots[0].location.name}
+          </div>
+          <div className="flex items-center space-x-3">
+            <div className="text-xl flex-shrink-0" role="img" aria-label={departure?.transports?.name || '移動手段'}>
+              {transportIcons[departure?.transports?.name as TravelModeType]?.icon || 'ℹ️'}
+            </div>
+            <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
+              {departure &&
+                departure.transports &&
+                departure.transports.travelTime &&
+                convertHHmmToJpFormat(departure.transports.travelTime)}
+            </div>
+            <div className="text-xs text-gray-500 flex-shrink-0">
+              {calcDistance(
+                {
+                  id: departure.name,
+                  lat: departure.latitude,
+                  lng: departure.longitude,
+                  name: departure.name,
+                },
+                spots[0].location,
+              )}
+            </div>
+          </div>
+        </div>
         {spots.map(
           (spot, idx) =>
             idx < spots.length - 1 && (
               <div key={idx} className="border-b last:border-b-0 pb-3">
                 <div className="text-xs font-semibold text-indigo-600 mb-1">
-                  移動 {idx + 1} / {spots.length - 1}
+                  移動 {idx + 2} / {spots.length + 1}
                 </div>
 
                 <div
@@ -49,7 +87,10 @@ const DistanceInfo = ({ spots }: SpotProps) => {
                     {transportIcons[spot.transports.name]?.icon || 'ℹ️'}
                   </div>
                   <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-                    {convertHHmmToJpFormat(spot.transports.travelTime)}
+                    {spot &&
+                      spot.transports &&
+                      spot.transports.travelTime &&
+                      convertHHmmToJpFormat(spot.transports.travelTime)}
                   </div>
                   <div className="text-xs text-gray-500 flex-shrink-0">
                     {calcDistance(spot.location, spots[idx + 1].location)}
@@ -58,6 +99,38 @@ const DistanceInfo = ({ spots }: SpotProps) => {
               </div>
             ),
         )}
+        {/* 最後のスポットから目的地への移動情報 */}
+        <div>
+          <div className="text-xs font-semibold text-indigo-600 mb-1">
+            移動 {spots.length + 1} / {spots.length + 1}
+          </div>
+        </div>
+        <div
+          className="text-sm font-medium text-gray-800 truncate max-w-full mb-2"
+          title={`${spots[spots.length - 1].location.name} → ${destination.name}`}
+        >
+          <span className="text-gray-500 mr-1">📍</span>
+          {spots[spots.length - 1].location.name} <span className="mx-1 text-xs">→</span> {destination.name}
+        </div>
+        <div className="flex items-center space-x-3">
+          <div className="text-xl flex-shrink-0" role="img" aria-label={destination?.transports?.name || '移動手段'}>
+            {transportIcons[destination?.transports?.name as TravelModeType]?.icon || 'ℹ️'}
+          </div>
+          <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
+            {destination &&
+              destination.transports &&
+              destination.transports.travelTime &&
+              convertHHmmToJpFormat(destination?.transports?.travelTime)}
+          </div>
+          <div className="text-xs text-gray-500 flex-shrink-0">
+            {calcDistance(spots[spots.length - 1].location, {
+              id: destination.name,
+              lat: destination.latitude,
+              lng: destination.longitude,
+              name: destination.name,
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -71,15 +144,17 @@ const DistanceInfo = ({ spots }: SpotProps) => {
           <span className="text-xs text-gray-500 font-semibold">
             {isExpanded
               ? '全旅程の合計移動時間'
-              : `次の移動: ${spots[0].location.name} → ${spots[1].location.name || '最終目的地'}`}
+              : `次の移動: ${departure.name || '出発地'} → ${spots[0].location.name || '最終目的地'}`}
           </span>
           <span className="text-xl font-bold text-gray-900 mt-0.5">
             {isExpanded ? (
               convertHHmmToJpFormat(totalDuration)
             ) : (
               <span className="flex items-center gap-x-3">
-                {transportIcons[spots[0].transports.name]?.icon || 'ℹ️'}
-                {convertHHmmToJpFormat(spots[0].transports.travelTime)}
+                {transportIcons[departure?.transports?.name as TravelModeType]?.icon || 'ℹ️'}
+                {departure.transports &&
+                  departure.transports.travelTime &&
+                  convertHHmmToJpFormat(departure?.transports?.travelTime)}
               </span>
             )}
           </span>

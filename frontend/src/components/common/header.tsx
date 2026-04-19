@@ -1,9 +1,11 @@
 'use client';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { MenuIcon } from 'lucide-react';
 import useSWR from 'swr';
+import { useState } from 'react';
 
 import { useFetcher } from '@/hooks/use-fetcher';
 import { Button } from '@/components/ui/button';
@@ -21,19 +23,25 @@ interface UserData {
 }
 
 const Header = () => {
-  const { data: session, status } = useSession();
-  const { getFetcher } = useFetcher();
+  const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
+  const { getFetcher, isSessionLoading, isAuthenticated } = useFetcher();
+  const router = useRouter();
+
+  // ログアウト処理（本番環境での問題を回避）
+  const handleSignOut = async () => {
+    await signOut({ redirect: false });
+    router.push('/');
+    router.refresh();
+  };
 
   // ユーザー情報を取得（roleを含む）
   const { data: userData } = useSWR<UserData>(
-    session ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` : null,
+    isAuthenticated && !isSessionLoading ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` : null,
     getFetcher,
   );
 
   // ADMINロールかどうかをチェック
   const isAdmin = userData?.user.role === 'ADMIN';
-  const isAuthenticated = status === 'authenticated';
-  const isLoading = status === 'loading';
 
   return (
     <header className="flex h-16 w-full items-center justify-between px-4 md:px-6 border-b border-gray-200 dark:border-gray-800">
@@ -70,15 +78,17 @@ const Header = () => {
               マイページ
             </Link>
             <Notification />
-            <Button onClick={() => signOut()}>ログアウト</Button>
+            <Button onClick={handleSignOut}>ログアウト</Button>
           </>
         )}
-        {!isAuthenticated && !isLoading && <Button onClick={async () => await signIn('google')}>ログイン</Button>}
+        {!isAuthenticated && !isSessionLoading && (
+          <Button onClick={async () => await signIn('google', { redirectTo: '/mypage' })}>ログイン</Button>
+        )}
       </div>
 
       <div className="ml-auto flex items-center space-x-4 lg:hidden">
         {isAuthenticated && (
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="lg:hidden">
                 <SheetTitle className="sr-only">ハンバーガーメニュー</SheetTitle>
@@ -93,6 +103,7 @@ const Header = () => {
                 {isAdmin && (
                   <Link
                     href="/admin"
+                    onClick={() => setIsSheetOpen(false)}
                     className="text-sm font-medium hover:underline underline-offset-4"
                     prefetch={false}
                   >
@@ -101,16 +112,23 @@ const Header = () => {
                 )}
                 <Link
                   href="/wishlist"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
                   行きたいリスト
                 </Link>
-                <Link href="/" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+                <Link
+                  href="/"
+                  onClick={() => setIsSheetOpen(false)}
+                  className="text-sm font-medium hover:underline underline-offset-4"
+                  prefetch={false}
+                >
                   トップへ
                 </Link>
                 <Link
                   href="/plan/create"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
@@ -118,6 +136,7 @@ const Header = () => {
                 </Link>
                 <Link
                   href="/plan/list"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
@@ -125,13 +144,17 @@ const Header = () => {
                 </Link>
                 <Link
                   href="/mypage"
+                  onClick={() => setIsSheetOpen(false)}
                   className="text-sm font-medium hover:underline underline-offset-4"
                   prefetch={false}
                 >
                   マイページ
                 </Link>
                 <button
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    handleSignOut();
+                    setIsSheetOpen(false);
+                  }}
                   className="text-sm font-medium hover:underline underline-offset-4 text-left"
                 >
                   ログアウト
@@ -140,7 +163,9 @@ const Header = () => {
             </SheetContent>
           </Sheet>
         )}
-        {!isAuthenticated && !isLoading && <Button onClick={async () => await signIn('google')}>ログイン</Button>}
+        {!isAuthenticated && !isSessionLoading && (
+          <Button onClick={async () => await signIn('google', { redirectTo: '/mypage' })}>ログイン</Button>
+        )}
       </div>
     </header>
   );

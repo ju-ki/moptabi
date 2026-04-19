@@ -34,141 +34,147 @@ describe('ListView', () => {
     vi.clearAllMocks();
   });
 
-  it('wishlist の項目が一覧で表示されること', () => {
-    const items = [
-      {
-        id: 1,
-        spot: { meta: { name: '店A', image: '/a.jpg', rating: 4.5 } },
-        memo: 'memo A',
-        priority: 3,
-        visited: 0,
-      },
-      {
-        id: 2,
-        spot: { meta: { name: '店B', image: '/b.jpg', rating: 3.2 } },
-        memo: 'memo B',
-        priority: 2,
-        visited: 1,
-      },
-    ];
+  describe('初期表示', () => {
+    it('wishlistの項目が一覧で表示されること', () => {
+      const items = [
+        {
+          id: 1,
+          spot: { meta: { name: '店A', image: '/a.jpg', rating: 4.5 } },
+          memo: 'memo A',
+          priority: 3,
+          visited: 0,
+        },
+        {
+          id: 2,
+          spot: { meta: { name: '店B', image: '/b.jpg', rating: 3.2 } },
+          memo: 'memo B',
+          priority: 2,
+          visited: 1,
+        },
+      ];
 
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
 
-    render(<ListView />);
+      render(<ListView />);
 
-    // two cards should be present with names
-    expect(screen.getByText('店A')).toBeDefined();
-    expect(screen.getByText('店B')).toBeDefined();
-    // ratings displayed
-    expect(screen.getByText('4.5')).toBeDefined();
-    expect(screen.getByText('3.2')).toBeDefined();
-  });
-
-  it('メモを編集してフォーカスが外れたら store.update と api.update が呼ばれること', async () => {
-    const items = [
-      {
-        id: 5,
-        spot: { meta: { name: '店C', image: '/c.jpg', rating: 4.0 } },
-        memo: 'old memo',
-        priority: 1,
-        visited: 0,
-      },
-    ];
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
-
-    render(<ListView />);
-
-    // find the textarea for the item
-    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-
-    // change value and blur
-    fireEvent.change(textarea, { target: { value: 'new memo' } });
-    fireEvent.blur(textarea);
-
-    await waitFor(() => {
-      expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
-      expect(updateWishlistApi).toHaveBeenCalled();
+      // two cards should be present with names
+      expect(screen.getByText('店A')).toBeDefined();
+      expect(screen.getByText('店B')).toBeDefined();
+      // ratings displayed
+      expect(screen.getByText('4.5')).toBeDefined();
+      expect(screen.getByText('3.2')).toBeDefined();
     });
   });
 
-  it('訪問済みにするボタンを押すと update が呼ばれること', async () => {
-    const items = [
-      {
-        id: 7,
-        spot: { meta: { name: '店D', image: '/d.jpg', rating: 4.7 } },
-        memo: '',
-        priority: 4,
-        visited: 0,
-      },
-    ];
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
+  describe('項目の操作', () => {
+    it('メモを編集してフォーカスが外れた場合storeとapiのupdateが呼ばれること', async () => {
+      const items = [
+        {
+          id: 5,
+          spot: { meta: { name: '店C', image: '/c.jpg', rating: 4.0 } },
+          memo: 'old memo',
+          priority: 1,
+          visited: 0,
+        },
+      ];
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
 
-    render(<ListView />);
+      render(<ListView />);
 
-    // 「訪問済みにする」ボタンを直接テキストで検索
-    const visitButton = screen.getByRole('button', { name: '訪問済みにする' });
-    fireEvent.click(visitButton);
+      // find the textarea for the item
+      const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
 
-    await waitFor(() => {
-      expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
-      expect(updateWishlistApi).toHaveBeenCalled();
+      // change value and blur
+      fireEvent.change(textarea, { target: { value: 'new memo' } });
+      fireEvent.blur(textarea);
+
+      await waitFor(() => {
+        expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
+        expect(updateWishlistApi).toHaveBeenCalled();
+      });
     });
-  });
 
-  it('削除ボタンを押すと setWishlist と api.delete が呼ばれること', async () => {
-    const items = [
-      {
-        id: 9,
-        spot: { meta: { name: '店E', image: '/e.jpg', rating: 3.9 } },
-        memo: '',
-        priority: 2,
-        visited: 0,
-      },
-    ];
-    // getSortAndFilteredWishlist will be called multiple times; prepare it to return the array initially
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
+    it('訪問済みにするボタンを押すと update が呼ばれること', async () => {
+      const items = [
+        {
+          id: 7,
+          spot: { meta: { name: '店D', image: '/d.jpg', rating: 4.7 } },
+          memo: '',
+          priority: 4,
+          visited: 0,
+        },
+      ];
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
 
-    render(<ListView />);
+      render(<ListView />);
 
-    // second button is delete (trash icon) - pick last button in card
-    const deleteButton = screen.getByRole('button', { name: '削除ボタン' });
-    fireEvent.click(deleteButton);
+      // 「訪問済みにする」ボタンを直接テキストで検索
+      const visitButton = screen.getByRole('button', { name: '訪問済みにする' });
+      fireEvent.click(visitButton);
 
-    await waitFor(() => {
-      expect(wishlistStoreMock.setWishlist).toHaveBeenCalled();
-      expect(deleteWishlistApi).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(wishlistStoreMock.updateWishlist).toHaveBeenCalled();
+        expect(updateWishlistApi).toHaveBeenCalled();
+      });
     });
-  });
 
-  it('フィルタを適用したとき、フィルタ一致するスポットのみ表示されること', () => {
-    const items = [
-      {
-        id: 1,
-        spot: { meta: { name: '店A', image: '/a.jpg', rating: 4.5 } },
-        memo: 'memo A',
-        priority: 3,
-        visited: 0,
-      },
-      {
-        id: 2,
-        spot: { meta: { name: '店B', image: '/b.jpg', rating: 3.2 } },
-        memo: 'memo B',
-        priority: 2,
-        visited: 1,
-      },
-    ];
+    it('山のボタンを押すとsetWishlistとapi.deleteが呼ばれること', async () => {
+      const items = [
+        {
+          id: 9,
+          spot: { meta: { name: '店E', image: '/e.jpg', rating: 3.9 } },
+          memo: '',
+          priority: 2,
+          visited: 0,
+        },
+      ];
+      // getSortAndFilteredWishlist will be called multiple times; prepare it to return the array initially
+      wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
 
-    // initial render shows both
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
-    const { rerender } = rtlRender(<ListView />);
-    expect(screen.getByText('店A')).toBeDefined();
-    expect(screen.getByText('店B')).toBeDefined();
+      render(<ListView />);
 
-    // simulate applying a filter that only returns visited items (店B)
-    wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue([items[1]]);
-    rerender(<ListView />);
+      // second button is delete (trash icon) - pick last button in card
+      const deleteButton = screen.getByRole('button', { name: '削除ボタン' });
+      fireEvent.click(deleteButton);
 
-    expect(screen.queryByText('店A')).toBeNull();
-    expect(screen.getByText('店B')).toBeDefined();
+      await waitFor(() => {
+        expect(wishlistStoreMock.setWishlist).toHaveBeenCalled();
+        expect(deleteWishlistApi).toHaveBeenCalled();
+      });
+    });
+
+    describe('フィルター適用', () => {
+      it('フィルタを適用した場合フィルタ一致するスポットのみ表示されること', () => {
+        const items = [
+          {
+            id: 1,
+            spot: { meta: { name: '店A', image: '/a.jpg', rating: 4.5 } },
+            memo: 'memo A',
+            priority: 3,
+            visited: 0,
+          },
+          {
+            id: 2,
+            spot: { meta: { name: '店B', image: '/b.jpg', rating: 3.2 } },
+            memo: 'memo B',
+            priority: 2,
+            visited: 1,
+          },
+        ];
+
+        // initial render shows both
+        wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue(items);
+        const { rerender } = rtlRender(<ListView />);
+        expect(screen.getByText('店A')).toBeDefined();
+        expect(screen.getByText('店B')).toBeDefined();
+
+        // simulate applying a filter that only returns visited items (店B)
+        wishlistStoreMock.getSortAndFilteredWishlist.mockReturnValue([items[1]]);
+        rerender(<ListView />);
+
+        expect(screen.queryByText('店A')).toBeNull();
+        expect(screen.getByText('店B')).toBeDefined();
+      });
+    });
   });
 });

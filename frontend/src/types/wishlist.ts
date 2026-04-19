@@ -1,8 +1,6 @@
-import { z } from 'zod';
+import type { WishlistItemType } from '@shared/wishlist/types';
 
-import { WishlistSchema } from '@/models/wishlist';
-
-export type WishlistType = z.infer<typeof WishlistSchema>;
+export type WishlistType = WishlistItemType;
 
 export type ViewModeType = 'list' | 'map' | 'split';
 

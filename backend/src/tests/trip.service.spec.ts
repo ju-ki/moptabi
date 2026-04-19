@@ -5,6 +5,7 @@ import { TripSchema } from '@/models/trip';
 
 import app from '..';
 import {
+  eq,
   clearAllTestData as clearTestData,
   clearUserTestData as clearTestDataForUser,
   connectDb as connectPrisma,
@@ -80,27 +81,6 @@ const mockPlanData = [
     date: '2024-01-01',
     spots: [
       {
-        id: 'departure_spot' + Math.random().toString(36).substring(2, 15),
-        location: {
-          name: '出発地',
-          lat: 35.6762,
-          lng: 139.6503,
-        },
-        spotId: 'departure_spot' + Math.random().toString(36).substring(2, 15),
-        regularOpeningHours: [],
-        transports: {
-          transportMethod: 1,
-          travelTime: '15分',
-          cost: 300,
-          fromType: 'DEPARTURE',
-          toType: 'SPOT',
-        },
-        memo: '出発地のメモ',
-        stayStart: '08:00',
-        stayEnd: '08:15',
-        order: 0,
-      },
-      {
         id: spotId('1'),
         location: {
           name: 'モック観光地1',
@@ -116,7 +96,7 @@ const mockPlanData = [
         categories: ['museum', 'historical'],
         catchphrase: '歴史ある素晴らしい場所です',
         description: 'このスポットは多くの歴史的な価値を持っています。',
-        openingHours: [
+        regularOpeningHours: [
           { day: '月', hours: '9:00-17:00' },
           { day: '火', hours: '9:00-17:00' },
           { day: '水', hours: '9:00-17:00' },
@@ -174,53 +154,49 @@ const mockPlanData = [
         memo: 'モックスポット2のメモ',
         order: 2,
       },
-      {
-        id: 'Destination',
-        location: {
-          name: '目的地',
-          lat: 35.6762,
-          lng: 139.6503,
-        },
-        spotId: 'destination_spot' + Math.random().toString(36).substring(2, 15),
-        regularOpeningHours: [],
-        transports: {
-          transportMethod: 1,
-          travelTime: '15分',
-          cost: 300,
-          fromType: 'SPOT',
-          toType: 'DESTINATION',
-        },
-        stayStart: '18:00',
-        stayEnd: '18:15',
-        memo: '目的地のメモ',
-        order: 3,
-      },
     ],
+    departure: {
+      name: '出発地',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      address: '東京都新宿区',
+      label: null,
+      isDefault: false,
+      locationType: 'DEPARTURE',
+      usageCount: null,
+      userLocationId: null,
+      planLocationId: null,
+      transports: {
+        transportMethod: 1,
+        travelTime: '15分',
+        cost: 300,
+        fromType: 'DEPARTURE',
+        toType: 'SPOT',
+      },
+    },
+    destination: {
+      name: '目的地',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      address: '東京都渋谷区',
+      label: null,
+      isDefault: false,
+      locationType: 'DESTINATION',
+      usageCount: null,
+      userLocationId: null,
+      planLocationId: null,
+      transports: {
+        transportMethod: 1,
+        travelTime: '15分',
+        cost: 300,
+        fromType: 'SPOT',
+        toType: 'DESTINATION',
+      },
+    },
   },
   {
     date: '2024-01-02',
     spots: [
-      {
-        id: 'departure_spot' + Math.random().toString(36).substring(2, 15),
-        location: {
-          name: '出発地',
-          lat: 35.6762,
-          lng: 139.6503,
-        },
-        spotId: 'departure_spot' + Math.random().toString(36).substring(2, 15),
-        regularOpeningHours: [],
-        transports: {
-          transportMethod: 1,
-          travelTime: '15分',
-          cost: 300,
-          fromType: 'DEPARTURE',
-          toType: 'SPOT',
-        },
-        stayStart: '08:00',
-        stayEnd: '08:15',
-        memo: '出発地のメモ',
-        order: 0,
-      },
       {
         id: spotId('3'),
         location: {
@@ -258,28 +234,45 @@ const mockPlanData = [
         memo: 'モックスポット3のメモ',
         order: 1,
       },
-      {
-        id: 'destination_spot' + Math.random().toString(36).substring(2, 15),
-        location: {
-          name: '目的地',
-          lat: 35.6762,
-          lng: 139.6503,
-        },
-        spotId: 'destination_spot' + Math.random().toString(36).substring(2, 15),
-        regularOpeningHours: [],
-        transports: {
-          transportMethod: 1,
-          travelTime: '15分',
-          cost: 300,
-          fromType: 'SPOT',
-          toType: 'DESTINATION',
-        },
-        stayStart: '18:00',
-        stayEnd: '18:15',
-        memo: '目的地のメモ',
-        order: 2,
-      },
     ],
+    departure: {
+      name: '出発地2',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      address: '東京都新宿区',
+      label: null,
+      isDefault: false,
+      locationType: 'DEPARTURE',
+      usageCount: null,
+      userLocationId: null,
+      planLocationId: null,
+      transports: {
+        transportMethod: 1,
+        travelTime: '15分',
+        cost: 300,
+        fromType: 'DEPARTURE',
+        toType: 'SPOT',
+      },
+    },
+    destination: {
+      name: '目的地2',
+      latitude: 35.6762,
+      longitude: 139.6503,
+      address: '東京都渋谷区',
+      label: null,
+      isDefault: false,
+      locationType: 'DESTINATION',
+      usageCount: null,
+      userLocationId: null,
+      planLocationId: null,
+      transports: {
+        transportMethod: 1,
+        travelTime: '15分',
+        cost: 300,
+        fromType: 'SPOT',
+        toType: 'DESTINATION',
+      },
+    },
   },
 ];
 
@@ -308,44 +301,10 @@ describe('旅行計画サービス', () => {
         );
         expect(res.status).toBe(201);
         const createdTrip = await res.json();
+        // 作成した旅行計画のidが返却されることを確認
         expect(createdTrip).toHaveProperty('id');
-        expect(createdTrip).toHaveProperty('title', mockTripData.title);
-        expect(Array.isArray(createdTrip.tripInfo)).toBe(true);
-        expect(Array.isArray(createdTrip.plans)).toBe(true);
-
-        // 詳細情報の確認
-        createdTrip.plans.forEach((currentPlan: any) => {
-          expect(currentPlan).toHaveProperty('date');
-          expect(Array.isArray(currentPlan.planSpots)).toBe(true);
-          currentPlan.planSpots.forEach((planSpot: any) => {
-            expect(planSpot).toHaveProperty('id');
-            expect(planSpot).toHaveProperty('stayStart');
-            expect(planSpot).toHaveProperty('stayEnd');
-            expect(planSpot).toHaveProperty('order');
-            expect(planSpot).toHaveProperty('memo');
-            // スポットのmeta情報も確認
-            const spot = planSpot.spot.meta;
-            // 追加のプロパティも確認可能
-            expect(spot).toHaveProperty('url');
-            expect(spot).toHaveProperty('prefecture');
-            expect(spot).toHaveProperty('address');
-            expect(spot).toHaveProperty('rating');
-            expect(spot).toHaveProperty('categories');
-            expect(spot).toHaveProperty('catchphrase');
-            expect(spot).toHaveProperty('description');
-
-            // 登録した内容が得られているかの確認
-            const mockSpotData = mockPlanData.flatMap((plan) => plan.spots).find((s) => s.spotId === planSpot.spotId);
-            if (mockSpotData) {
-              expect(spot.url).toBe(mockSpotData.url);
-              expect(spot.prefecture).toBe(mockSpotData.prefecture);
-              expect(spot.address).toBe(mockSpotData.address);
-              expect(spot.rating).toBe(mockSpotData.rating);
-              expect(spot.catchphrase).toBe(mockSpotData.catchphrase);
-              expect(spot.description).toBe(mockSpotData.description);
-            }
-          });
-        });
+        // 返却されたレスポンスに関係のない値が入っていないことの確認
+        expect(createdTrip).not.toHaveProperty('title');
       }
     });
   });
@@ -444,7 +403,6 @@ describe('旅行計画サービス', () => {
 
       expect(res.status).toBe(200);
       const trip = await res.json();
-      expect(trip).toHaveProperty('id', result.id);
       expect(trip).toHaveProperty('title', mockTripData.title);
       expect(Array.isArray(trip.tripInfo)).toBe(true);
       expect(Array.isArray(trip.plans)).toBe(true);
@@ -452,26 +410,106 @@ describe('旅行計画サービス', () => {
       // 詳細情報の中身も確認
       expect(trip.tripInfo.length).toBe(mockTripInfoData.length);
       expect(trip.plans.length).toBe(mockPlanData.length);
-      // spot情報も確認
-      trip.plans.forEach((plan: any) => {
-        expect(plan).toHaveProperty('date');
-        expect(Array.isArray(plan.planSpots)).toBe(true);
-        plan.planSpots.forEach((spot: any) => {
-          expect(spot).toHaveProperty('id');
-          expect(spot).toHaveProperty('stayStart');
-          expect(spot).toHaveProperty('stayEnd');
-          expect(spot).toHaveProperty('order');
-          expect(spot).toHaveProperty('memo');
-          // 追加のプロパティも確認可能
-          //TODO: 詳細なスポット情報の確認
-        });
-      });
     });
 
     it('存在しない旅行計画の詳細取得は404エラーを返すこと', async () => {
       const res = await client.api.trips[9999].$get({}, { headers: getAuthHeaders() });
 
       expect(res.status).toBe(404);
+    });
+
+    it('スポットはplaceIdのみ返し、SpotMetaの情報（name/latitude/longitude等）を含まないこと', async () => {
+      // 事前に旅行計画を作成
+      const createdTrip = await client.api.trips.create.$post(
+        {
+          json: {
+            ...mockTripData,
+            tripInfo: mockTripInfoData,
+            plans: mockPlanData,
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
+
+      const result = await createdTrip.json();
+      const res = await client.api.trips[result.id].$get({}, { headers: getAuthHeaders() });
+
+      expect(res.status).toBe(200);
+      const trip = await res.json();
+
+      const firstSpot = trip.plans[0].spots[0];
+
+      // placeIdが返ること
+      expect(firstSpot).toHaveProperty('id');
+      // スケジュール情報が返ること
+      expect(firstSpot).toHaveProperty('stayStart');
+      expect(firstSpot).toHaveProperty('stayEnd');
+      expect(firstSpot).toHaveProperty('order');
+
+      // SpotMetaの情報が返らないこと
+      expect(firstSpot.location).toBeUndefined();
+      expect(firstSpot.image).toBeUndefined();
+      expect(firstSpot.url).toBeUndefined();
+      expect(firstSpot.rating).toBeUndefined();
+      expect(firstSpot.address).toBeUndefined();
+      expect(firstSpot.prefecture).toBeUndefined();
+      expect(firstSpot.category).toBeUndefined();
+      expect(firstSpot.description).toBeUndefined();
+      expect(firstSpot.catchphrase).toBeUndefined();
+      expect(firstSpot.regularOpeningHours).toBeUndefined();
+    });
+  });
+
+  // --- POST /trips: SpotMeta未登録テスト ---
+  describe('POST /trips - SpotMeta登録検証', () => {
+    it('Trip作成時にSpotMetaが登録されないこと', async () => {
+      const newPlaceId = `${SPOT_PREFIX}no_meta_check`;
+
+      const tripWithNewSpot = {
+        ...mockTripData,
+        tripInfo: [mockTripInfoData[0]],
+        plans: [
+          {
+            date: '2024-01-01',
+            spots: [
+              {
+                id: newPlaceId,
+                location: {
+                  name: 'TDDテストスポット',
+                  lat: 35.6895,
+                  lng: 139.6917,
+                },
+                image: 'https://example.com/test.jpg',
+                url: 'https://example.com',
+                prefecture: '東京都',
+                address: '東京都新宿区',
+                rating: 4.0,
+                categories: ['park'],
+                catchphrase: 'テストキャッチコピー',
+                description: 'テスト説明',
+                transports: {
+                  transportMethod: 1,
+                  travelTime: '10分',
+                  cost: 200,
+                  fromType: 'SPOT',
+                  toType: 'SPOT',
+                },
+                stayStart: '10:00',
+                stayEnd: '11:00',
+                memo: '',
+                order: 1,
+              },
+            ],
+            departure: mockPlanData[0].departure,
+            destination: mockPlanData[0].destination,
+          },
+        ],
+      };
+
+      const res = await client.api.trips.create.$post({ json: tripWithNewSpot }, { headers: getAuthHeaders() });
+      expect(res.status).toBe(201);
+      // No.230対応: SpotMeta/Spotテーブルは削除済み。placeIdはPlanSpot.spotIdに直接格納される。
+      // テーブルへの直接クエリは不要。
     });
   });
 
