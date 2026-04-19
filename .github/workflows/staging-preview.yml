@@ -116,7 +116,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      FRONTEND_PROJECT_NAME: moptabi-staging
+      FRONTEND_WORKER_NAME: moptabi-frontend-pr-${{ github.event.pull_request.number }}
       NEXT_PUBLIC_API_BASE_URL: ${{ needs.deploy-backend.outputs.backend_url }}/api
       NEXT_PUBLIC_GOOGLE_MAP_API_KEY: ${{ secrets.STAGING_GOOGLE_MAP_API_KEY }}
       NODE_ENV: production
@@ -130,18 +130,6 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Ensure Pages project exists
-        run: |
-          set -euo pipefail
-          project_name="${FRONTEND_PROJECT_NAME}"
-          if npx wrangler pages project list | grep -Eq "(^|[[:space:]])${project_name}([[:space:]]|$)"; then
-            echo "Pages project already exists: ${project_name}"
-            exit 0
-          fi
-
-          echo "Creating Pages project: ${project_name}"
-          npx wrangler pages project create "${project_name}" --production-branch=master
 
       - name: Install dependencies
         run: npm ci --include=dev
@@ -158,18 +146,17 @@ jobs:
       - name: Deploy frontend preview
         run: |
           set -euo pipefail
-          npx wrangler pages deploy .open-next/assets \
-            --project-name="${FRONTEND_PROJECT_NAME}" \
-            --branch="${{ needs.deploy-backend.outputs.branch_alias }}" \
-            --commit-hash="${{ github.sha }}" \
+          npx wrangler deploy \
+            --config wrangler.jsonc \
+            --name "${FRONTEND_WORKER_NAME}" \
             2>&1 | tee frontend-deploy.log
 
       - name: Capture frontend URL
         id: capture
         run: |
           set -euo pipefail
-          frontend_url="https://${{ needs.deploy-backend.outputs.branch_alias }}.${FRONTEND_PROJECT_NAME}.pages.dev"
-          parsed_url="$(grep -Eo 'https://[^ ]+pages\.dev' frontend-deploy.log | tail -n 1 || true)"
+          frontend_url="https://${FRONTEND_WORKER_NAME}.workers.dev"
+          parsed_url="$(grep -Eo 'https://[^ ]+workers\.dev' frontend-deploy.log | tail -n 1 || true)"
           if [ -n "$parsed_url" ]; then
             frontend_url="$parsed_url"
           fi
@@ -249,7 +236,8 @@ jobs:
               `- Frontend: ${frontendUrl || 'N/A'}`,
               `- Backend: ${backendUrl || 'N/A'}`,
               `- Backend Worker: ${workerName || 'N/A'}`,
-              `- Pages Branch Alias: ${branchAlias || 'N/A'}`,
+              `- Frontend Worker: moptabi-frontend-pr-${issue_number}`,
+              `- Backend Branch Alias: ${branchAlias || 'N/A'}`,
               `- SHA: ${sha}`,
               `- Updated At: ${updatedAt}`,
               '',
