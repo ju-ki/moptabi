@@ -11,7 +11,6 @@ import {
   getTripDetailRoute,
   deleteTripRoute,
   uploadImageRoute,
-  getDepartureAndDepartment,
   getTripCountRoute,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
@@ -50,7 +49,6 @@ import {
 } from './routes/userLocation';
 import { planLocationHandler } from './controllers/planLocation';
 import {
-  getPlanLocationListRoute,
   getPlanLocationCandidatesRoute,
   createPlanLocationRoute,
   deletePlanLocationRoute,
@@ -70,7 +68,12 @@ type Variables = {
 
 const app = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>().basePath('/api');
 
-const defaultAllowedOrigins = ['https://moptabi.moptabi.workers.dev', 'http://localhost:3000', 'https://moptabi.com'];
+const defaultAllowedOrigins = [
+  'https://moptabi.moptabi.workers.dev', // 本番用
+  'http://localhost:3000', // ローカル用
+  'https://moptabi.com', // 未定
+  'https://moptabi-frontend-staging.moptabi.workers.dev', // ステージング用
+];
 
 function parseCsv(value?: string): string[] {
   if (!value) return [];
