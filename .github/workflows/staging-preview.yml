@@ -157,20 +157,18 @@ jobs:
 
       - name: Upload frontend auth secrets
         env:
-          STAGING_AUTH_URL: ${{ secrets.AUTH_URL }}
           STAGING_AUTH_SECRET: ${{ secrets.STAGING_AUTH_SECRET }}
           STAGING_AUTH_GOOGLE_ID: ${{ secrets.STAGING_AUTH_GOOGLE_ID }}
           STAGING_AUTH_GOOGLE_SECRET: ${{ secrets.STAGING_AUTH_GOOGLE_SECRET }}
         run: |
           set -euo pipefail
-          if [ -z "${STAGING_AUTH_URL:-}" ] || [ -z "${STAGING_AUTH_SECRET:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_ID:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_SECRET:-}" ]; then
-            echo "Missing one of required secrets: STAGING_AUTH_URL, STAGING_AUTH_SECRET, STAGING_AUTH_GOOGLE_ID, STAGING_AUTH_GOOGLE_SECRET" >&2
+          if [ -z "${STAGING_AUTH_SECRET:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_ID:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_SECRET:-}" ]; then
+            echo "Missing one of required secrets: STAGING_AUTH_SECRET, STAGING_AUTH_GOOGLE_ID, STAGING_AUTH_GOOGLE_SECRET" >&2
             exit 1
           fi
 
           secrets_file="$(mktemp)"
           {
-            printf 'AUTH_URL=%s\n' "$STAGING_AUTH_URL"
             printf 'AUTH_SECRET=%s\n' "$STAGING_AUTH_SECRET"
             printf 'AUTH_GOOGLE_ID=%s\n' "$STAGING_AUTH_GOOGLE_ID"
             printf 'AUTH_GOOGLE_SECRET=%s\n' "$STAGING_AUTH_GOOGLE_SECRET"
