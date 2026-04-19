@@ -152,23 +152,35 @@ jobs:
             --keep-vars \
             --var NODE_ENV:production \
             --var AUTH_TRUST_HOST:true \
-            --var AUTH_URL:https://${FRONTEND_WORKER_NAME}.workers.dev \
             2>&1 | tee frontend-deploy.log
+
+      - name: Capture frontend URL
+        id: capture
+        run: |
+          set -euo pipefail
+          frontend_url="$(grep -Eo 'https://[^ ]+workers\.dev' frontend-deploy.log | tail -n 1 || true)"
+          if [ -z "$frontend_url" ]; then
+            echo "Failed to detect frontend URL from frontend-deploy.log" >&2
+            exit 1
+          fi
+          echo "frontend_url=$frontend_url" >> "$GITHUB_OUTPUT"
 
       - name: Upload frontend auth secrets
         env:
+          FRONTEND_URL: ${{ steps.capture.outputs.frontend_url }}
           STAGING_AUTH_SECRET: ${{ secrets.STAGING_AUTH_SECRET }}
           STAGING_AUTH_GOOGLE_ID: ${{ secrets.STAGING_AUTH_GOOGLE_ID }}
           STAGING_AUTH_GOOGLE_SECRET: ${{ secrets.STAGING_AUTH_GOOGLE_SECRET }}
         run: |
           set -euo pipefail
-          if [ -z "${STAGING_AUTH_SECRET:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_ID:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_SECRET:-}" ]; then
-            echo "Missing one of required secrets: STAGING_AUTH_SECRET, STAGING_AUTH_GOOGLE_ID, STAGING_AUTH_GOOGLE_SECRET" >&2
+          if [ -z "${FRONTEND_URL:-}" ] || [ -z "${STAGING_AUTH_SECRET:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_ID:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_SECRET:-}" ]; then
+            echo "Missing one of required values: FRONTEND_URL, STAGING_AUTH_SECRET, STAGING_AUTH_GOOGLE_ID, STAGING_AUTH_GOOGLE_SECRET" >&2
             exit 1
           fi
 
           secrets_file="$(mktemp)"
           {
+            printf 'AUTH_URL=%s\n' "$FRONTEND_URL"
             printf 'AUTH_SECRET=%s\n' "$STAGING_AUTH_SECRET"
             printf 'AUTH_GOOGLE_ID=%s\n' "$STAGING_AUTH_GOOGLE_ID"
             printf 'AUTH_GOOGLE_SECRET=%s\n' "$STAGING_AUTH_GOOGLE_SECRET"
@@ -179,17 +191,6 @@ jobs:
             --name "${FRONTEND_WORKER_NAME}"
 
           rm -f "$secrets_file"
-
-      - name: Capture frontend URL
-        id: capture
-        run: |
-          set -euo pipefail
-          frontend_url="https://${FRONTEND_WORKER_NAME}.workers.dev"
-          parsed_url="$(grep -Eo 'https://[^ ]+workers\.dev' frontend-deploy.log | tail -n 1 || true)"
-          if [ -n "$parsed_url" ]; then
-            frontend_url="$parsed_url"
-          fi
-          echo "frontend_url=$frontend_url" >> "$GITHUB_OUTPUT"
 
   verify-routing:
     runs-on: ubuntu-latest
