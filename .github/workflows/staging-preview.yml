@@ -59,13 +59,6 @@ jobs:
       - name: Build backend
         run: bun run build
 
-      - name: Generate database migrations
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-        run: |
-          set -euo pipefail
-          bunx drizzle-kit generate --config=./drizzle-staging.config.ts
-
       - name: Prime backend worker
         run: |
           set -euo pipefail
@@ -94,7 +87,7 @@ jobs:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: |
           set -euo pipefail
-          bun run db:push:staging
+          bun run db:migrate:staging
 
       - name: Deploy backend preview
         run: |
@@ -132,7 +125,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       FRONTEND_WORKER_NAME: moptabi-frontend-staging
       NEXT_PUBLIC_API_BASE_URL: ${{ needs.deploy-backend.outputs.backend_url }}/api
-      NEXT_PUBLIC_GOOGLE_MAP_API_KEY: ${{ secrets.STAGING_GOOGLE_MAP_API_KEY }}
+      NEXT_PUBLIC_GOOGLE_MAP_API_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAP_API_KEY }}
       NODE_ENV: production
     steps:
       - name: Checkout repository
