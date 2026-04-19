@@ -151,6 +151,7 @@ jobs:
             --name "${FRONTEND_WORKER_NAME}" \
             --keep-vars \
             --var NODE_ENV:production \
+            --var AUTH_URL:https://${FRONTEND_WORKER_NAME}.workers.dev/api/auth \
             --var AUTH_TRUST_HOST:true \
             2>&1 | tee frontend-deploy.log
 
