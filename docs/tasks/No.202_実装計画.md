@@ -8,7 +8,8 @@
 - `docs/tasks/No.202_staging環境でのプレビュー機能.md`
 
 今回の確定方針:
-- base が `dev` の PR を対象にする
+- base が `staging` かつ head が `dev` の PR を対象にする
+- 起動タイミングは PR 作成時（opened）のみとする
 - 同一PRでは同じURLを更新し続ける
 - PR close / merge で cleanup はしない
 - PR環境は期限なしで残す
@@ -18,7 +19,7 @@
 
 ## 2. 完了条件（この計画のDoD）
 
-1. base=`dev` のPRで、frontend / backend の staging 確認用URLが自動更新される。
+1. base=`staging` かつ head=`dev` のPRで、frontend / backend の staging 確認用URLが自動作成される。
 2. 同一PRでは毎回同じURLを使い、最新デプロイ内容に更新される。
 3. PRコメントに以下が表示される。
 - frontend URL
@@ -138,11 +139,14 @@ bun run test
 on:
 　　pull_request:
 　　branches:
-　　　　- dev
+　　　　- staging
 　　types:
 　　　　- opened
-　　　　- synchronize
-　　　　- reopened
+```
+
+job 条件:
+```yml
+if: ${{ github.event.pull_request.head.ref == 'dev' }}
 ```
 
 採用理由:
@@ -306,7 +310,7 @@ bun run build
 DB変更を伴う場合の追加コマンド候補:
 ```bash
 cd backend
-bun run db:push:staging
+bun run db:migrate:staging
 ```
 
 ### 9-3. staging固定DBの扱い
@@ -392,6 +396,34 @@ curl -I "$FRONTEND_URL"
 
 ---
 
+## 11.5 運用中に追加した必須対策
+
+### 11.5-1. CORSとエラーレスポンスの整合
+
+1. `c.env` が未定義でも CORS 判定が落ちない実装にする。
+2. `onError` のレスポンスにも `Access-Control-Allow-Origin` を付与する。
+3. `NODE_ENV` の判定は `c.env?.NODE_ENV ?? process.env.NODE_ENV` で実行する。
+
+### 11.5-2. plan-location のDB接続安定化
+
+1. `plan-location` 系はグローバル `db` を直接使わず、`getDbFromContext(c)` で取得したDBを使用する。
+2. サービス層では request-scoped DB を受け取れる構造にする。
+3. 既存テスト互換のため、旧シグネチャ呼び出しも受け付ける。
+
+### 11.5-3. neon-http の transaction 非対応対策
+
+1. `POST /api/trips/create` は transaction 実行を試みる。
+2. `No transactions support in neon-http driver` の場合のみ非transaction処理へフォールバックする。
+3. それ以外の例外は握りつぶさずに失敗として扱う。
+
+### 11.5-4. staging DB マイグレーション運用
+
+1. CIでは `generate` を行わず、生成済みSQLを `migrate` で適用する。
+2. staging 設定の migration out は履歴管理済みの `./drizzle` を参照する。
+3. 既存スキーマDBへの初回適用ではベースライン登録を行い、`already exists` を回避する。
+
+---
+
 ## 12. staging固定DB運用（Phase 7）
 
 ### 12-1. 並列確認時のルール
@@ -426,10 +458,9 @@ curl -I "$FRONTEND_URL"
 
 ### 13-1. 正常系
 
-1. PR opened で frontend / backend URL が出る
-2. PR synchronize で同じコメントが更新される
-3. 同じPRで同じURLが維持される
-4. PR reopened で再デプロイされる
+1. base=`staging` かつ head=`dev` のPR opened で frontend / backend URL が出る
+2. 同じPRで同じURLが維持される
+3. PRコメントにSHAと実行時刻が更新される
 
 ### 13-2. 異常系
 
@@ -469,7 +500,8 @@ curl -I "$FRONTEND_URL"
 
 ### 実装後
 
-- [ ] opened / synchronize / reopened を一通り確認した
+- [ ] opened のみで起動することを確認した
+- [ ] base=`staging` かつ head=`dev` 以外では起動しないことを確認した
 - [ ] 同一PRで同じURLが維持されることを確認した
 - [ ] 本番Secret未参照をレビューで確認した
 - [ ] ロールバック手順を1回リハーサルした

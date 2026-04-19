@@ -18,6 +18,8 @@
     "db:studio": "drizzle-kit studio",
     "db:migrate:dev": "drizzle-kit migrate",
     "db:migrate:staging": "drizzle-kit migrate --config=./drizzle-staging.config.ts",
+    "db:migrate:test": "drizzle-kit migrate --config=./drizzle-test.config.ts",
+    "db:migrate:prod": "drizzle-kit migrate --config=./drizzle-production.config.ts",
     "db:push:prod": "drizzle-kit push --config=./drizzle-production.config.ts",
     "db:push:test": "drizzle-kit push --config=./drizzle-test.config.ts",
     "db:push:staging": "drizzle-kit push --config=./drizzle-staging.config.ts",

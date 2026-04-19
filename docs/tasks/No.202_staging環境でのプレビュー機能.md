@@ -36,7 +36,7 @@
 ### 機能要件
 
 1. トリガー
-	* baseがdevのPR（open / synchronize / reopen）で、プレビュー用デプロイ処理を実行する。
+	* baseがstaging、headがdevのPR作成時/更新（opened/synchronize）に、プレビュー用デプロイ処理を実行する。
 2. frontendプレビュー
 	* PRごとにアクセス可能なプレビューURLを払い出す。
 3. backendプレビュー
@@ -61,7 +61,7 @@
 
 ## 受け入れ条件（Definition of Done）
 
-1. base=devのPR作成/更新時に、frontendとbackendのプレビューが自動作成される。
+1. base=staging かつ head=dev のPR作成/更新時に、frontendとbackendのプレビューが自動作成される。
 2. PR上で以下が確認できる。
 	* frontendプレビューURL
 	* backendエンドポイント（または疎通済み表示）
@@ -126,7 +126,7 @@
 ## 今回の確認結果（2026-04-16）
 
 1. プレビュー対象: frontend + backend（DBはstaging固定）
-2. トリガー: staging向け運用を目的としつつ、実運用上はbase=devのPRで起動
+2. トリガー: dev→staging のPR作成/更新時（opened, synchronize）で起動
 3. ライフサイクル: PR close / merge後も環境は残し、自動削除はしない
 4. PR運用: URL自動投稿、デプロイ結果のチェック表示
 5. セキュリティ: 本番影響を避けるため、Secretを分離
