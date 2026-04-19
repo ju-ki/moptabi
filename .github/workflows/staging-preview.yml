@@ -82,6 +82,13 @@ jobs:
             --name "${{ steps.meta.outputs.worker_name }}"
           rm -f "$secrets_file"
 
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          bun run db:push:staging
+
       - name: Deploy backend preview
         run: |
           set -euo pipefail
@@ -151,7 +158,7 @@ jobs:
             --name "${FRONTEND_WORKER_NAME}" \
             --keep-vars \
             --var NODE_ENV:production \
-            --var AUTH_URL:https://${FRONTEND_WORKER_NAME}.workers.dev/api/auth \
+            --var AUTH_URL:https://${FRONTEND_WORKER_NAME}.moptabi.workers.dev/api/auth \
             --var AUTH_TRUST_HOST:true \
             2>&1 | tee frontend-deploy.log
 
