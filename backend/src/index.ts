@@ -2,6 +2,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
+import { sql } from 'drizzle-orm';
 import { getDbFromEnv, setRequestScopeDb, clearRequestScopeDb } from '@db/index';
 
 import {
@@ -143,6 +144,12 @@ app.options('*', (c) => {
 
 app.get('/health', (c) => {
   return c.json({ status: 'ok' }, 200);
+});
+
+app.get('/health/db', async (c) => {
+  const db = c.get('db');
+  await db.execute(sql`select 1`);
+  return c.json({ status: 'ok', db: 'ok' }, 200);
 });
 
 //ルートの登録

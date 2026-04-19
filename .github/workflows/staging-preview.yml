@@ -116,7 +116,7 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      FRONTEND_WORKER_NAME: moptabi-frontend-pr-${{ github.event.pull_request.number }}
+      FRONTEND_WORKER_NAME: moptabi-frontend-staging
       NEXT_PUBLIC_API_BASE_URL: ${{ needs.deploy-backend.outputs.backend_url }}/api
       NEXT_PUBLIC_GOOGLE_MAP_API_KEY: ${{ secrets.STAGING_GOOGLE_MAP_API_KEY }}
       NODE_ENV: production
@@ -149,7 +149,36 @@ jobs:
           npx wrangler deploy \
             --config wrangler.jsonc \
             --name "${FRONTEND_WORKER_NAME}" \
+            --keep-vars \
+            --var NODE_ENV:production \
+            --var NEXTAUTH_URL:https://${FRONTEND_WORKER_NAME}.workers.dev \
+            --var AUTH_URL:https://${FRONTEND_WORKER_NAME}.workers.dev/api/auth \
             2>&1 | tee frontend-deploy.log
+
+      - name: Upload frontend auth secrets
+        env:
+          STAGING_AUTH_SECRET: ${{ secrets.STAGING_AUTH_SECRET }}
+          STAGING_AUTH_GOOGLE_ID: ${{ secrets.STAGING_AUTH_GOOGLE_ID }}
+          STAGING_AUTH_GOOGLE_SECRET: ${{ secrets.STAGING_AUTH_GOOGLE_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${STAGING_AUTH_SECRET:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_ID:-}" ] || [ -z "${STAGING_AUTH_GOOGLE_SECRET:-}" ]; then
+            echo "Missing one of required secrets: STAGING_AUTH_SECRET, STAGING_AUTH_GOOGLE_ID, STAGING_AUTH_GOOGLE_SECRET" >&2
+            exit 1
+          fi
+
+          secrets_file="$(mktemp)"
+          {
+            printf 'AUTH_SECRET=%s\n' "$STAGING_AUTH_SECRET"
+            printf 'AUTH_GOOGLE_ID=%s\n' "$STAGING_AUTH_GOOGLE_ID"
+            printf 'AUTH_GOOGLE_SECRET=%s\n' "$STAGING_AUTH_GOOGLE_SECRET"
+          } > "$secrets_file"
+
+          npx wrangler secret bulk "$secrets_file" \
+            --config wrangler.jsonc \
+            --name "${FRONTEND_WORKER_NAME}"
+
+          rm -f "$secrets_file"
 
       - name: Capture frontend URL
         id: capture
@@ -180,6 +209,20 @@ jobs:
             sleep 10
           done
           echo "Backend health check failed" >&2
+          exit 1
+
+      - name: Wait for backend DB health
+        run: |
+          set -euo pipefail
+          backend_db_health_url="${{ needs.deploy-backend.outputs.backend_url }}/api/health/db"
+          for attempt in $(seq 1 20); do
+            if curl -fsS "$backend_db_health_url" >/dev/null; then
+              exit 0
+            fi
+            echo "Backend DB not ready yet: $attempt"
+            sleep 10
+          done
+          echo "Backend DB health check failed" >&2
           exit 1
 
       - name: Wait for frontend response
@@ -236,7 +279,7 @@ jobs:
               `- Frontend: ${frontendUrl || 'N/A'}`,
               `- Backend: ${backendUrl || 'N/A'}`,
               `- Backend Worker: ${workerName || 'N/A'}`,
-              `- Frontend Worker: moptabi-frontend-pr-${issue_number}`,
+              `- Frontend Worker: moptabi-frontend-staging`,
               `- Backend Branch Alias: ${branchAlias || 'N/A'}`,
               `- SHA: ${sha}`,
               `- Updated At: ${updatedAt}`,
