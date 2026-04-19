@@ -112,8 +112,7 @@ function resolveAllowedOrigin(requestOrigin: string | undefined, env?: Partial<B
   const allowedOrigins = [...defaultAllowedOrigins, ...parseCsv(env?.ALLOWED_ORIGINS)];
   const allowedOriginSuffixes = parseCsv(env?.ALLOWED_ORIGIN_SUFFIXES);
 
-  const isAllowed =
-    allowedOrigins.includes(requestOrigin) || isAllowedBySuffix(requestOrigin, allowedOriginSuffixes);
+  const isAllowed = allowedOrigins.includes(requestOrigin) || isAllowedBySuffix(requestOrigin, allowedOriginSuffixes);
 
   return isAllowed ? requestOrigin : null;
 }
