@@ -64,7 +64,7 @@ jobs:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: |
           set -euo pipefail
-          bun run db:generate
+          bunx drizzle-kit generate --config=./drizzle-staging.config.ts
 
       - name: Prime backend worker
         run: |
