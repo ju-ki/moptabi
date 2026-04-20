@@ -300,7 +300,7 @@ jobs:
       - name: Check and Create Pull Request
         id: create-pr
         env:
-          GH_TOKEN: ${{ secrets.ACTION_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
