@@ -1,12 +1,13 @@
 import { Context } from 'hono';
-import { eq, and, desc, lt, inArray } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
-import { db, userLocation } from '@/db';
+import { userLocation, getDbFromContext } from '@/db';
 import { getUserId } from '@/middleware/auth';
 import { CreateUserLocationSchema, MAX_USER_LOCATIONS, UpdateUserLocationSchema } from '@/models/userLocation';
 
 export const getUserLocationList = async (c: Context) => {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
 
   const userLocationList = await db.query.userLocation.findMany({
@@ -18,6 +19,7 @@ export const getUserLocationList = async (c: Context) => {
 };
 
 export const createUserLocation = async (c: Context) => {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
 
   const body = await c.req.json();
@@ -66,6 +68,7 @@ export const createUserLocation = async (c: Context) => {
 };
 
 export const updateUserLocation = async (c: Context) => {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
 
   // パスパラメータからIDを取得
@@ -121,6 +124,7 @@ export const updateUserLocation = async (c: Context) => {
 };
 
 export const deleteUserLocation = async (c: Context) => {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
 
   if (isNaN(Number(c.req.param('id')))) {
