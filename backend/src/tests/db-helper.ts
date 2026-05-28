@@ -17,6 +17,9 @@ import {
   transport,
   userLocation,
   planLocation,
+  planLocationNearestStation,
+  planSpotNearestStation,
+  spotRoute,
 } from '@db';
 
 // DBインスタンスを再エクスポート
@@ -36,6 +39,9 @@ export {
   transport,
   userLocation,
   planLocation,
+  planLocationNearestStation,
+  planSpotNearestStation,
+  spotRoute,
 };
 
 // Drizzle演算子を再エクスポート
@@ -61,6 +67,8 @@ export async function disconnectDb(): Promise<void> {
 export async function clearAllTestData(): Promise<void> {
   try {
     await db.delete(transport);
+    await db.delete(spotRoute);
+    await db.delete(planSpotNearestStation);
     await db.delete(planSpot);
     await db.delete(tripInfo);
     await db.delete(planLocation);
@@ -108,6 +116,17 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
           planSpotIdList = planSpots.map((ps) => ps.spotId);
         }
         await db.delete(transport).where(inArray(transport.planId, planIds));
+        await db.delete(spotRoute).where(inArray(spotRoute.planId, planIds));
+        const planSpotsForDelete = await db
+          .select({ id: planSpot.id })
+          .from(planSpot)
+          .where(inArray(planSpot.planId, planIds));
+        const planSpotIdsForDelete = planSpotsForDelete.map((ps) => ps.id);
+        if (planSpotIdsForDelete.length > 0) {
+          await db
+            .delete(planSpotNearestStation)
+            .where(inArray(planSpotNearestStation.planSpotId, planSpotIdsForDelete));
+        }
         await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
       }
 
@@ -298,6 +317,7 @@ export async function createPlanSpot(data: {
   order?: number;
   stayStart?: string;
   stayEnd?: string;
+  stayDuration?: number;
   memo?: string | null;
 }) {
   const [created] = await db
@@ -308,6 +328,7 @@ export async function createPlanSpot(data: {
       order: data.order ?? 0,
       stayStart: data.stayStart ?? '09:00',
       stayEnd: data.stayEnd ?? '10:00',
+      stayDuration: data.stayDuration ?? 60,
       memo: data.memo ?? null,
     })
     .returning();
@@ -622,6 +643,7 @@ export async function createPlanLocation(data: {
   latitude: number;
   longitude: number;
   address?: string | null;
+  time?: string;
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
   planId?: number | null;
@@ -634,6 +656,7 @@ export async function createPlanLocation(data: {
       latitude: data.latitude,
       longitude: data.longitude,
       address: data.address ?? null,
+      time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
       planId: data.planId ?? null,
     })

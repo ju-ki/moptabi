@@ -19,6 +19,7 @@ import { DEFAULT_DEPARTURE_AND_DESTINATION } from '@/data/constants';
 import { getPrefectures } from './algorithm';
 import { formatOpeningHours } from './google-maps';
 import { getDatesBetween } from './utils';
+import { PlanningInfo, PlanningResult } from './planning';
 
 export type FormData = z.infer<typeof TripSchema>;
 
@@ -38,6 +39,20 @@ interface FormState {
   tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
   planErrors: Record<string, Record<PlanErrorType, string>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
+  /** プランニング必要な情報 */
+  planningInfo: Record<string, PlanningInfo>;
+  /** プランニング情報を取得 */
+  getPlanningInfo: (date: string) => PlanningInfo;
+  /** プランニング情報を設定 */
+  setPlanningInfo: (date: string, info: PlanningInfo) => void;
+  /** 日付ごとのプランニング結果 */
+  planningResults: Record<string, PlanningResult>;
+  /** プランニング結果を設定 */
+  setPlanningResult: (date: string, result: PlanningResult) => void;
+  /** プランニング結果を取得 */
+  getPlanningResult: (date: string) => PlanningResult | undefined;
+  /** プランニング結果をクリア */
+  clearPlanningResult: (date: string) => void;
   setDepartureList: (list: PlanLocationCandidatesResponse) => void;
   setDestinationList: (list: PlanLocationCandidatesResponse) => void;
   /** 出発地・目的地連動チェックボックスの状態を設定 */
@@ -71,6 +86,8 @@ interface FormState {
   ) => void;
   resetErrors: () => void;
   resetForm: () => void;
+  /** 代替ルートに切り替え */
+  switchAlternativeRoute: (date: string, routeId: string, selectedTransportMethodId: number) => void;
 }
 
 export const useStoreForPlanning = create<FormState>()(
@@ -114,6 +131,29 @@ export const useStoreForPlanning = create<FormState>()(
       planErrors: {},
       departureList: [],
       destinationList: [],
+      planningInfo: {},
+      getPlanningInfo: (date) => {
+        return get().planningInfo[date];
+      },
+      setPlanningInfo: (date, info) => {
+        set((state) => {
+          state.planningInfo[date] = info;
+        });
+      },
+      planningResults: {},
+      setPlanningResult: (date, result) => {
+        set((state) => {
+          state.planningResults[date] = result;
+        });
+      },
+      getPlanningResult: (date) => {
+        return get().planningResults[date];
+      },
+      clearPlanningResult: (date) => {
+        set((state) => {
+          delete state.planningResults[date];
+        });
+      },
       setDepartureList: (list) => set((state) => ({ ...state, departureList: list })),
       setDestinationList: (list) => set((state) => ({ ...state, destinationList: list })),
       isLocationLinked: false,
@@ -279,11 +319,13 @@ export const useStoreForPlanning = create<FormState>()(
             spots: [],
             departure: {
               ...defaultDeparture,
+              time: '09:00',
               name: defaultDeparture.name === '' ? '出発地_' + date : defaultDeparture.name,
               locationType: TransportNodeType.DEPARTURE,
             },
             destination: {
               ...defaultDestination,
+              time: '18:00',
               name: defaultDestination.name === '' ? '目的地_' + date : defaultDestination.name,
               locationType: TransportNodeType.DESTINATION,
             },
@@ -364,6 +406,123 @@ export const useStoreForPlanning = create<FormState>()(
       },
       resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),
+      switchAlternativeRoute: (date, routeId, selectedTransportMethodId) => {
+        set((state) => {
+          const planningResult = state.planningResults[date];
+
+          if (!planningResult) return;
+
+          const routeIndex = planningResult.routes.findIndex((route) => route.id === routeId);
+          if (routeIndex === -1) return;
+
+          const route = planningResult.routes[routeIndex];
+          const alternativeRoute = route.alternativeRoutes?.find(
+            (alt) => alt.transportMethodId === selectedTransportMethodId,
+          );
+
+          if (!alternativeRoute) return;
+
+          // transportMethodIdからTravelModeTypeに変換するヘルパー
+          const getTransportName = (methodId: number): 'WALKING' | 'DRIVING' | 'BICYCLING' | 'TRANSIT' | 'DEFAULT' => {
+            switch (methodId) {
+              case 1:
+                return 'WALKING';
+              case 2:
+                return 'BICYCLING';
+              case 3:
+                return 'DRIVING';
+              case 4:
+              case 5:
+                return 'TRANSIT';
+              default:
+                return 'DEFAULT';
+            }
+          };
+
+          // ルートを更新
+          state.planningResults[date].routes[routeIndex] = {
+            ...route,
+            transportMethod: alternativeRoute.transportMethod,
+            transportMethodId: alternativeRoute.transportMethodId,
+            duration: alternativeRoute.duration,
+            distance: alternativeRoute.distance,
+            durationText: alternativeRoute.durationText,
+            distanceText: alternativeRoute.distanceText,
+          };
+
+          // 総距離と総時間を再計算
+          const newTotalDuration = state.planningResults[date].routes.reduce((sum, r) => sum + r.duration, 0);
+          const newTotalDistance = state.planningResults[date].routes.reduce((sum, r) => sum + r.distance, 0);
+          state.planningResults[date].totalDuration = newTotalDuration;
+          state.planningResults[date].totalDistance = newTotalDistance;
+
+          // 新しいTravelModeType
+          const newTransportName = getTransportName(selectedTransportMethodId);
+
+          // スポット・出発地・目的地のtransportsも更新
+          const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
+          if (plansForDateIndex === -1) return;
+
+          // 出発地から最初のスポットへのルートの場合
+          if (route.fromType === 'DEPARTURE' && route.toType === 'SPOT') {
+            // 直接departureを更新（immer内なのでsetterを使わない）
+            const currentDeparture = state.plans[plansForDateIndex].departure;
+
+            if (currentDeparture) {
+              state.plans[plansForDateIndex].departure = {
+                ...currentDeparture,
+                transports: {
+                  ...currentDeparture.transports,
+                  name: newTransportName,
+                  transportMethod: selectedTransportMethodId,
+                  travelTime: alternativeRoute.durationText,
+                  fromType: TransportNodeType.DEPARTURE,
+                  toType: TransportNodeType.SPOT,
+                },
+                alternativeTransports: route.alternativeRoutes,
+              };
+            }
+          }
+          // スポット間のルートの場合（fromSpotIdのスポットのtransportsを更新）
+          else if (route.fromType === 'SPOT' && route.toType === 'SPOT') {
+            const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === route.fromSpotId);
+            if (spotIndex !== -1) {
+              const currentSpot = state.plans[plansForDateIndex].spots[spotIndex];
+              state.plans[plansForDateIndex].spots[spotIndex] = {
+                ...currentSpot,
+                transports: {
+                  ...currentSpot.transports,
+                  name: newTransportName,
+                  transportMethod: selectedTransportMethodId,
+                  travelTime: alternativeRoute.durationText,
+                  fromType: TransportNodeType.SPOT,
+                  toType: TransportNodeType.SPOT,
+                },
+                alternateRoutes: route.alternativeRoutes,
+              };
+            }
+          }
+          // 最後のスポットから目的地へのルートの場合
+          else if (route.toType === 'DESTINATION') {
+            // 直接destinationを更新（immer内なのでsetterを使わない）
+            const currentDestination = state.plans[plansForDateIndex].destination;
+            if (currentDestination) {
+              state.plans[plansForDateIndex].destination = {
+                ...currentDestination,
+                transports: {
+                  ...currentDestination.transports,
+                  name: newTransportName,
+                  transportMethod: selectedTransportMethodId,
+                  travelTime: alternativeRoute.durationText,
+                  fromType: TransportNodeType.SPOT,
+                  toType: TransportNodeType.DESTINATION,
+                },
+                alternativeTransports: route.alternativeRoutes,
+              };
+            }
+          }
+        });
+      },
     })),
   ),
 );
@@ -411,6 +570,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     rating: place.rating ?? 0,
     stayStart: '09:00',
     stayEnd: '10:00',
+    stayDuration: 60,
     description: place.editorialSummary ?? '説明なし',
     category: place.types, // TODO: 日本語化
     prefecture: getPrefectures(place.addressComponents),
@@ -424,7 +584,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       fromType: TransportNodeType.SPOT,
       toType: TransportNodeType.SPOT,
     },
-    order: 0,
+    order: 1,
   });
 
   const fields = [

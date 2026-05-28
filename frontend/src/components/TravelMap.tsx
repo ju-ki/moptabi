@@ -4,10 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import { GoogleMap, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { createPortal } from 'react-dom';
 
-import { Coordination, TransportNodeType, TravelModeType } from '@/types/plan';
-import { SpotMakerColors, TransportMethods } from '@/data/constants';
+import { Coordination, TransportNodeType, TravelModeType, NearestStation as PlanNearestStation } from '@/types/plan';
+import { SpotMakerColors } from '@/data/constants';
 import { RouteResult, useStoreForPlanning } from '@/lib/plan';
 import { calcRoutes } from '@/lib/algorithm';
+import { buildStationMarkerKey } from '@/lib/planning';
+import MapLegend from '@/components/MapLegend';
+import { useToast } from '@/hooks/use-toast';
 
 import DistanceInfo from './DistanceInfo';
 
@@ -22,12 +25,29 @@ interface TravelMapProps {
   date: string;
 }
 
+type RouteType = 'DEPARTURE_TO_SPOT' | 'SPOT_TO_SPOT' | 'SPOT_TO_DESTINATION' | 'TO_STATION' | 'STATION_TO_STATION';
+
+type DisplayRoute = RouteResult & {
+  routeType: RouteType;
+};
+
+const ROUTE_COLORS: Record<RouteType, string> = {
+  DEPARTURE_TO_SPOT: '#34A853',
+  SPOT_TO_SPOT: '#4285F4',
+  SPOT_TO_DESTINATION: '#FF0000',
+  TO_STATION: '#FACC15',
+  STATION_TO_STATION: '#F97316',
+};
+
+const STATION_MARKER_COLOR = '#F59E0B';
+
 const TravelMap = ({ date }: TravelMapProps) => {
   const fields = useStoreForPlanning();
+  const { toast } = useToast();
   const allSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
-  const [routes, setRoutes] = useState<RouteResult[]>([]);
+  const [routes, setRoutes] = useState<DisplayRoute[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [spotCoordination, setSpotCoordination] = useState<Coordination[]>([]);
@@ -49,118 +69,161 @@ const TravelMap = ({ date }: TravelMapProps) => {
         })),
       );
     }
-
-    setRoutes([]); // ルートをリセット
   }, [date]);
 
-  // ルートを計算
+  // ルート計算：マップロード後、または日付・スポット変化時に再計算する
   useEffect(() => {
-    if (!map || !departureData || !destinationData || !spotCoordination.length) return;
+    if (!map) return;
 
-    // マップの表示範囲を計算
-    const bounds = new google.maps.LatLngBounds();
-    const path = [
-      { lat: departureData.latitude, lng: departureData.longitude },
-      ...spotCoordination.map((spot) => ({ lat: spot.lat, lng: spot.lng })),
-      { lat: destinationData.latitude, lng: destinationData.longitude },
-    ];
-    path.forEach((point) => bounds.extend(point));
+    const spots = fields.getSpotInfo(date, TransportNodeType.SPOT);
+    const departure = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+    const destination = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
 
-    const calculateRoutes = async () => {
-      const tripInfo = fields.getTripInfo(date);
-      const transportMethod = tripInfo?.transportationMethod;
-      // IDからキー名を取得するヘルパー
-      const getTransportKeyById = (id: number | undefined): TravelModeType => {
-        if (!id) return 'WALKING';
-        const entry = Object.entries(TransportMethods).find(([, val]) => val.id === id);
-        return (entry ? entry[0] : 'WALKING') as TravelModeType;
-      };
-      // 現状一つの移動手段のみ選択可能
-      const targetTransportMethod = getTransportKeyById(transportMethod);
+    type RouteNode = {
+      coord: Coordination;
+      nearestStation?: PlanNearestStation;
+      transportName: TravelModeType;
+    };
 
-      const routeResults: RouteResult[] = [];
-      let orderNumber = 0;
-
-      // 出発地から最初の観光地
-      const firstRoute = await calcRoutes(
-        { id: departureData.name, lat: departureData.latitude, lng: departureData.longitude, name: departureData.name },
-        spotCoordination[0],
-        targetTransportMethod,
-      );
-
-      fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-        ...departureData,
-        transports: {
-          transportMethod: TransportMethods[firstRoute.travelMode].id,
-          name: firstRoute.travelMode || 'DEFAULT',
-          travelTime: firstRoute.duration || '',
-          fromType: TransportNodeType.DEPARTURE,
-          toType: TransportNodeType.SPOT,
+    const nodes: RouteNode[] = [
+      {
+        coord: { id: 'departure', lat: departure.latitude, lng: departure.longitude, name: departure.name ?? '' },
+        nearestStation: departure.nearestStation
+          ? {
+              ...departure.nearestStation,
+              spotId: departure.nearestStation.spotId ?? '',
+              placeId: departure.nearestStation.placeId ?? '',
+              stationType: departure.nearestStation.stationType ?? 'TRAIN',
+              name: departure.nearestStation.name ?? '',
+              walkingTime: departure.nearestStation.walkingTime ?? 0,
+              latitude: departure.nearestStation.latitude ?? 0,
+              longitude: departure.nearestStation.longitude ?? 0,
+            }
+          : undefined,
+        transportName: 'WALKING',
+      },
+      ...spots.map((spot) => ({
+        coord: { id: spot.id, lat: spot.location.lat, lng: spot.location.lng, name: spot.location.name },
+        nearestStation: spot.nearestStation
+          ? {
+              ...spot.nearestStation,
+              spotId: spot.nearestStation.spotId ?? '',
+              placeId: spot.nearestStation.placeId ?? '',
+              stationType: spot.nearestStation.stationType ?? 'TRAIN',
+              name: spot.nearestStation.name ?? '',
+              walkingTime: spot.nearestStation.walkingTime ?? 0,
+              latitude: spot.nearestStation.latitude ?? 0,
+              longitude: spot.nearestStation.longitude ?? 0,
+            }
+          : undefined,
+        transportName: (spot.transports?.name ?? 'WALKING') as TravelModeType,
+      })),
+      {
+        coord: {
+          id: 'destination',
+          lat: destination.latitude,
+          lng: destination.longitude,
+          name: destination.name ?? '',
         },
-      });
+        nearestStation: destination.nearestStation
+          ? {
+              ...destination.nearestStation,
+              spotId: destination.nearestStation.spotId ?? '',
+              placeId: destination.nearestStation.placeId ?? '',
+              stationType: destination.nearestStation.stationType ?? 'TRAIN',
+              name: destination.nearestStation.name ?? '',
+              walkingTime: destination.nearestStation.walkingTime ?? 0,
+              latitude: destination.nearestStation.latitude ?? 0,
+              longitude: destination.nearestStation.longitude ?? 0,
+            }
+          : undefined,
+        transportName: (destination.transports?.name ?? 'WALKING') as TravelModeType,
+      },
+    ];
 
-      routeResults.push(firstRoute);
+    const totalSegments = nodes.length - 1;
 
-      // 観光地間
-      for (let i = 0; i < spotCoordination.length; i++) {
-        orderNumber += 1;
-        // 最後の観光地は目的地のルートを生成する
-        if (i == spotCoordination.length - 1) {
-          const lastRoute = await calcRoutes(
-            spotCoordination[i],
-            {
-              id: destinationData.name,
-              lat: destinationData.latitude,
-              lng: destinationData.longitude,
-              name: destinationData.name,
-            },
-            targetTransportMethod,
-          );
-          routeResults.push(lastRoute);
-          fields.editSpots(date, spotCoordination[i].id, {
-            transports: {
-              transportMethod: TransportMethods[lastRoute.travelMode].id,
-              name: lastRoute.travelMode || 'DEFAULT',
-              travelTime: lastRoute.duration || '',
-              fromType: TransportNodeType.SPOT,
-              toType: TransportNodeType.SPOT,
-            },
-            order: orderNumber,
-          });
+    const buildAllRoutes = async () => {
+      const newRoutes: DisplayRoute[] = [];
 
-          orderNumber += 1;
-          // 目的のスポットの情報更新
-          fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
-            ...destinationData,
-            transports: {
-              transportMethod: TransportMethods[lastRoute.travelMode].id,
-              name: lastRoute.travelMode || 'DEFAULT',
-              travelTime: lastRoute.duration || '',
-              fromType: TransportNodeType.SPOT,
-              toType: TransportNodeType.DESTINATION,
-            },
-          });
+      for (let i = 0; i < totalSegments; i++) {
+        const from = nodes[i];
+        const to = nodes[i + 1];
+
+        const directRouteType: RouteType =
+          i === 0 ? 'DEPARTURE_TO_SPOT' : i === totalSegments - 1 ? 'SPOT_TO_DESTINATION' : 'SPOT_TO_SPOT';
+
+        if (from.nearestStation && to.nearestStation) {
+          // 最寄駅あり区間：徒歩→駅 と 駅→駅 に分割して描画する
+          try {
+            const toStation = await calcRoutes(
+              { id: `node-${i}`, lat: from.coord.lat, lng: from.coord.lng, name: from.coord.name },
+              {
+                id: `st-from-${i}`,
+                lat: from.nearestStation.latitude ?? 0,
+                lng: from.nearestStation.longitude ?? 0,
+                name: from.nearestStation.name ?? '',
+              },
+              'WALKING',
+            );
+            newRoutes.push({ ...toStation, routeType: 'TO_STATION' });
+          } catch {
+            toast({
+              title: 'ルートの取得に失敗しました',
+              description: 'ルートの取得に失敗しました。再度お試しください。',
+              variant: 'destructive',
+            });
+          }
+
+          try {
+            const stationToStation = await calcRoutes(
+              {
+                id: `st-from-${i}`,
+                lat: from.nearestStation.latitude ?? 0,
+                lng: from.nearestStation.longitude ?? 0,
+                name: from.nearestStation.name ?? '',
+              },
+              {
+                id: `st-to-${i}`,
+                lat: to.nearestStation.latitude ?? 0,
+                lng: to.nearestStation.longitude ?? 0,
+                name: to.nearestStation.name ?? '',
+              },
+              'WALKING',
+            );
+            newRoutes.push({ ...stationToStation, routeType: 'STATION_TO_STATION' });
+          } catch {
+            toast({
+              title: 'ルートの取得に失敗しました',
+              description: 'ルートの取得に失敗しました。再度お試しください。',
+              variant: 'destructive',
+            });
+          }
         } else {
-          const route = await calcRoutes(spotCoordination[i], spotCoordination[i + 1], targetTransportMethod);
-          fields.editSpots(date, spotCoordination[i].id, {
-            transports: {
-              transportMethod: TransportMethods[route.travelMode].id,
-              name: route.travelMode || 'DEFAULT',
-              travelTime: route.duration || '',
-              fromType: TransportNodeType.SPOT,
-              toType: TransportNodeType.SPOT,
-            },
-            order: orderNumber,
-          });
-          routeResults.push(route);
+          // 最寄駅なし区間：直接ルートを描画する
+          try {
+            const direct = await calcRoutes(
+              { id: `node-${i}`, lat: from.coord.lat, lng: from.coord.lng, name: from.coord.name },
+              { id: `node-${i + 1}`, lat: to.coord.lat, lng: to.coord.lng, name: to.coord.name },
+              to.transportName,
+            );
+            newRoutes.push({ ...direct, routeType: directRouteType });
+          } catch {
+            toast({
+              title: 'ルートの取得に失敗しました',
+              description: 'ルートの取得に失敗しました。再度お試しください。',
+              variant: 'destructive',
+            });
+          }
         }
       }
 
-      setRoutes(routeResults);
+      setRoutes(newRoutes);
     };
 
-    calculateRoutes();
-  }, [map]);
+    buildAllRoutes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, date]);
 
   useEffect(() => {
     if (!map || !controlDivRef.current) {
@@ -181,7 +244,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
   // カスタムマーカーアイコン
   const createCustomMarker = (color: string, label: string) => ({
-    path: 2,
+    path: 0, // デフォルトのマーカーを使用
     fillColor: color,
     fillOpacity: 1,
     strokeWeight: 2,
@@ -194,6 +257,28 @@ const TravelMap = ({ date }: TravelMapProps) => {
       fontWeight: 'bold',
     },
   });
+
+  const stationMarkers = (() => {
+    const allNearestStations = [
+      departureData.nearestStation,
+      ...allSpots.map((spot) => spot.nearestStation),
+      destinationData.nearestStation,
+    ].filter((station): station is NonNullable<typeof departureData.nearestStation> => Boolean(station));
+
+    const uniqueStationMap = new Map<string, (typeof allNearestStations)[number]>();
+    for (const station of allNearestStations) {
+      const key = buildStationMarkerKey({
+        placeId: station.placeId ?? '',
+        lat: station.latitude ?? 0,
+        lng: station.longitude ?? 0,
+      });
+      if (!uniqueStationMap.has(key)) {
+        uniqueStationMap.set(key, station);
+      }
+    }
+
+    return [...uniqueStationMap.values()];
+  })();
 
   return (
     <div className="relative">
@@ -262,6 +347,26 @@ const TravelMap = ({ date }: TravelMapProps) => {
           }
         />
 
+        {/* 最寄駅のマーカー（同一 placeId は統合表示） */}
+        {stationMarkers.map((station) => (
+          <Marker
+            key={buildStationMarkerKey({
+              placeId: station.placeId ?? '',
+              lat: station.latitude ?? 0,
+              lng: station.longitude ?? 0,
+            })}
+            position={{ lat: station.latitude ?? 0, lng: station.longitude ?? 0 }}
+            icon={createCustomMarker(STATION_MARKER_COLOR, '駅')}
+            onClick={() =>
+              setSelectedMarker({
+                lat: station.latitude ?? 0,
+                lng: station.longitude ?? 0,
+                name: station.name ?? '',
+              })
+            }
+          />
+        ))}
+
         {/* 選択されたマーカーの情報ウィンドウ */}
         {selectedMarker && (
           <InfoWindow
@@ -280,13 +385,16 @@ const TravelMap = ({ date }: TravelMapProps) => {
             key={index}
             path={route.path}
             options={{
-              strokeColor: index === 0 ? '#FF0000' : index === routes.length - 1 ? '#34A853' : '#4285F4',
+              strokeColor: ROUTE_COLORS[route.routeType],
               strokeOpacity: 0.8,
-              strokeWeight: index === 0 || index === routes.length - 1 ? 3 : 2,
+              strokeWeight: route.routeType === 'TO_STATION' || route.routeType === 'STATION_TO_STATION' ? 3 : 2,
             }}
           />
         ))}
       </GoogleMap>
+      <div className="mt-3">
+        <MapLegend />
+      </div>
     </div>
   );
 };

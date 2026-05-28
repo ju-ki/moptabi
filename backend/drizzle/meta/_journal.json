@@ -36,6 +36,27 @@
       "when": 1775343791466,
       "tag": "0004_drop_spot_and_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776772173796,
+      "tag": "0005_no229",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779021900238,
+      "tag": "0007_ancient_namorita",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0008_extend_nearest_station_fields",
+      "breakpoints": true
     }
   ]
 }

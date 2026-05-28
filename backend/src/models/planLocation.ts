@@ -14,6 +14,10 @@ export const PlanLocationSchema = z.object({
   latitude: z.number().min(-90).max(90).openapi({ example: 35.6895 }),
   longitude: z.number().min(-180).max(180).openapi({ example: 139.6917 }),
   address: z.string().nullable().openapi({ example: '東京都千代田区千代田1-1' }),
+  time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .openapi({ example: '09:00' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
   planId: z.number().nullable().openapi({ example: 1 }),
   createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
@@ -41,6 +45,11 @@ export const CreatePlanLocationSchema = z.object({
     .max(180, { message: '経度は-180から180の範囲で入力してください' })
     .openapi({ example: 139.6917 }),
   address: z.string().max(255).nullable().optional().openapi({ example: '東京都千代田区千代田1-1' }),
+  time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: '時刻はHH:MM形式で入力してください' })
+    .optional()
+    .openapi({ example: '09:00' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
   planId: z.number().nullable().optional().openapi({ example: 1 }),
   userLocationId: z

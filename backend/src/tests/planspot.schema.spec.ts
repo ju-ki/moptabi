@@ -9,6 +9,7 @@ describe('プランに対するスポット情報のスキーマ検証', () => {
       spotId: 'spot_001',
       stayStart: '10:00',
       stayEnd: '12:00',
+      stayDuration: 120,
       memo: 'ここでランチを食べる予定',
       order: 1,
     };
@@ -16,6 +17,12 @@ describe('プランに対するスポット情報のスキーマ検証', () => {
     it('正しいプランスポット情報がスキーマに一致する', () => {
       const result = PlanSpotSchema.safeParse(mockPlanSpot);
       expect(result.success).toBe(true);
+    });
+
+    it('stayDurationがない場合はスキーマ不一致になる', () => {
+      const { stayDuration, ...invalidPlanSpot } = mockPlanSpot;
+      const result = PlanSpotSchema.safeParse(invalidPlanSpot);
+      expect(result.success).toBe(false);
     });
   });
 });

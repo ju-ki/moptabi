@@ -5,7 +5,6 @@ import type { Transport, TripInfo } from '@/types/plan';
 import { PlanListSchema } from './plan';
 
 import type { TripDetailResponseType as TripDetailResponseContractType } from '@shared/trip/types';
-import type { DepartureAndDestinationType } from './planLocation';
 
 export const TripSchema = z.object({
   title: z
@@ -33,32 +32,16 @@ export type TripListItem = Pick<TripType, 'title' | 'imageUrl' | 'startDate' | '
   id: number;
 };
 
-/**
- * Trip詳細APIのスポット型。
- * shared契約を土台にしつつ、frontend側で利用中のTransport型へ合わせる。
- */
-export type TripDetailApiSpot = Omit<TripDetailResponseContractType['plans'][number]['spots'][number], 'transports'> & {
-  transports: Transport;
-};
+/** Trip詳細APIレスポンス型（shared契約型をそのまま利用） */
+export type TripDetailApiResponse = TripDetailResponseContractType;
+export type TripDetailApiPlan = TripDetailApiResponse['plans'][number];
+export type TripDetailApiSpot = TripDetailApiPlan['spots'][number];
 
-/**
- * Trip詳細APIのプラン型。
- * 出発地・目的地は frontend 側で利用している拡張型を維持する。
- */
-export type TripDetailApiPlan = Omit<
-  TripDetailResponseContractType['plans'][number],
-  'spots' | 'departure' | 'destination'
-> & {
-  spots: TripDetailApiSpot[];
-  departure: DepartureAndDestinationType;
-  destination: DepartureAndDestinationType;
-};
-
-/**
- * Trip詳細APIレスポンス型。
- * 契約型との差分を明示しつつ、frontend の補完処理に必要な形へ揃える。
- */
-export type TripDetailApiResponse = Omit<TripDetailResponseContractType, 'tripInfo' | 'plans'> & {
+/** frontend補完後の詳細レスポンス型 */
+export type TripDetailApiResponseEnriched = Omit<TripType, 'tripInfo'> & {
   tripInfo: TripInfo[];
-  plans: TripDetailApiPlan[];
+  plans: Array<{
+    date: string;
+    spots: Array<Omit<TripDetailApiSpot, 'transports'> & { transports: Transport }>;
+  }>;
 };

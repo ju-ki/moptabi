@@ -1,6 +1,8 @@
 import { defaultLocation } from '@/data/constants';
-import { OpeningHoursType } from '@/types/plan';
+import { estimateWalkingTime, calculateDistance } from '@/data/mockNearestStation';
+import { OpeningHoursType, Coordination } from '@/types/plan';
 import { SpotMetaType } from '@/types/spot';
+import { NearestStation } from '@/types/nearestStation';
 
 const getDayName = (day: number): string => {
   const days = ['日', '月', '火', '水', '木', '金', '土', '全', '不明'];
@@ -98,4 +100,85 @@ export async function fetchPlaceById(placeId: string): Promise<google.maps.place
   const place = new Place({ id: placeId });
   await place.fetchFields({ fields: [...PLACE_DETAIL_FIELDS] });
   return place;
+}
+
+/** 最寄駅検索のリクエスト型 */
+export type SearchNearestStationType = {
+  center?: Coordination; // スポットの中心地
+  radius: number; //半径（km）
+  excludeBusStop?: boolean; // バス停を除外するかどうか
+};
+
+/**
+ * Google Maps Places APIを使用して最寄駅を検索する
+ */
+export async function searchNearestStation(params: SearchNearestStationType): Promise<NearestStation[]> {
+  const { Place, SearchNearbyRankPreference } = (await google.maps.importLibrary(
+    'places',
+  )) as google.maps.PlacesLibrary;
+
+  const placeToSpot = (place: google.maps.places.Place): NearestStation => ({
+    spotId: params.center?.id ?? '',
+    placeId: place.id,
+    stationType: place.primaryTypeDisplayName === 'バス停' ? 'BUS' : 'TRAIN',
+    name: place.displayName || '',
+    distance: calculateDistance(
+      params.center?.lat ?? 0,
+      params.center?.lng ?? 0,
+      place.location?.lat() ?? 0,
+      place.location?.lng() ?? 0,
+    ),
+    walkingTime: estimateWalkingTime(
+      calculateDistance(
+        params.center?.lat ?? 0,
+        params.center?.lng ?? 0,
+        place.location?.lat() ?? 0,
+        place.location?.lng() ?? 0,
+      ),
+    ),
+    latitude: place.location?.lat() ?? 0,
+    longitude: place.location?.lng() ?? 0,
+  });
+
+  const fields = [
+    'displayName',
+    'location',
+    'businessStatus',
+    'googleMapsURI',
+    'rating',
+    'types',
+    'primaryType',
+    'primaryTypeDisplayName',
+    'attributions',
+    'regularOpeningHours',
+    'editorialSummary',
+    'websiteURI',
+    'priceLevel',
+    'userRatingCount',
+    'formattedAddress',
+    'addressComponents',
+  ];
+
+  // centerがない場合は空配列を返す
+  if (!params.center) {
+    return [];
+  }
+
+  const center = new google.maps.LatLng(params.center.lat, params.center.lng);
+  const request: google.maps.places.SearchNearbyRequest = {
+    fields: fields,
+    locationRestriction: {
+      center: center,
+      radius: params.radius * 1000, // 半径をメートルに変換
+    },
+    includedTypes: params.excludeBusStop ? ['train_station'] : ['train_station', 'transit_station'],
+    maxResultCount: 5, // 最大取得件数
+    rankPreference: SearchNearbyRankPreference.DISTANCE,
+    language: 'ja',
+    region: 'JP',
+  };
+
+  const { places } = await Place.searchNearby(request);
+
+  return places?.map(placeToSpot) ?? [];
 }

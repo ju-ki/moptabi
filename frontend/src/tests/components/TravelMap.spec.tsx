@@ -43,9 +43,19 @@ vi.mock('@react-google-maps/api', () => ({
     onClick?: () => void;
     icon?: any;
   }) => {
-    return <div data-testid="map-marker" data-lat={position.lat} data-lng={position.lng} onClick={onClick} />;
+    return (
+      <div
+        data-testid="map-marker"
+        data-lat={position.lat}
+        data-lng={position.lng}
+        data-color={icon?.fillColor || ''}
+        onClick={onClick}
+      />
+    );
   },
-  Polyline: () => <div data-testid="map-polyline" />,
+  Polyline: ({ options }: { options?: { strokeColor?: string } }) => (
+    <div data-testid="map-polyline" data-stroke-color={options?.strokeColor || ''} />
+  ),
   InfoWindow: ({ children, onCloseClick }: { children?: React.ReactNode; onCloseClick?: () => void }) => (
     <div data-testid="info-window">
       {children}
@@ -115,6 +125,7 @@ const createMockSpot = (id: string, name: string) => ({
     fromType: TransportNodeType.SPOT,
     toType: TransportNodeType.SPOT,
   },
+  nearestStation: undefined,
 });
 
 const createMockFields = (spots: ReturnType<typeof createMockSpot>[] = [], overrides: any = {}) => ({
@@ -187,6 +198,115 @@ describe('TravelMap', () => {
 
       expect(calcRoutes).toHaveBeenCalledTimes(3);
     });
+
+    // SPEC: PC-TM-001
+    it('最寄駅あり区間で TO_STATION と STATION_TO_STATION のルートを描画する', async () => {
+      const spots = [
+        {
+          ...createMockSpot('spot-1', '東京タワー'),
+          nearestStation: {
+            placeId: 'st-a',
+            name: '赤羽橋駅',
+            walkingTime: 4,
+            latitude: 35.655,
+            longitude: 139.745,
+          },
+        },
+        {
+          ...createMockSpot('spot-2', '浅草寺'),
+          nearestStation: {
+            placeId: 'st-b',
+            name: '浅草駅',
+            walkingTime: 5,
+            latitude: 35.711,
+            longitude: 139.797,
+          },
+        },
+      ];
+
+      (useStoreForPlanning as any).mockReturnValue(
+        createMockFields(spots as any, {
+          getDepartureAndDestination: vi.fn((date: string, type: TransportNodeType) => {
+            if (type === TransportNodeType.DEPARTURE) {
+              return {
+                ...defaultDeparture,
+                nearestStation: {
+                  placeId: 'st-dep',
+                  name: '東京駅',
+                  walkingTime: 3,
+                  latitude: 35.6812,
+                  longitude: 139.7671,
+                },
+              };
+            }
+            return {
+              ...defaultDestination,
+              nearestStation: {
+                placeId: 'st-dst',
+                name: '浅草駅',
+                walkingTime: 4,
+                latitude: 35.712,
+                longitude: 139.796,
+              },
+            };
+          }),
+        }),
+      );
+
+      render(<TravelMap date="2025-12-20" />);
+
+      act(() => {
+        capturedOnLoad?.(mockMap as any);
+      });
+
+      await waitFor(() => {
+        const polylines = screen.getAllByTestId('map-polyline');
+        expect(polylines.length).toBeGreaterThan(0);
+      });
+
+      const strokeColors = screen.getAllByTestId('map-polyline').map((line) => line.getAttribute('data-stroke-color'));
+      expect(strokeColors).toContain('#FACC15');
+      expect(strokeColors).toContain('#F97316');
+    });
+
+    // SPEC: PC-TM-002
+    it('同一placeIdの最寄駅マーカーを1つだけ表示する', async () => {
+      const sharedStation = {
+        placeId: 'shared-station',
+        name: '上野駅',
+        walkingTime: 5,
+        latitude: 35.713,
+        longitude: 139.777,
+      };
+
+      const spots = [
+        {
+          ...createMockSpot('spot-1', '東京タワー'),
+          nearestStation: sharedStation,
+        },
+        {
+          ...createMockSpot('spot-2', '浅草寺'),
+          nearestStation: sharedStation,
+        },
+      ];
+
+      (useStoreForPlanning as any).mockReturnValue(
+        createMockFields(spots as any, {
+          getDepartureAndDestination: vi.fn((date: string, type: TransportNodeType) => {
+            if (type === TransportNodeType.DEPARTURE) return defaultDeparture;
+            return defaultDestination;
+          }),
+        }),
+      );
+
+      render(<TravelMap date="2025-12-20" />);
+
+      const stationMarkers = screen
+        .getAllByTestId('map-marker')
+        .filter((marker) => marker.getAttribute('data-color') === '#F59E0B');
+
+      expect(stationMarkers).toHaveLength(1);
+    });
   });
 
   describe('マーカークリック', () => {
@@ -221,6 +341,130 @@ describe('TravelMap', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('info-window')).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('複数日対応', () => {
+    it('日付が変更されるとルートが再計算されること', async () => {
+      const spots = [createMockSpot('spot-1', '東京タワー'), createMockSpot('spot-2', '浅草寺')];
+      (useStoreForPlanning as any).mockReturnValue(createMockFields(spots));
+
+      const { rerender } = render(<TravelMap date="2025-12-20" />);
+
+      act(() => {
+        capturedOnLoad?.(mockMap as any);
+      });
+
+      await waitFor(() => {
+        expect(calcRoutes).toHaveBeenCalledTimes(3);
+      });
+
+      // 日付を変更して再レンダリング
+      vi.clearAllMocks();
+      rerender(<TravelMap date="2025-12-21" />);
+
+      act(() => {
+        capturedOnLoad?.(mockMap as any);
+      });
+
+      await waitFor(() => {
+        // 2日目も3本のルートが計算される（出発地→スポット1→スポット2→目的地 = 3セグメント）
+        expect(calcRoutes).toHaveBeenCalledTimes(3);
+      });
+    });
+
+    it('複数日プランで異なるスポット数のマーカーが表示される', async () => {
+      const spotsDay1 = [createMockSpot('spot-1', '東京タワー')];
+      const spotsDay2 = [createMockSpot('spot-a', '浅草寺'), createMockSpot('spot-b', '上野公園')];
+
+      const mockStoreWithMultipleDays = {
+        getSpotInfo: vi
+          .fn()
+          .mockImplementation((date: string) =>
+            date === '2025-12-20' ? spotsDay1 : date === '2025-12-21' ? spotsDay2 : [],
+          ),
+        getDepartureAndDestination: vi.fn((date: string, type: TransportNodeType) => {
+          if (type === TransportNodeType.DEPARTURE) return defaultDeparture;
+          return defaultDestination;
+        }),
+        getSpotCoordination: vi.fn().mockImplementation((date: string) => ({
+          spotCoordination:
+            date === '2025-12-20'
+              ? spotsDay1.map((s) => ({
+                  id: s.id,
+                  location: { lat: s.location.lat, lng: s.location.lng, name: s.location.name },
+                }))
+              : spotsDay2.map((s) => ({
+                  id: s.id,
+                  location: { lat: s.location.lat, lng: s.location.lng, name: s.location.name },
+                })),
+        })),
+        getTripInfo: vi.fn().mockReturnValue({ transportationMethod: 1 }),
+        setDepartureAndDestination: vi.fn(),
+        editSpots: vi.fn(),
+        plans: [],
+      };
+
+      (useStoreForPlanning as any).mockReturnValue(mockStoreWithMultipleDays);
+
+      const { rerender } = render(<TravelMap date="2025-12-20" />);
+
+      // 1日目：出発地 + スポット1 + 目的地 = 3マーカー
+      expect(screen.getAllByTestId('map-marker')).toHaveLength(3);
+
+      // 2日目に変更
+      rerender(<TravelMap date="2025-12-21" />);
+
+      // 2日目：出発地 + スポット2 + 目的地 = 4マーカー
+      expect(screen.getAllByTestId('map-marker')).toHaveLength(4);
+    });
+
+    it('複数日でも日付ごとに独立した出発地・目的地が表示される', async () => {
+      const departureDay1 = {
+        ...defaultDeparture,
+        name: '新宿駅',
+        latitude: 35.6895,
+        longitude: 139.7037,
+      };
+
+      const departureDay2 = {
+        ...defaultDeparture,
+        name: '東京駅',
+        latitude: 35.6762,
+        longitude: 139.7674,
+      };
+
+      const mockStoreMultipleDepartures = {
+        getSpotInfo: vi.fn().mockReturnValue([]),
+        getDepartureAndDestination: vi.fn().mockImplementation((date: string, type: TransportNodeType) => {
+          if (type === TransportNodeType.DEPARTURE) {
+            return date === '2025-12-20' ? departureDay1 : departureDay2;
+          }
+          return defaultDestination;
+        }),
+        getSpotCoordination: vi.fn().mockReturnValue({ spotCoordination: [] }),
+        getTripInfo: vi.fn().mockReturnValue({ transportationMethod: 1 }),
+        setDepartureAndDestination: vi.fn(),
+        editSpots: vi.fn(),
+        plans: [],
+      };
+
+      (useStoreForPlanning as any).mockReturnValue(mockStoreMultipleDepartures);
+
+      const { rerender } = render(<TravelMap date="2025-12-20" />);
+
+      let markers = screen.getAllByTestId('map-marker');
+      // 1日目の出発地マーカーの緯度経度を確認
+      expect(markers[0].getAttribute('data-lat')).toBe(String(departureDay1.latitude));
+      expect(markers[0].getAttribute('data-lng')).toBe(String(departureDay1.longitude));
+
+      // 2日目に変更
+      rerender(<TravelMap date="2025-12-21" />);
+
+      markers = screen.getAllByTestId('map-marker');
+      // 2日目の出発地マーカーの緯度経度を確認
+      expect(markers[0].getAttribute('data-lat')).toBe(String(departureDay2.latitude));
+      expect(markers[0].getAttribute('data-lng')).toBe(String(departureDay2.longitude));
     });
   });
 });

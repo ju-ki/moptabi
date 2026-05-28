@@ -1,11 +1,29 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
-import { getDbFromContext, trip, tripInfo, plan, planSpot, transport, planLocation, userLocation } from '@db';
+import {
+  getDbFromContext,
+  trip,
+  tripInfo,
+  plan,
+  planSpot,
+  transport,
+  planLocation,
+  planLocationNearestStation,
+  userLocation,
+  planSpotNearestStation,
+  spotRoute,
+} from '@db';
 
 import { getUserId } from '@/middleware/auth';
 
-import { DepartureAndDestinationType, TransportType, TripDetailResponseType, TripSchema } from '../models/trip';
+import {
+  DepartureAndDestinationType,
+  TransportType,
+  TripDetailResponseSchema,
+  TripDetailResponseType,
+  TripSchema,
+} from '../models/trip';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
 
 /**
@@ -15,6 +33,20 @@ const getMeta = (spotData: { meta?: unknown[] | unknown } | null | undefined) =>
   if (!spotData) return null;
   return Array.isArray(spotData.meta) ? spotData.meta[0] || null : spotData.meta || null;
 };
+
+const DEFAULT_DEPARTURE_TIME = '09:00';
+const DEFAULT_DESTINATION_TIME = '18:00';
+
+function parseTimeToMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function calcStayDuration(stayStart: string, stayEnd: string): number {
+  const startMinutes = parseTimeToMinutes(stayStart);
+  const endMinutes = parseTimeToMinutes(stayEnd);
+  return Math.max(endMinutes - startMinutes, 0);
+}
 
 export const getTripHandler = {
   // 全ての旅行計画を取得
@@ -63,7 +95,11 @@ export const getTripHandler = {
         tripInfos: true,
         plans: {
           with: {
-            planSpots: true,
+            planSpots: {
+              with: {
+                nearestStations: true,
+              },
+            },
           },
         },
       },
@@ -83,6 +119,9 @@ export const getTripHandler = {
 
       const rawPlanLocationData = await db.query.planLocation.findMany({
         where: eq(planLocation.planId, plan.id),
+        with: {
+          nearestStation: true,
+        },
       });
 
       const transportData = rawTransportData.map((t) => ({
@@ -114,12 +153,23 @@ export const getTripHandler = {
           latitude: pl.latitude,
           longitude: pl.longitude,
           address: pl.address,
+          time: pl.time,
           label: null,
           isDefault: false,
           locationType: pl.locationType as 'DEPARTURE' | 'DESTINATION',
           usageCount: 0,
           userLocationId: null,
           planLocationId: pl.id,
+          nearestStation:
+            pl.nearestStation && pl.nearestStation.length > 0
+              ? {
+                  placeId: pl.nearestStation[0].placeId,
+                  stationType: pl.nearestStation[0].stationType as 'BUS' | 'TRAIN' | 'OTHER',
+                  transitTime: pl.nearestStation[0].transitTime ?? undefined,
+                  scheduledDepartureTime: pl.nearestStation[0].scheduledDepartureTime ?? undefined,
+                  memo: pl.nearestStation[0].memo ?? undefined,
+                }
+              : null,
           transports: relatedTransport
             ? {
                 transportMethod: relatedTransport.transportMethod,
@@ -151,29 +201,45 @@ export const getTripHandler = {
         date: plan.date,
         spots: plan.planSpots
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-          .map((planSpot) => ({
-            id: planSpot.spotId, // placeIdのみ
-            stayStart: planSpot.stayStart,
-            stayEnd: planSpot.stayEnd,
-            memo: planSpot.memo || '',
-            order: planSpot.order,
-            transports: transportDataList[plan.date]?.find(
-              (t) => t.fromType === 'SPOT' && t.toType === 'SPOT' && t.fromSpotId == planSpot.id,
-            ) ?? {
-              transportMethod: 0,
-              fromType: 'SPOT' as const,
-              toType: 'SPOT' as const,
-              travelTime: '',
-              cost: 0,
-              name: '',
-            },
-            nearestStation: null,
-          })),
+          .map((planSpot) => {
+            // 最寄駅情報を取得（複数存在する可能性を想定し、最初のものを使用）
+            const nearestStationData =
+              planSpot.nearestStations && planSpot.nearestStations.length > 0 ? planSpot.nearestStations[0] : null;
+
+            return {
+              id: planSpot.spotId, // placeIdのみ
+              stayStart: planSpot.stayStart,
+              stayEnd: planSpot.stayEnd,
+              stayDuration: planSpot.stayDuration,
+              memo: planSpot.memo || '',
+              order: planSpot.order,
+              transports: transportDataList[plan.date]?.find(
+                (t) => t.fromType === 'SPOT' && t.toType === 'SPOT' && t.fromSpotId == planSpot.id,
+              ) ?? {
+                transportMethod: 0,
+                fromType: 'SPOT' as const,
+                toType: 'SPOT' as const,
+                travelTime: '',
+                cost: 0,
+                name: '',
+              },
+              nearestStation: nearestStationData
+                ? {
+                    placeId: nearestStationData.placeId,
+                    stationType: nearestStationData.stationType as 'BUS' | 'TRAIN' | 'OTHER',
+                    transitTime: nearestStationData.transitTime ?? undefined,
+                    scheduledDepartureTime: nearestStationData.scheduledDepartureTime ?? undefined,
+                    memo: nearestStationData.memo ?? undefined,
+                  }
+                : null,
+            };
+          }),
         departure: planLocationDataList[plan.date]?.find((pl) => pl.locationType === 'DEPARTURE') ?? {
           name: '',
           latitude: 0,
           longitude: 0,
           address: null,
+          time: DEFAULT_DEPARTURE_TIME,
           label: null,
           isDefault: false,
           locationType: 'DEPARTURE' as const,
@@ -187,6 +253,7 @@ export const getTripHandler = {
           latitude: 0,
           longitude: 0,
           address: null,
+          time: DEFAULT_DESTINATION_TIME,
           label: null,
           isDefault: false,
           locationType: 'DESTINATION' as const,
@@ -198,7 +265,8 @@ export const getTripHandler = {
       })),
     };
 
-    return c.json(formattedTrip, 200);
+    const responseBody = TripDetailResponseSchema.parse(formattedTrip);
+    return c.json(responseBody, 200);
   },
 
   deleteTrip: async (c: Context) => {
@@ -291,7 +359,7 @@ export const getTripHandler = {
           tripId: newTrip.id,
           date: info.date,
           genreId: info.genreId,
-          transportationMethods: info.transportationMethod,
+          transportationMethods: info.transportationMethod ?? 1,
           memo: info.memo ?? '',
         });
       }
@@ -335,6 +403,7 @@ export const getTripHandler = {
               spotId: spotData.id,
               stayStart: spotData.stayStart,
               stayEnd: spotData.stayEnd,
+              stayDuration: spotData.stayDuration ?? calcStayDuration(spotData.stayStart, spotData.stayEnd),
               memo: spotData.memo ?? null,
               order: spotData.order,
             })
@@ -352,6 +421,7 @@ export const getTripHandler = {
             latitude: planData.departure.latitude,
             longitude: planData.departure.longitude,
             address: planData.departure.address ?? null,
+            time: planData.departure.time ?? DEFAULT_DEPARTURE_TIME,
             locationType: 'DEPARTURE',
           })
           .returning();
@@ -365,9 +435,128 @@ export const getTripHandler = {
             latitude: planData.destination.latitude,
             longitude: planData.destination.longitude,
             address: planData.destination.address ?? null,
+            time: planData.destination.time ?? DEFAULT_DESTINATION_TIME,
             locationType: 'DESTINATION',
           })
           .returning();
+
+        if (planData.departure.nearestStation?.placeId && planData.departure.nearestStation?.stationType) {
+          await executor.insert(planLocationNearestStation).values({
+            planLocationId: newDeparturePlanLocation.id,
+            placeId: planData.departure.nearestStation.placeId,
+            stationType: planData.departure.nearestStation.stationType,
+            transitTime: planData.departure.nearestStation.transitTime ?? null,
+            scheduledDepartureTime: planData.departure.nearestStation.scheduledDepartureTime ?? null,
+            memo: planData.departure.nearestStation.memo ?? planData.departure.nearestStation.transitMemo ?? null,
+          });
+        }
+
+        if (planData.destination.nearestStation?.placeId && planData.destination.nearestStation?.stationType) {
+          await executor.insert(planLocationNearestStation).values({
+            planLocationId: newDestinationPlanLocation.id,
+            placeId: planData.destination.nearestStation.placeId,
+            stationType: planData.destination.nearestStation.stationType,
+            transitTime: planData.destination.nearestStation.transitTime ?? null,
+            scheduledDepartureTime: planData.destination.nearestStation.scheduledDepartureTime ?? null,
+            memo: planData.destination.nearestStation.memo ?? planData.destination.nearestStation.transitMemo ?? null,
+          });
+        }
+
+        const planSpotIdByRef = new Map<string, number>();
+        for (const [index, createdPlanSpot] of createdPlanSpots.entries()) {
+          const originalSpot = planData.spots[index];
+          const spotRef = originalSpot.clientRef ?? originalSpot.id;
+          planSpotIdByRef.set(spotRef, createdPlanSpot.id);
+        }
+
+        // spots[].nearestStation から planSpotNearestStations を自動生成
+        const autoGeneratedNearestStations: typeof planData.planSpotNearestStations = [];
+        for (const [index, spotData] of planData.spots.entries()) {
+          if (spotData.nearestStation && spotData.nearestStation.placeId && spotData.nearestStation.stationType) {
+            const spotRef = spotData.clientRef ?? spotData.id;
+            autoGeneratedNearestStations.push({
+              planSpotRef: spotRef,
+              placeId: spotData.nearestStation.placeId,
+              stationType: spotData.nearestStation.stationType,
+              transitTime: spotData.nearestStation.transitTime,
+              scheduledDepartureTime: spotData.nearestStation.scheduledDepartureTime,
+              memo: spotData.nearestStation.memo ?? spotData.nearestStation.transitMemo,
+              transitMemo: spotData.nearestStation.transitMemo,
+            });
+          }
+        }
+
+        // 既存の planSpotNearestStations と自動生成されたものをマージ
+        const allNearestStations = [
+          ...(autoGeneratedNearestStations || []),
+          ...(planData.planSpotNearestStations || []),
+        ];
+
+        const nearestStationIdByRef = new Map<string, number>();
+        if (allNearestStations && allNearestStations.length > 0) {
+          for (const stationData of allNearestStations) {
+            const targetPlanSpotId = planSpotIdByRef.get(stationData.planSpotRef);
+            if (!targetPlanSpotId) {
+              throw new HTTPException(400, { message: `Unknown planSpotRef: ${stationData.planSpotRef}` });
+            }
+
+            const [createdStation] = await executor
+              .insert(planSpotNearestStation)
+              .values({
+                planSpotId: targetPlanSpotId,
+                placeId: stationData.placeId,
+                stationType: stationData.stationType,
+                transitTime: stationData.transitTime ?? null,
+                scheduledDepartureTime: stationData.scheduledDepartureTime ?? null,
+                memo: stationData.memo ?? stationData.transitMemo ?? null,
+              })
+              .returning();
+
+            nearestStationIdByRef.set(stationData.planSpotRef, createdStation.id);
+          }
+        }
+
+        if (planData.spotRoutes && planData.spotRoutes.length > 0) {
+          for (const routeData of planData.spotRoutes) {
+            const fromPlanSpotId = planSpotIdByRef.get(routeData.fromPlanSpotRef);
+            const toPlanSpotId = planSpotIdByRef.get(routeData.toPlanSpotRef);
+
+            if (!fromPlanSpotId || !toPlanSpotId) {
+              throw new HTTPException(400, {
+                message: `Unknown plan spot route refs: ${routeData.fromPlanSpotRef} -> ${routeData.toPlanSpotRef}`,
+              });
+            }
+
+            if (routeData.fromNearestStationRef && !nearestStationIdByRef.get(routeData.fromNearestStationRef)) {
+              throw new HTTPException(400, {
+                message: `Unknown fromNearestStationRef: ${routeData.fromNearestStationRef}`,
+              });
+            }
+            if (routeData.toNearestStationRef && !nearestStationIdByRef.get(routeData.toNearestStationRef)) {
+              throw new HTTPException(400, {
+                message: `Unknown toNearestStationRef: ${routeData.toNearestStationRef}`,
+              });
+            }
+
+            await executor.insert(spotRoute).values({
+              planId: newPlan.id,
+              fromPlanSpotId,
+              toPlanSpotId,
+              transportType: routeData.transportType,
+              fromNearestStationId: routeData.fromNearestStationRef
+                ? (nearestStationIdByRef.get(routeData.fromNearestStationRef) ?? null)
+                : null,
+              toNearestStationId: routeData.toNearestStationRef
+                ? (nearestStationIdByRef.get(routeData.toNearestStationRef) ?? null)
+                : null,
+              transitTime: routeData.transitTime,
+              waitingTime: routeData.waitingTime,
+              scheduledDepartureTime: routeData.scheduledDepartureTime ?? null,
+              memo: routeData.memo ?? null,
+            });
+          }
+        }
+
         // 最初のスポットへの交通手段（出発地から）- スポットがある場合のみ
         if (planData.departure.transports && createdPlanSpots.length > 0) {
           const departureTransport = planData.departure.transports;
