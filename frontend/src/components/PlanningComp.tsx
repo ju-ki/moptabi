@@ -8,12 +8,11 @@ import Transportation from './Transportation';
 import Departure from './Departure';
 import { Textarea } from './ui/textarea';
 import Destination from './Destination';
-import GanttChart from './GanttChart';
-import { Button } from './ui/button';
 import PlanningButton from './PlanningButton';
 import TravelPlan from './TravelPlan';
 import SpotSelectionDialog from './spot-selection/SpotSelectionDialog';
 import LocationLinkCheckbox from './LocationLinkCheckbox';
+import { SpotSettingList } from './travel-plan/SpotSettingEditor';
 
 const PlanningComp = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
@@ -66,10 +65,10 @@ const PlanningComp = ({ date }: { date: string }) => {
       <div className="space-y-4">
         <SpotSelectionDialog date={date} />
       </div>
-      {/* タイムライン */}
+      {/* スポット設定 */}
       <div className="space-y-4">
         <div className="w-full max-w-6xl mx-auto p-4">
-          <GanttChart date={date} />
+          <SpotSettingList date={date} />
         </div>
       </div>
 

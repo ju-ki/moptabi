@@ -19,6 +19,10 @@ function generateDefaultName(locationType: LocationType): string {
   return `${today}_${suffix}`;
 }
 
+function defaultTimeByLocationType(locationType: LocationType): string {
+  return locationType === 'DESTINATION' ? '18:00' : '09:00';
+}
+
 /**
  * 出発地・目的地の候補を取得
  * UserLocation（お気に入り）とPlanLocation（履歴）の両方を返す
@@ -130,6 +134,7 @@ export async function createOrUpdatePlanLocation(
         latitude: data.latitude,
         longitude: data.longitude,
         address: data.address ?? null,
+        time: data.time ?? defaultTimeByLocationType(data.locationType),
         updatedAt: new Date().toISOString(),
       })
       .where(and(eq(planLocation.id, data.planLocationId), eq(planLocation.userId, userId)))
@@ -147,6 +152,7 @@ export async function createOrUpdatePlanLocation(
       latitude: data.latitude,
       longitude: data.longitude,
       address: data.address ?? null,
+      time: data.time ?? defaultTimeByLocationType(data.locationType),
       locationType: data.locationType,
       planId: data.planId ?? null,
     })

@@ -33,6 +33,7 @@ const createMockSpot = (overrides: Partial<Spot> = {}): Spot => ({
   },
   stayStart: '10:00',
   stayEnd: '12:00',
+  stayDuration: 120,
   transports: {
     transportMethod: 1,
     name: 'TRANSIT',
@@ -80,6 +81,7 @@ const createDepartureSpot = (): Spot => ({
   },
   stayStart: '09:00',
   stayEnd: '09:00',
+  stayDuration: 0,
   transports: {
     transportMethod: 1,
     name: 'TRANSIT',
@@ -102,6 +104,7 @@ const createDestinationSpot = (): Spot => ({
   },
   stayStart: '18:00',
   stayEnd: '18:00',
+  stayDuration: 0,
   transports: {
     transportMethod: 1,
     name: 'TRANSIT',
@@ -363,6 +366,118 @@ describe('SpotInfoCard', () => {
       render(<SpotInfoCard spot={spot} />);
 
       expect(screen.getByText(/徒歩5分/)).toBeInTheDocument();
+    });
+
+    it('stationTypeがOTHERの場合は?アイコンが表示される', () => {
+      const spot = createMockSpot({
+        nearestStation: {
+          name: '不明な乗り場',
+          placeId: 'station-other',
+          stationType: 'OTHER',
+          walkingTime: 8,
+          latitude: 35.0,
+          longitude: 139.0,
+          transitTime: 12,
+          scheduledDepartureTime: '09:15',
+        },
+      });
+
+      render(<SpotInfoCard spot={spot} />);
+
+      expect(screen.getByTestId('nearest-station-type-icon')).toHaveTextContent('?');
+    });
+
+    it('最寄駅の発車時間が未設定の場合は--:--を表示する', () => {
+      const spot = createMockSpot({
+        nearestStation: {
+          name: '赤羽橋駅',
+          placeId: 'station-no-time',
+          stationType: 'TRAIN',
+          walkingTime: 5,
+          latitude: 35.6565,
+          longitude: 139.7485,
+          transitTime: 10,
+        },
+      });
+
+      render(<SpotInfoCard spot={spot} />);
+
+      expect(screen.getByTestId('nearest-station-departure-time')).toHaveTextContent('--:--');
+    });
+
+    it('最寄駅の発車時間・乗車時間・メモは次スポット情報を優先表示する', () => {
+      const spot = createMockSpot({
+        nearestStation: {
+          name: '赤羽橋駅',
+          placeId: 'station-current',
+          stationType: 'TRAIN',
+          walkingTime: 5,
+          latitude: 35.6565,
+          longitude: 139.7485,
+          transitTime: 3,
+          scheduledDepartureTime: '08:00',
+          transitMemo: '現在スポット側メモ',
+        },
+      });
+
+      render(
+        <SpotInfoCard
+          spot={spot}
+          nextNearestStation={{
+            placeId: 'station-next',
+            stationType: 'TRAIN',
+            name: '次スポット側の駅',
+            walkingTime: 7,
+            transitTime: 21,
+            scheduledDepartureTime: '11:45',
+            transitMemo: '次スポット側メモ',
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId('nearest-station-departure-time')).toHaveTextContent('11:45');
+      expect(screen.getByTestId('nearest-station-transit-time')).toHaveTextContent('21分');
+      expect(screen.getByTestId('nearest-station-memo')).toHaveTextContent('次スポット側メモ');
+    });
+
+    it('最寄駅メモが空文字の場合は表示しない', () => {
+      const spot = createMockSpot({
+        nearestStation: {
+          name: '赤羽橋駅',
+          placeId: 'station-empty-memo',
+          stationType: 'TRAIN',
+          walkingTime: 5,
+          latitude: 35.6565,
+          longitude: 139.7485,
+          transitTime: 10,
+          transitMemo: '',
+        },
+      });
+
+      render(<SpotInfoCard spot={spot} />);
+
+      expect(screen.queryByTestId('nearest-station-memo')).not.toBeInTheDocument();
+    });
+
+    it('最寄駅メモの改行を維持して表示する', () => {
+      const spot = createMockSpot({
+        nearestStation: {
+          name: '赤羽橋駅',
+          placeId: 'station-multi-line-memo',
+          stationType: 'TRAIN',
+          walkingTime: 5,
+          latitude: 35.6565,
+          longitude: 139.7485,
+          transitTime: 10,
+          transitMemo: '1番線\n後方車両が近い',
+        },
+      });
+
+      render(<SpotInfoCard spot={spot} />);
+
+      const memo = screen.getByTestId('nearest-station-memo');
+      expect(memo).toHaveClass('whitespace-pre-wrap');
+      expect(memo).toHaveTextContent(/1番線\s+後方車両が近い/);
     });
 
     it('最寄駅情報がない場合は表示されない', () => {

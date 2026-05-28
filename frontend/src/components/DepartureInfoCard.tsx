@@ -4,23 +4,30 @@ import { Home } from 'lucide-react';
 
 import { convertHHmmToJpFormat } from '@/lib/utils';
 import { DepartureAndDestinationType } from '@/models/planLocation';
+import { TravelModeType } from '@/types/plan';
+
+import { transportIcons } from './TravelPlan';
+import { NearestStationDetail } from './NearestStationDetail';
 
 interface DepartureAndDestinationCardProps {
   departure: DepartureAndDestinationType;
 }
 
 export function DepartureInfoCard({ departure }: DepartureAndDestinationCardProps) {
+  const transportIcon =
+    transportIcons[departure.transports?.name as TravelModeType]?.icon ?? transportIcons.DEFAULT?.icon;
+
   return (
-    <div className="relative flex gap-10 mb-4 items-center">
-      <div className="flex flex-col items-center flex-shrink-0 relative">
+    <div className="relative flex gap-10 items-center pb-6">
+      <div className="absolute left-8 top-1/2 bottom-0 w-0.5 bg-gray-300" aria-hidden="true"></div>
+      <div className="flex flex-col items-center flex-shrink-0 relative w-16 z-10">
         <div className="w-16 h-16 rounded-full bg-gray-500 text-white flex items-center justify-center shadow-md z-10">
           <Home className="w-6 h-6" />
         </div>
         <span className="text-xs text-gray-600 mt-1 text-center">出発</span>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-0.5 h-[150%] bg-gray-300 z-0"></div>
 
         <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
-          🚗
+          <span data-testid="timeline-transport-icon">{transportIcon}</span>
           <span className="font-semibold">
             {departure &&
               departure.transports &&
@@ -38,6 +45,13 @@ export function DepartureInfoCard({ departure }: DepartureAndDestinationCardProp
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-bold text-gray-900 truncate">{departure.name}</h3>
+              {departure.time && <p className="text-sm text-gray-600">出発時刻: {departure.time}</p>}
+              {departure.nearestStation && (
+                <NearestStationDetail
+                  nearestStation={departure.nearestStation}
+                  className="mt-2 w-fit max-w-full rounded-md bg-gray-50 p-2"
+                />
+              )}
             </div>
           </div>
         </div>

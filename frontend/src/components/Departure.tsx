@@ -14,6 +14,7 @@ import { Input } from './ui/input';
 import { Checkbox } from './ui/checkbox';
 import AddressSearch from './AddressSearch';
 import SpotLocationSelector from './SpotLocationSelector';
+import TimeSetting from './travel-plan/TimeSetting';
 
 const containerStyle = {
   width: '100%',
@@ -148,8 +149,8 @@ const Departure = ({ date }: { date: string }) => {
       </Popover>
       <div className="space-y-4 p-4">
         <div>
-          <Label htmlFor="destination-input" className="block text-lg font-semibold text-gray-800">
-            出発地を地図から選択する
+          <Label htmlFor="destination-input" className="block text-sm  text-gray-800">
+            出発地の名前を設定(空の場合は出発地_{date}になります)
           </Label>
           <Input
             id="destination-input"
@@ -169,6 +170,9 @@ const Departure = ({ date }: { date: string }) => {
             }}
           />
         </div>
+
+        {/* 時間設定 */}
+        <TimeSetting type={TransportNodeType.DEPARTURE} date={date} />
 
         {/* 住所検索 */}
         <AddressSearch

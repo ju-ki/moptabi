@@ -18,6 +18,7 @@ const mockPlanLocation = {
   latitude: 35.6895,
   longitude: 139.6917,
   address: '東京都千代田区千代田1-1',
+  time: '09:00',
   locationType: 'DEPARTURE' as const,
   planId: 1,
   createdAt: new Date().toISOString(),
@@ -48,6 +49,12 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
     it('正しいPlanLocationレスポンスがスキーマに一致する', () => {
       const result = PlanLocationSchema.safeParse(mockPlanLocation);
       expect(result.success).toBe(true);
+    });
+
+    it('timeがない場合はスキーマ不一致になる', () => {
+      const { time, ...invalidData } = mockPlanLocation;
+      const result = PlanLocationSchema.safeParse(invalidData);
+      expect(result.success).toBe(false);
     });
 
     it('addressがnullでもスキーマに一致する', () => {
@@ -136,6 +143,7 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
       const mockRequest = {
         latitude: 35.6812,
         longitude: 139.7671,
+        time: '18:00',
         locationType: 'DESTINATION',
       };
       const result = CreatePlanLocationSchema.safeParse(mockRequest);
@@ -146,6 +154,7 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
       const mockRequest = {
         latitude: 35.6812,
         longitude: 139.7671,
+        time: '09:00',
         locationType: 'DEPARTURE',
       };
       const result = CreatePlanLocationSchema.safeParse(mockRequest);

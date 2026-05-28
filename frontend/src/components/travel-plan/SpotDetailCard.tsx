@@ -1,10 +1,12 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { MapPin, Clock, Train, FootprintsIcon, X, Car, Bike, CircleHelp, ExternalLink, Calendar } from 'lucide-react';
 import Image from 'next/image';
 
-import { Spot, TransportNodeType, TravelModeType } from '@/types/plan';
+import { Spot, TravelModeType } from '@/types/plan';
 import { placeTypeMap, SpotMakerColors } from '@/data/constants';
+import { useStoreForPlanning } from '@/lib/plan';
 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -16,7 +18,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '..
  */
 const transportIcons: Record<TravelModeType | 'DEFAULT', { icon: JSX.Element; label: string }> = {
   WALKING: { icon: <FootprintsIcon className="w-5 h-5 text-yellow-500" />, label: '徒歩' },
-  TRANSIT: { icon: <Train className="w-5 h-5 text-blue-500" />, label: '電車' },
+  TRANSIT: { icon: <Train className="w-5 h-5 text-blue-500" />, label: '最寄駅/バス停経由' },
   DRIVING: { icon: <Car className="w-5 h-5 text-gray-700" />, label: '車' },
   BICYCLING: { icon: <Bike className="w-5 h-5 text-green-500" />, label: '自転車' },
   DEFAULT: { icon: <CircleHelp className="w-5 h-5 text-gray-400" />, label: '不明' },
@@ -26,14 +28,23 @@ const transportIcons: Record<TravelModeType | 'DEFAULT', { icon: JSX.Element; la
  * SpotDetailCardコンポーネントのプロパティ
  */
 interface SpotDetailCardProps {
+  date: string;
   /** スポット情報 */
   spot: Spot;
+  /** 次のスポット（最寄駅分割表示に利用） */
+  nextSpot: Spot;
   /** 表示インデックス（0始まり） */
   index: number;
   /** 削除ボタン押下時のコールバック */
   onDelete: (id: string) => void;
   /** メモ変更時のコールバック */
   onMemoChange: (memo: string) => void;
+  /** 発車時間候補（採用外） */
+  departureTimeCandidates?: string[];
+  /** 採用中の発車時間（未指定時はrouteToNextから推定） */
+  selectedDepartureTime?: string;
+  /** 発車時間切替時のコールバック */
+  onDepartureTimeChange?: (time: string) => void;
 }
 
 /**
@@ -55,7 +66,43 @@ interface SpotDetailCardProps {
  * - 各スポットの間の移動時間と交通手段表示
  * - 各スポットの個別削除機能
  */
-export default function SpotDetailCard({ spot, index, onDelete, onMemoChange }: SpotDetailCardProps) {
+export default function SpotDetailCard({
+  date,
+  spot,
+  nextSpot,
+  index,
+  onDelete,
+  onMemoChange,
+  departureTimeCandidates = [],
+  selectedDepartureTime,
+  onDepartureTimeChange,
+}: SpotDetailCardProps) {
+  const fields = useStoreForPlanning();
+  const transportCandidates =
+    spot.alternateRoutes?.map((transport) => ({
+      name: transport.transportMethod as TravelModeType,
+      travelTime: transport.durationText,
+      transportMethodId: transport.transportMethodId,
+      isDisabled: false, //TODO: 仮
+    })) ?? [];
+  const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
+    selectedDepartureTime ?? spot.routeToNext?.scheduledDepartureTime ?? '',
+  );
+  const planningResult = fields.getPlanningResult(date);
+  const routeInfo = planningResult?.routes?.find(
+    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
+  );
+
+  const selectableDepartureCandidates = useMemo(
+    () => departureTimeCandidates.filter((time) => time !== activeDepartureTime),
+    [departureTimeCandidates, activeDepartureTime],
+  );
+
+  const handleDepartureTimeChange = (time: string) => {
+    setActiveDepartureTime(time);
+    onDepartureTimeChange?.(time);
+  };
+
   return (
     <div
       className={` ${index === -1 ? 'mt-10 pt-6' : 'mb-10 border-b border-gray-300 pb-6'} relative`}
@@ -76,7 +123,7 @@ export default function SpotDetailCard({ spot, index, onDelete, onMemoChange }: 
       <div className="relative pl-8">
         {/* 番号付き (四角) */}
         <div className="absolute left-0 top-0 w-6 h-6 bg-blue-500 text-white text-xs flex items-center justify-center font-bold rounded-md">
-          {index + 1}
+          {spot.order}
         </div>
 
         {/* スポット名 */}
@@ -212,11 +259,101 @@ export default function SpotDetailCard({ spot, index, onDelete, onMemoChange }: 
 
       {/* 移動手段 */}
       {index !== -1 && (
-        <div className="flex items-center space-x-2 text-gray-600 mb-4" data-testid="spot-transport">
-          {transportIcons[spot.transports.name]?.icon || transportIcons.DEFAULT.icon}
-          <span>
-            {transportIcons[spot.transports.name]?.label || transportIcons.DEFAULT.label} ({spot.transports.travelTime})
-          </span>
+        <div className="space-y-3 mb-4" data-testid="spot-transport">
+          {spot?.nearestStation && nextSpot.nearestStation && spot.transports?.transportMethod == 4 && (
+            <div className="relative pl-4 border-l-2 border-blue-200 space-y-3" data-testid="spot-station-breakdown">
+              {/* 出発地から最寄駅へ（徒歩） */}
+              <div className="relative">
+                <div className="absolute -left-[21px] w-3 h-3 bg-orange-400 rounded-full" />
+                <div className="flex items-center gap-2 text-sm">
+                  <FootprintsIcon className="w-4 h-4 text-yellow-500" />
+                  <span className="text-gray-600">徒歩 {spot.nearestStation.walkingTime}分</span>
+                  <span className="text-gray-400">→</span>
+                  <span className="font-medium text-orange-600">{spot.nearestStation.name}</span>
+                </div>
+              </div>
+
+              {/* 電車/バスでの移動 */}
+              <div className="relative">
+                <div className="absolute -left-[21px] w-3 h-3 bg-green-400 rounded-full" />
+                <div className="flex items-center gap-2 text-sm">
+                  <Train className="w-4 h-4 text-green-600" />
+                  <span className="text-gray-600">電車/バス {spot.nearestStation.transitTime}分</span>
+                  {spot.nearestStation.scheduledDepartureTime && (
+                    <span className="text-xs text-gray-400">
+                      （発車: {spot.nearestStation.scheduledDepartureTime}）
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 到着駅から最初のスポットへ（徒歩） */}
+              <div className="relative">
+                <div className="absolute -left-[21px] w-3 h-3 bg-blue-400 rounded-full" />
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-blue-600">{nextSpot.nearestStation.name}</span>
+                  <span className="text-gray-400">→</span>
+                  <FootprintsIcon className="w-4 h-4 text-yellow-500" />
+                  <span className="text-gray-600">徒歩 {nextSpot.nearestStation.walkingTime}分</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {routeInfo && (
+            <>
+              <div className="flex items-center space-x-2 text-gray-600">
+                {transportIcons[routeInfo.transportMethod]?.icon || transportIcons.DEFAULT.icon}
+                <span>
+                  {transportIcons[routeInfo.transportMethod]?.label || transportIcons.DEFAULT.label} (
+                  {spot.transports.travelTime})
+                </span>
+                <div className="flex items-center flex-wrap gap-2 ml-2"></div>
+                {transportCandidates.length > 0 && (
+                  <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
+                    {transportCandidates
+                      .filter((candidate) => candidate.transportMethodId !== spot.transports.transportMethod)
+                      .map((candidate) => (
+                        <button
+                          key={`${candidate.name}-${candidate.travelTime}`}
+                          type="button"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
+                          aria-disabled={candidate.isDisabled ? 'true' : 'false'}
+                          onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
+                        >
+                          {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
+                          <span>
+                            {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
+                            {candidate.travelTime})
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {activeDepartureTime && (
+            <p className="text-sm text-gray-600" data-testid="spot-selected-departure-time">
+              発車時間: {activeDepartureTime}
+            </p>
+          )}
+
+          {selectableDepartureCandidates.length > 0 && (
+            <div className="text-sm text-gray-600" data-testid="spot-departure-candidates">
+              <span className="mr-2">他の候補:</span>
+              {selectableDepartureCandidates.map((time) => (
+                <button
+                  key={time}
+                  type="button"
+                  className="mr-2 underline hover:text-blue-600"
+                  onClick={() => handleDepartureTimeChange(time)}
+                >
+                  {time}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

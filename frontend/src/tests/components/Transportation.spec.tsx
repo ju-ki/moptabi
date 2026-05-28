@@ -4,11 +4,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
  * Transportation テスト
- * 移動手段の表示・選択ロジックを検証する
+ * 移動手段の複数選択（チェックボックス）ロジックを検証する
  */
 
-const mockSetTripInfo = vi.fn();
+const mockSetPlanningInfo = vi.fn();
+const mockGetPlanningInfo = vi.fn();
 
+// useStoreForPlanning はストアへのアクセスを行うため、モックで代替する
 vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: vi.fn(),
 }));
@@ -18,17 +20,14 @@ import Transportation from '@/components/Transportation';
 
 const createMockFields = (
   overrides: Partial<{
-    transportationMethod: number | undefined;
+    transportationMethodId: number[];
     tripInfoErrors: Record<string, { transportationMethod?: string }> | null;
   }> = {},
 ) => ({
-  tripInfo: [
-    {
-      date: '2025-12-20',
-      transportationMethod: overrides.transportationMethod,
-    },
-  ],
-  setTripInfo: mockSetTripInfo,
+  getPlanningInfo: mockGetPlanningInfo.mockReturnValue({
+    transportationMethodId: overrides.transportationMethodId ?? [],
+  }),
+  setPlanningInfo: mockSetPlanningInfo,
   tripInfoErrors: overrides.tripInfoErrors ?? null,
 });
 
@@ -37,8 +36,8 @@ describe('Transportation', () => {
     vi.clearAllMocks();
   });
 
-  describe('移動手段の表示', () => {
-    it('すべての移動手段のラジオボタンが表示されること', () => {
+  describe('初期表示', () => {
+    it('全ての移動手段のチェックボックスが表示されること', () => {
       (useStoreForPlanning as any).mockReturnValue(createMockFields());
       render(<Transportation date="2025-12-20" />);
 
@@ -47,8 +46,8 @@ describe('Transportation', () => {
       expect(screen.getByLabelText('自転車')).toBeInTheDocument();
     });
 
-    it('移動手段が未選択の場合いずれのラジオボタンもチェックされていないこと', () => {
-      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethod: undefined }));
+    it('初期表示時は全て未選択であること', () => {
+      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethodId: [] }));
       render(<Transportation date="2025-12-20" />);
 
       expect(screen.getByLabelText('徒歩')).not.toBeChecked();
@@ -56,40 +55,63 @@ describe('Transportation', () => {
       expect(screen.getByLabelText('自転車')).not.toBeChecked();
     });
 
-    it('移動手段が徒歩（id:1）の場合徒歩ラジオボタンがチェックされること', () => {
-      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethod: 1 }));
+    it('未選択の場合は徒歩が選択されますという注意書きが表示されること', () => {
+      (useStoreForPlanning as any).mockReturnValue(createMockFields());
       render(<Transportation date="2025-12-20" />);
 
-      expect(screen.getByLabelText('徒歩')).toBeChecked();
-      expect(screen.getByLabelText('車')).not.toBeChecked();
-    });
-
-    it('移動手段が車（id:2）の場合車ラジオボタンがチェックされること', () => {
-      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethod: 2 }));
-      render(<Transportation date="2025-12-20" />);
-
-      expect(screen.getByLabelText('車')).toBeChecked();
-      expect(screen.getByLabelText('徒歩')).not.toBeChecked();
+      expect(screen.getByText('未選択の場合は徒歩が選択されます')).toBeInTheDocument();
     });
   });
 
-  describe('移動手段の変更', () => {
-    it('徒歩ラジオボタンを選択するとsetTripInfoが呼ばれること', () => {
-      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethod: 2 }));
+  describe('移動手段のクリック（単一）', () => {
+    it('チェックがoffの移動手段をクリックするとチェックボックスがonになること', () => {
+      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethodId: [] }));
       render(<Transportation date="2025-12-20" />);
 
       fireEvent.click(screen.getByLabelText('徒歩'));
 
-      expect(mockSetTripInfo).toHaveBeenCalledWith('2025-12-20', 'transportationMethod', 1);
+      expect(mockSetPlanningInfo).toHaveBeenCalledWith('2025-12-20', {
+        transportationMethodId: [1],
+      });
     });
 
-    it('自転車ラジオボタンを選択するとsetTripInfoが呼ばれること', () => {
-      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethod: 1 }));
+    it('チェックがonの移動手段をクリックするとチェックボックスがoffになること', () => {
+      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethodId: [1] }));
       render(<Transportation date="2025-12-20" />);
 
-      fireEvent.click(screen.getByLabelText('自転車'));
+      fireEvent.click(screen.getByLabelText('徒歩'));
 
-      expect(mockSetTripInfo).toHaveBeenCalledWith('2025-12-20', 'transportationMethod', 3);
+      expect(mockSetPlanningInfo).toHaveBeenCalledWith('2025-12-20', {
+        transportationMethodId: [],
+      });
+    });
+  });
+
+  describe('移動手段のクリック（複数）', () => {
+    it('チェックがoffの移動手段をクリックしても他の移動手段のチェック状態に影響が出ないこと', () => {
+      // 徒歩(1)が選択済みの状態で車(2)を追加する
+      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethodId: [1] }));
+      render(<Transportation date="2025-12-20" />);
+
+      fireEvent.click(screen.getByLabelText('車'));
+
+      // 徒歩(1)を含めた配列で更新されること
+      expect(mockSetPlanningInfo).toHaveBeenCalledWith('2025-12-20', {
+        transportationMethodId: [1, 3],
+      });
+    });
+
+    it('チェックがonの移動手段をクリックしても他の移動手段のチェック状態に影響が出ないこと', () => {
+      // 徒歩(1)・車(3)が選択済みの状態で車(3)をオフにする
+      (useStoreForPlanning as any).mockReturnValue(createMockFields({ transportationMethodId: [1, 3] }));
+      render(<Transportation date="2025-12-20" />);
+
+      fireEvent.click(screen.getByLabelText('車'));
+
+      // 徒歩(1)が残った配列で更新されること
+      expect(mockSetPlanningInfo).toHaveBeenCalledWith('2025-12-20', {
+        transportationMethodId: [1],
+      });
     });
   });
 
@@ -109,9 +131,7 @@ describe('Transportation', () => {
       (useStoreForPlanning as any).mockReturnValue(createMockFields({ tripInfoErrors: null }));
       render(<Transportation date="2025-12-20" />);
 
-      // エラーテキストが存在しないことを確認
-      const errorEl = screen.queryByText('移動手段を選択してください');
-      expect(errorEl).not.toBeInTheDocument();
+      expect(screen.queryByText('移動手段を選択してください')).not.toBeInTheDocument();
     });
   });
 });
