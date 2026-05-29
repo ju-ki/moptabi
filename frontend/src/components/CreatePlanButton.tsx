@@ -97,6 +97,7 @@ const CreatePlanButton = () => {
       if (!checkValidation()) {
         const resultId = await postTrip(newData);
         toast({ title: '旅行計画が作成されました', description: '旅行計画の作成に成功しました。', variant: 'success' });
+        fields.resetPlanningStore();
         if (resultId) {
           router.push(`/plan/${resultId}`);
         } else {

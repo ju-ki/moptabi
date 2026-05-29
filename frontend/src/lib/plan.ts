@@ -23,6 +23,49 @@ import { PlanningInfo, PlanningResult } from './planning';
 
 export type FormData = z.infer<typeof TripSchema>;
 
+type PlanningInitialState = Pick<
+  FormState,
+  | 'id'
+  | 'title'
+  | 'imageUrl'
+  | 'startDate'
+  | 'endDate'
+  | 'tripInfo'
+  | 'plans'
+  | 'departureList'
+  | 'destinationList'
+  | 'isLocationLinked'
+  | 'errors'
+  | 'tripInfoErrors'
+  | 'planErrors'
+  | 'spotErrors'
+  | 'planningInfo'
+  | 'planningResults'
+  | 'simulationStatus'
+>;
+
+function createPlanningInitialState(): PlanningInitialState {
+  return {
+    id: undefined,
+    title: '',
+    imageUrl: '',
+    startDate: '',
+    endDate: '',
+    tripInfo: [],
+    plans: [],
+    departureList: { favorites: [], history: [] },
+    destinationList: { favorites: [], history: [] },
+    isLocationLinked: false,
+    errors: {},
+    tripInfoErrors: {},
+    planErrors: {},
+    spotErrors: {},
+    planningInfo: {},
+    planningResults: {},
+    simulationStatus: null,
+  };
+}
+
 interface FormState {
   id?: string;
   title: string;
@@ -86,6 +129,7 @@ interface FormState {
   ) => void;
   resetErrors: () => void;
   resetForm: () => void;
+  resetPlanningStore: () => void;
   /** 代替ルートに切り替え */
   switchAlternativeRoute: (date: string, routeId: string, selectedTransportMethodId: number) => void;
 }
@@ -93,13 +137,7 @@ interface FormState {
 export const useStoreForPlanning = create<FormState>()(
   immer(
     devtools((set, get) => ({
-      title: '',
-      imageUrl: '',
-      startDate: '',
-      endDate: '',
-      tripInfo: [],
-      plans: [],
-      simulationStatus: null,
+      ...createPlanningInitialState(),
       setSimulationStatus: (status) => {
         set((state) => {
           if (state.simulationStatus) {
@@ -125,13 +163,6 @@ export const useStoreForPlanning = create<FormState>()(
           }
         });
       },
-      errors: {},
-      tripInfoErrors: {},
-      spotErrors: {},
-      planErrors: {},
-      departureList: [],
-      destinationList: [],
-      planningInfo: {},
       getPlanningInfo: (date) => {
         return get().planningInfo[date];
       },
@@ -140,7 +171,6 @@ export const useStoreForPlanning = create<FormState>()(
           state.planningInfo[date] = info;
         });
       },
-      planningResults: {},
       setPlanningResult: (date, result) => {
         set((state) => {
           state.planningResults[date] = result;
@@ -156,7 +186,6 @@ export const useStoreForPlanning = create<FormState>()(
       },
       setDepartureList: (list) => set((state) => ({ ...state, departureList: list })),
       setDestinationList: (list) => set((state) => ({ ...state, destinationList: list })),
-      isLocationLinked: false,
       setIsLocationLinked: (isLinked) => set((state) => ({ ...state, isLocationLinked: isLinked })),
       getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
@@ -406,6 +435,7 @@ export const useStoreForPlanning = create<FormState>()(
       },
       resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),
+      resetPlanningStore: () => set(() => ({ ...createPlanningInitialState() })),
       switchAlternativeRoute: (date, routeId, selectedTransportMethodId) => {
         set((state) => {
           const planningResult = state.planningResults[date];

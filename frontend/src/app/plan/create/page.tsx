@@ -64,6 +64,14 @@ const TravelPlanCreate = () => {
     }
   }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
 
+  // コンポーネントのアンマウント時（画面離脱時）にストアを初期化
+  // 依存配列を空にすることで、マウント時ではなくアンマウント時のみ
+  useEffect(() => {
+    return () => {
+      fields.resetPlanningStore();
+    };
+  }, []);
+
   // TODO: 対応できていない機能のためコメントアウト
   // const { trigger: uploadImageTrigger } = useSWRMutation(
   //   `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
