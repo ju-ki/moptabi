@@ -104,6 +104,23 @@ describe('NearestStationDestination', () => {
     );
   });
 
+  it('ヘッダーはモバイルで縦積みしPCでは横並びを維持する', () => {
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '羽田空港',
+      latitude: 35.5494,
+      longitude: 139.7798,
+      nearestStation: undefined,
+    });
+
+    render(<NearestStationDestination date="2026-04-25" />);
+
+    expect(screen.getByTestId('destination-station-section-toggle')).toHaveClass(
+      'flex-col',
+      'sm:flex-row',
+      'sm:justify-between',
+    );
+  });
+
   // SPEC: PC-NSDT-001
   it('最寄駅選択で placeId がストアに保存される', async () => {
     mockSearchNearestStation.mockResolvedValue([

@@ -95,6 +95,12 @@ describe('PlanSpotSettingCard', () => {
     expect(latestCall.nearestStation).toBeUndefined();
   });
 
+  it('最寄駅ヘッダーはモバイルで縦積みしPCでは横並びを維持する', () => {
+    render(<PlanSpotSettingCard {...baseProps} spot={createSpot()} />);
+
+    expect(screen.getByTestId('station-section-toggle')).toHaveClass('flex-col', 'sm:flex-row', 'sm:justify-between');
+  });
+
   // SPEC: PC-PSC-001
   it('最寄駅トグルをONにすると最寄駅検索API呼び出しが開始される', async () => {
     render(<PlanSpotSettingCard {...baseProps} spot={createSpot({ nearestStation: undefined })} />);

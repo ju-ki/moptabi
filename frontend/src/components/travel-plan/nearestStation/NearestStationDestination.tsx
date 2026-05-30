@@ -211,24 +211,25 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   return (
     <Card>
       {destinationData && (
-        <CardContent className="p-4 pr-10">
+        <CardContent className="p-4 sm:pr-10">
           <div className="border rounded-lg overflow-hidden">
             <div
+              data-testid="destination-station-section-toggle"
               className={cn(
-                'flex items-center justify-between px-4 py-3 cursor-pointer transition-colors',
+                'flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors sm:flex-row sm:items-center sm:justify-between',
                 useDestinationNearestStation ? 'bg-purple-50' : 'bg-gray-50 hover:bg-gray-100',
               )}
               onClick={() => setIsDestinationSectionExpanded(!isDestinationSectionExpanded)}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center">
                 <Train className={cn('h-4 w-4', useDestinationNearestStation ? 'text-purple-600' : 'text-gray-400')} />
-                <div>
+                <div className="min-w-0">
                   <span data-testid="destination-station-header" className="text-sm font-medium">
                     目的地の最寄駅
                   </span>
                   <p className="text-xs text-gray-500">目的地（{destinationData.name}）の最寄駅を設定</p>
                 </div>
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-1 sm:ml-2">
                   <Checkbox
                     checked={excludeBusStop}
                     onCheckedChange={() => setExcludeBusStop((prev) => !prev)}
@@ -240,7 +241,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                   </Label>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 self-end sm:self-auto">
                 <div onClick={(e) => e.stopPropagation()}>
                   <Switch
                     checked={useDestinationNearestStation}
@@ -312,7 +313,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                           <span className="text-sm text-gray-600">このスポット → 目的地の最寄駅 の電車/バス移動</span>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                           <div className="flex items-center gap-2">
                             <Train className="h-4 w-4 text-muted-foreground" />
                             <Label className="text-sm">移動時間</Label>
@@ -352,12 +353,12 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                         </div>
                         {/* 発車時間入力 */}
 
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 mt-2 min-w-fit">
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:gap-4">
+                          <div className="flex items-center gap-2 min-w-fit sm:mt-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
                             <Label className="text-sm">発車時間</Label>
                           </div>
-                          <div className="flex gap-2 flex-wrap">
+                          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                             {scheduledDepartureTimes.map((candidate, index) => (
                               <Input
                                 key={`destination-candidate-${index}`}
@@ -384,8 +385,8 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                         </div>
 
                         {/* 路線メモ */}
-                        <div className="flex items-start gap-4">
-                          <Label className="text-sm mt-2 min-w-fit">路線メモ</Label>
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:gap-4">
+                          <Label className="min-w-fit text-sm sm:mt-2">路線メモ</Label>
                           <Textarea
                             value={transitMemo}
                             onChange={(e) => handleTransitMemoChange(e.target.value)}
@@ -398,7 +399,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
 
                     {/* 目的地ルートサマリー */}
                     {lastSpot.nearestStation && destinationData.nearestStation && (
-                      <div className="p-2 bg-gray-100 rounded text-sm text-gray-600">
+                      <div className="break-words rounded bg-gray-100 p-2 text-sm text-gray-600">
                         <span className="font-medium">ルート: </span>
                         <span>{lastSpot.location.name}</span>
                         <span className="mx-1">→</span>
