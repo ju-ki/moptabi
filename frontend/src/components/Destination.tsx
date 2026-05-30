@@ -152,6 +152,23 @@ const Destination = ({ date }: { date: string }) => {
           <Label htmlFor="destination-input" className="block text-sm font-medium text-gray-800">
             目的地の名前を設定(空の場合は目的地_{date}になります)
           </Label>
+          <Input
+            id="destination-input"
+            type="text"
+            value={destinationData.name || ''}
+            placeholder="目的地の名前を設定する"
+            className="mt-2 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            onInput={(e) => {
+              const destinationName = e.currentTarget.value;
+              fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                ...destinationData,
+                planLocationId: null,
+                userLocationId: null,
+                name: destinationName,
+                locationType: TransportNodeType.DESTINATION,
+              });
+            }}
+          />
         </div>
 
         {/* 時間設定 */}

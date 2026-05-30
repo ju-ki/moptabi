@@ -153,7 +153,7 @@ const Departure = ({ date }: { date: string }) => {
             出発地の名前を設定(空の場合は出発地_{date}になります)
           </Label>
           <Input
-            id="destination-input"
+            id="departure-input"
             type="text"
             value={departureData.name || ''}
             placeholder="出発地の名前を設定する"

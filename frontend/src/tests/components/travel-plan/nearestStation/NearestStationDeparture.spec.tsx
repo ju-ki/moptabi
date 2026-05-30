@@ -104,6 +104,23 @@ describe('NearestStationDeparture', () => {
     );
   });
 
+  it('ヘッダーはモバイルで縦積みしPCでは横並びを維持する', () => {
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '東京駅',
+      latitude: 35.6812,
+      longitude: 139.7671,
+      nearestStation: undefined,
+    });
+
+    render(<NearestStationDeparture date="2026-04-25" />);
+
+    expect(screen.getByTestId('departure-station-section-toggle')).toHaveClass(
+      'flex-col',
+      'sm:flex-row',
+      'sm:justify-between',
+    );
+  });
+
   // SPEC: PC-NSD-001
   it('最寄駅選択で placeId がストアに保存される', async () => {
     mockSearchNearestStation.mockResolvedValue([

@@ -244,6 +244,20 @@ export default function PlanSpotSettingCard({
   };
 
   const orderOptions = Array.from({ length: totalSpots }, (_, i) => i + 1);
+  const orderSelect = (
+    <Select value={String(spot.order)} onValueChange={(value) => onOrderChange(spot.id, Number(value))}>
+      <SelectTrigger className="h-8 w-16">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {orderOptions.map((order) => (
+          <SelectItem key={order} value={String(order)}>
+            {order}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <Card
@@ -261,33 +275,39 @@ export default function PlanSpotSettingCard({
     >
       <button
         type="button"
-        className="absolute top-2 right-2 p-1 hover:bg-destructive/10 rounded-full transition-colors"
+        className="absolute top-2 right-2 hidden rounded-full p-1 transition-colors hover:bg-destructive/10 sm:inline-flex"
         onClick={() => onDelete(spot.id)}
         aria-label="スポットを削除"
       >
-        <X className="w-4 h-4 text-destructive" />
+        <X className="h-4 w-4 text-destructive" />
       </button>
 
-      <CardContent className="p-4 pr-10">
-        <div className="flex items-start gap-3">
-          <div className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded">
-            <GripVertical className="h-5 w-5 text-muted-foreground" />
+      <CardContent className="p-3 pr-10 sm:p-4">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="flex w-full items-start justify-between sm:hidden">
+            <div className="flex items-center gap-3">
+              <div className="cursor-grab rounded p-1 hover:bg-muted active:cursor-grabbing">
+                <GripVertical className="h-5 w-5 text-muted-foreground" />
+              </div>
+              {orderSelect}
+            </div>
+            <button
+              type="button"
+              className="rounded-full p-1 transition-colors hover:bg-destructive/10"
+              onClick={() => onDelete(spot.id)}
+              aria-label="スポットを削除"
+            >
+              <X className="h-4 w-4 text-destructive" />
+            </button>
           </div>
 
-          <Select value={String(spot.order)} onValueChange={(value) => onOrderChange(spot.id, Number(value))}>
-            <SelectTrigger className="w-16 h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {orderOptions.map((order) => (
-                <SelectItem key={order} value={String(order)}>
-                  {order}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="hidden rounded p-1 hover:bg-muted sm:block">
+            <GripVertical className="h-5 w-5 cursor-grab text-muted-foreground active:cursor-grabbing" />
+          </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="hidden sm:block">{orderSelect}</div>
+
+          <div className="w-full min-w-0 flex-1 sm:w-auto">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-medium truncate">{spot.location.name}</h4>
               {distanceFromPrevious !== undefined && (
@@ -308,12 +328,12 @@ export default function PlanSpotSettingCard({
               )}
             </div>
 
-            <div className="flex items-center gap-4 mt-3">
+            <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <Label className="text-sm">滞在時間</Label>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 <Input
                   type="number"
                   min={0}
@@ -341,12 +361,12 @@ export default function PlanSpotSettingCard({
               <div
                 data-testid="station-section-toggle"
                 className={cn(
-                  'flex items-center justify-between p-3 cursor-pointer',
+                  'flex cursor-pointer flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between',
                   useNearestStation ? 'bg-blue-50' : 'bg-gray-50',
                 )}
                 onClick={() => useNearestStation && setIsStationSectionExpanded(!isStationSectionExpanded)}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <Switch
                     id={`use-station-${spot.id}`}
                     checked={useNearestStation}
@@ -361,7 +381,7 @@ export default function PlanSpotSettingCard({
                     <Train className="h-4 w-4" />
                     最寄駅を使用
                   </Label>
-                  <div className="flex items-center gap-1 ml-2">
+                  <div className="flex items-center gap-1 sm:ml-2">
                     <Checkbox
                       checked={excludeBusStop}
                       onCheckedChange={() => setExcludeBusStop((prev) => !prev)}
@@ -438,7 +458,7 @@ export default function PlanSpotSettingCard({
                             <span className="text-sm text-gray-600">出発駅 → 到着駅 の電車/バス移動</span>
                           </div>
 
-                          <div className="flex items-center gap-4">
+                          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
                             <div className="flex items-center gap-2">
                               <Train className="h-4 w-4 text-muted-foreground" />
                               <Label className="text-sm">移動時間</Label>
@@ -477,12 +497,12 @@ export default function PlanSpotSettingCard({
                             )}
                           </div>
 
-                          <div className="flex items-start gap-4">
-                            <div className="flex items-center gap-2 mt-2 min-w-fit">
+                          <div className="flex flex-col items-start gap-2 sm:flex-row sm:gap-4">
+                            <div className="flex min-w-fit items-center gap-2 sm:mt-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               <Label className="text-sm">発車時間</Label>
                             </div>
-                            <div className="flex gap-2 flex-wrap">
+                            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                               {scheduledDepartureTimes.map((candidate, index) => (
                                 <Input
                                   key={`scheduled-departure-${spot.id}-${index}`}
@@ -508,20 +528,20 @@ export default function PlanSpotSettingCard({
                             </Tooltip>
                           </div>
 
-                          <div className="flex items-start gap-4">
-                            <Label className="text-sm mt-2 min-w-fit">路線メモ</Label>
+                          <div className="flex flex-col items-start gap-2 sm:flex-row sm:gap-4">
+                            <Label className="mt-2 min-w-fit text-sm">路線メモ</Label>
                             <Textarea
                               value={transitMemo}
                               onChange={(e) => handleTransitMemoChange(e.target.value)}
                               placeholder="例: ○○線 △△行き、乗り換え1回"
-                              className="h-16 text-sm"
+                              className="h-16 w-full text-sm"
                             />
                           </div>
                         </div>
                       )}
 
                       {spot.nearestStation && previousSpot && previousSpot?.nearestStation && (
-                        <div className="p-2 bg-gray-100 rounded text-sm text-gray-600">
+                        <div className="rounded bg-gray-100 p-2 text-sm text-gray-600 break-words">
                           <span className="font-medium">ルート: </span>
                           <span>{previousSpot.location.name}</span>
                           {previousSpot.nearestStation && (
