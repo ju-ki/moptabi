@@ -220,8 +220,8 @@ const Departure = ({ date }: { date: string }) => {
                 navigator.geolocation.getCurrentPosition((position) => {
                   const newCoordinate = {
                     id: '',
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
                     name: '',
                   };
                   fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
