@@ -66,6 +66,20 @@ function createPlanningInitialState(): PlanningInitialState {
   };
 }
 
+function copyLinkedLocationPreservingTime(
+  source: DepartureAndDestinationType,
+  current: DepartureAndDestinationType,
+  name: string,
+  locationType?: TransportNodeType,
+): DepartureAndDestinationType {
+  return {
+    ...source,
+    name,
+    time: current.time,
+    locationType: locationType ?? source.locationType,
+  };
+}
+
 interface FormState {
   id?: string;
   title: string;
@@ -267,29 +281,43 @@ export const useStoreForPlanning = create<FormState>()(
 
           if (isSingleDay && state.isLocationLinked) {
             const oppositeType = type === TransportNodeType.DEPARTURE ? 'destination' : 'departure';
+            const currentOppositeLocation = state.plans[existingPlansIndex][oppositeType];
+            const linkedLocationName =
+              value.name === '' ? (oppositeType === 'departure' ? '出発地_' + date : '目的地_' + date) : value.name;
+            const linkedLocationType =
+              oppositeType === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.DESTINATION;
 
             // 名前が空の場合は、登録値に合わせたデフォルトの名前を入れる
             if (value.name === '') {
-              state.plans[existingPlansIndex][oppositeType] = {
-                ...value,
-                name: oppositeType === 'departure' ? '出発地_' + date : '目的地_' + date,
-              };
+              state.plans[existingPlansIndex][oppositeType] = copyLinkedLocationPreservingTime(
+                value,
+                currentOppositeLocation,
+                linkedLocationName,
+                linkedLocationType,
+              );
               return;
             }
-            state.plans[existingPlansIndex][oppositeType] = {
-              ...value,
-            };
+
+            // 連動ONの場合でも、出発時間または到着時間は連動させない
+            state.plans[existingPlansIndex][oppositeType] = copyLinkedLocationPreservingTime(
+              value,
+              currentOppositeLocation,
+              linkedLocationName,
+              linkedLocationType,
+            );
           }
           if (state.isLocationLinked && type === TransportNodeType.DESTINATION) {
             // 複数日の場合は、当日の目的地を翌日の出発地に連動させる(片方向)
             const nextDate = dates[currentDayIndex + 1];
             const nextDayPlanIndex = state.plans.findIndex((plan) => plan.date === nextDate);
             if (!isSingleDay && nextDayPlanIndex > 0) {
-              state.plans[nextDayPlanIndex].departure = {
-                ...value,
-                name: value.name === '' ? '出発地_' + nextDate : value.name,
-                locationType: TransportNodeType.DEPARTURE,
-              };
+              // 連動ONの場合でも、出発時間または到着時間は連動させない
+              state.plans[nextDayPlanIndex].departure = copyLinkedLocationPreservingTime(
+                value,
+                state.plans[nextDayPlanIndex].departure,
+                value.name === '' ? '出発地_' + nextDate : value.name,
+                TransportNodeType.DEPARTURE,
+              );
             }
           }
         });

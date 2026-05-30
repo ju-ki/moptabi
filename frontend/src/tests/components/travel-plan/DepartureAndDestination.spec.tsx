@@ -31,6 +31,7 @@ const createFavoriteLocationWithDefault = (): DepartureAndDestinationType => ({
   userLocationId: 1,
   planLocationId: null,
   planName: null,
+  planId: null,
 });
 
 /**
@@ -48,6 +49,7 @@ const createFavoriteLocationWithoutDefault = (): DepartureAndDestinationType => 
   userLocationId: 2,
   planLocationId: null,
   planName: null,
+  planId: null,
 });
 
 /**
@@ -65,6 +67,7 @@ const createHistoryLocation = (): DepartureAndDestinationType => ({
   userLocationId: null,
   planLocationId: 100,
   planName: '過去の旅行プラン',
+  planId: null,
 });
 
 /**
@@ -82,6 +85,7 @@ const createMapClickedLocation = (lat: number, lng: number): DepartureAndDestina
   userLocationId: null,
   planLocationId: null,
   planName: null,
+  planId: null,
 });
 
 /**
@@ -99,6 +103,7 @@ const createAddressSearchLocation = (): DepartureAndDestinationType => ({
   userLocationId: null,
   planLocationId: null,
   planName: null,
+  planId: null,
 });
 
 /**
@@ -116,6 +121,7 @@ const createSpotBasedLocation = (): DepartureAndDestinationType => ({
   userLocationId: null,
   planLocationId: null,
   planName: null,
+  planId: null,
 });
 
 /**
@@ -133,6 +139,7 @@ const createCurrentLocation = (): DepartureAndDestinationType => ({
   userLocationId: null,
   planLocationId: null,
   planName: null,
+  planId: null,
 });
 
 /**
@@ -193,6 +200,30 @@ const resetStore = () => {
   store.setIsLocationLinked(false);
   store.setDepartureList({ favorites: [], history: [] });
   store.setDestinationList({ favorites: [], history: [] });
+};
+
+/**
+ * テスト用に特定日付の出発時間・到着時間を直接設定する
+ */
+const setPlanTimes = (date: string, departureTime: string, destinationTime: string) => {
+  const store = useStoreForPlanning.getState();
+  const updatedPlans = store.plans.map((plan) => {
+    if (plan.date !== date) return plan;
+
+    return {
+      ...plan,
+      departure: {
+        ...plan.departure,
+        time: departureTime,
+      },
+      destination: {
+        ...plan.destination,
+        time: destinationTime,
+      },
+    };
+  });
+
+  store.setFields('plans', updatedPlans);
 };
 
 describe('DepartureAndDestination', () => {
@@ -774,6 +805,27 @@ describe('DepartureAndDestination', () => {
         expect(destination.longitude).toBe(139.76);
       });
 
+      it('出発地を変更しても、連動先の目的地の到着時間は維持されること', () => {
+        const store = useStoreForPlanning.getState();
+        const favoriteLocation = createFavoriteLocationWithoutDefault();
+
+        setPlanTimes(singleDate, '08:30', '19:45');
+
+        act(() => {
+          store.setDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE, {
+            ...favoriteLocation,
+            time: '07:15',
+            locationType: TransportNodeType.DEPARTURE,
+          });
+        });
+
+        const departure = store.getDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE);
+        const destination = store.getDepartureAndDestination(singleDate, TransportNodeType.DESTINATION);
+
+        expect(departure.time).toBe('07:15');
+        expect(destination.time).toBe('19:45');
+      });
+
       it('ユーザーの過去の履歴の地点を選択した際に、出発地と目的地ともに選択した地点の値が格納されていること', () => {
         const store = useStoreForPlanning.getState();
         const historyLocation = createHistoryLocation();
@@ -882,6 +934,27 @@ describe('DepartureAndDestination', () => {
 
         expect(destination.name).toBe('会社');
         expect(departure.latitude).toBe(35.68);
+      });
+
+      it('目的地を変更しても、連動先の出発地の出発時間は維持されること', () => {
+        const store = useStoreForPlanning.getState();
+        const favoriteLocation = createFavoriteLocationWithoutDefault();
+
+        setPlanTimes(singleDate, '06:45', '18:00');
+
+        act(() => {
+          store.setDepartureAndDestination(singleDate, TransportNodeType.DESTINATION, {
+            ...favoriteLocation,
+            time: '20:10',
+            locationType: TransportNodeType.DESTINATION,
+          });
+        });
+
+        const departure = store.getDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE);
+        const destination = store.getDepartureAndDestination(singleDate, TransportNodeType.DESTINATION);
+
+        expect(departure.time).toBe('06:45');
+        expect(destination.time).toBe('20:10');
       });
 
       it('ユーザーの過去の履歴の地点を選択した際に、出発地と目的地ともに選択した地点の値が格納されていること', () => {
@@ -1012,6 +1085,28 @@ describe('DepartureAndDestination', () => {
         // 翌日の出発地が連動して更新されていること
         expect(day2Departure.latitude).toBe(35.68);
         expect(day2Departure.longitude).toBe(139.76);
+      });
+
+      it('前日の目的地を変更しても、翌日の出発時間は維持されること', () => {
+        const store = useStoreForPlanning.getState();
+        const favoriteLocation = createFavoriteLocationWithoutDefault();
+
+        setPlanTimes(day1, '09:00', '18:30');
+        setPlanTimes(day2, '07:20', '17:00');
+
+        act(() => {
+          store.setDepartureAndDestination(day1, TransportNodeType.DESTINATION, {
+            ...favoriteLocation,
+            time: '21:05',
+            locationType: TransportNodeType.DESTINATION,
+          });
+        });
+
+        const day1Destination = store.getDepartureAndDestination(day1, TransportNodeType.DESTINATION);
+        const day2Departure = store.getDepartureAndDestination(day2, TransportNodeType.DEPARTURE);
+
+        expect(day1Destination.time).toBe('21:05');
+        expect(day2Departure.time).toBe('07:20');
       });
 
       it('ユーザーの過去の履歴の地点を選択した際に、当日の出発地も選択した地点の値が格納されていること', () => {
