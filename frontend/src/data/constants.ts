@@ -28,6 +28,27 @@ export const DESTINATION_NAME = '目的地';
 
 export const THRESHOLD_FOR_DISTANCE = 1500; //1.5km以上離れている場合は最寄駅の利用を推奨
 
+/**
+ * プランニング結果に影響し、再プランニング判定の対象とするスポット項目。
+ */
+export const PLANNING_DIRTY_SPOT_FIELDS = [
+  'order',
+  'stayDuration',
+  'stayStart',
+  'stayEnd',
+  'nearestStation',
+  'routeToNext',
+] as const;
+
+/**
+ * 保存ブロック時の固定文言
+ */
+export const PLANNING_DIRTY_BLOCK_MESSAGE = {
+  title: 'プランニング結果が最新ではありません',
+  description:
+    'スポット内容が変更されたため、このままでは保存できません。再プランニングを実行するか、前回のプランニング結果に戻してください。',
+} as const;
+
 // メッセージタイプ
 export const PLANNING_MESSAGE_SEGMENT = {
   OVER_TIME: 'OVER_TIME',

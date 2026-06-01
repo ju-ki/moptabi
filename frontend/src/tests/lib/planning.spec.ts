@@ -464,6 +464,25 @@ describe('planning.ts', () => {
       expect(result.isFallbackToWalking).toBe(true);
       expect(result.failedRoutes).toHaveLength(2);
     });
+
+    it('優先移動手段IDが指定されている場合は、取得可能なら優先IDを採用する', async () => {
+      mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
+        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        throw new Error('unexpected');
+      });
+
+      const result = await getOptimalRouteWithAlternatives(
+        { lat: 35.681236, lng: 139.767125 },
+        { lat: 35.6895, lng: 139.6917 },
+        [1, 2, 3],
+        1.5,
+        2,
+      );
+
+      expect(result.selectedRoute.transportMethodId).toBe(2);
+    });
   });
 
   describe('プランニングのアウトプット結果', () => {
@@ -597,6 +616,49 @@ describe('planning.ts', () => {
       expect(updatedDestination.nearestStation?.scheduledDepartureTime).toBeDefined();
       expect(updatedDestination.nearestStation?.waitingTime).toBeTypeOf('number');
       expect(updatedDestination.nearestStation?.transitTime).toBe(18);
+    });
+
+    it('再プランニング時に区間優先移動手段が指定されている場合、最寄駅より指定手段を優先採用する', async () => {
+      const params = createBaseParams();
+      params.transportMethodIds = [1, 2, 3];
+      params.preferredTransportMethodIds = {
+        DEPARTURE_TO_FIRST_SPOT: 3,
+      };
+      params.departure.nearestStation = {
+        spotId: 'departure',
+        placeId: 'dep-station',
+        name: '東京駅',
+        stationType: 'TRAIN',
+        walkingTime: 10,
+        latitude: 35.681236,
+        longitude: 139.767125,
+        transitTime: 10,
+        scheduledDepartureTimes: ['09:20', '09:30'],
+      };
+      params.spots[0].nearestStation = {
+        placeId: 'spot-station',
+        name: '新宿駅',
+        stationType: 'TRAIN',
+        walkingTime: 10,
+        latitude: 35.6895,
+        longitude: 139.7004,
+      };
+
+      mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
+        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        throw new Error('unexpected');
+      });
+
+      const result = await executePlanning(params);
+      const departureToSpotRoute = result.routes.find(
+        (route) => route.fromType === 'DEPARTURE' && route.toType === 'SPOT',
+      );
+
+      expect(departureToSpotRoute).toBeDefined();
+      expect(departureToSpotRoute?.transportMethodId).toBe(3);
+      expect(departureToSpotRoute?.routeType).toBe('DEPARTURE_TO_SPOT');
     });
 
     it.each(PLANNING_MATRIX_CASES)(

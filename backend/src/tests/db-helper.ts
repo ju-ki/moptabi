@@ -19,7 +19,6 @@ import {
   planLocation,
   planLocationNearestStation,
   planSpotNearestStation,
-  spotRoute,
 } from '@db';
 
 // DBインスタンスを再エクスポート
@@ -41,7 +40,6 @@ export {
   planLocation,
   planLocationNearestStation,
   planSpotNearestStation,
-  spotRoute,
 };
 
 // Drizzle演算子を再エクスポート
@@ -67,7 +65,6 @@ export async function disconnectDb(): Promise<void> {
 export async function clearAllTestData(): Promise<void> {
   try {
     await db.delete(transport);
-    await db.delete(spotRoute);
     await db.delete(planSpotNearestStation);
     await db.delete(planSpot);
     await db.delete(tripInfo);
@@ -116,7 +113,6 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
           planSpotIdList = planSpots.map((ps) => ps.spotId);
         }
         await db.delete(transport).where(inArray(transport.planId, planIds));
-        await db.delete(spotRoute).where(inArray(spotRoute.planId, planIds));
         const planSpotsForDelete = await db
           .select({ id: planSpot.id })
           .from(planSpot)

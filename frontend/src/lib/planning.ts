@@ -35,6 +35,8 @@ export type PlanningParams = {
   destination: DepartureAndDestinationType;
   spots: Spot[];
   transportMethodIds: number[];
+  /** 区間キーごとの優先移動手段ID（再プランニング時の優先採用用） */
+  preferredTransportMethodIds?: Record<string, number>;
 };
 
 /**
@@ -653,6 +655,26 @@ function getTransportMethodPriority(methodId: number): number {
 }
 
 /**
+ * 指定した移動手段IDが最寄駅経由の公共交通手段かを判定する。
+ * @param methodId 判定対象の移動手段ID
+ * @returns 電車またはバス相当のIDならtrue
+ */
+function isStationTransportMethod(methodId?: number): boolean {
+  return methodId === 4 || methodId === 5;
+}
+
+/**
+ * 再プランニング時に直接移動候補として優先採用できる移動手段IDを返す。
+ * 公共交通手段が選ばれている場合は、最寄駅経由の判定へ委ねるため未設定扱いにする。
+ * @param methodId 現在選択中の移動手段ID
+ * @returns 直接移動候補として使う移動手段ID
+ */
+function getPreferredDirectTransportMethodId(methodId?: number): number | undefined {
+  if (!methodId || isStationTransportMethod(methodId)) return undefined;
+  return methodId;
+}
+
+/**
  * ルート取得失敗情報
  */
 type RouteFailureInfo = {
@@ -697,6 +719,7 @@ export async function getOptimalRouteWithAlternatives(
   to: { lat: number; lng: number },
   transportMethodIds: number[],
   distanceThresholdKm: number = 1.5,
+  preferredTransportMethodId?: number,
 ): Promise<RouteSelectionResult> {
   // 利用可能な移動手段でルートを取得
   const routes: Array<RouteResult & { transportMethodId: number }> = [];
@@ -769,8 +792,12 @@ export async function getOptimalRouteWithAlternatives(
       getTransportMethodPriority(right.transportMethodId) - getTransportMethodPriority(left.transportMethodId),
   );
 
-  const selectedRoute = sortedRoutes[0];
-  const alternativeRoutes = sortedRoutes;
+  const preferredRoute =
+    preferredTransportMethodId !== undefined
+      ? sortedRoutes.find((route) => route.transportMethodId === preferredTransportMethodId)
+      : undefined;
+  const selectedRoute = preferredRoute ?? sortedRoutes[0];
+  const alternativeRoutes = [selectedRoute, ...sortedRoutes.filter((route) => route !== selectedRoute)];
 
   return {
     selectedRoute,
@@ -838,6 +865,9 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   let mainRoute: Array<RouteResult & { transportMethodId: number }> = [];
   const firstSpot = plannedSpots[0];
   const departureCoord = { lat: params.departure.latitude, lng: params.departure.longitude };
+  const firstSegmentKey = 'DEPARTURE_TO_FIRST_SPOT';
+  const preferredFirstSegmentMethodId = params.preferredTransportMethodIds?.[firstSegmentKey];
+
   if (params.departure.nearestStation && firstSpot.nearestStation) {
     // 出発地から最寄駅の時間
     const walkToStation = Math.max(params.departure.nearestStation.walkingTime ?? 0, 0);
@@ -852,7 +882,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const candidatesResult = selectDepartureCandidate(stationArrivalTime, departureCandidates);
     const selectedDepartureMinutes = timeToMinutes(candidatesResult.selectedTime);
     const waitingMinutes = Math.max(selectedDepartureMinutes - stationArrivalTime, 0);
-    const segmentKey = 'DEPARTURE_TO_FIRST_SPOT';
+    const segmentKey = firstSegmentKey;
 
     if (updatedDeparture.nearestStation) {
       updatedDeparture.nearestStation = {
@@ -922,7 +952,6 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     };
 
     mainRoute = [toDepartureStationRoute, transitRoute, toFirstSpotRoute];
-    currentPlanningTime += walkToStation + waitingMinutes + transitMinutes + walkFromStation;
   }
 
   // 最寄駅を介さないあるいは最寄駅情報がない場合のルートと時間を計算
@@ -930,19 +959,26 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     departureCoord,
     firstSpot.location,
     params.transportMethodIds,
+    1.5,
+    getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
   );
-  pushRouteFailureMessages(
-    messages,
-    'DEPARTURE_TO_FIRST_SPOT',
-    routeResult.failedRoutes,
-    routeResult.isFallbackToWalking,
-  );
+  pushRouteFailureMessages(messages, firstSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
-  currentPlanningTime += mainRoute.length > 0 ? 0 : parseDurationTextToMinutes(routeResult.selectedRoute.duration);
+  const shouldUseStationRouteForFirstSegment =
+    mainRoute.length > 0 &&
+    (preferredFirstSegmentMethodId === undefined || isStationTransportMethod(preferredFirstSegmentMethodId));
+
+  const selectedFirstSegmentRoutes = shouldUseStationRouteForFirstSegment ? mainRoute : [routeResult.selectedRoute];
+
+  const firstSegmentMinutes = shouldUseStationRouteForFirstSegment
+    ? mainRoute.reduce((sum, route) => sum + parseDurationTextToMinutes(route.duration), 0)
+    : parseDurationTextToMinutes(routeResult.selectedRoute.duration);
+
+  currentPlanningTime += firstSegmentMinutes;
   // 最寄駅のルートがある場合は、徒歩→乗車→徒歩のルートを優先して追加し、最寄駅を介さないルートは代替ルートとして保持する
   routeSegments.push({
-    routes: mainRoute.length ? mainRoute : [routeResult.selectedRoute], // 最寄駅を介したルートを優先して追加
-    via: mainRoute.length ? 'station' : undefined,
+    routes: selectedFirstSegmentRoutes,
+    via: shouldUseStationRouteForFirstSegment ? 'station' : undefined,
     alternativeRoutes:
       mainRoute.length > 0
         ? [
@@ -1004,22 +1040,21 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       toSpotId: firstSpot.id,
       fromType: 'DEPARTURE',
       toType: 'SPOT',
-      routeType: mainRoute.length ? 'TO_STATION' : 'DEPARTURE_TO_SPOT',
+      routeType: shouldUseStationRouteForFirstSegment ? 'TO_STATION' : 'DEPARTURE_TO_SPOT',
       // 最寄駅経由の場合はTRANSIT(id=4)として扱い、移動手段切り替え候補と一致させる
-      transportMethod:
-        segment.via === 'station'
+      transportMethod: shouldUseStationRouteForFirstSegment
+        ? 'TRANSIT'
+        : segment.isTransit
           ? 'TRANSIT'
-          : segment.isTransit
-            ? 'TRANSIT'
-            : getTravelMethodName(segment.routes[0].transportMethodId),
-      transportMethodId: segment.via === 'station' ? 4 : segment.routes[0].transportMethodId,
+          : getTravelMethodName(segment.routes[0].transportMethodId),
+      transportMethodId: shouldUseStationRouteForFirstSegment ? 4 : segment.routes[0].transportMethodId,
       distance: distanceM,
       duration: durationSec,
       durationText: segment.routes[0].duration,
       distanceText: segment.routes[0].distance,
       waitingMinutes: segment.routes[0].waitingMinutes,
       polyline: encodePolyline(segment.routes[0].path),
-      useNearestStation: segment.via === 'station' || segment.isTransit,
+      useNearestStation: shouldUseStationRouteForFirstSegment || segment.isTransit,
       alternativeRoutes,
     });
   }
@@ -1044,6 +1079,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     if (i < plannedSpots.length - 1) {
       const nextSpot = plannedSpots[i + 1];
       const segmentKey = `SPOT_${currentSpot.id}_TO_${nextSpot.id}`;
+      const preferredSpotToSpotMethodId = params.preferredTransportMethodIds?.[segmentKey];
       if (currentSpot.nearestStation && nextSpot.nearestStation) {
         const walkToStation = Math.max(currentSpot.nearestStation.walkingTime, 0);
         const walkFromStation = Math.max(nextSpot.nearestStation.walkingTime, 0);
@@ -1119,7 +1155,6 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         };
 
         mainRoute = [toDepartureStationRoute, transitRoute, toSpotRoute];
-        currentPlanningTime += walkToStation + waitingMinutes + transitMinutes + walkFromStation;
       }
       const transitMinutes =
         updatedCurrentSpot.routeToNext?.transitTime ?? parseDurationTextToMinutes(currentSpot.transports?.travelTime);
@@ -1129,14 +1164,26 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         currentSpot.location,
         nextSpot.location,
         params.transportMethodIds,
+        1.5,
+        getPreferredDirectTransportMethodId(preferredSpotToSpotMethodId),
       );
       pushRouteFailureMessages(messages, segmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
-      currentPlanningTime += mainRoute.length > 0 ? 0 : parseDurationTextToMinutes(routeResult.selectedRoute.duration);
+      const shouldUseStationRouteForSpotSegment =
+        mainRoute.length > 0 &&
+        (preferredSpotToSpotMethodId === undefined || isStationTransportMethod(preferredSpotToSpotMethodId));
+
+      const selectedSpotSegmentRoutes = shouldUseStationRouteForSpotSegment ? mainRoute : [routeResult.selectedRoute];
+
+      const spotSegmentMinutes = shouldUseStationRouteForSpotSegment
+        ? mainRoute.reduce((sum, route) => sum + parseDurationTextToMinutes(route.duration), 0)
+        : parseDurationTextToMinutes(routeResult.selectedRoute.duration);
+
+      currentPlanningTime += spotSegmentMinutes;
 
       routeSegments.push({
-        routes: mainRoute.length ? mainRoute : [routeResult.selectedRoute], // 最寄駅を介したルートを優先して追加
-        via: mainRoute.length ? 'station' : undefined,
+        routes: selectedSpotSegmentRoutes,
+        via: shouldUseStationRouteForSpotSegment ? 'station' : undefined,
         alternativeRoutes:
           mainRoute.length > 0
             ? [
@@ -1198,22 +1245,21 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           toSpotId: nextSpot.id,
           fromType: 'SPOT',
           toType: 'SPOT',
-          routeType: mainRoute.length ? 'TO_STATION' : 'SPOT_TO_SPOT',
+          routeType: shouldUseStationRouteForSpotSegment ? 'TO_STATION' : 'SPOT_TO_SPOT',
           // 最寄駅経由の場合はTRANSIT(id=4)として扱い、移動手段切り替え候補と一致させる
-          transportMethod:
-            segment.via === 'station'
+          transportMethod: shouldUseStationRouteForSpotSegment
+            ? 'TRANSIT'
+            : segment.isTransit
               ? 'TRANSIT'
-              : segment.isTransit
-                ? 'TRANSIT'
-                : getTravelMethodName(segment.routes[0].transportMethodId),
-          transportMethodId: segment.via === 'station' ? 4 : segment.routes[0].transportMethodId,
+              : getTravelMethodName(segment.routes[0].transportMethodId),
+          transportMethodId: shouldUseStationRouteForSpotSegment ? 4 : segment.routes[0].transportMethodId,
           distance: distanceM,
           duration: durationSec,
           durationText: segment.routes[0].duration,
           distanceText: segment.routes[0].distance,
           waitingMinutes: segment.routes[0].waitingMinutes,
           polyline: encodePolyline(segment.routes[0].path),
-          useNearestStation: segment.via === 'station' || segment.isTransit,
+          useNearestStation: shouldUseStationRouteForSpotSegment || segment.isTransit,
           alternativeRoutes,
         });
       }
@@ -1227,6 +1273,8 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     routeSegments = [];
     const lastSpot = plannedSpots[plannedSpots.length - 1];
     const destinationCoord = { lat: params.destination.latitude, lng: params.destination.longitude };
+    const lastSegmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
+    const preferredLastSegmentMethodId = params.preferredTransportMethodIds?.[lastSegmentKey];
     if (lastSpot.nearestStation && params.destination.nearestStation) {
       const walkToStation = Math.max(lastSpot.nearestStation.walkingTime, 0);
       const walkFromStation = Math.max(params.destination.nearestStation.walkingTime ?? 0, 0);
@@ -1236,7 +1284,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
       const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
       const waitingMinutes = Math.max(selectedMinutes - stationArrival, 0);
-      const segmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
+      const segmentKey = lastSegmentKey;
 
       if (updatedDestination.nearestStation) {
         updatedDestination.nearestStation = {
@@ -1301,21 +1349,31 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       };
 
       mainRoute = [toLastStationRoute, transitRoute, toDestinationRoute];
-      currentPlanningTime += walkToStation + waitingMinutes + transitMinutes + walkFromStation;
     }
     const routeResult = await getOptimalRouteWithAlternatives(
       lastSpot.location,
       destinationCoord,
       params.transportMethodIds,
+      1.5,
+      getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
     );
-    const lastSegmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
     pushRouteFailureMessages(messages, lastSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
-    currentPlanningTime += mainRoute.length > 0 ? 0 : parseDurationTextToMinutes(routeResult.selectedRoute.duration);
+    const shouldUseStationRouteForLastSegment =
+      mainRoute.length > 0 &&
+      (preferredLastSegmentMethodId === undefined || isStationTransportMethod(preferredLastSegmentMethodId));
+
+    const selectedLastSegmentRoutes = shouldUseStationRouteForLastSegment ? mainRoute : [routeResult.selectedRoute];
+
+    const lastSegmentMinutes = shouldUseStationRouteForLastSegment
+      ? mainRoute.reduce((sum, route) => sum + parseDurationTextToMinutes(route.duration), 0)
+      : parseDurationTextToMinutes(routeResult.selectedRoute.duration);
+
+    currentPlanningTime += lastSegmentMinutes;
 
     routeSegments.push({
-      routes: mainRoute.length ? mainRoute : [routeResult.selectedRoute], // 最寄駅を介したルートを優先して追加
-      via: mainRoute.length ? 'station' : undefined,
+      routes: selectedLastSegmentRoutes,
+      via: shouldUseStationRouteForLastSegment ? 'station' : undefined,
       alternativeRoutes:
         mainRoute.length > 0
           ? [
@@ -1377,22 +1435,21 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         toSpotId: 'destination',
         fromType: 'SPOT',
         toType: 'DESTINATION',
-        routeType: mainRoute.length ? 'TO_STATION' : 'SPOT_TO_DESTINATION',
+        routeType: shouldUseStationRouteForLastSegment ? 'TO_STATION' : 'SPOT_TO_DESTINATION',
         // 最寄駅経由の場合はTRANSIT(id=4)として扱い、移動手段切り替え候補と一致させる
-        transportMethod:
-          segment.via === 'station'
+        transportMethod: shouldUseStationRouteForLastSegment
+          ? 'TRANSIT'
+          : segment.isTransit
             ? 'TRANSIT'
-            : segment.isTransit
-              ? 'TRANSIT'
-              : getTravelMethodName(segment.routes[0].transportMethodId),
-        transportMethodId: segment.via === 'station' ? 4 : segment.routes[0].transportMethodId,
+            : getTravelMethodName(segment.routes[0].transportMethodId),
+        transportMethodId: shouldUseStationRouteForLastSegment ? 4 : segment.routes[0].transportMethodId,
         distance: distanceM,
         duration: durationSec,
         durationText: segment.routes[0].duration,
         distanceText: segment.routes[0].distance,
         waitingMinutes: segment.routes[0].waitingMinutes,
         polyline: encodePolyline(segment.routes[0].path),
-        useNearestStation: segment.via === 'station' || segment.isTransit,
+        useNearestStation: shouldUseStationRouteForLastSegment || segment.isTransit,
         alternativeRoutes,
       });
     }
@@ -1425,6 +1482,10 @@ async function runBackwardPlanning(params: PlanningParams): Promise<{
   updatedDeparture: DepartureAndDestinationType;
   updatedDestination: DepartureAndDestinationType;
 }> {
+  /**
+   * 到着時刻から逆算する際も、前進プランニングを反復実行して候補時刻を収束させる。
+   * 発車候補や待機時間の影響を forward 側の計算に寄せるための実装。
+   */
   const targetArrivalTime = resolveLocationTime(params.destination.time, DEFAULT_DESTINATION_TIME);
   const targetArrivalMinutes = timeToMinutes(targetArrivalTime);
 
@@ -1487,6 +1548,11 @@ export function getPlanningMessagePriority(message: PlanningMessage): number {
   return PLANNING_MESSAGE_PRIORITY[segmentType] ?? 99;
 }
 
+/**
+ * プランニングメッセージを画面設計書の優先度順に並べ替える。
+ * @param messages 並べ替え対象のメッセージ一覧
+ * @returns 優先度順に並べ替えたメッセージ一覧
+ */
 export function sortPlanningMessages(messages: PlanningMessage[]): PlanningMessage[] {
   return [...messages].sort((left, right) => getPlanningMessagePriority(left) - getPlanningMessagePriority(right));
 }

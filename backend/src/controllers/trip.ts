@@ -12,7 +12,6 @@ import {
   planLocationNearestStation,
   userLocation,
   planSpotNearestStation,
-  spotRoute,
 } from '@db';
 
 import { getUserId } from '@/middleware/auth';
@@ -492,7 +491,6 @@ export const getTripHandler = {
           ...(planData.planSpotNearestStations || []),
         ];
 
-        const nearestStationIdByRef = new Map<string, number>();
         if (allNearestStations && allNearestStations.length > 0) {
           for (const stationData of allNearestStations) {
             const targetPlanSpotId = planSpotIdByRef.get(stationData.planSpotRef);
@@ -500,59 +498,13 @@ export const getTripHandler = {
               throw new HTTPException(400, { message: `Unknown planSpotRef: ${stationData.planSpotRef}` });
             }
 
-            const [createdStation] = await executor
-              .insert(planSpotNearestStation)
-              .values({
-                planSpotId: targetPlanSpotId,
-                placeId: stationData.placeId,
-                stationType: stationData.stationType,
-                transitTime: stationData.transitTime ?? null,
-                scheduledDepartureTime: stationData.scheduledDepartureTime ?? null,
-                memo: stationData.memo ?? stationData.transitMemo ?? null,
-              })
-              .returning();
-
-            nearestStationIdByRef.set(stationData.planSpotRef, createdStation.id);
-          }
-        }
-
-        if (planData.spotRoutes && planData.spotRoutes.length > 0) {
-          for (const routeData of planData.spotRoutes) {
-            const fromPlanSpotId = planSpotIdByRef.get(routeData.fromPlanSpotRef);
-            const toPlanSpotId = planSpotIdByRef.get(routeData.toPlanSpotRef);
-
-            if (!fromPlanSpotId || !toPlanSpotId) {
-              throw new HTTPException(400, {
-                message: `Unknown plan spot route refs: ${routeData.fromPlanSpotRef} -> ${routeData.toPlanSpotRef}`,
-              });
-            }
-
-            if (routeData.fromNearestStationRef && !nearestStationIdByRef.get(routeData.fromNearestStationRef)) {
-              throw new HTTPException(400, {
-                message: `Unknown fromNearestStationRef: ${routeData.fromNearestStationRef}`,
-              });
-            }
-            if (routeData.toNearestStationRef && !nearestStationIdByRef.get(routeData.toNearestStationRef)) {
-              throw new HTTPException(400, {
-                message: `Unknown toNearestStationRef: ${routeData.toNearestStationRef}`,
-              });
-            }
-
-            await executor.insert(spotRoute).values({
-              planId: newPlan.id,
-              fromPlanSpotId,
-              toPlanSpotId,
-              transportType: routeData.transportType,
-              fromNearestStationId: routeData.fromNearestStationRef
-                ? (nearestStationIdByRef.get(routeData.fromNearestStationRef) ?? null)
-                : null,
-              toNearestStationId: routeData.toNearestStationRef
-                ? (nearestStationIdByRef.get(routeData.toNearestStationRef) ?? null)
-                : null,
-              transitTime: routeData.transitTime,
-              waitingTime: routeData.waitingTime,
-              scheduledDepartureTime: routeData.scheduledDepartureTime ?? null,
-              memo: routeData.memo ?? null,
+            await executor.insert(planSpotNearestStation).values({
+              planSpotId: targetPlanSpotId,
+              placeId: stationData.placeId,
+              stationType: stationData.stationType,
+              transitTime: stationData.transitTime ?? null,
+              scheduledDepartureTime: stationData.scheduledDepartureTime ?? null,
+              memo: stationData.memo ?? stationData.transitMemo ?? null,
             });
           }
         }

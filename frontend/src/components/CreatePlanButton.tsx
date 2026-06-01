@@ -10,16 +10,26 @@ import { TransportNodeType } from '@/types/plan';
 import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
 import { useFetchTripDetail } from '@/hooks/use-trip';
 import { TripType } from '@/models/trip';
+import { PLANNING_DIRTY_BLOCK_MESSAGE } from '@/data/constants';
 
 import { Button } from './ui/button';
 
+/**
+ * プラン保存前のバリデーションと保存実行を担うボタン。
+ * dirty状態の保存ブロックと、保存成功時の初期化・遷移を扱う。
+ * @returns 保存ボタンUI
+ */
 const CreatePlanButton = () => {
   const fields = useStoreForPlanning();
   const router = useRouter();
   const { toast } = useToast();
   const { postTrip } = useFetchTripDetail();
 
-  const checkValidation = () => {
+  /**
+   * 保存前にフォーム入力とdirty状態を検証する。
+   * @returns 検証結果の種別
+   */
+  const checkValidation = (): 'success' | 'dirty-blocked' | 'validation-error' => {
     let isError = false;
 
     if (fields.title === '') {
@@ -34,6 +44,16 @@ const CreatePlanButton = () => {
 
     const dates = getDatesBetween(new Date(fields.startDate), new Date(fields.endDate));
 
+    const dirtyPlanningDates = fields.getDirtyPlanningDates();
+    if (dirtyPlanningDates.length > 0) {
+      toast({
+        title: PLANNING_DIRTY_BLOCK_MESSAGE.title,
+        description: PLANNING_DIRTY_BLOCK_MESSAGE.description,
+        variant: 'destructive',
+      });
+      return 'dirty-blocked';
+    }
+
     // プラン日数の上限チェック
     if (isPlanDaysLimitReached(dates.length)) {
       toast({
@@ -41,7 +61,7 @@ const CreatePlanButton = () => {
         description: getLimitErrorMessage('planDays'),
         variant: 'destructive',
       });
-      return true;
+      return 'validation-error';
     }
 
     dates.map((date) => {
@@ -81,9 +101,13 @@ const CreatePlanButton = () => {
       });
     });
 
-    return isError;
+    return isError ? 'validation-error' : 'success';
   };
 
+  /**
+   * 保存APIを実行し、成功時はストア初期化後に詳細または一覧画面へ遷移する。
+   * @returns なし
+   */
   const handleCreatePlan = async () => {
     try {
       const newData: TripType = {
@@ -94,7 +118,8 @@ const CreatePlanButton = () => {
         tripInfo: fields.tripInfo,
         plans: fields.plans,
       };
-      if (!checkValidation()) {
+      const validationResult = checkValidation();
+      if (validationResult === 'success') {
         const resultId = await postTrip(newData);
         toast({ title: '旅行計画が作成されました', description: '旅行計画の作成に成功しました。', variant: 'success' });
         fields.resetPlanningStore();
@@ -103,7 +128,7 @@ const CreatePlanButton = () => {
         } else {
           router.push('/plan/list');
         }
-      } else {
+      } else if (validationResult === 'validation-error') {
         toast({
           title: '入力項目に一部不備があります',
           description: '入力項目を見直してください',

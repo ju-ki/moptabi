@@ -64,7 +64,7 @@ describe('旅行計画スキーマ検証', () => {
     expect(result.success).toBe(false);
   });
 
-  it('spotRoutesのtransportTypeが不正値の場合はスキーマ不一致になる', () => {
+  it('旧payloadでspotRoutesが含まれていてもスキーマで受理されること', () => {
     const result = TripSchema.safeParse({
       title: 'No229',
       startDate: '2026-04-21',
@@ -125,7 +125,7 @@ describe('旅行計画スキーマ検証', () => {
             {
               fromPlanSpotRef: 'temp-spot-1',
               toPlanSpotRef: 'temp-spot-2',
-              transportType: 'INVALID',
+              transportType: 'TRAIN',
               transitTime: 20,
               waitingTime: 5,
             },
@@ -134,6 +134,6 @@ describe('旅行計画スキーマ検証', () => {
       ],
     } as any);
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 });

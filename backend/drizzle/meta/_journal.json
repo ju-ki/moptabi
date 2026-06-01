@@ -57,6 +57,13 @@
       "when": 1780000000000,
       "tag": "0008_extend_nearest_station_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780000000001,
+      "tag": "0009_drop_spot_route",
+      "breakpoints": true
     }
   ]
 }

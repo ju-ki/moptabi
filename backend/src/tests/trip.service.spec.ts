@@ -12,7 +12,6 @@ import {
   planLocationNearestStation,
   planSpot,
   planSpotNearestStation,
-  spotRoute,
   trip,
   clearAllTestData as clearTestData,
   clearUserTestData as clearTestDataForUser,
@@ -331,7 +330,7 @@ describe('旅行計画サービス', () => {
       }
     });
 
-    it('No.229: trip/createでtime・stayDuration・最寄駅・ルートを一括保存できること', async () => {
+    it('No.225: 旧payloadでspotRoutesが含まれていても無視して作成できること', async () => {
       const no229Payload = {
         ...mockTripData,
         tripInfo: [mockTripInfoData[0]],
@@ -454,11 +453,6 @@ describe('旅行計画サービス', () => {
       expect(createdStations[0]?.transitTime).toBe(12);
       expect(createdStations[0]?.scheduledDepartureTime).toBe('10:40');
       expect(createdStations[0]?.memo).toBe('中央線');
-
-      const createdRoutes = await db.select().from(spotRoute).where(eq(spotRoute.planId, createdPlans[0].id));
-      expect(createdRoutes.length).toBe(1);
-      expect(createdRoutes[0]?.transitTime).toBe(20);
-      expect(createdRoutes[0]?.transportType).toBe('TRAIN');
     });
 
     it('No.229: stationTypeが不正値の場合はバリデーションエラーになること', async () => {

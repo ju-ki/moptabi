@@ -18,11 +18,6 @@ User (1)
  │    │    ├─< PlanSpot (N)
  │    │    │    └─ spotId (Google Place ID参照)
  │    │    │    └─< PlanSpotNearestStation (N)  ← No.229追加
- │    │    ├─< SpotRoute (N)                    ← No.229追加
- │    │    │    ├─ fromPlanSpotId → PlanSpot
- │    │    │    ├─ toPlanSpotId → PlanSpot
- │    │    │    ├─ fromNearestStationId → PlanSpotNearestStation (nullable)
- │    │    │    └─ toNearestStationId → PlanSpotNearestStation (nullable)
  │    │    ├─< PlanLocation (N)
  │    │    │    └─ locationType: DEPARTURE | DESTINATION
  │    │    │    └─< PlanLocationNearestStation (1) ← No.229追加
@@ -52,18 +47,6 @@ PlanSpot
     ├─ placeId (Google Place ID of Station)
     └─ stationType: BUS | TRAIN | OTHER
 
-SpotRoute                           ← No.229新規
- ├─ id
- ├─ planId → Plan
- ├─ fromPlanSpotId → PlanSpot
- ├─ toPlanSpotId → PlanSpot
- ├─ transportType: WALK | CAR | TRAIN | BUS | OTHER
- ├─ fromNearestStationId → PlanSpotNearestStation (nullable)
- ├─ toNearestStationId → PlanSpotNearestStation (nullable)
- ├─ transitTime: 分数
- ├─ waitingTime: 分数
- ├─ scheduledDepartureTime: "HH:MM"（ユーザー設定）
- └─ memo: text (nullable)
 ```
 
 ## テーブル詳細
@@ -178,8 +161,6 @@ SpotRoute                           ← No.229新規
 **リレーション**:
 - Plan (N:1)
 - PlanSpotNearestStation (1:N)
-- SpotRoute (1:N) - fromPlanSpot
-- SpotRoute (1:N) - toPlanSpot
 
 ### 8. TransportMethod（移動手段）
 **目的**: 移動手段のマスタ情報を管理
@@ -244,8 +225,6 @@ SpotRoute                           ← No.229新規
 
 **リレーション**:
 - PlanSpot (N:1)
-- SpotRoute (1:N) - fromNearestStation
-- SpotRoute (1:N) - toNearestStation
 
 > ⚠️ 駅の名前・歩行時間・座標はDBに保存しない（Google Maps Platform利用規約 No.230準拠）。
 > フロントエンドが `placeId` をもとにGoogle Places APIから都度取得する。
@@ -272,31 +251,6 @@ SpotRoute                           ← No.229新規
 - planLocationId はユニーク（1つのPlanLocationに対して最大1つの最寄駅）
 
 ---
-
-### 11-C. SpotRoute（スポット間ルート）※No.229新規
-**目的**: PlanSpot間の移動情報（手段・所要時間・出発時刻・乗換駅）を管理する
-
-| カラム名 | データ型 | 制約 | 説明 |
-|---------|---------|------|------|
-| id | SERIAL | PRIMARY KEY | ID |
-| planId | INTEGER | NOT NULL, FK | Plan ID |
-| fromPlanSpotId | INTEGER | NOT NULL, FK | 出発PlanSpot ID |
-| toPlanSpotId | INTEGER | NOT NULL, FK | 到着PlanSpot ID |
-| transportType | TransportType | NOT NULL | 移動手段（WALK / CAR / TRAIN / BUS / OTHER） |
-| fromNearestStationId | INTEGER | NULL, FK | 出発最寄駅 ID（電車・バス時のみ） |
-| toNearestStationId | INTEGER | NULL, FK | 到着最寄駅 ID（電車・バス時のみ） |
-| transitTime | INTEGER | NOT NULL | 移動所要時間（分） |
-| waitingTime | INTEGER | NOT NULL DEFAULT 0 | 待ち時間（分） |
-| scheduledDepartureTime | VARCHAR(5) | NULL | ユーザー設定の出発時刻（HH:MM） |
-| memo | TEXT | NULL | メモ |
-
-**リレーション**:
-- Plan (N:1)
-- PlanSpot (N:1) - fromPlanSpot
-- PlanSpot (N:1) - toPlanSpot
-- PlanSpotNearestStation (N:1) - fromNearestStation（nullable）
-- PlanSpotNearestStation (N:1) - toNearestStation（nullable）
-
 
 ### 12. Wishlist(行きたいリスト)
 **目的**: ユーザーのスポットの行きたいリストを管理
@@ -378,13 +332,6 @@ No.229追加カラム:
 - `TRAIN`: 鉄道駅
 - `OTHER`: その他
 
-### TransportType ※No.229追加
-- `WALK`: 徒歩
-- `CAR`: 車
-- `TRAIN`: 電車
-- `BUS`: バス
-- `OTHER`: その他
-
 ## インデックス
 - `SpotMeta_spotId_key`: SpotMeta.spotId のユニークインデックス
 
@@ -397,11 +344,6 @@ No.229追加カラム:
 - PlanLocation.planId → Plan.id (SET NULL)
 - PlanSpotNearestStation.planSpotId → PlanSpot.id (CASCADE DELETE) ※No.229追加
 - PlanLocationNearestStation.planLocationId → PlanLocation.id (CASCADE DELETE) ※No.229追加
-- SpotRoute.planId → Plan.id (CASCADE DELETE) ※No.229追加
-- SpotRoute.fromPlanSpotId → PlanSpot.id (CASCADE DELETE) ※No.229追加
-- SpotRoute.toPlanSpotId → PlanSpot.id (CASCADE DELETE) ※No.229追加
-- SpotRoute.fromNearestStationId → PlanSpotNearestStation.id (SET NULL) ※No.229追加
-- SpotRoute.toNearestStationId → PlanSpotNearestStation.id (SET NULL) ※No.229追加
 - UserNotification.userId → User.id (CASCADE DELETE)
 - UserNotification.notificationId → Notification.id (CASCADE DELETE)
 
