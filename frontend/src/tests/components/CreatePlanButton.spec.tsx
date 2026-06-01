@@ -3,11 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPush, mockToast, mockPostTrip, mockResetPlanningStore } = vi.hoisted(() => ({
+const { mockPush, mockToast, mockPostTrip, mockResetPlanningStore, mockGetDirtyPlanningDates } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockToast: vi.fn(),
   mockPostTrip: vi.fn(),
   mockResetPlanningStore: vi.fn(),
+  mockGetDirtyPlanningDates: vi.fn<() => string[]>(() => []),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -42,6 +43,7 @@ vi.mock('@/lib/plan', () => ({
         memo: '',
       },
     ],
+    getDirtyPlanningDates: mockGetDirtyPlanningDates,
     setErrors: vi.fn(),
     setTripInfoErrors: vi.fn(),
     setPlanErrors: vi.fn(),
@@ -55,6 +57,7 @@ import CreatePlanButton from '@/components/CreatePlanButton';
 describe('CreatePlanButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetDirtyPlanningDates.mockReturnValue([]);
   });
 
   it('保存成功で詳細画面へ遷移する場合、遷移前にストアを初期化すること', async () => {
@@ -83,6 +86,21 @@ describe('CreatePlanButton', () => {
       expect(mockToast).toHaveBeenCalled();
     });
 
+    expect(mockResetPlanningStore).not.toHaveBeenCalled();
+  });
+
+  it('dirty日付が存在する場合は保存をブロックし、APIを呼ばないこと', async () => {
+    mockGetDirtyPlanningDates.mockReturnValue(['2026-06-01']);
+
+    render(<CreatePlanButton />);
+
+    await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled();
+    });
+
+    expect(mockPostTrip).not.toHaveBeenCalled();
     expect(mockResetPlanningStore).not.toHaveBeenCalled();
   });
 });

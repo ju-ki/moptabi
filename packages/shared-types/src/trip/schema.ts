@@ -58,18 +58,6 @@ const PlanSpotNearestStationSchema = z.object({
   transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
 });
 
-const SpotRouteSchema = z.object({
-  fromPlanSpotRef: z.string().min(1, { message: 'fromPlanSpotRefは必須です' }),
-  toPlanSpotRef: z.string().min(1, { message: 'toPlanSpotRefは必須です' }),
-  transportType: z.enum(['WALK', 'CAR', 'TRAIN', 'BUS', 'OTHER']),
-  fromNearestStationRef: z.string().optional(),
-  toNearestStationRef: z.string().optional(),
-  transitTime: z.number().int().min(0),
-  waitingTime: z.number().int().min(0).default(0),
-  scheduledDepartureTime: z.string().optional(),
-  memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-});
-
 export const TripSchema = z.object({
   title: z
     .string()
@@ -133,7 +121,6 @@ export const TripSchema = z.object({
       departure: DepartureAndDestinationSchema,
       destination: DepartureAndDestinationSchema,
       planSpotNearestStations: z.array(PlanSpotNearestStationSchema).optional(),
-      spotRoutes: z.array(SpotRouteSchema).optional(),
     }),
   ),
 });

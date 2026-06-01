@@ -6,9 +6,19 @@ import { TransportNodeType } from '@/types/plan';
 
 import { Button } from './ui/button';
 
+/**
+ * 指定日付のプランニングを実行し、結果をストアへ反映するボタン。
+ * 再プランニング時は現在選択中の区間別移動手段も優先条件として渡す。
+ * @param date 対象日付
+ * @returns プラン作成ボタンUI
+ */
 const PlanningButton = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
 
+  /**
+   * 入力値を検証したうえでプランニングを実行し、計算結果と選択中の移動手段をストアへ反映する。
+   * @returns なし
+   */
   const onClickPlanningButton = async (): Promise<void> => {
     let isError = false;
     fields.resetErrors();
@@ -62,12 +72,32 @@ const PlanningButton = ({ date }: { date: string }) => {
 
     fields.setSimulationStatus({ date: date, status: 1 });
     try {
+      const preferredTransportMethodIds: Record<string, number> = {};
+
+      if (departureData.transports?.transportMethod) {
+        preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transports.transportMethod;
+      }
+
+      spotsData.forEach((spot, index) => {
+        const nextSpot = spotsData[index + 1];
+        if (!nextSpot) return;
+        if (!spot.transports?.transportMethod) return;
+
+        preferredTransportMethodIds[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.transports.transportMethod;
+      });
+
+      if (spotsData.length > 0 && destinationData.transports?.transportMethod) {
+        const lastSpot = spotsData[spotsData.length - 1];
+        preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transports.transportMethod;
+      }
+
       const params: PlanningParams = {
         date,
         departure: departureData,
         destination: destinationData,
         spots: spotsData || [],
         transportMethodIds: fields.getPlanningInfo(date)?.transportationMethodId || [1], // 何も設定されていなければ徒歩を選択
+        preferredTransportMethodIds,
       };
 
       const result = await executePlanning(params);
@@ -106,6 +136,10 @@ const PlanningButton = ({ date }: { date: string }) => {
           }
         }
       }
+
+      // 初回プランニング反映時の内部更新でdirtyが立つため、
+      // 最終状態を改めてスナップショット化してdirtyを解除する。
+      fields.setPlanningResult(date, result);
 
       fields.setSimulationStatus({ date: date, status: 2 });
     } catch (error) {

@@ -271,10 +271,12 @@ No.229 追記（最寄駅情報の保存/取得）:
 
 ---
 
-## No.229 データ保存方針（専用エンドポイントなし）
+## No.229 / No.225 データ保存方針（専用エンドポイントなし）
 
-No.229 の `SpotRoute` / `PlanSpotNearestStation` は専用APIを作成せず、
+No.229 で追加した最寄駅関連データは専用APIを作成せず、
 `POST /trip/create` に一括登録データとして内包する。
+
+No.225 で `spotRoutes` は契約対象から削除する。
 
 ### POST /trip/create への追加データ
 
@@ -293,28 +295,9 @@ No.229 の `SpotRoute` / `PlanSpotNearestStation` は専用APIを作成せず、
   ]
   ```
 
-2. `spotRoutes`
-  - 役割: PlanSpot間の移動情報を保存
-  - 例:
-  ```json
-  [
-    {
-      "fromPlanSpotRef": "temp-spot-1",
-      "toPlanSpotRef": "temp-spot-2",
-      "transportType": "TRAIN",
-      "fromNearestStationRef": "temp-spot-1",
-      "toNearestStationRef": "temp-spot-2",
-      "transitTime": 20,
-      "waitingTime": 5,
-      "scheduledDepartureTime": "10:05",
-      "memo": "乗り換え1回"
-    }
-  ]
-  ```
-
 補足:
 - 最寄駅はプラン作成フローと同時に登録する想定のため、一覧取得API・更新APIは今回提供しない。
-- SpotRoute も同様に専用 CRUD は今回提供しない。
+- No.225 で `spotRoutes` は契約対象から削除済み。
 - 駅名・歩行時間はフロントエンドが `placeId` をもとにGoogle Places APIから取得する。
 
 ---

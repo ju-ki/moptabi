@@ -16,6 +16,11 @@ import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { TransportNodeType } from '@/types/plan';
 
+/**
+ * プラン作成画面の入力フォーム全体を描画する。
+ * 初回候補の反映と、画面離脱時のストア初期化もここで管理する。
+ * @returns プラン作成ページ
+ */
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(

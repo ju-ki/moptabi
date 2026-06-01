@@ -13,6 +13,7 @@ import TravelPlan from './TravelPlan';
 import SpotSelectionDialog from './spot-selection/SpotSelectionDialog';
 import LocationLinkCheckbox from './LocationLinkCheckbox';
 import { SpotSettingList } from './travel-plan/SpotSettingEditor';
+import PlanConsistencyAction from './PlanConsistencyAction';
 
 const PlanningComp = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
@@ -75,6 +76,11 @@ const PlanningComp = ({ date }: { date: string }) => {
       {/* プランの仮作成ボタン */}
       <div className="space-y-2">
         <PlanningButton date={date} />
+      </div>
+
+      {/* 日付単位の整合性導線 */}
+      <div className="space-y-2 my-4">
+        <PlanConsistencyAction date={date} />
       </div>
 
       {/* プランニング計画シート */}

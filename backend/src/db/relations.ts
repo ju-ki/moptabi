@@ -14,7 +14,6 @@ import {
   planLocation,
   planSpotNearestStation,
   planLocationNearestStation,
-  spotRoute,
 } from './schema';
 
 export const transportRelations = relations(transport, ({ one }) => ({
@@ -26,7 +25,6 @@ export const transportRelations = relations(transport, ({ one }) => ({
 
 export const planRelations = relations(plan, ({ one, many }) => ({
   transports: many(transport),
-  spotRoutes: many(spotRoute),
   trip: one(trip, {
     fields: [plan.tripId],
     references: [trip.id],
@@ -41,43 +39,12 @@ export const planSpotRelations = relations(planSpot, ({ one, many }) => ({
     references: [plan.id],
   }),
   nearestStations: many(planSpotNearestStation),
-  fromSpotRoutes: many(spotRoute, { relationName: 'fromSpotRoute' }),
-  toSpotRoutes: many(spotRoute, { relationName: 'toSpotRoute' }),
 }));
 
-export const planSpotNearestStationRelations = relations(planSpotNearestStation, ({ one, many }) => ({
+export const planSpotNearestStationRelations = relations(planSpotNearestStation, ({ one }) => ({
   planSpot: one(planSpot, {
     fields: [planSpotNearestStation.planSpotId],
     references: [planSpot.id],
-  }),
-  fromSpotRoutes: many(spotRoute, { relationName: 'fromNearestStationRoute' }),
-  toSpotRoutes: many(spotRoute, { relationName: 'toNearestStationRoute' }),
-}));
-
-export const spotRouteRelations = relations(spotRoute, ({ one }) => ({
-  plan: one(plan, {
-    fields: [spotRoute.planId],
-    references: [plan.id],
-  }),
-  fromPlanSpot: one(planSpot, {
-    fields: [spotRoute.fromPlanSpotId],
-    references: [planSpot.id],
-    relationName: 'fromSpotRoute',
-  }),
-  toPlanSpot: one(planSpot, {
-    fields: [spotRoute.toPlanSpotId],
-    references: [planSpot.id],
-    relationName: 'toSpotRoute',
-  }),
-  fromNearestStation: one(planSpotNearestStation, {
-    fields: [spotRoute.fromNearestStationId],
-    references: [planSpotNearestStation.id],
-    relationName: 'fromNearestStationRoute',
-  }),
-  toNearestStation: one(planSpotNearestStation, {
-    fields: [spotRoute.toNearestStationId],
-    references: [planSpotNearestStation.id],
-    relationName: 'toNearestStationRoute',
   }),
 }));
 

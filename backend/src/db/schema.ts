@@ -20,7 +20,6 @@ export const transportNodeType = pgEnum('TransportNodeType', ['DEPARTURE', 'DEST
 // 地点の種別（出発地、目的地、または両方）
 export const locationType = pgEnum('LocationType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
 export const stationType = pgEnum('StationType', ['BUS', 'TRAIN', 'OTHER']);
-export const routeTransportType = pgEnum('RouteTransportType', ['WALK', 'CAR', 'TRAIN', 'BUS', 'OTHER']);
 
 export const prismaMigrations = pgTable('_prisma_migrations', {
   id: varchar({ length: 36 }).primaryKey().notNull(),
@@ -313,60 +312,6 @@ export const planLocationNearestStation = pgTable(
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
-  ],
-);
-
-export const spotRoute = pgTable(
-  'SpotRoute',
-  {
-    id: serial().primaryKey().notNull(),
-    planId: integer().notNull(),
-    fromPlanSpotId: integer().notNull(),
-    toPlanSpotId: integer().notNull(),
-    transportType: routeTransportType().notNull(),
-    fromNearestStationId: integer(),
-    toNearestStationId: integer(),
-    transitTime: integer().notNull(),
-    waitingTime: integer().default(0).notNull(),
-    scheduledDepartureTime: varchar({ length: 5 }),
-    memo: text(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.planId],
-      foreignColumns: [plan.id],
-      name: 'SpotRoute_planId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.fromPlanSpotId],
-      foreignColumns: [planSpot.id],
-      name: 'SpotRoute_fromPlanSpotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.toPlanSpotId],
-      foreignColumns: [planSpot.id],
-      name: 'SpotRoute_toPlanSpotId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-    foreignKey({
-      columns: [table.fromNearestStationId],
-      foreignColumns: [planSpotNearestStation.id],
-      name: 'SpotRoute_fromNearestStationId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
-    foreignKey({
-      columns: [table.toNearestStationId],
-      foreignColumns: [planSpotNearestStation.id],
-      name: 'SpotRoute_toNearestStationId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('set null'),
   ],
 );
 
