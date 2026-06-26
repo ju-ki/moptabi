@@ -110,6 +110,11 @@
   - リクエストボディ: `TripSchema`（作成に必要なフィールド）
   - レスポンス 201: 作成された `TripSchema`
 
+- PATCH /{id}
+  - 概要: 既存の旅行計画を更新
+  - リクエストボディ: `TripSchema`（更新に必要なフィールド）
+  - レスポンス 201: 作成された `TripSchema`
+
 - DELETE /{id}
   - 概要: 旅行計画を削除
   - レスポンス 200: { message: string }

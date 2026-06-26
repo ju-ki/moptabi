@@ -153,8 +153,8 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                 lng: spots[0].location.lng,
                 nearestStation: spots[0].nearestStation
                   ? {
-                      name: spots[0].nearestStation.name,
-                      walkingTime: spots[0].nearestStation.walkingTime,
+                      name: spots[0].nearestStation.name ?? '最寄駅',
+                      walkingTime: spots[0].nearestStation.walkingTime ?? 0,
                       transitTime: spots[0].nearestStation.transitTime,
                     }
                   : undefined,
@@ -205,8 +205,8 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                       lng: spot.location.lng,
                       nearestStation: spot.nearestStation
                         ? {
-                            name: spot.nearestStation.name,
-                            walkingTime: spot.nearestStation.walkingTime,
+                            name: spot.nearestStation.name ?? '最寄駅',
+                            walkingTime: spot.nearestStation.walkingTime ?? 0,
                             transitTime: spot.nearestStation.transitTime,
                           }
                         : undefined,

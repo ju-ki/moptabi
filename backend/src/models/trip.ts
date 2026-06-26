@@ -83,7 +83,7 @@ export const TripSchema = z.object({
           }),
           stayStart: z.string(),
           stayEnd: z.string(),
-          stayDuration: z.number().int().min(0).optional(),
+          stayDuration: z.number().int().min(0),
           memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
           image: z.string().optional(),
           url: z.string().optional().openapi({ example: 'https://example.com' }),
@@ -100,8 +100,8 @@ export const TripSchema = z.object({
             .object({
               placeId: z.string().optional(),
               stationType: StationTypeSchema.optional(),
-              name: z.string(),
-              walkingTime: z.number(),
+              name: z.string().optional(),
+              walkingTime: z.number().optional(),
               latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
               longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
               transitTime: z.number().int().min(0).optional(),
@@ -142,6 +142,8 @@ const TripDetailSpotSchema = z.object({
     })
     .nullable(),
 });
+
+export type TripDetailSpotType = z.infer<typeof TripDetailSpotSchema>;
 
 const TripDetailPlanSchema = z.object({
   date: z.string(),

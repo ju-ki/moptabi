@@ -34,8 +34,12 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
   // 出発地の最寄駅関連の状態（最初のスポットの場合）
-  const [departureNearestStations, setDepartureNearestStations] = useState<NearestStation[]>([]);
-  const [selectedDepartureStationId, setSelectedDepartureStationId] = useState<string | null>(null);
+  const [departureNearestStations, setDepartureNearestStations] = useState<NearestStation[]>(
+    [departureData?.nearestStation].filter((s): s is NearestStation => !!s),
+  );
+  const [selectedDepartureStationId, setSelectedDepartureStationId] = useState<string | null>(
+    departureData?.nearestStation?.placeId || null,
+  );
   const [departureTransitTime, setDepartureTransitTime] = useState<number>(
     departureData?.nearestStation?.transitTime || 0,
   );
@@ -48,7 +52,9 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   );
   const [scheduledDepartureTimes, setScheduledDepartureTimes] = useState<string[]>(buildInitialDepartureCandidates());
   const [transitMemo, setTransitMemo] = useState<string>(departureData?.nearestStation?.transitMemo || '');
-  const [isDepartureSectionExpanded, setIsDepartureSectionExpanded] = useState<boolean>(false);
+  const [isDepartureSectionExpanded, setIsDepartureSectionExpanded] = useState<boolean>(
+    !!departureData?.nearestStation && !!departureData?.nearestStation.name,
+  );
   const [useDepartureNearestStation, setUseDepartureNearestStation] = useState<boolean>(
     !!departureData?.nearestStation,
   );
@@ -361,6 +367,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                                 value={candidate}
                                 onChange={(e) => handleScheduledDepartureTimeCandidateChange(index, e.target.value)}
                                 className="w-28"
+                                data-testid={`scheduled-departure-${index + 1}`}
                                 aria-label={`発車時間候補${index + 1}`}
                               />
                             ))}

@@ -15,6 +15,7 @@ import {
 } from '@db';
 
 import { getUserId } from '@/middleware/auth';
+import { updateTrip } from '@/services/trip';
 
 import {
   DepartureAndDestinationType,
@@ -609,6 +610,12 @@ export const getTripHandler = {
       };
       return c.json(responseTrip, 201);
     }
+  },
+
+  // 旅行計画の更新
+  updateTrip: async (c: Context) => {
+    const response = await updateTrip(c);
+    return c.json(response, 200);
   },
 
   /**

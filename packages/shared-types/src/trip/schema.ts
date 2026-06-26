@@ -142,7 +142,7 @@ const TripDetailSpotSchema = z.object({
       memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
       transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     })
-    .nullable(),
+    .optional(),
 });
 
 const TripDetailPlanSchema = z.object({

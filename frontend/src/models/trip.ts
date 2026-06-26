@@ -7,6 +7,7 @@ import { PlanListSchema } from './plan';
 import type { TripDetailResponseType as TripDetailResponseContractType } from '@shared/trip/types';
 
 export const TripSchema = z.object({
+  id: z.number().optional(),
   title: z
     .string()
     .min(1, { message: 'タイトルは必須です' })
@@ -36,6 +37,7 @@ export type TripListItem = Pick<TripType, 'title' | 'imageUrl' | 'startDate' | '
 export type TripDetailApiResponse = TripDetailResponseContractType;
 export type TripDetailApiPlan = TripDetailApiResponse['plans'][number];
 export type TripDetailApiSpot = TripDetailApiPlan['spots'][number];
+export type TripDetailApiNearestStation = TripDetailApiSpot['nearestStation'];
 
 /** frontend補完後の詳細レスポンス型 */
 export type TripDetailApiResponseEnriched = Omit<TripType, 'tripInfo'> & {

@@ -14,7 +14,12 @@ import {
 } from '@/types/plan';
 import { TripSchema } from '@/models/trip';
 import { DepartureAndDestinationType, PlanLocationCandidatesResponse } from '@/models/planLocation';
-import { DEFAULT_DEPARTURE_AND_DESTINATION, PLANNING_DIRTY_SPOT_FIELDS } from '@/data/constants';
+import {
+  DEFAULT_ARRIVAL_TIME,
+  DEFAULT_DEPARTURE_AND_DESTINATION,
+  DEFAULT_DEPARTURE_TIME,
+  PLANNING_DIRTY_SPOT_FIELDS,
+} from '@/data/constants';
 
 import { getPrefectures } from './algorithm';
 import { formatOpeningHours } from './google-maps';
@@ -186,6 +191,7 @@ interface FormState {
   setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
   editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
   getSortedSpots: (date: string) => Spot[];
+  getFields: <K extends keyof FormState>(field: K) => FormState[K];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
   setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
@@ -474,6 +480,7 @@ export const useStoreForPlanning = create<FormState>()(
           }
         });
       },
+      getFields: (field) => get()[field],
       setFields: (field, value) =>
         set((state) => {
           state[field] = value;
@@ -493,13 +500,13 @@ export const useStoreForPlanning = create<FormState>()(
             spots: [],
             departure: {
               ...defaultDeparture,
-              time: '09:00',
+              time: DEFAULT_DEPARTURE_TIME,
               name: defaultDeparture.name === '' ? '出発地_' + date : defaultDeparture.name,
               locationType: TransportNodeType.DEPARTURE,
             },
             destination: {
               ...defaultDestination,
-              time: '18:00',
+              time: DEFAULT_ARRIVAL_TIME,
               name: defaultDestination.name === '' ? '目的地_' + date : defaultDestination.name,
               locationType: TransportNodeType.DESTINATION,
             },

@@ -34,6 +34,8 @@ function createDestination(overrides: Partial<DepartureAndDestinationType> = {})
       walkingTime: 4,
       transitTime: 9,
       transitMemo: '北口\n階段を利用',
+      latitude: 35.5494,
+      longitude: 139.7798,
     },
     ...overrides,
   };
@@ -57,6 +59,8 @@ describe('DestinationInfoCard', () => {
             walkingTime: 6,
             transitTime: 12,
             scheduledDepartureTime: '16:20',
+            latitude: 35.5494,
+            longitude: 139.7798,
           },
         })}
       />,

@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DepartureDetailCard from '@/components/travel-plan/DepartureDetailCard';
+import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 const mockGetDepartureAndDestination = vi.fn();
 const mockGetSpotInfo = vi.fn();
@@ -28,7 +29,7 @@ function createDeparture(overrides?: Partial<Record<string, unknown>>) {
   return {
     name: '新宿駅',
     address: '東京都新宿区新宿3-38-1',
-    time: '08:00',
+    time: DEFAULT_DEPARTURE_TIME,
     transports: {
       transportMethod: 4,
       travelTime: '10分',
@@ -73,6 +74,14 @@ describe('DepartureDetailCard', () => {
           transportMethod: 'TRANSIT',
         },
       ],
+      totalDistance: 1000,
+      totalDuration: 20,
+      departureTime: DEFAULT_DEPARTURE_TIME,
+      arrivalTime: DEFAULT_ARRIVAL_TIME,
+      isOverTime: false,
+      updatedSpots: [],
+      updatedDeparture: createDeparture(),
+      updatedDestination: createDeparture(), // 出発地のテストなので仮置き
     });
   });
 
@@ -101,9 +110,9 @@ describe('DepartureDetailCard', () => {
   it('移動手段を変えても出発時刻が変わらない', () => {
     render(<DepartureDetailCard date={date} index={0} />);
 
-    const before = screen.getByText('出発時刻: 08:00');
+    const before = screen.getByText('出発時刻: 09:00');
     fireEvent.click(screen.getByRole('button', { name: /徒歩 \(20分\)/ }));
-    const after = screen.getByText('出発時刻: 08:00');
+    const after = screen.getByText('出発時刻: 09:00');
 
     expect(before).toBe(after);
   });
@@ -120,7 +129,6 @@ describe('DepartureDetailCard', () => {
     it('複数日プランで日付ごとに出発地情報が正しく取得される', () => {
       const departure = createDeparture({
         name: '新宿駅',
-        time: '08:00',
       });
 
       mockGetDepartureAndDestination.mockReturnValue(departure);
@@ -134,12 +142,21 @@ describe('DepartureDetailCard', () => {
             transportMethod: 'TRANSIT',
           },
         ],
+
+        totalDistance: 1000,
+        totalDuration: 20,
+        departureTime: DEFAULT_DEPARTURE_TIME,
+        arrivalTime: DEFAULT_ARRIVAL_TIME,
+        isOverTime: false,
+        updatedSpots: [],
+        updatedDeparture: createDeparture(),
+        updatedDestination: createDeparture(), // 出発地のテストなので仮置き
       });
 
       render(<DepartureDetailCard date="2025-12-20" index={0} />);
 
       expect(screen.getByText(/新宿駅/)).toBeInTheDocument();
-      expect(screen.getByText('出発時刻: 08:00')).toBeInTheDocument();
+      expect(screen.getByText('出発時刻: 09:00')).toBeInTheDocument();
     });
 
     it('複数日プランで最寄駅が設定されている場合に表示される', () => {
@@ -171,6 +188,14 @@ describe('DepartureDetailCard', () => {
             transportMethod: 'TRANSIT',
           },
         ],
+        totalDistance: 1000,
+        totalDuration: 20,
+        departureTime: DEFAULT_DEPARTURE_TIME,
+        arrivalTime: DEFAULT_ARRIVAL_TIME,
+        isOverTime: false,
+        updatedSpots: [],
+        updatedDeparture: createDeparture(),
+        updatedDestination: createDeparture(), // 出発地のテストなので仮置き
       });
 
       render(<DepartureDetailCard date="2025-12-20" index={0} />);
@@ -198,6 +223,14 @@ describe('DepartureDetailCard', () => {
             transportMethod: 'TRANSIT',
           },
         ],
+        totalDistance: 1000,
+        totalDuration: 20,
+        departureTime: DEFAULT_DEPARTURE_TIME,
+        arrivalTime: DEFAULT_ARRIVAL_TIME,
+        isOverTime: false,
+        updatedSpots: [],
+        updatedDeparture: createDeparture(),
+        updatedDestination: createDeparture(), // 出発地のテストなので仮置き
       });
 
       render(<DepartureDetailCard date="2025-12-21" index={0} />);

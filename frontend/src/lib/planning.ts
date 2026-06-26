@@ -1,6 +1,8 @@
 import { DepartureAndDestinationType } from '@/models/planLocation';
-import { TravelPlanType, TravelModeType, Spot, SpotType } from '@/types/plan';
+import { TravelPlanType, TravelModeType, Spot } from '@/types/plan';
 import {
+  DEFAULT_ARRIVAL_TIME,
+  DEFAULT_DEPARTURE_TIME,
   DEPARTURE_NAME,
   DESTINATION_NAME,
   PLANNING_MESSAGE_PRIORITY,
@@ -9,9 +11,6 @@ import {
 } from '@/data/constants';
 
 import { getRoute } from './plan';
-
-const DEFAULT_DEPARTURE_TIME = '09:00';
-const DEFAULT_DESTINATION_TIME = '18:00';
 
 type RouteTransportType = 'WALK' | 'CAR' | 'TRAIN' | 'BUS' | 'OTHER';
 type StationType = 'BUS' | 'TRAIN' | 'OTHER';
@@ -37,6 +36,8 @@ export type PlanningParams = {
   transportMethodIds: number[];
   /** 区間キーごとの優先移動手段ID（再プランニング時の優先採用用） */
   preferredTransportMethodIds?: Record<string, number>;
+  /** 区間キーごとの優先発車時間（再プランニング時の優先採用用） */
+  preferredDepartureTimes?: Record<string, string>;
 };
 
 /**
@@ -867,18 +868,21 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   const departureCoord = { lat: params.departure.latitude, lng: params.departure.longitude };
   const firstSegmentKey = 'DEPARTURE_TO_FIRST_SPOT';
   const preferredFirstSegmentMethodId = params.preferredTransportMethodIds?.[firstSegmentKey];
+  const preferredFirstSegmentDepartureTime = params.preferredDepartureTimes?.[firstSegmentKey];
 
   if (params.departure.nearestStation && firstSpot.nearestStation) {
     // 出発地から最寄駅の時間
     const walkToStation = Math.max(params.departure.nearestStation.walkingTime ?? 0, 0);
     // 最寄駅から最初のスポットへの時間
-    const walkFromStation = Math.max(firstSpot.nearestStation.walkingTime, 0);
+    const walkFromStation = Math.max(firstSpot.nearestStation.walkingTime ?? 0, 0);
     // 最寄駅to最寄駅の時間
     const transitMinutes = Math.max(params.departure.nearestStation.transitTime ?? 0, 0);
     // 最寄駅到着時間
     const stationArrivalTime = currentPlanningTime + walkToStation;
     // 出発地の発車時間候補
-    const departureCandidates = params.departure.nearestStation.scheduledDepartureTimes || [];
+    const departureCandidates = params.departure.nearestStation.scheduledDepartureTimes || [
+      preferredFirstSegmentDepartureTime ?? '',
+    ];
     const candidatesResult = selectDepartureCandidate(stationArrivalTime, departureCandidates);
     const selectedDepartureMinutes = timeToMinutes(candidatesResult.selectedTime);
     const waitingMinutes = Math.max(selectedDepartureMinutes - stationArrivalTime, 0);
@@ -1080,9 +1084,10 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const nextSpot = plannedSpots[i + 1];
       const segmentKey = `SPOT_${currentSpot.id}_TO_${nextSpot.id}`;
       const preferredSpotToSpotMethodId = params.preferredTransportMethodIds?.[segmentKey];
+      const preferredSpotToSpotDepartureTime = params.preferredDepartureTimes?.[segmentKey];
       if (currentSpot.nearestStation && nextSpot.nearestStation) {
-        const walkToStation = Math.max(currentSpot.nearestStation.walkingTime, 0);
-        const walkFromStation = Math.max(nextSpot.nearestStation.walkingTime, 0);
+        const walkToStation = Math.max(currentSpot.nearestStation.walkingTime ?? 0, 0);
+        const walkFromStation = Math.max(nextSpot.nearestStation.walkingTime ?? 0, 0);
         const transitMinutes = Math.max(
           updatedCurrentSpot.routeToNext?.transitTime ?? currentSpot.nearestStation.transitTime ?? 0,
           0,
@@ -1090,7 +1095,9 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         // 駅到着時間 = 現在の時間 + 駅までの徒歩時間
         const stationArrival = currentPlanningTime + walkToStation;
         // スポット間の最寄駅
-        const candidates = currentSpot.nearestStation.scheduledDepartureTimes || [];
+        const candidates = currentSpot.nearestStation.scheduledDepartureTimes || [
+          preferredSpotToSpotDepartureTime ?? '',
+        ];
         // 発車時間候補から、駅到着時間を考慮して有効な発車時間を選択する
         const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
         const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
@@ -1275,12 +1282,15 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const destinationCoord = { lat: params.destination.latitude, lng: params.destination.longitude };
     const lastSegmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
     const preferredLastSegmentMethodId = params.preferredTransportMethodIds?.[lastSegmentKey];
+    const preferredLastSegmentDepartureTimes = params.preferredDepartureTimes?.[lastSegmentKey];
     if (lastSpot.nearestStation && params.destination.nearestStation) {
-      const walkToStation = Math.max(lastSpot.nearestStation.walkingTime, 0);
+      const walkToStation = Math.max(lastSpot.nearestStation.walkingTime ?? 0, 0);
       const walkFromStation = Math.max(params.destination.nearestStation.walkingTime ?? 0, 0);
       const transitMinutes = Math.max(params.destination.nearestStation.transitTime ?? 0, 0);
       const stationArrival = currentPlanningTime + walkToStation;
-      const candidates = params.destination.nearestStation.scheduledDepartureTimes || [];
+      const candidates = params.destination.nearestStation.scheduledDepartureTimes || [
+        preferredLastSegmentDepartureTimes ?? '',
+      ];
       const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
       const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
       const waitingMinutes = Math.max(selectedMinutes - stationArrival, 0);
@@ -1486,7 +1496,7 @@ async function runBackwardPlanning(params: PlanningParams): Promise<{
    * 到着時刻から逆算する際も、前進プランニングを反復実行して候補時刻を収束させる。
    * 発車候補や待機時間の影響を forward 側の計算に寄せるための実装。
    */
-  const targetArrivalTime = resolveLocationTime(params.destination.time, DEFAULT_DESTINATION_TIME);
+  const targetArrivalTime = resolveLocationTime(params.destination.time, DEFAULT_ARRIVAL_TIME);
   const targetArrivalMinutes = timeToMinutes(targetArrivalTime);
 
   let estimatedDepartureTime = resolveLocationTime(params.departure.time, DEFAULT_DEPARTURE_TIME);

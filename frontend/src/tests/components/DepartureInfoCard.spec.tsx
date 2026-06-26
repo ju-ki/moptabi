@@ -34,6 +34,8 @@ function createDeparture(overrides: Partial<DepartureAndDestinationType> = {}): 
       walkingTime: 6,
       transitTime: 11,
       transitMemo: 'A出口\n右へ進む',
+      latitude: 35.6812,
+      longitude: 139.7671,
     },
     ...overrides,
   };
@@ -56,6 +58,8 @@ describe('DepartureInfoCard', () => {
             name: '赤羽橋駅',
             walkingTime: 5,
             transitTime: 8,
+            latitude: 35.6812,
+            longitude: 139.7671,
           },
         })}
       />,
@@ -83,6 +87,8 @@ describe('DepartureInfoCard', () => {
             walkingTime: 3,
             transitTime: 7,
             transitMemo: '',
+            latitude: 35.6812,
+            longitude: 139.7671,
           },
         })}
       />,

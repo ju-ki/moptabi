@@ -6,6 +6,11 @@ import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType }
 export const LocationTypeEnum = z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']);
 export type LocationType = z.infer<typeof LocationTypeEnum>;
 
+export const LOCATION_TYPE = {
+  DEPARTURE: 'DEPARTURE',
+  DESTINATION: 'DESTINATION',
+} as const;
+
 // プラン作成時の出発地・目的地履歴スキーマ（レスポンス用）
 export const PlanLocationSchema = z.object({
   id: z.number().openapi({ example: 1 }),

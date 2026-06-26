@@ -1,6 +1,7 @@
 'use client';
 import { Asterisk } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { use, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,14 +16,18 @@ import { APP_LIMITS, DEFAULT_DEPARTURE_AND_DESTINATION } from '@/data/constants'
 import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { TransportNodeType } from '@/types/plan';
+import { Button } from '@/components/ui/button';
+import { usePlanning } from '@/hooks/use-planning';
 
-/**
- * プラン作成画面の入力フォーム全体を描画する。
- * 初回候補の反映と、画面離脱時のストア初期化もここで管理する。
- * @returns プラン作成ページ
- */
-const TravelPlanCreate = () => {
+const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = use(params);
+  const { handlePreprocessingPlanning } = usePlanning();
   const fields = useStoreForPlanning();
+  // const { trip, isLoading, error } = useFetchTripDetail(id);
+
+  // if (!trip || isLoading) {
+  //   return <>読み込み中です</>;
+  // }
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
     TransportNodeType.DEPARTURE,
   );
@@ -69,48 +74,24 @@ const TravelPlanCreate = () => {
     }
   }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
 
-  // コンポーネントのアンマウント時（画面離脱時）にストアを初期化
-  // 依存配列を空にすることで、マウント時ではなくアンマウント時のみ
+  // 初期表示時にプランニングをする
   useEffect(() => {
-    return () => {
-      fields.resetPlanningStore();
-    };
+    dates.map((date) => {
+      handlePreprocessingPlanning({ date });
+    });
   }, []);
-
-  // TODO: 対応できていない機能のためコメントアウト
-  // const { trigger: uploadImageTrigger } = useSWRMutation(
-  //   `${process.env.NEXT_PUBLIC_API_BASE_URL}/images/upload`,
-  //   postFetcher,
-  // );
-
-  // TODO: 対応できていない機能のためコメントアウト
-  // const onUploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   const formData = new FormData();
-  //   if (!event.target.files || event.target.files.length === 0) {
-  //     toast({ title: '画像が選択されていません', description: '画像を選択してください', variant: 'destructive' });
-  //     return;
-  //   }
-  //   formData.append('file', event.target.files[0]);
-
-  //   try {
-  //     const response = await uploadImageTrigger({ data: formData, isMulti: true });
-  //     fields.setFields('imageUrl', response.fileName);
-  //     toast({
-  //       title: '画像がアップロードされました',
-  //       description: '画像のアップロードに成功しました。',
-  //       variant: 'success',
-  //     });
-  //   } catch (error) {
-  //     console.error('Error uploading image:', error);
-  //   }
-  // };
 
   return (
     <div>
       <div className="container mx-auto p-4">
+        <div className="p-3">
+          <Button variant="outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
+            <Link href={`/plan/${id}`}>詳細画面に戻る</Link>
+          </Button>
+        </div>
         <Card className="w-full max-w-4xl mx-auto">
           <CardHeader>
-            <CardTitle>旅行計画を作成</CardTitle>
+            <CardTitle>旅行計画を編集</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* タイトル */}
@@ -124,6 +105,7 @@ const TravelPlanCreate = () => {
               <Input
                 id="title"
                 placeholder="旅行プランのタイトルを入力"
+                defaultValue={fields.getFields('title')}
                 onChange={(e) => fields.setFields('title', e.target.value)}
               />
               {fields.errors.title && <span className="text-red-500">{fields.errors.title.toString()}</span>}
@@ -204,7 +186,7 @@ const TravelPlanCreate = () => {
             </Tabs>
 
             {/* 作成ボタン */}
-            <CreatePlanButton isEdit={false} />
+            <CreatePlanButton isEdit={true} />
           </CardContent>
         </Card>
       </div>
@@ -212,4 +194,4 @@ const TravelPlanCreate = () => {
   );
 };
 
-export default TravelPlanCreate;
+export default TravelEditPage;

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
 
 import { TransportNodeType, TravelModeType } from '@/types/plan';
-import { SpotMakerColors } from '@/data/constants';
+import { DEFAULT_DEPARTURE_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 
 /**
@@ -27,8 +27,6 @@ interface DepartureDetailCardProps {
   index: number;
   /** 発車時間候補 */
   departureTimeCandidates?: string[];
-  /** 採用中の発車時間 */
-  selectedDepartureTime?: string;
   /** 発車時間切替 */
   onDepartureTimeChange?: (time: string) => void;
 }
@@ -47,7 +45,6 @@ export default function DepartureDetailCard({
   date,
   index,
   departureTimeCandidates = [],
-  selectedDepartureTime,
   onDepartureTimeChange,
 }: DepartureDetailCardProps) {
   const fields = useStoreForPlanning();
@@ -65,7 +62,9 @@ export default function DepartureDetailCard({
   const planningResult = fields.getPlanningResult(date);
   const routeInfo = planningResult?.routes?.find((r) => r.fromType === 'DEPARTURE' && r.toType === 'SPOT');
 
-  const [activeDepartureTime, setActiveDepartureTime] = useState<string>(selectedDepartureTime ?? departure.time ?? '');
+  const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
+    planningResult?.updatedDeparture.nearestStation?.scheduledDepartureTime ?? DEFAULT_DEPARTURE_TIME,
+  );
 
   const selectableDepartureCandidates = useMemo(
     () => departureTimeCandidates.filter((time) => time !== activeDepartureTime),
@@ -105,7 +104,7 @@ export default function DepartureDetailCard({
 
         <p className="text-gray-500 flex items-center space-x-1 mt-1" data-testid="departure-time">
           <Clock className="w-4 h-4 text-gray-400" />
-          <span>出発時刻: {departure.time ?? '09:00'}</span>
+          <span>出発時刻: {planningResult?.departureTime ?? DEFAULT_DEPARTURE_TIME}</span>
         </p>
 
         {departure.nearestStation && (
@@ -139,10 +138,10 @@ export default function DepartureDetailCard({
               <div className="flex items-center gap-2 text-sm">
                 <Train className="w-4 h-4 text-green-600" />
                 <span className="text-gray-600">電車/バス {nextSpot.nearestStation.transitTime}分</span>
-                {nextSpot.nearestStation.scheduledDepartureTime && (
-                  <span className="text-xs text-gray-400">
-                    （発車: {nextSpot.nearestStation.scheduledDepartureTime}）
-                  </span>
+                {activeDepartureTime && (
+                  <p className="text-xs text-gray-400" data-testid="departure-selected-time">
+                    (発車: {activeDepartureTime})
+                  </p>
                 )}
               </div>
             </div>
@@ -193,12 +192,6 @@ export default function DepartureDetailCard({
               )}
             </div>
           </>
-        )}
-
-        {activeDepartureTime && (
-          <p className="text-sm text-gray-600" data-testid="departure-selected-time">
-            発車時間: {activeDepartureTime}
-          </p>
         )}
 
         {selectableDepartureCandidates.length > 0 && (

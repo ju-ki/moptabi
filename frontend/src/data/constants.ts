@@ -23,6 +23,9 @@ export const defaultLocation: Coordination = {
   name: '東京駅',
 };
 
+export const DEFAULT_DEPARTURE_TIME = '09:00';
+export const DEFAULT_ARRIVAL_TIME = '18:00';
+
 export const DEPARTURE_NAME = '出発地';
 export const DESTINATION_NAME = '目的地';
 

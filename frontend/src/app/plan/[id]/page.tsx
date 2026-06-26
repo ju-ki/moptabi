@@ -30,7 +30,11 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     if (!trip || error) {
       return;
     }
-
+    fields.setFields('title', trip.title);
+    trip.tripInfo.forEach((data) => {
+      fields.setTripInfo(data.date, 'memo', data.memo ?? '');
+    });
+    fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
     trip.plans.forEach((plan) => {
       plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
@@ -79,11 +83,10 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
             印刷
           </Button> */}
 
-          {/*  TODO: 対応できていない機能のためコメントアウト */}
-          {/* <Button variant="secondary-outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
+          <Button variant="secondary-outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
             <Pencil className="w-4 h-4" />
-            編集
-          </Button> */}
+            <Link href={`/plan/${id}/edit`}>編集</Link>
+          </Button>
 
           <Button onClick={handleDeletePlan} variant="destructive" size="sm" className="flex items-center gap-1">
             <Trash2 className="w-4 h-4" />

@@ -185,6 +185,7 @@ export const planSpot = pgTable(
     stayDuration: integer().notNull(),
   },
   (table) => [
+    uniqueIndex('PlanSpot_idx1').on(table.planId, table.spotId),
     foreignKey({
       columns: [table.planId],
       foreignColumns: [plan.id],
@@ -276,6 +277,7 @@ export const planSpotNearestStation = pgTable(
     memo: text(),
   },
   (table) => [
+    uniqueIndex('PlanSpotNearestStation_planSpotId_key').on(table.planSpotId),
     foreignKey({
       columns: [table.planSpotId],
       foreignColumns: [planSpot.id],
@@ -357,6 +359,7 @@ export const planLocation = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('PlanLocation_idx1').on(table.planId, table.locationType),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
