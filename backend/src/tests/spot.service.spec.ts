@@ -17,20 +17,14 @@ import {
   transport,
 } from './db-helper';
 import { getUnvisitedWishlistSpots, getVisitedSpots } from '../services/spot';
+import { createTripViaTripService } from './test-client';
+import { SPOT_PREFIX, spotId } from './libs/data';
 
 // testClientのインスタンスを取得（型アサーション）
 const client = testClient(app) as any;
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_spot_service';
-
-// テストファイル固有のSpot IDプレフィックス（並列実行時の衝突を防ぐ）
-const SPOT_PREFIX = 'spot_svc_';
-
-// Spot IDを生成するヘルパー関数
-function spotId(id: string): string {
-  return `${SPOT_PREFIX}${id}`;
-}
 
 // 現在の認証ユーザーIDを保持する変数
 let currentUserId: string | null = TEST_USER_ID;
@@ -58,159 +52,6 @@ beforeEach(async () => {
   currentUserId = TEST_USER_ID;
 });
 
-/**
- * trip.serviceを介して旅行計画を作成するヘルパー関数
- * @param params 旅行計画のパラメータ
- * @returns 作成した旅行計画
- */
-async function createTripViaTripService(params: {
-  title: string;
-  startDate: string;
-  endDate: string;
-  spots: Array<{
-    spotId: string;
-    name: string;
-    lat?: number;
-    lng?: number;
-    stayStart: string;
-    stayEnd: string;
-    order: number;
-    isDeparture?: boolean;
-    isDestination?: boolean;
-  }>;
-}) {
-  const { title, startDate, endDate, spots } = params;
-
-  // spotデータをAPIフォーマットに変換
-  const planSpots = spots.map((spot, index) => {
-    const fromType = spot.isDeparture ? 'DEPARTURE' : 'SPOT';
-    const toType = spot.isDestination ? 'DESTINATION' : 'SPOT';
-
-    return {
-      id: spot.spotId,
-      location: {
-        name: spot.name,
-        lat: spot.lat ?? 35.0 + index * 0.1,
-        lng: spot.lng ?? 139.0 + index * 0.1,
-      },
-      spotId: spot.spotId,
-      regularOpeningHours: [],
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType,
-        toType,
-      },
-      memo: '',
-      stayStart: spot.stayStart,
-      stayEnd: spot.stayEnd,
-      order: spot.order,
-    };
-  });
-
-  const response = await client.api.trips.create.$post(
-    {
-      json: {
-        title,
-        imageUrl: 'https://example.com/image.jpg',
-        startDate,
-        endDate,
-        tripInfo: [
-          {
-            date: startDate,
-            genreId: 1,
-            transportationMethod: 1,
-          },
-        ],
-        plans: [
-          {
-            date: startDate,
-            spots: planSpots,
-            departure: {
-              name: '出発地',
-              latitude: 35.6895,
-              longitude: 139.6917,
-              address: '東京都千代田区千代田1-1',
-              label: '東京駅',
-              isDefault: true,
-              locationType: 'DEPARTURE',
-              usageCount: 0,
-              userLocationId: null,
-              planLocationId: null,
-              transports: {
-                transportMethod: 1,
-                travelTime: '15分',
-                cost: 300,
-                fromType: 'DEPARTURE',
-                toType: 'SPOT',
-              },
-            },
-            destination: {
-              name: '目的地',
-              latitude: 35.6895,
-              longitude: 139.6917,
-              address: '東京都千代田区千代田1-1',
-              label: '東京駅',
-              isDefault: true,
-              locationType: 'DESTINATION',
-              usageCount: 0,
-              userLocationId: null,
-              planLocationId: null,
-              transports: {
-                transportMethod: 1,
-                travelTime: '15分',
-                cost: 300,
-                fromType: 'SPOT',
-                toType: 'DESTINATION',
-              },
-            },
-          },
-        ],
-      },
-    },
-    { headers: getAuthHeaders() },
-  );
-
-  if (response.status !== 201) {
-    throw new Error(`Failed to create trip: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-// 再利用するいきたいリストのスポットデータのモック
-const createWishlistItem = (
-  id: number,
-  name: string,
-  rating: number,
-  priority: number,
-  visited: number,
-  visitedAt: Date | null = null,
-  memo: string | null = null,
-) => ({
-  id,
-  spotId: `spot${id}`,
-  memo,
-  priority,
-  visited,
-  visitedAt: visitedAt,
-  spot: {
-    id: `spot${id}`,
-    meta: {
-      spotId: `spot${id}`,
-      name,
-      latitude: 35.6895,
-      longitude: 139.6917,
-      rating,
-      categories: ['文化'],
-      image: 'https://example.com/image.jpg',
-      prefecture: '東京都',
-      address: '東京都千代田区',
-    },
-  },
-});
-
 // 再利用する過去に計画策定した際に登録したスポットデータ
 
 describe('🧾 スポットサービス', () => {
@@ -233,7 +74,7 @@ describe('🧾 スポットサービス', () => {
       await createTestUser(TEST_USER_ID, 'ADMIN');
 
       // 未訪問スポット
-      await createSpotWithMeta(spotId('1'), {
+      await createSpotWithMeta('1', {
         name: 'スポットA',
         latitude: 35.0,
         longitude: 139.0,
@@ -243,7 +84,7 @@ describe('🧾 スポットサービス', () => {
       await createWishlistEntry({ spotId: spotId('1'), userId: TEST_USER_ID, priority: 2, visited: 0 });
 
       // 訪問済みスポット
-      await createSpotWithMeta(spotId('2'), {
+      await createSpotWithMeta('2', {
         name: 'スポットB',
         latitude: 35.1,
         longitude: 139.1,
@@ -813,14 +654,15 @@ describe('🧾 スポットサービス', () => {
         await createTestUser(TEST_USER_ID, 'ADMIN');
 
         // 2024年1月の計画スポット（範囲外）- trip.serviceを介して作成
-        await createSpotWithMeta(spotId('1'), { name: 'スポットA' });
+        await createSpotWithMeta('1', { name: 'スポットA' });
         await createTripViaTripService({
           title: '旅行1',
           startDate: '2024-01-01',
           endDate: '2024-01-02',
+          userId: TEST_USER_ID,
           spots: [
             {
-              spotId: spotId('1'),
+              spotId: '1',
               name: 'スポットA',
               stayStart: '10:00',
               stayEnd: '11:00',
@@ -835,9 +677,10 @@ describe('🧾 スポットサービス', () => {
           title: '旅行2',
           startDate: '2024-06-01',
           endDate: '2024-06-02',
+          userId: TEST_USER_ID,
           spots: [
             {
-              spotId: spotId('2'),
+              spotId: '2',
               name: 'スポットB',
               stayStart: '10:00',
               stayEnd: '11:00',
@@ -884,9 +727,10 @@ describe('🧾 スポットサービス', () => {
           title: '旅行1',
           startDate: '2024-02-01',
           endDate: '2024-02-02',
+          userId: TEST_USER_ID,
           spots: [
             {
-              spotId: spotId('3'),
+              spotId: '3',
               name: 'スポットC',
               stayStart: '10:00',
               stayEnd: '11:00',
@@ -901,9 +745,10 @@ describe('🧾 スポットサービス', () => {
           title: '旅行2',
           startDate: '2024-07-01',
           endDate: '2024-07-02',
+          userId: TEST_USER_ID,
           spots: [
             {
-              spotId: spotId('4'),
+              spotId: '4',
               name: 'スポットD',
               stayStart: '10:00',
               stayEnd: '11:00',

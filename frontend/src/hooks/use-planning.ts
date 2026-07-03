@@ -1,15 +1,16 @@
+import { useCallback } from 'react';
+
 import { useStoreForPlanning } from '@/lib/plan';
 import { executePlanning, PlanningParams } from '@/lib/planning';
 import { TransportNodeType } from '@/types/plan';
 
 export const usePlanning = () => {
-  const fields = useStoreForPlanning();
-
   /**
    * プランニングを行うに当たってのバリデーションチェックとデータ加工
    * @param param date - プランニング対象の日付
    */
-  const handlePreprocessingPlanning = async ({ date }: { date: string }) => {
+  const handlePreprocessingPlanning = useCallback(async ({ date }: { date: string }) => {
+    const fields = useStoreForPlanning.getState();
     let isError = false;
     const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
     const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
@@ -167,7 +168,7 @@ export const usePlanning = () => {
       });
       fields.setSimulationStatus({ date: date, status: 9 });
     }
-  };
+  }, []);
 
   return {
     handlePreprocessingPlanning,

@@ -67,7 +67,7 @@ async function enrichSpot(spot: TripDetailApiSpot): Promise<Spot> {
   const normalizedNearestStation = normalizedNearestStationRaw
     ? {
         ...normalizedNearestStationRaw,
-        placeId: '',
+        placeId: normalizedNearestStationRaw.placeId ?? '',
         spotId: spot.id,
         stationType: normalizedNearestStationRaw.stationType || 'OTHER',
         name: normalizedNearestStationRaw.name || '最寄駅',
@@ -201,7 +201,7 @@ export const useFetchTripDetail = (tripId?: string) => {
   };
 
   const patchTrip = async (newTrip: TripType): Promise<number> => {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/edit/${newTrip.id}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${newTrip.id}`, {
       method: 'PATCH',
       headers: {
         ...getAuthHeaders(),

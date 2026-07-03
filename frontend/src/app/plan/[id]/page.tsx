@@ -30,6 +30,7 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     if (!trip || error) {
       return;
     }
+    fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
     trip.tripInfo.forEach((data) => {
       fields.setTripInfo(data.date, 'memo', data.memo ?? '');

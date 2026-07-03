@@ -714,6 +714,7 @@ type RouteSelectionResult = {
  * @param to 到着地点
  * @param transportMethodIds 利用可能な移動手段のID配列
  * @param distanceThresholdKm 距離しきい値（この距離以下なら徒歩優先）
+ * @param preferredTransportMethodId 優先的に使用する移動手段ID(transportMethodIdsにも含まれていること)
  */
 export async function getOptimalRouteWithAlternatives(
   from: { lat: number; lng: number },
@@ -880,9 +881,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     // 最寄駅到着時間
     const stationArrivalTime = currentPlanningTime + walkToStation;
     // 出発地の発車時間候補
-    const departureCandidates = params.departure.nearestStation.scheduledDepartureTimes || [
-      preferredFirstSegmentDepartureTime ?? '',
-    ];
+    const departureCandidates =
+      params.departure.nearestStation.scheduledDepartureTimes &&
+      params.departure.nearestStation.scheduledDepartureTimes.length > 0
+        ? params.departure.nearestStation.scheduledDepartureTimes
+        : [preferredFirstSegmentDepartureTime ?? ''];
     const candidatesResult = selectDepartureCandidate(stationArrivalTime, departureCandidates);
     const selectedDepartureMinutes = timeToMinutes(candidatesResult.selectedTime);
     const waitingMinutes = Math.max(selectedDepartureMinutes - stationArrivalTime, 0);
@@ -957,12 +960,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
 
     mainRoute = [toDepartureStationRoute, transitRoute, toFirstSpotRoute];
   }
-
   // 最寄駅を介さないあるいは最寄駅情報がない場合のルートと時間を計算
   const routeResult = await getOptimalRouteWithAlternatives(
     departureCoord,
     firstSpot.location,
-    params.transportMethodIds,
+    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 0],
     1.5,
     getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
   );
@@ -1095,9 +1097,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         // 駅到着時間 = 現在の時間 + 駅までの徒歩時間
         const stationArrival = currentPlanningTime + walkToStation;
         // スポット間の最寄駅
-        const candidates = currentSpot.nearestStation.scheduledDepartureTimes || [
-          preferredSpotToSpotDepartureTime ?? '',
-        ];
+        const candidates =
+          currentSpot.nearestStation.scheduledDepartureTimes &&
+          currentSpot.nearestStation.scheduledDepartureTimes.length > 0
+            ? currentSpot.nearestStation.scheduledDepartureTimes
+            : [preferredSpotToSpotDepartureTime ?? ''];
         // 発車時間候補から、駅到着時間を考慮して有効な発車時間を選択する
         const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
         const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
@@ -1170,7 +1174,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const routeResult = await getOptimalRouteWithAlternatives(
         currentSpot.location,
         nextSpot.location,
-        params.transportMethodIds,
+        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 0],
         1.5,
         getPreferredDirectTransportMethodId(preferredSpotToSpotMethodId),
       );
@@ -1288,9 +1292,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const walkFromStation = Math.max(params.destination.nearestStation.walkingTime ?? 0, 0);
       const transitMinutes = Math.max(params.destination.nearestStation.transitTime ?? 0, 0);
       const stationArrival = currentPlanningTime + walkToStation;
-      const candidates = params.destination.nearestStation.scheduledDepartureTimes || [
-        preferredLastSegmentDepartureTimes ?? '',
-      ];
+      const candidates =
+        params.destination.nearestStation.scheduledDepartureTimes &&
+        params.destination.nearestStation.scheduledDepartureTimes?.length > 0
+          ? params.destination.nearestStation.scheduledDepartureTimes
+          : [preferredLastSegmentDepartureTimes ?? ''];
       const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
       const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
       const waitingMinutes = Math.max(selectedMinutes - stationArrival, 0);
@@ -1363,7 +1369,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const routeResult = await getOptimalRouteWithAlternatives(
       lastSpot.location,
       destinationCoord,
-      params.transportMethodIds,
+      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 0],
       1.5,
       getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
     );

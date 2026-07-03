@@ -18,16 +18,14 @@ import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { TransportNodeType } from '@/types/plan';
 import { Button } from '@/components/ui/button';
 import { usePlanning } from '@/hooks/use-planning';
+import { useFetchTripDetail } from '@/hooks/use-trip';
 
 const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
   const { handlePreprocessingPlanning } = usePlanning();
   const fields = useStoreForPlanning();
-  // const { trip, isLoading, error } = useFetchTripDetail(id);
+  const { trip, isLoading, error } = useFetchTripDetail(id);
 
-  // if (!trip || isLoading) {
-  //   return <>読み込み中です</>;
-  // }
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
     TransportNodeType.DEPARTURE,
   );
@@ -40,6 +38,25 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
     () => getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)),
     [fields.startDate, fields.endDate],
   );
+
+  useEffect(() => {
+    if (!trip || error) {
+      return;
+    }
+    fields.setFields('id', Number.parseInt(id));
+    fields.setFields('title', trip.title);
+    trip.tripInfo.forEach((data) => {
+      fields.setTripInfo(data.date, 'memo', data.memo ?? '');
+    });
+    fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
+    trip.plans.forEach((plan) => {
+      plan.spots.map((spot) => {
+        fields.setSpots(plan.date, spot, false);
+      });
+      fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
+      fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
+    });
+  }, [trip, error, id]);
 
   // 取得した候補からデフォルトの地点を当日の出発地・目的地にセットする
   // 出発地と目的地のデフォルト値を設定
@@ -76,10 +93,20 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
 
   // 初期表示時にプランニングをする
   useEffect(() => {
-    dates.map((date) => {
+    if (!trip || error) {
+      return;
+    }
+
+    const registeredPlanDates = Array.from(new Set(trip.plans.map((plan) => plan.date)));
+
+    registeredPlanDates.forEach((date) => {
       handlePreprocessingPlanning({ date });
     });
-  }, []);
+  }, [trip, error, handlePreprocessingPlanning]);
+
+  if (!trip || isLoading) {
+    return <>読み込み中です</>;
+  }
 
   return (
     <div>

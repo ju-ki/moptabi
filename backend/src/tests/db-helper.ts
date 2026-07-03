@@ -630,7 +630,7 @@ export async function createPlanLocation(data: {
   time?: string;
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
-  planId?: number | null;
+  planId: number;
 }) {
   const [created] = await db
     .insert(planLocation)
@@ -642,7 +642,7 @@ export async function createPlanLocation(data: {
       address: data.address ?? null,
       time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
-      planId: data.planId ?? null,
+      planId: data.planId,
     })
     .returning();
   return created;

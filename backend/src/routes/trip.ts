@@ -164,6 +164,7 @@ export const patchTripRoute = createRoute({
   tags: ['Trip'],
   summary: '旅行計画を更新',
   request: {
+    params: requestParams,
     body: {
       content: {
         'application/json': {
@@ -173,7 +174,7 @@ export const patchTripRoute = createRoute({
     },
   },
   responses: {
-    201: {
+    200: {
       description: '更新された旅行計画',
       content: {
         'application/json': {

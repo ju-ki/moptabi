@@ -109,6 +109,7 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
   const handleCreatePlan = async () => {
     try {
       const newData: TripType = {
+        id: fields.id,
         title: fields.title,
         imageUrl: fields.imageUrl,
         startDate: fields.startDate,

@@ -132,7 +132,7 @@ function copyLinkedLocationPreservingTime(
 }
 
 interface FormState {
-  id?: string;
+  id?: number;
   title: string;
   imageUrl?: string;
   startDate: string;
@@ -589,7 +589,7 @@ export const useStoreForPlanning = create<FormState>()(
           };
         }
       },
-      resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
+      resetErrors: () => set((state) => ({ ...state, errors: {}, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),
       resetPlanningStore: () => set(() => ({ ...createPlanningInitialState() })),
       switchAlternativeRoute: (date, routeId, selectedTransportMethodId) => {

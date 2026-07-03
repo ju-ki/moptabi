@@ -56,7 +56,7 @@ export const CreatePlanLocationSchema = z.object({
     .optional()
     .openapi({ example: '09:00' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
-  planId: z.number().nullable().optional().openapi({ example: 1 }),
+  planId: z.number().openapi({ example: 1 }),
   userLocationId: z
     .number()
     .nullable()

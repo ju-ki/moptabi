@@ -3,7 +3,7 @@ import { testClient } from 'hono/testing';
 import { TripDetailResponseType, TripDetailSpotType } from '@/models/trip';
 
 import app from '..';
-import { spotId } from './libs/data';
+import { mockPlanData, mockTripData, mockTripInfoData, spotId } from './libs/data';
 
 // テスト用ユーザーID
 export const TEST_USER_ID = 'test_user_id';
@@ -90,4 +90,68 @@ export function createSpotData(
     memo: `モックスポット${id}のメモ`,
     order,
   };
+}
+
+/**
+ * trip.serviceを介して旅行計画を作成するヘルパー関数
+ * @param params 旅行計画のパラメータ
+ * @returns 作成した旅行計画
+ */
+export async function createTripViaTripService(params: {
+  title: string;
+  startDate: string;
+  endDate: string;
+  userId?: string;
+  spots: Array<{
+    spotId: string;
+    name: string;
+    lat?: number;
+    lng?: number;
+    stayStart: string;
+    stayEnd: string;
+    stayDuration: number;
+    order: number;
+    transports: any;
+    nearestStation: any;
+  }>;
+}) {
+  const { title, startDate, endDate, spots, userId } = params;
+  const client = getTestClient();
+
+  // spotデータをAPIフォーマットに変換
+  const planSpots = spots.map((spot, index) => {
+    return createSpotData(
+      `${spot.spotId}`,
+      spot.stayStart,
+      spot.stayEnd,
+      spot.stayDuration,
+      spot.order,
+      spot.transports,
+      spot.nearestStation,
+    );
+  });
+
+  const response = await client.api.trips.create.$post(
+    {
+      json: {
+        ...structuredClone(mockTripData),
+        title,
+        startDate,
+        endDate,
+        tripInfo: structuredClone(mockTripInfoData),
+        plans: structuredClone(mockPlanData).map((plan, index) => ({
+          ...plan,
+          date: startDate, // すべてのプランの日付をstartDateに設定
+          spots: planSpots.filter((spot) => spot.order === index + 1), // プランごとにスポットを割り当て
+        })),
+      },
+    },
+    { headers: createAuthHeaders(userId || TEST_USER_ID) },
+  );
+
+  if (response.status !== 201) {
+    throw new Error(`Failed to create trip: ${response.status}`);
+  }
+
+  return response.json();
 }

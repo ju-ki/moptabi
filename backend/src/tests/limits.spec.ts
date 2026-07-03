@@ -15,6 +15,8 @@ import {
   deleteTripsByUser,
   createTrip,
 } from './db-helper';
+import { mockPlanData, mockTripData, mockTripInfoData } from './libs/data';
+import { createSpotData } from './test-client';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_limits';
@@ -174,46 +176,9 @@ describe('🔒 上限チェック機能', () => {
       const response = await client.api.trips.create.$post(
         {
           json: {
-            title: '超過プラン',
-            startDate: '2025-01-01',
-            endDate: '2025-01-02',
-            tripInfo: [
-              {
-                date: '2025-01-01',
-                genreId: 1,
-                transportationMethod: 1,
-              },
-            ],
-            plans: [
-              {
-                date: '2025-01-01',
-                spots: [],
-                departure: {
-                  name: '出発地',
-                  latitude: 35.6762,
-                  longitude: 139.6503,
-                  address: null,
-                  label: null,
-                  isDefault: false,
-                  locationType: 'DEPARTURE',
-                  usageCount: null,
-                  userLocationId: null,
-                  planLocationId: null,
-                },
-                destination: {
-                  name: '目的地',
-                  latitude: 35.6762,
-                  longitude: 139.6503,
-                  address: null,
-                  label: null,
-                  isDefault: false,
-                  locationType: 'DESTINATION',
-                  usageCount: null,
-                  userLocationId: null,
-                  planLocationId: null,
-                },
-              },
-            ],
+            ...structuredClone(mockTripData),
+            tripInfo: structuredClone(mockTripInfoData),
+            plans: structuredClone(mockPlanData),
           },
         },
         { headers: getAuthHeaders() },
@@ -299,18 +264,7 @@ describe('🔒 上限チェック機能', () => {
     it(`上限（${APP_LIMITS.MAX_SPOTS_PER_DAY}件）を超えるスポットを含むプランは作成が拒否される`, async () => {
       // 上限を超えるスポットを持つプランを作成
       const spots = Array.from({ length: APP_LIMITS.MAX_SPOTS_PER_DAY + 1 }, (_, i) => ({
-        id: `spot_${i}`,
-        location: { id: `loc_${i}`, lat: 35.6812, lng: 139.7671, name: `スポット${i}` },
-        stayStart: `${10 + i}:00`,
-        stayEnd: `${11 + i}:00`,
-        transports: {
-          transportMethod: 1,
-          name: 'TRANSIT',
-          travelTime: '30 mins',
-          fromType: 'SPOT',
-          toType: 'SPOT',
-        },
-        order: i,
+        ...createSpotData(`spot_${i}`),
       }));
 
       const response = await client.api.trips.create.$post(

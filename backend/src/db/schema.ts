@@ -349,8 +349,8 @@ export const planLocation = pgTable(
     time: varchar('time', { length: 5 }).notNull(),
     // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）
     locationType: locationType().notNull(),
-    // 関連するPlanのID（任意: どのプランで使用されたかの追跡用）
-    planId: integer(),
+    // 関連するPlanのID
+    planId: integer().notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -373,6 +373,6 @@ export const planLocation = pgTable(
       name: 'PlanLocation_planId_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('set null'),
+      .onDelete('cascade'),
   ],
 );

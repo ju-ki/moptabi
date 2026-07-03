@@ -172,7 +172,7 @@
 
 - `frontend/src/app/plan/[id]/page.tsx` — 編集ボタンのコメント解除と遷移処理追加
 - `frontend/src/components/CreatePlanButton.tsx` — 編集モード判定と updateTrip 呼び出し処理の追加
-- `frontend/src/hooks/use-trip.ts` — `updateTrip` 関数の追加（PATCH /api/trips/{id}）
+- `frontend/src/hooks/use-trip.ts` — `patchTrip` 関数の追加（PATCH /api/trips/{id}）
 - `frontend/src/lib/plan.ts` — 編集モード時の初期化ロジック追加（必要に応じて）
 
 ### backend
