@@ -666,7 +666,10 @@ describe('🧾 スポットサービス', () => {
               name: 'スポットA',
               stayStart: '10:00',
               stayEnd: '11:00',
+              stayDuration: 60,
               order: 1,
+              transports: undefined,
+              nearestStation: undefined,
             },
           ],
         });
@@ -684,7 +687,10 @@ describe('🧾 スポットサービス', () => {
               name: 'スポットB',
               stayStart: '10:00',
               stayEnd: '11:00',
+              stayDuration: 60,
               order: 1,
+              transports: undefined,
+              nearestStation: undefined,
             },
           ],
         });
@@ -734,7 +740,10 @@ describe('🧾 スポットサービス', () => {
               name: 'スポットC',
               stayStart: '10:00',
               stayEnd: '11:00',
+              stayDuration: 60,
               order: 1,
+              transports: undefined,
+              nearestStation: undefined,
             },
           ],
         });
@@ -752,7 +761,10 @@ describe('🧾 スポットサービス', () => {
               name: 'スポットD',
               stayStart: '10:00',
               stayEnd: '11:00',
+              stayDuration: 60,
               order: 1,
+              transports: undefined,
+              nearestStation: undefined,
             },
           ],
         });
