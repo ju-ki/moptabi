@@ -9,7 +9,6 @@ import {
   uniqueIndex,
   boolean,
   doublePrecision,
-  jsonb,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -185,6 +184,7 @@ export const planSpot = pgTable(
     stayDuration: integer().notNull(),
   },
   (table) => [
+    uniqueIndex('PlanSpot_idx1').on(table.planId, table.spotId),
     foreignKey({
       columns: [table.planId],
       foreignColumns: [plan.id],
@@ -276,6 +276,7 @@ export const planSpotNearestStation = pgTable(
     memo: text(),
   },
   (table) => [
+    uniqueIndex('PlanSpotNearestStation_planSpotId_key').on(table.planSpotId),
     foreignKey({
       columns: [table.planSpotId],
       foreignColumns: [planSpot.id],
@@ -347,8 +348,8 @@ export const planLocation = pgTable(
     time: varchar('time', { length: 5 }).notNull(),
     // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）
     locationType: locationType().notNull(),
-    // 関連するPlanのID（任意: どのプランで使用されたかの追跡用）
-    planId: integer(),
+    // 関連するPlanのID
+    planId: integer().notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -357,6 +358,7 @@ export const planLocation = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('PlanLocation_idx1').on(table.planId, table.locationType),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
@@ -370,6 +372,6 @@ export const planLocation = pgTable(
       name: 'PlanLocation_planId_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('set null'),
+      .onDelete('cascade'),
   ],
 );

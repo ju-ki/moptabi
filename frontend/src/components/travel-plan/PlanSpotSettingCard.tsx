@@ -30,7 +30,7 @@ import {
 } from '@/data/mockNearestStation';
 import { searchNearestStation } from '@/lib/google-maps';
 import { cn } from '@/lib/utils';
-import type { NearestStation } from '@/types/nearestStation';
+import { NearestStation } from '@/types/plan';
 import { Coordination, Spot } from '@/types/plan';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -86,9 +86,11 @@ export default function PlanSpotSettingCard({
 
   const [useNearestStation, setUseNearestStation] = useState<boolean>(!!spot.nearestStation);
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
-  const [nearestStations, setNearestStations] = useState<NearestStation[]>([]);
+  const [nearestStations, setNearestStations] = useState<NearestStation[]>(
+    [spot.nearestStation].filter((s): s is NearestStation => !!s),
+  );
   const [isLoadingStations, setIsLoadingStations] = useState(false);
-  const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
+  const [selectedStationId, setSelectedStationId] = useState<string | null>(spot.nearestStation?.placeId || null);
   const [transitTime, setTransitTime] = useState<number>(spot.nearestStation?.transitTime || 0);
   const [isManualTransitTime, setIsManualTransitTime] = useState<boolean>(
     spot.nearestStation?.isManualTransitTime || false,
@@ -99,7 +101,11 @@ export default function PlanSpotSettingCard({
   const [scheduledDepartureTimes, setScheduledDepartureTimes] = useState<string[]>(buildInitialDepartureCandidates());
   const [transitMemo, setTransitMemo] = useState<string>(spot.nearestStation?.transitMemo || '');
 
-  const [isStationSectionExpanded, setIsStationSectionExpanded] = useState<boolean>(false);
+  const [isStationSectionExpanded, setIsStationSectionExpanded] = useState<boolean>(
+    !!spot.nearestStation && !!spot.nearestStation.name,
+  );
+
+  const [hasFetchedStations, setHasFetchedStations] = useState<boolean>(false);
 
   useEffect(() => {
     if (spot.nearestStation && nearestStations.length > 0) {
@@ -119,7 +125,9 @@ export default function PlanSpotSettingCard({
     try {
       const stations = await searchNearestStation({ center: spot.location, radius: 1, excludeBusStop });
       setNearestStations(stations);
+      setHasFetchedStations(true);
     } catch (error) {
+      setHasFetchedStations(false);
       console.error('最寄駅の取得に失敗しました:', error);
     } finally {
       setIsLoadingStations(false);
@@ -129,8 +137,9 @@ export default function PlanSpotSettingCard({
   const handleUseNearestStationChange = (checked: boolean) => {
     setUseNearestStation(checked);
     setIsStationSectionExpanded(checked);
-    if (checked && nearestStations.length === 0) {
+    if (checked && !hasFetchedStations) {
       fetchNearestStations();
+      setHasFetchedStations(true);
     }
     if (!checked) {
       onSettingChange({ ...spot, nearestStation: undefined });
@@ -469,6 +478,7 @@ export default function PlanSpotSettingCard({
                                 min={1}
                                 max={540}
                                 value={transitTime}
+                                data-testid="transit-time-test"
                                 onChange={(e) => handleTransitTimeChange(Number(e.target.value))}
                                 className="w-20 text-center"
                               />
@@ -507,6 +517,7 @@ export default function PlanSpotSettingCard({
                                 <Input
                                   key={`scheduled-departure-${spot.id}-${index}`}
                                   type="time"
+                                  data-testid={`scheduled-departure-${index + 1}`}
                                   value={candidate}
                                   onChange={(e) => handleScheduledDepartureTimeCandidateChange(index, e.target.value)}
                                   className="w-28"

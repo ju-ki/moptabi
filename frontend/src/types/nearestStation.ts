@@ -29,6 +29,6 @@ export type NearestStation = {
   name?: string;
   distance?: number; // メートル
   walkingTime?: number; // 分
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
 };

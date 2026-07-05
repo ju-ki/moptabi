@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NearestStationDestination from '@/components/travel-plan/nearestStation/NearestStationDestination';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { TransportNodeType } from '@/types/plan';
+import userEvent from '@testing-library/user-event';
 
 const mockSearchNearestStation = vi.fn();
 const mockGetSpotInfo = vi.fn();
@@ -93,7 +94,11 @@ describe('NearestStationDestination', () => {
       },
     });
 
-    render(<NearestStationDestination date="2026-04-25" />);
+    render(
+      <TooltipProvider>
+        <NearestStationDestination date="2026-04-25" />
+      </TooltipProvider>,
+    );
 
     fireEvent.click(screen.getByRole('switch'));
 
@@ -166,6 +171,7 @@ describe('NearestStationDestination', () => {
 
   // SPEC: PC-NSDT-002
   it('移動時間入力で transitTime が更新される', () => {
+    const user = userEvent.setup();
     mockGetDepartureAndDestination.mockReturnValue({
       name: '羽田空港',
       latitude: 35.5494,
@@ -182,17 +188,15 @@ describe('NearestStationDestination', () => {
       },
     });
 
-    const { container } = render(
+    render(
       <TooltipProvider>
         <NearestStationDestination date="2026-04-25" />
       </TooltipProvider>,
     );
 
-    // セクションを展開
-    fireEvent.click(screen.getByTestId('destination-station-header'));
+    const transitTimeInput = screen.getByTestId('transit-time-test');
 
-    const transitTimeInput = container.querySelector('input[min="1"][max="540"]') as HTMLInputElement;
-    fireEvent.change(transitTimeInput, { target: { value: '35' } });
+    fireEvent.change(transitTimeInput, { target: { value: 35 } });
 
     expect(mockSetDepartureAndDestination).toHaveBeenCalledWith(
       '2026-04-25',
@@ -204,7 +208,8 @@ describe('NearestStationDestination', () => {
   });
 
   // SPEC: PC-NSDT-003
-  it('路線メモ入力で memo が更新される', () => {
+  it('路線メモ入力で memo が更新される', async () => {
+    const user = userEvent.setup();
     mockGetDepartureAndDestination.mockReturnValue({
       name: '羽田空港',
       latitude: 35.5494,
@@ -226,11 +231,8 @@ describe('NearestStationDestination', () => {
       </TooltipProvider>,
     );
 
-    // セクションを展開
-    fireEvent.click(screen.getByTestId('destination-station-header'));
-
     const memoTextarea = screen.getByPlaceholderText('例: ○○線 △△行き、乗り換え1回');
-    fireEvent.change(memoTextarea, { target: { value: 'モノレール 羽田空港行き' } });
+    await user.type(memoTextarea, 'モノレール 羽田空港行き');
 
     expect(mockSetDepartureAndDestination).toHaveBeenCalledWith(
       '2026-04-25',

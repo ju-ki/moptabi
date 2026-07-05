@@ -42,15 +42,15 @@ export const PlanSchema = z.object({
       order: z.number().default(0),
       nearestStation: z
         .object({
-          placeId: z.string().optional(),
-          stationType: z.enum(['BUS', 'TRAIN', 'OTHER']).optional(),
-          name: z.string(),
-          walkingTime: z.number(),
+          placeId: z.string(),
+          stationType: z.enum(['BUS', 'TRAIN', 'OTHER']),
+          name: z.string().optional(),
+          walkingTime: z.number().optional(),
           latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
           longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
           transitTime: z.number().int().min(0).optional(),
           scheduledDepartureTime: z.string().optional(),
-          transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+          transitMemo: z.string().max(1000, { message: 'メモは1000文 字以内で記載をお願いします' }).optional(),
         })
         .optional(),
     }),

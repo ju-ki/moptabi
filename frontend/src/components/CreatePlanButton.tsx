@@ -1,10 +1,8 @@
 import React from 'react';
-import useSWRMutation from 'swr/mutation';
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@/hooks/use-toast';
-import { useStoreForPlanning, type FormData as formType } from '@/lib/plan';
-import { useFetcher } from '@/hooks/use-fetcher';
+import { useStoreForPlanning } from '@/lib/plan';
 import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
 import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
@@ -19,11 +17,11 @@ import { Button } from './ui/button';
  * dirty状態の保存ブロックと、保存成功時の初期化・遷移を扱う。
  * @returns 保存ボタンUI
  */
-const CreatePlanButton = () => {
+const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
   const fields = useStoreForPlanning();
   const router = useRouter();
   const { toast } = useToast();
-  const { postTrip } = useFetchTripDetail();
+  const { postTrip, patchTrip } = useFetchTripDetail();
 
   /**
    * 保存前にフォーム入力とdirty状態を検証する。
@@ -111,6 +109,7 @@ const CreatePlanButton = () => {
   const handleCreatePlan = async () => {
     try {
       const newData: TripType = {
+        id: fields.id,
         title: fields.title,
         imageUrl: fields.imageUrl,
         startDate: fields.startDate,
@@ -119,22 +118,27 @@ const CreatePlanButton = () => {
         plans: fields.plans,
       };
       const validationResult = checkValidation();
-      if (validationResult === 'success') {
-        const resultId = await postTrip(newData);
-        toast({ title: '旅行計画が作成されました', description: '旅行計画の作成に成功しました。', variant: 'success' });
-        fields.resetPlanningStore();
-        if (resultId) {
-          router.push(`/plan/${resultId}`);
-        } else {
-          router.push('/plan/list');
-        }
-      } else if (validationResult === 'validation-error') {
+      if (validationResult != 'success') {
         toast({
           title: '入力項目に一部不備があります',
           description: '入力項目を見直してください',
           variant: 'destructive',
         });
+        return;
       }
+
+      let resultId;
+      if (newData.id && isEdit) {
+        resultId = await patchTrip(newData);
+        toast({ title: '旅行計画が更新されました', description: '旅行計画の更新に成功しました。', variant: 'success' });
+      } else {
+        resultId = await postTrip(newData);
+        toast({ title: '旅行計画が作成されました', description: '旅行計画の作成に成功しました。', variant: 'success' });
+      }
+
+      fields.resetPlanningStore();
+
+      router.push(resultId ? `/plan/${resultId}` : '/plan/list');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({ title: '旅行計画の作成に失敗しました', description: errorMessage, variant: 'destructive' });
@@ -143,7 +147,7 @@ const CreatePlanButton = () => {
   return (
     <div className="space-y-2">
       <Button onClick={() => handleCreatePlan()} type="button" role="button" className="w-full">
-        旅行計画を作成
+        {isEdit ? '旅行計画を更新' : '旅行計画を作成'}
       </Button>
     </div>
   );

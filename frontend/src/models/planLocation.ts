@@ -24,8 +24,8 @@ export type DepartureDestinationNearestStation = {
   stationType: StationType;
   name?: string;
   walkingTime?: number;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   transitTime?: number;
   isManualTransitTime?: boolean;
   scheduledDepartureTime?: string;

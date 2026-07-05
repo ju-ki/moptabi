@@ -135,18 +135,6 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
     await db.delete(userNotification).where(eq(userNotification.userId, userId));
     await db.delete(userLocation).where(eq(userLocation.userId, userId));
     await db.delete(planLocation).where(eq(planLocation.userId, userId));
-
-    // spot/spotMetaテーブルはNo.230対応で削除済みのため削除処理不要
-    if (deleteSpots) {
-      if (typeof deleteSpots === 'string') {
-        await db.delete(nearestStation).where(like(nearestStation.spotId, `${deleteSpots}%`));
-      } else {
-        const allSpotIds = [...new Set([...wishlistSpotIds, ...planSpotIdList])];
-        if (allSpotIds.length > 0) {
-          await db.delete(nearestStation).where(inArray(nearestStation.spotId, allSpotIds));
-        }
-      }
-    }
   } catch (err) {
     console.warn(`clearUserTestData: failed for user ${userId}:`, (err as Error).message);
   }
@@ -642,7 +630,7 @@ export async function createPlanLocation(data: {
   time?: string;
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
-  planId?: number | null;
+  planId: number;
 }) {
   const [created] = await db
     .insert(planLocation)
@@ -654,7 +642,7 @@ export async function createPlanLocation(data: {
       address: data.address ?? null,
       time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
-      planId: data.planId ?? null,
+      planId: data.planId,
     })
     .returning();
   return created;

@@ -34,8 +34,12 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
   // 目的地の最寄駅関連の状態（最後のスポットの場合）
-  const [destinationNearestStations, setDestinationNearestStations] = useState<NearestStation[]>([]);
-  const [selectedDestinationStationId, setSelectedDestinationStationId] = useState<string | null>(null);
+  const [destinationNearestStations, setDestinationNearestStations] = useState<NearestStation[]>(
+    [destinationData?.nearestStation].filter((s): s is NearestStation => !!s),
+  );
+  const [selectedDestinationStationId, setSelectedDestinationStationId] = useState<string | null>(
+    destinationData?.nearestStation?.placeId || null,
+  );
   const [destinationTransitTime, setDestinationTransitTime] = useState<number>(
     destinationData?.nearestStation?.transitTime || 0,
   );
@@ -48,7 +52,9 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   );
   const [scheduledDepartureTimes, setScheduledDepartureTimes] = useState<string[]>(buildInitialDepartureCandidates());
   const [transitMemo, setTransitMemo] = useState<string>(destinationData?.nearestStation?.transitMemo || '');
-  const [isDestinationSectionExpanded, setIsDestinationSectionExpanded] = useState<boolean>(false);
+  const [isDestinationSectionExpanded, setIsDestinationSectionExpanded] = useState<boolean>(
+    !!destinationData?.nearestStation && !!destinationData?.nearestStation.name,
+  );
   const [useDestinationNearestStation, setUseDestinationNearestStation] = useState<boolean>(
     !!destinationData?.nearestStation,
   );
@@ -323,6 +329,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                               type="number"
                               min={1}
                               max={540}
+                              data-testid="transit-time-test"
                               value={destinationTransitTime}
                               onChange={(e) => handleDestinationTransitTimeChange(Number(e.target.value))}
                               className="w-20 text-center"

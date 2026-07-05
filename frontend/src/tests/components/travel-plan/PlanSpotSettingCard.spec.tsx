@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import PlanSpotSettingCard from '@/components/travel-plan/PlanSpotSettingCard';
 import { searchNearestStation } from '@/lib/google-maps';
 import { Spot, TransportNodeType } from '@/types/plan';
+import userEvent from '@testing-library/user-event';
 
 vi.mock('@/lib/google-maps', () => ({
   searchNearestStation: vi.fn().mockResolvedValue([]),
@@ -113,8 +114,9 @@ describe('PlanSpotSettingCard', () => {
   });
 
   // SPEC: PC-PSC-003
-  it('発車時間候補を1件入力すると対象候補のみ更新される', () => {
+  it('発車時間候補を1件入力すると対象候補のみ更新される', async () => {
     const onSettingChange = vi.fn();
+    const user = userEvent.setup();
     const nearestStation = {
       placeId: 'st-1',
       spotId: 'spot-1',
@@ -137,7 +139,7 @@ describe('PlanSpotSettingCard', () => {
       },
     });
 
-    const { container } = render(
+    render(
       <TooltipProvider>
         <PlanSpotSettingCard
           {...baseProps}
@@ -148,18 +150,16 @@ describe('PlanSpotSettingCard', () => {
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByTestId('station-section-toggle'));
-
-    const timeInput = container.querySelector('input[type="time"]') as HTMLInputElement;
-    fireEvent.change(timeInput, { target: { value: '09:15' } });
-
+    const timeInput = screen.getByTestId('scheduled-departure-1');
+    await user.type(timeInput, '09:15');
     const latestCall = onSettingChange.mock.calls.at(-1)?.[0];
     expect(latestCall.nearestStation).toMatchObject({ scheduledDepartureTime: '09:15' });
   });
 
   // SPEC: PC-PSC-004
-  it('発車時間候補を複数入力すると候補配列の順序を維持して更新される', () => {
+  it('発車時間候補を複数入力すると候補配列の順序を維持して更新される', async () => {
     const onSettingChange = vi.fn();
+    const user = userEvent.setup();
     const nearestStation = {
       placeId: 'st-1',
       spotId: 'spot-1',
@@ -183,7 +183,7 @@ describe('PlanSpotSettingCard', () => {
       },
     });
 
-    const { container } = render(
+    render(
       <TooltipProvider>
         <PlanSpotSettingCard
           {...baseProps}
@@ -194,15 +194,13 @@ describe('PlanSpotSettingCard', () => {
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByTestId('station-section-toggle'));
-
     // 1件目: scheduledDepartureTime を更新
-    const timeInput = container.querySelector('input[type="time"]') as HTMLInputElement;
-    fireEvent.change(timeInput, { target: { value: '08:30' } });
+    const timeInput = screen.getByTestId('scheduled-departure-1');
+    await user.type(timeInput, '08:30');
 
     // 2件目: transitMemo を更新しても scheduledDepartureTime が元の値から引き継がれる
     const memoTextarea = screen.getByPlaceholderText('例: ○○線 △△行き、乗り換え1回');
-    fireEvent.change(memoTextarea, { target: { value: '山手線 渋谷行き' } });
+    await user.type(memoTextarea, '山手線 渋谷行き');
 
     const memoCall = onSettingChange.mock.calls.at(-1)?.[0];
     // nearestStation.scheduledDepartureTime は元の prop 値から変わらない（独立した更新）
@@ -211,7 +209,7 @@ describe('PlanSpotSettingCard', () => {
   });
 
   // SPEC: PC-PSC-002
-  it('移動時間を入力するとストア値が更新される', () => {
+  it('移動時間を入力するとストア値が更新される', async () => {
     const onSettingChange = vi.fn();
     const nearestStation = {
       placeId: 'st-1',
@@ -236,7 +234,7 @@ describe('PlanSpotSettingCard', () => {
       },
     });
 
-    const { container } = render(
+    render(
       <TooltipProvider>
         <PlanSpotSettingCard
           {...baseProps}
@@ -247,10 +245,8 @@ describe('PlanSpotSettingCard', () => {
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByTestId('station-section-toggle'));
-
-    const transitTimeInput = container.querySelector('input[min="1"][max="540"]') as HTMLInputElement;
-    fireEvent.change(transitTimeInput, { target: { value: '45' } });
+    const transitTimeInput = screen.getByTestId('transit-time-test');
+    fireEvent.change(transitTimeInput, { target: { value: 45 } });
 
     const latestCall = onSettingChange.mock.calls.at(-1)?.[0];
     expect(latestCall.nearestStation).toMatchObject({ transitTime: 45 });

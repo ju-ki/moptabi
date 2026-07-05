@@ -154,7 +154,7 @@ export async function createOrUpdatePlanLocation(
       address: data.address ?? null,
       time: data.time ?? defaultTimeByLocationType(data.locationType),
       locationType: data.locationType,
-      planId: data.planId ?? null,
+      planId: data.planId,
     })
     .returning();
   return created;

@@ -5,7 +5,7 @@ import { MapPin, Clock, Train, FootprintsIcon, X, Car, Bike, CircleHelp, Externa
 import Image from 'next/image';
 
 import { Spot, TravelModeType } from '@/types/plan';
-import { placeTypeMap, SpotMakerColors } from '@/data/constants';
+import { DEFAULT_ARRIVAL_TIME, placeTypeMap, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 
 import { Label } from '../ui/label';
@@ -74,7 +74,6 @@ export default function SpotDetailCard({
   onDelete,
   onMemoChange,
   departureTimeCandidates = [],
-  selectedDepartureTime,
   onDepartureTimeChange,
 }: SpotDetailCardProps) {
   const fields = useStoreForPlanning();
@@ -85,10 +84,10 @@ export default function SpotDetailCard({
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
     })) ?? [];
-  const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
-    selectedDepartureTime ?? spot.routeToNext?.scheduledDepartureTime ?? '',
-  );
   const planningResult = fields.getPlanningResult(date);
+  const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
+    planningResult?.updatedSpots[index]?.routeToNext?.scheduledDepartureTime ?? '',
+  );
   const routeInfo = planningResult?.routes?.find(
     (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
   );
@@ -279,10 +278,10 @@ export default function SpotDetailCard({
                 <div className="flex items-center gap-2 text-sm">
                   <Train className="w-4 h-4 text-green-600" />
                   <span className="text-gray-600">電車/バス {spot.nearestStation.transitTime}分</span>
-                  {spot.nearestStation.scheduledDepartureTime && (
-                    <span className="text-xs text-gray-400">
-                      （発車: {spot.nearestStation.scheduledDepartureTime}）
-                    </span>
+                  {activeDepartureTime && (
+                    <p className="text-sm text-gray-400" data-testid="spot-selected-departure-time">
+                      (発車: {activeDepartureTime})
+                    </p>
                   )}
                 </div>
               </div>
@@ -331,12 +330,6 @@ export default function SpotDetailCard({
                 )}
               </div>
             </>
-          )}
-
-          {activeDepartureTime && (
-            <p className="text-sm text-gray-600" data-testid="spot-selected-departure-time">
-              発車時間: {activeDepartureTime}
-            </p>
           )}
 
           {selectableDepartureCandidates.length > 0 && (

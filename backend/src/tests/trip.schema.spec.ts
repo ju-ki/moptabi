@@ -3,25 +3,34 @@ import { describe, expect, it } from 'vitest';
 import { TripSchema } from '@/models/trip';
 
 describe('旅行計画スキーマ検証', () => {
-  it('planSpotNearestStationsのstationTypeが不正値の場合はスキーマ不一致になる', () => {
+  it('planSpotNearestStationsのスキーマが一致すること', () => {
     const result = TripSchema.safeParse({
       title: 'No229',
       startDate: '2026-04-21',
       endDate: '2026-04-21',
-      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1 }],
+      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1, memo: 'メモ' }],
       plans: [
         {
           date: '2026-04-21',
           spots: [
             {
               id: 'place_id_1',
-              clientRef: 'temp-spot-1',
               location: { name: 'spot1', lat: 35.0, lng: 139.0 },
               stayStart: '10:00',
               stayEnd: '11:00',
               stayDuration: 60,
               transports: { transportMethod: 1, fromType: 'SPOT', toType: 'SPOT' },
               order: 1,
+              nearestStation: {
+                placeId: 'station_place_id_1',
+                stationType: 'BUS',
+                name: '駅1',
+                latitude: 35.0,
+                longitude: 139.0,
+                transitTime: 15,
+                scheduledDepartureTime: '11:00',
+                transitMemo: '乗り換えなし',
+              },
             },
           ],
           departure: {
@@ -36,6 +45,16 @@ describe('旅行計画スキーマ検証', () => {
             userLocationId: null,
             planLocationId: null,
             time: '09:00',
+            nearestStation: {
+              placeId: 'station_place_id_2',
+              stationType: 'TRAIN',
+              name: '駅2',
+              latitude: 35.0,
+              longitude: 139.0,
+              transitTime: 15,
+              scheduledDepartureTime: '12:00',
+              transitMemo: '乗り換えなし',
+            },
           },
           destination: {
             name: '到着',
@@ -49,19 +68,22 @@ describe('旅行計画スキーマ検証', () => {
             userLocationId: null,
             planLocationId: null,
             time: '18:00',
-          },
-          planSpotNearestStations: [
-            {
-              planSpotRef: 'temp-spot-1',
-              placeId: 'station_place_id_1',
-              stationType: 'INVALID',
+            nearestStation: {
+              placeId: 'station_place_id_3',
+              stationType: 'OTHER',
+              name: '駅3',
+              latitude: 35.0,
+              longitude: 139.0,
+              transitTime: 15,
+              scheduledDepartureTime: '15:00',
+              transitMemo: '乗り換えなし',
             },
-          ],
+          },
         },
       ],
     } as any);
 
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it('旧payloadでspotRoutesが含まれていてもスキーマで受理されること', () => {
@@ -69,14 +91,13 @@ describe('旅行計画スキーマ検証', () => {
       title: 'No229',
       startDate: '2026-04-21',
       endDate: '2026-04-21',
-      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1 }],
+      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1, memo: 'メモ' }],
       plans: [
         {
           date: '2026-04-21',
           spots: [
             {
               id: 'place_id_1',
-              clientRef: 'temp-spot-1',
               location: { name: 'spot1', lat: 35.0, lng: 139.0 },
               stayStart: '10:00',
               stayEnd: '11:00',
@@ -86,7 +107,6 @@ describe('旅行計画スキーマ検証', () => {
             },
             {
               id: 'place_id_2',
-              clientRef: 'temp-spot-2',
               location: { name: 'spot2', lat: 35.1, lng: 139.1 },
               stayStart: '11:30',
               stayEnd: '12:00',

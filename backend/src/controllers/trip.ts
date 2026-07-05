@@ -15,6 +15,8 @@ import {
 } from '@db';
 
 import { getUserId } from '@/middleware/auth';
+import { updateTrip } from '@/services/trip';
+import { validateLimit } from '@/services/limit';
 
 import {
   DepartureAndDestinationType,
@@ -23,7 +25,7 @@ import {
   TripDetailResponseType,
   TripSchema,
 } from '../models/trip';
-import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '../constants/limits';
+import { APP_LIMITS } from '../constants/limits';
 
 /**
  * metaを配列から単一オブジェクトに変換するヘルパー
@@ -318,24 +320,8 @@ export const getTripHandler = {
 
     const tripData = result.data;
 
-    // 上限チェック: プラン作成数
-    const [countResult] = await db.select({ count: count() }).from(trip).where(eq(trip.userId, userId));
-
-    if ((countResult?.count ?? 0) >= APP_LIMITS.MAX_PLANS) {
-      throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.PLAN_LIMIT_EXCEEDED });
-    }
-
-    // 上限チェック: プラン日数
-    if (tripData.plans.length > APP_LIMITS.MAX_PLAN_DAYS) {
-      throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.PLAN_DAYS_LIMIT_EXCEEDED });
-    }
-
-    // 上限チェック: 1日あたりスポット数
-    for (const planData of tripData.plans) {
-      if (planData.spots.length > APP_LIMITS.MAX_SPOTS_PER_DAY) {
-        throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.SPOTS_PER_DAY_LIMIT_EXCEEDED });
-      }
-    }
+    // 上限チェック
+    await validateLimit(userId, tripData);
 
     type TripWriteExecutor = Pick<typeof db, 'insert' | 'update' | 'query'>;
 
@@ -609,6 +595,12 @@ export const getTripHandler = {
       };
       return c.json(responseTrip, 201);
     }
+  },
+
+  // 旅行計画の更新
+  updateTrip: async (c: Context) => {
+    const response = await updateTrip(c);
+    return c.json(response, 200);
   },
 
   /**

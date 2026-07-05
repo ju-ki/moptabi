@@ -145,6 +145,7 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
         longitude: 139.7671,
         time: '18:00',
         locationType: 'DESTINATION',
+        planId: 1,
       };
       const result = CreatePlanLocationSchema.safeParse(mockRequest);
       expect(result.success).toBe(true);
@@ -156,6 +157,7 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
         longitude: 139.7671,
         time: '09:00',
         locationType: 'DEPARTURE',
+        planId: 1,
       };
       const result = CreatePlanLocationSchema.safeParse(mockRequest);
       expect(result.success).toBe(true);
@@ -196,6 +198,7 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
       const invalidRequest = {
         latitude: 35.6895,
         longitude: 139.6917,
+        planId: 1,
       };
       const result = CreatePlanLocationSchema.safeParse(invalidRequest);
       expect(result.success).toBe(false);
@@ -207,12 +210,13 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
         longitude: 139.6917,
         locationType: 'DEPARTURE',
         address: null,
+        planId: 1,
       };
       const result = CreatePlanLocationSchema.safeParse(mockRequest);
       expect(result.success).toBe(true);
     });
 
-    it('planIdがnullでもスキーマに一致する', () => {
+    it('planIdがnullの場合はスキーマ不一致になる', () => {
       const mockRequest = {
         latitude: 35.6895,
         longitude: 139.6917,
@@ -220,7 +224,7 @@ describe('🧾 プラン作成時の出発地・目的地スキーマ検証', ()
         planId: null,
       };
       const result = CreatePlanLocationSchema.safeParse(mockRequest);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
   });
 

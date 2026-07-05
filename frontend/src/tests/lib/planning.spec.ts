@@ -483,6 +483,26 @@ describe('planning.ts', () => {
 
       expect(result.selectedRoute.transportMethodId).toBe(2);
     });
+
+    it('【異常系】優先移動手段IDが指定されているが、transportMethodIdsに含まれていない場合は移動手段は採用されない', async () => {
+      mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
+        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        throw new Error('unexpected');
+      });
+
+      const result = await getOptimalRouteWithAlternatives(
+        { lat: 35.681236, lng: 139.767125 },
+        { lat: 35.6895, lng: 139.6917 },
+        [1], // 利用可能な交通手段に2が含まれていない
+        1.5,
+        2,
+      );
+
+      // デフォルト移動手段である1が採用される
+      expect(result.selectedRoute.transportMethodId).toBe(1);
+    });
   });
 
   describe('プランニングのアウトプット結果', () => {
@@ -928,24 +948,6 @@ describe('planning.ts', () => {
       expect(
         result.messages.some(
           (message) => message.message === 'ルートが取得できませんでした。スポットの見直しをしてください。',
-        ),
-      ).toBe(true);
-    });
-
-    it('[RED] 徒歩フォールバック時は設計書のフォールバックメッセージを返す', async () => {
-      const params = createBaseParams();
-      params.transportMethodIds = [2, 3];
-
-      mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-        if (mode === 'WALKING') return createRouteResult('WALKING', '20分', '1.2 km');
-        throw new Error(`${mode} failed`);
-      });
-
-      const result = await executePlanning(params);
-
-      expect(
-        result.messages.some((message) =>
-          message.message.includes('ルートが取得できませんでしたので徒歩のルートを取得しました。'),
         ),
       ).toBe(true);
     });

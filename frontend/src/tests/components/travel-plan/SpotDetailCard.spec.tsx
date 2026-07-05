@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import SpotDetailCard from '@/components/travel-plan/SpotDetailCard';
 import { Spot, TransportNodeType } from '@/types/plan';
+import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 const mockSwitchAlternativeRoute = vi.fn();
 const mockGetPlanningResult = vi.fn();
@@ -72,6 +73,8 @@ const createMockSpot = (overrides?: Partial<Spot>): Spot => ({
     { day: '日曜日', hours: '9:00〜23:00' },
   ],
   nearestStation: {
+    placeId: 'station-1',
+    stationType: 'TRAIN',
     name: '神谷町駅',
     walkingTime: 7,
     latitude: 35.6619,
@@ -103,6 +106,8 @@ const createMockNextSpot = (overrides?: Partial<Spot>): Spot => ({
     toType: TransportNodeType.SPOT,
   },
   nearestStation: {
+    placeId: 'station-2',
+    stationType: 'TRAIN',
     name: '浅草駅',
     walkingTime: 5,
     latitude: 35.7119,
@@ -131,6 +136,20 @@ describe('SpotDetailCard', () => {
           transportMethodId: 4,
         },
       ],
+      totalDistance: 1000,
+      totalDuration: 20,
+      departureTime: DEFAULT_DEPARTURE_TIME,
+      arrivalTime: DEFAULT_ARRIVAL_TIME,
+      isOverTime: false,
+      updatedSpots: [
+        {
+          routeToNext: {
+            scheduledDepartureTime: '11:00',
+          },
+        },
+      ],
+      updatedDeparture: undefined, // スポットのテストなので仮置き
+      updatedDestination: undefined, // スポットのテストなので仮置き
     });
   });
 
@@ -648,7 +667,7 @@ describe('SpotDetailCard', () => {
       fireEvent.click(screen.getByRole('button', { name: '11:12' }));
 
       expect(onDepartureTimeChange).toHaveBeenCalledWith('11:12');
-      expect(screen.getByTestId('spot-selected-departure-time')).toHaveTextContent('発車時間: 11:12');
+      expect(screen.getByTestId('spot-selected-departure-time')).toHaveTextContent('11:12');
     });
   });
 
@@ -738,6 +757,7 @@ describe('SpotDetailCard', () => {
       const spotWithStation = createMockSpot({
         nearestStation: {
           placeId: 'st-1',
+          stationType: 'TRAIN',
           name: '赤羽橋駅',
           walkingTime: 7,
           latitude: 35.655,

@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import DestinationDetailCard from '@/components/travel-plan/DestinationDetailCard';
+import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 const mockGetDepartureAndDestination = vi.fn();
 const mockGetSpotInfo = vi.fn();
@@ -73,6 +74,14 @@ describe('DestinationDetailCard', () => {
           transportMethod: 'TRANSIT',
         },
       ],
+      totalDistance: 1000,
+      totalDuration: 20,
+      departureTime: DEFAULT_DEPARTURE_TIME,
+      arrivalTime: DEFAULT_ARRIVAL_TIME,
+      isOverTime: false,
+      updatedSpots: [],
+      updatedDeparture: createDestination(), // 目的地のテストなので仮置き
+      updatedDestination: createDestination(),
     });
   });
 
@@ -134,6 +143,14 @@ describe('DestinationDetailCard', () => {
             transportMethod: 'TRANSIT',
           },
         ],
+        totalDistance: 1000,
+        totalDuration: 20,
+        departureTime: DEFAULT_DEPARTURE_TIME,
+        arrivalTime: DEFAULT_ARRIVAL_TIME,
+        isOverTime: false,
+        updatedSpots: [],
+        updatedDeparture: createDestination(), // 目的地のテストなので仮置き
+        updatedDestination: createDestination(),
       });
 
       render(<DestinationDetailCard date="2025-12-20" index={1} />);
@@ -171,6 +188,14 @@ describe('DestinationDetailCard', () => {
             transportMethod: 'TRANSIT',
           },
         ],
+        totalDistance: 1000,
+        totalDuration: 20,
+        departureTime: DEFAULT_DEPARTURE_TIME,
+        arrivalTime: DEFAULT_ARRIVAL_TIME,
+        isOverTime: false,
+        updatedSpots: [],
+        updatedDeparture: createDestination(), // 目的地のテストなので仮置き
+        updatedDestination: createDestination(),
       });
 
       render(<DestinationDetailCard date="2025-12-20" index={1} />);
@@ -198,6 +223,14 @@ describe('DestinationDetailCard', () => {
             transportMethod: 'TRANSIT',
           },
         ],
+        totalDistance: 1000,
+        totalDuration: 20,
+        departureTime: DEFAULT_DEPARTURE_TIME,
+        arrivalTime: DEFAULT_ARRIVAL_TIME,
+        isOverTime: false,
+        updatedSpots: [],
+        updatedDeparture: createDestination(), // 目的地のテストなので仮置き
+        updatedDestination: createDestination(),
       });
 
       render(<DestinationDetailCard date="2025-12-21" index={1} />);

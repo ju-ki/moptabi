@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NearestStationDeparture from '@/components/travel-plan/nearestStation/NearestStationDeparture';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { TransportNodeType } from '@/types/plan';
+import userEvent from '@testing-library/user-event';
 
 const mockSearchNearestStation = vi.fn();
 const mockGetSpotInfo = vi.fn();
@@ -93,7 +94,11 @@ describe('NearestStationDeparture', () => {
       },
     });
 
-    render(<NearestStationDeparture date="2026-04-25" />);
+    render(
+      <TooltipProvider>
+        <NearestStationDeparture date="2026-04-25" />
+      </TooltipProvider>,
+    );
 
     fireEvent.click(screen.getByRole('switch'));
 
@@ -165,7 +170,8 @@ describe('NearestStationDeparture', () => {
   });
 
   // SPEC: PC-NSD-002
-  it('候補時刻入力で suggestedTransitTimes が更新される', () => {
+  it('候補時刻入力で suggestedTransitTimes が更新される', async () => {
+    const user = userEvent.setup();
     mockGetDepartureAndDestination.mockReturnValue({
       name: '東京駅',
       latitude: 35.6812,
@@ -182,29 +188,27 @@ describe('NearestStationDeparture', () => {
       },
     });
 
-    const { container } = render(
+    render(
       <TooltipProvider>
         <NearestStationDeparture date="2026-04-25" />
       </TooltipProvider>,
     );
 
-    // セクションを展開
-    fireEvent.click(screen.getByText('出発地の最寄駅'));
-
-    const timeInput = container.querySelector('input[type="time"]') as HTMLInputElement;
-    fireEvent.change(timeInput, { target: { value: '09:30' } });
+    const timeInput = screen.getByTestId('scheduled-departure-1');
+    await user.type(timeInput, '09:15');
 
     expect(mockSetDepartureAndDestination).toHaveBeenCalledWith(
       '2026-04-25',
       TransportNodeType.DEPARTURE,
       expect.objectContaining({
-        nearestStation: expect.objectContaining({ scheduledDepartureTime: '09:30' }),
+        nearestStation: expect.objectContaining({ scheduledDepartureTime: '09:15' }),
       }),
     );
   });
 
   // SPEC: PC-NSD-003
-  it('路線メモ入力で memo が更新される', () => {
+  it('路線メモ入力で memo が更新される', async () => {
+    const user = userEvent.setup();
     mockGetDepartureAndDestination.mockReturnValue({
       name: '東京駅',
       latitude: 35.6812,
@@ -227,10 +231,9 @@ describe('NearestStationDeparture', () => {
     );
 
     // セクションを展開
-    fireEvent.click(screen.getByText('出発地の最寄駅'));
 
     const memoTextarea = screen.getByPlaceholderText('例: ○○線 △△行き、乗り換え1回');
-    fireEvent.change(memoTextarea, { target: { value: '山手線 渋谷行き' } });
+    await user.type(memoTextarea, '山手線 渋谷行き');
 
     expect(mockSetDepartureAndDestination).toHaveBeenCalledWith(
       '2026-04-25',
