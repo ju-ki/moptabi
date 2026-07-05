@@ -87,7 +87,6 @@ export function UserLocationSection({
       name: location.name || '',
       latitude: location.latitude,
       longitude: location.longitude,
-      address: location.address || '',
       label: location.label || '',
       isDefault: location.isDefault,
     });
@@ -108,7 +107,6 @@ export function UserLocationSection({
       name: formData.name,
       latitude: formData.latitude,
       longitude: formData.longitude,
-      address: formData.address || null,
       label: formData.label || null,
       usageCount: 0,
       isDefault: formData.isDefault || false,
@@ -241,7 +239,6 @@ export function UserLocationSection({
                         </Badge>
                       )}
                     </div>
-                    <span className="text-sm text-gray-500">{location.address || '住所未設定'}</span>
                     <span className="text-xs text-gray-400">使用回数: {location.usageCount}回</span>
                   </div>
                 </div>

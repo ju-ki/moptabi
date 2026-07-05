@@ -318,7 +318,6 @@ export const updateTrip = async (c: Context) => {
           name: planData.departure.name,
           latitude: planData.departure.latitude,
           longitude: planData.departure.longitude,
-          address: planData.departure.address ?? null,
           time: planData.departure.time ?? DEFAULT_DEPARTURE_TIME,
           locationType: 'DEPARTURE',
         })
@@ -332,7 +331,6 @@ export const updateTrip = async (c: Context) => {
           name: planData.destination.name,
           latitude: planData.destination.latitude,
           longitude: planData.destination.longitude,
-          address: planData.destination.address ?? null,
           time: planData.destination.time ?? DEFAULT_DESTINATION_TIME,
           locationType: 'DESTINATION',
         })

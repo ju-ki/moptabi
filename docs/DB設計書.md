@@ -124,22 +124,7 @@ PlanSpot
 ### 6. SpotMeta（スポットメタデータ）
 **目的**: スポットの詳細情報を管理
 
-| カラム名 | データ型 | 制約 | 説明 |
-|---------|---------|------|------|
-| id | VARCHAR(255) | PRIMARY KEY | メタデータID |
-| spotId | VARCHAR(255) | NOT NULL, UNIQUE, FK | スポットID |
-| name | VARCHAR(255) | NOT NULL | スポット名 |
-| latitude | DOUBLE PRECISION | NOT NULL | 緯度 |
-| longitude | DOUBLE PRECISION | NOT NULL | 経度 |
-| image | TEXT | NULL | 画像URL |
-| rating | DOUBLE PRECISION | NULL | 評価 |
-| url | TEXT | NULL | ウェブサイトURL |
-| prefecture | VARCHAR(50) | NULL | 都道府県 |
-| address | VARCHAR(255) | NULL | 住所 |
-| categories | TEXT[] | NULL | カテゴリ配列 |
-| catchphrase | TEXT | NULL | キャッチフレーズ |
-| description | TEXT | NULL | 説明 |
-| openingHours | JSON | NULL | 営業時間 |
+課題230で削除済み
 
 **リレーション**:
 - Spot (1:1)

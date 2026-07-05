@@ -50,7 +50,6 @@ export interface PlanLocation {
   name: string;
   latitude: number;
   longitude: number;
-  address: string | null;
   locationType: LocationType;
   usageCount: number;
   createdAt: string;
@@ -62,7 +61,6 @@ export interface CreatePlanLocationRequest {
   name?: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   locationType: LocationType;
   planId?: number | null;
 }
@@ -73,6 +71,5 @@ export interface UpdatePlanLocationRequest {
   name?: string;
   latitude?: number;
   longitude?: number;
-  address?: string | null;
   usageCount?: number;
 }

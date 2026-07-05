@@ -94,14 +94,6 @@ export default function DepartureDetailCard({
           <h3 className="font-semibold text-lg">{departure.name}</h3>
         </div>
 
-        {/* 住所 */}
-        {departure.address && (
-          <p className="text-gray-500 flex items-center space-x-1 mt-1" data-testid="spot-address">
-            <MapPin className="w-4 h-4 text-gray-400" />
-            <span>{departure.address}</span>
-          </p>
-        )}
-
         <p className="text-gray-500 flex items-center space-x-1 mt-1" data-testid="departure-time">
           <Clock className="w-4 h-4 text-gray-400" />
           <span>出発時刻: {planningResult?.departureTime ?? DEFAULT_DEPARTURE_TIME}</span>

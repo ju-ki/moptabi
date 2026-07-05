@@ -131,7 +131,6 @@ export const userLocation = pgTable(
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
     name: varchar({ length: 255 }),
-    address: varchar({ length: 255 }),
     label: varchar({ length: 255 }),
     usageCount: integer().default(0).notNull(),
     isDefault: boolean().default(false).notNull(),
@@ -342,8 +341,6 @@ export const planLocation = pgTable(
     // 位置情報
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
-    // 住所（任意）
-    address: varchar({ length: 255 }),
     // 出発時間または到着時間（HH:MM）
     time: varchar('time', { length: 5 }).notNull(),
     // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）

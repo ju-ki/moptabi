@@ -262,7 +262,6 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         name: '新しい出発地',
         latitude: 35.6895,
         longitude: 139.6917,
-        address: '東京都千代田区',
         locationType: 'DEPARTURE' as const,
         planId: plan1.id,
       };

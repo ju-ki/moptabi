@@ -71,6 +71,13 @@
       "when": 1782169226859,
       "tag": "0010_add_planspot_planLocation_index",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783236954110,
+      "tag": "0011_drop_address_column",
+      "breakpoints": true
     }
   ]
 }

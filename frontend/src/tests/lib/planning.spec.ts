@@ -26,7 +26,6 @@ function createBaseLocation(locationType: 'DEPARTURE' | 'DESTINATION') {
     name: locationType === 'DEPARTURE' ? '出発地' : '目的地',
     latitude: 35.681236,
     longitude: 139.767125,
-    address: '東京都千代田区丸の内',
     label: null,
     isDefault: false,
     locationType,

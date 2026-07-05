@@ -58,7 +58,6 @@ export const createUserLocation = async (c: Context) => {
       name: userLocationData.name,
       latitude: userLocationData.latitude,
       longitude: userLocationData.longitude,
-      address: userLocationData.address,
       label: userLocationData.label,
       isDefault: userLocationData.isDefault,
     })
@@ -113,7 +112,6 @@ export const updateUserLocation = async (c: Context) => {
       name: userLocationData.name ?? existingUserLocation.name,
       latitude: userLocationData.latitude ?? existingUserLocation.latitude,
       longitude: userLocationData.longitude ?? existingUserLocation.longitude,
-      address: userLocationData.address ?? existingUserLocation.address,
       label: userLocationData.label ?? existingUserLocation.label,
       isDefault: userLocationData.isDefault ?? existingUserLocation.isDefault,
     })

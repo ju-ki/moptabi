@@ -78,7 +78,6 @@ export const DEFAULT_DEPARTURE_AND_DESTINATION: DepartureAndDestinationType = {
   name: '',
   latitude: 35.6813,
   longitude: 139.7671,
-  address: null,
   label: null,
   locationType: 'SPOT',
   isDefault: false,

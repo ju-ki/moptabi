@@ -563,7 +563,6 @@ export async function createUserLocation(data: {
   name: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   label?: string | null;
   usageCount?: number;
   isDefault?: boolean;
@@ -575,7 +574,6 @@ export async function createUserLocation(data: {
       name: data.name,
       latitude: data.latitude,
       longitude: data.longitude,
-      address: data.address ?? null,
       label: data.label ?? null,
       usageCount: data.usageCount ?? 0,
       isDefault: data.isDefault ?? false,
@@ -626,7 +624,6 @@ export async function createPlanLocation(data: {
   name: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   time?: string;
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
@@ -639,7 +636,6 @@ export async function createPlanLocation(data: {
       name: data.name,
       latitude: data.latitude,
       longitude: data.longitude,
-      address: data.address ?? null,
       time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
       planId: data.planId,

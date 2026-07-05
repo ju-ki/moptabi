@@ -1011,7 +1011,6 @@ describe('旅行計画サービス', () => {
           name: 'テスト出発地',
           latitude: 35.6762,
           longitude: 139.7674,
-          address: 'テスト住所',
           time: '09:00',
           locationType: 'DEPARTURE',
           planId: newPlanId,
