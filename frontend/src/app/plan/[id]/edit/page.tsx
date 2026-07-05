@@ -43,6 +43,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
     if (!trip || error) {
       return;
     }
+    fields.resetPlanningStore();
     fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
     trip.tripInfo.forEach((data) => {
@@ -104,6 +105,9 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
     });
   }, [trip, error, handlePreprocessingPlanning]);
 
+  if (error) {
+    return <>プランの取得に失敗しました</>;
+  }
   if (!trip || isLoading) {
     return <>読み込み中です</>;
   }

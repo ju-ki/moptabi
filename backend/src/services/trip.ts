@@ -17,6 +17,8 @@ import { getUserId } from '@/middleware/auth';
 import { TripSchema } from '@/models/trip';
 import { LOCATION_TYPE } from '@/models/planLocation';
 
+import { validateLimit } from './limit';
+
 const DEFAULT_DEPARTURE_TIME = '09:00';
 const DEFAULT_DESTINATION_TIME = '18:00';
 
@@ -78,6 +80,10 @@ export const updateTrip = async (c: Context) => {
   }
 
   const tripData = result.data;
+
+  // 上限チェック
+  await validateLimit(userId, tripData);
+
   await db.transaction(async (tx) => {
     await tx
       .update(trip)
@@ -107,6 +113,11 @@ export const updateTrip = async (c: Context) => {
           and(eq(planLocation.planId, currentPlanData[0].id), eq(planLocation.locationType, LOCATION_TYPE.DEPARTURE)),
         )
         .returning();
+
+      // 出発地の更新が失敗した場合はエラーを返す
+      if (!updatedPlanDepartureLocation) {
+        throw new HTTPException(500, { message: 'Departure planLocation not found' });
+      }
 
       if (pn.departure.nearestStation?.placeId) {
         // 出発地の最寄駅情報を更新
@@ -151,6 +162,11 @@ export const updateTrip = async (c: Context) => {
           and(eq(planLocation.planId, currentPlanData[0].id), eq(planLocation.locationType, LOCATION_TYPE.DESTINATION)),
         )
         .returning();
+
+      // 出発地の更新が失敗した場合はエラーを返す
+      if (!updatedPlanDestinationLocation) {
+        throw new HTTPException(500, { message: 'Destination planLocation not found' });
+      }
 
       // 出発地の最寄駅情報を更新
       if (pn.destination.nearestStation?.placeId) {
@@ -204,7 +220,7 @@ export const updateTrip = async (c: Context) => {
               order: spot.order,
               stayStart: spot.stayStart,
               stayEnd: spot.stayEnd,
-              stayDuration: spot.stayDuration,
+              stayDuration: spot.stayDuration ?? 0,
             },
           })
           .returning();

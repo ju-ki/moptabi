@@ -105,6 +105,8 @@ export default function PlanSpotSettingCard({
     !!spot.nearestStation && !!spot.nearestStation.name,
   );
 
+  const [hasFetchedStations, setHasFetchedStations] = useState<boolean>(false);
+
   useEffect(() => {
     if (spot.nearestStation && nearestStations.length > 0) {
       const existingStation = nearestStations.find(
@@ -123,7 +125,9 @@ export default function PlanSpotSettingCard({
     try {
       const stations = await searchNearestStation({ center: spot.location, radius: 1, excludeBusStop });
       setNearestStations(stations);
+      setHasFetchedStations(true);
     } catch (error) {
+      setHasFetchedStations(false);
       console.error('最寄駅の取得に失敗しました:', error);
     } finally {
       setIsLoadingStations(false);
@@ -133,8 +137,9 @@ export default function PlanSpotSettingCard({
   const handleUseNearestStationChange = (checked: boolean) => {
     setUseNearestStation(checked);
     setIsStationSectionExpanded(checked);
-    if (checked && nearestStations.length === 0) {
+    if (checked && !hasFetchedStations) {
       fetchNearestStations();
+      setHasFetchedStations(true);
     }
     if (!checked) {
       onSettingChange({ ...spot, nearestStation: undefined });
