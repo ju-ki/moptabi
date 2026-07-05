@@ -42,7 +42,7 @@ export function UserLocationSection({
   deleteUserLocation,
 }: {
   userLocationList: UserLocation[];
-  postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<Response>;
+  postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<UserLocation>;
   updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
   deleteUserLocation: (id: number) => Promise<Response>;
 }) {
@@ -62,7 +62,6 @@ export function UserLocationSection({
     name: '',
     latitude: 35.6895,
     longitude: 139.6917,
-    address: '',
     label: '',
     isDefault: false,
   });
@@ -73,7 +72,6 @@ export function UserLocationSection({
       name: '',
       latitude: 35.6895,
       longitude: 139.6917,
-      address: '',
       label: '',
       isDefault: false,
     });
@@ -114,14 +112,14 @@ export function UserLocationSection({
       updatedAt: new Date().toISOString(),
     };
 
-    await postUserLocation(formData);
+    const result = await postUserLocation(formData);
 
     // デフォルトフラグの排他処理
     if (newLocation.isDefault) {
       setLocations((prev) => prev.map((loc) => ({ ...loc, isDefault: false })));
     }
 
-    setLocations((prev) => [...prev, newLocation]);
+    setLocations((prev) => [...prev, result]);
     setIsAddDialogOpen(false);
   }
 
@@ -358,15 +356,16 @@ interface LocationFormProps {
 
 function LocationForm({ formData, setFormData }: LocationFormProps) {
   const { isLoading: isGeocodingLoading, error: geocodingError, searchByAddress, clearError } = useGeocoding();
+  const [address, setAddress] = useState<string>('');
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
   /**
    * 住所からカーソルが離れた時に座標を検索
    */
   const handleAddressBlur = useCallback(async () => {
-    if (!formData.address?.trim()) return;
+    if (!address?.trim()) return;
 
-    const result = await searchByAddress(formData.address);
+    const result = await searchByAddress(address);
     if (result) {
       setFormData((prev) => ({
         ...prev,
@@ -380,7 +379,7 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
         map.panTo({ lat: result.latitude, lng: result.longitude });
       }
     }
-  }, [formData.address, searchByAddress, setFormData, map]);
+  }, [address, searchByAddress, setFormData, map]);
 
   /**
    * 住所入力が変更された時にエラーをクリア
@@ -388,7 +387,7 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
   const handleAddressChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       clearError();
-      setFormData((prev) => ({ ...prev, address: e.target.value }));
+      setAddress(e.target.value);
     },
     [clearError, setFormData],
   );
@@ -435,7 +434,7 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
           <Input
             id="address"
             placeholder="例: 東京都新宿区西新宿1-1-1"
-            value={formData.address || ''}
+            value={address || ''}
             onChange={handleAddressChange}
             onBlur={handleAddressBlur}
             className={geocodingError ? 'border-red-500 pr-10' : ''}
