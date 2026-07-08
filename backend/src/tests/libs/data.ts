@@ -26,21 +26,6 @@ export const mockTripData = {
   endDate: '2024-01-02',
 };
 
-// モックtripInfoデータ
-export const mockTripInfoData = [
-  {
-    date: '2024-01-01',
-    genreId: 1,
-    transportationMethod: 1,
-    memo: 'モックの旅行情報メモ',
-  },
-  {
-    date: '2024-01-02',
-    genreId: 2,
-    transportationMethod: 2,
-  },
-];
-
 /** 最寄駅なし旅行計画データ */
 export const mockPlanData = [
   {
@@ -81,7 +66,6 @@ export const mockPlanData = [
       name: '出発地',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都新宿区',
       time: '09:00',
       label: null,
       isDefault: false,
@@ -101,7 +85,6 @@ export const mockPlanData = [
       name: '目的地',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都渋谷区',
       time: '18:00',
       label: null,
       isDefault: false,
@@ -141,7 +124,6 @@ export const mockPlanData = [
       name: '出発地2',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都新宿区',
       time: '09:00',
       label: null,
       isDefault: false,
@@ -161,7 +143,6 @@ export const mockPlanData = [
       name: '目的地2',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都渋谷区',
       time: '18:00',
       label: null,
       isDefault: false,
@@ -231,7 +212,6 @@ export const mockPlanDataWithNearestStation = [
       name: '出発地',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都新宿区',
       time: '09:00',
       label: null,
       isDefault: false,
@@ -258,7 +238,6 @@ export const mockPlanDataWithNearestStation = [
       name: '目的地',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都渋谷区',
       time: '18:00',
       label: null,
       isDefault: false,
@@ -327,7 +306,6 @@ export const mockPlanDataWithNearestStation = [
       name: '出発地2',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都新宿区',
       time: '09:00',
       label: null,
       isDefault: false,
@@ -347,7 +325,6 @@ export const mockPlanDataWithNearestStation = [
       name: '目的地2',
       latitude: 35.6762,
       longitude: 139.6503,
-      address: '東京都渋谷区',
       time: '18:00',
       label: null,
       isDefault: false,

@@ -97,7 +97,7 @@ export function useMypageData(): MypageData {
     isLoading: userLocationsLoading,
   } = useSWR<UserLocation[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation` : null, getFetcher);
 
-  const postUserLocation = async (newUserLocation: CreateUserLocationRequest) => {
+  const postUserLocation = async (newUserLocation: CreateUserLocationRequest): Promise<UserLocation> => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -109,7 +109,7 @@ export function useMypageData(): MypageData {
       throw new Error(`Failed to create user location: ${response.status}`);
     }
 
-    return response;
+    return response.json();
   };
 
   const updateUserLocation = async (updatedUserLocation: UpdateUserLocationRequest) => {

@@ -36,7 +36,6 @@ const mockUserLocations: UserLocation[] = [
     name: '自宅',
     latitude: 35.6895,
     longitude: 139.6917,
-    address: '東京都新宿区西新宿1-1-1',
     label: '自宅',
     usageCount: 15,
     isDefault: true,
@@ -49,7 +48,6 @@ const mockUserLocations: UserLocation[] = [
     name: '東京駅',
     latitude: 35.6812,
     longitude: 139.7671,
-    address: '東京都千代田区丸の内1丁目',
     label: '駅・バス停',
     usageCount: 8,
     isDefault: false,
@@ -112,20 +110,6 @@ describe('UserLocationSection', () => {
       const homeTexts = screen.getAllByText('自宅');
       expect(homeTexts.length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText('東京駅')).toBeInTheDocument();
-    });
-
-    it('登録された地点の住所が表示される', () => {
-      renderWithProviders(
-        <UserLocationSection
-          userLocationList={mockUserLocations}
-          postUserLocation={mockPostUserLocation}
-          updateUserLocation={mockUpdateUserLocation}
-          deleteUserLocation={mockDeleteUserLocation}
-        />,
-      );
-
-      expect(screen.getByText('東京都新宿区西新宿1-1-1')).toBeInTheDocument();
-      expect(screen.getByText('東京都千代田区丸の内1丁目')).toBeInTheDocument();
     });
 
     it('ラベルがバッジとして表示される', () => {

@@ -9,9 +9,7 @@ import {
   trip,
   plan,
   planSpot,
-  tripInfo,
   wishlist,
-  nearestStation,
   userNotification,
   notification,
   transport,
@@ -30,9 +28,7 @@ export {
   trip,
   plan,
   planSpot,
-  tripInfo,
   wishlist,
-  nearestStation,
   userNotification,
   notification,
   transport,
@@ -67,12 +63,10 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(transport);
     await db.delete(planSpotNearestStation);
     await db.delete(planSpot);
-    await db.delete(tripInfo);
     await db.delete(planLocation);
     await db.delete(plan);
     await db.delete(trip);
     await db.delete(wishlist);
-    await db.delete(nearestStation);
     await db.delete(userNotification);
     await db.delete(notification);
     await db.delete(userLocation);
@@ -126,7 +120,6 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
         await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
       }
 
-      await db.delete(tripInfo).where(inArray(tripInfo.tripId, tripIds));
       await db.delete(plan).where(inArray(plan.tripId, tripIds));
       await db.delete(trip).where(eq(trip.userId, userId));
     }
@@ -385,7 +378,6 @@ export async function deleteAllWishlists() {
 export async function deleteAllTrips() {
   await db.delete(transport);
   await db.delete(planSpot);
-  await db.delete(tripInfo);
   await db.delete(plan);
   await db.delete(trip);
 }
@@ -423,7 +415,6 @@ export async function deleteTripsByUser(userId: string) {
       await db.delete(transport).where(inArray(transport.planId, planIds));
       await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
     }
-    await db.delete(tripInfo).where(inArray(tripInfo.tripId, tripIds));
     await db.delete(plan).where(inArray(plan.tripId, tripIds));
     await db.delete(trip).where(eq(trip.userId, userId));
   }
@@ -563,7 +554,6 @@ export async function createUserLocation(data: {
   name: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   label?: string | null;
   usageCount?: number;
   isDefault?: boolean;
@@ -575,7 +565,6 @@ export async function createUserLocation(data: {
       name: data.name,
       latitude: data.latitude,
       longitude: data.longitude,
-      address: data.address ?? null,
       label: data.label ?? null,
       usageCount: data.usageCount ?? 0,
       isDefault: data.isDefault ?? false,
@@ -626,7 +615,6 @@ export async function createPlanLocation(data: {
   name: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   time?: string;
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
@@ -639,7 +627,6 @@ export async function createPlanLocation(data: {
       name: data.name,
       latitude: data.latitude,
       longitude: data.longitude,
-      address: data.address ?? null,
       time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
       planId: data.planId,

@@ -19,14 +19,7 @@ import {
   clearAllTestData,
 } from './db-helper';
 import { createAuthHeaders, createSpotData, TEST_USER_ID } from './test-client';
-import {
-  mockPlanData,
-  mockPlanDataWithNearestStation,
-  mockTripData,
-  mockTripInfoData,
-  SPOT_PREFIX,
-  spotId,
-} from './libs/data';
+import { mockPlanData, mockPlanDataWithNearestStation, mockTripData, spotId } from './libs/data';
 
 let currentUserId: string | null = TEST_USER_ID;
 
@@ -55,7 +48,6 @@ describe('旅行計画サービス', () => {
     it('新しい旅行計画を作成できること', async () => {
       const result = TripSchema.safeParse({
         ...mockTripData,
-        tripInfo: mockTripInfoData,
         plans: mockPlanData,
       });
       expect(result.success).toBe(true);
@@ -64,7 +56,6 @@ describe('旅行計画サービス', () => {
           {
             json: {
               ...mockTripData,
-              tripInfo: mockTripInfoData,
               plans: mockPlanData,
             },
           },
@@ -82,7 +73,6 @@ describe('旅行計画サービス', () => {
     it('No.229: departure/destination の nearestStation が保存されること', async () => {
       const payloadWithLocationStations = {
         ...mockTripData,
-        tripInfo: [mockTripInfoData[0]],
         plans: [
           {
             ...mockPlanData[0],
@@ -174,7 +164,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -191,7 +180,6 @@ describe('旅行計画サービス', () => {
         ...structuredClone(mockTripData),
         id: result.id,
         title: '更新後の旅行タイトル',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: structuredClone(mockPlanData),
       };
 
@@ -257,7 +245,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...mockTripData,
-            tripInfo: mockTripInfoData,
             plans: mockPlanData,
           },
         },
@@ -274,7 +261,6 @@ describe('旅行計画サービス', () => {
         ...structuredClone(mockTripData),
         id: result.id,
         endDate: '2024-01-01',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: [structuredClone(mockPlanData[0])],
       };
 
@@ -308,7 +294,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -325,7 +310,6 @@ describe('旅行計画サービス', () => {
         ...structuredClone(mockTripData),
         id: result.id,
         title: '更新後の旅行タイトル',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: structuredClone(mockPlanData),
       };
 
@@ -378,7 +362,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...mockTripData,
-            tripInfo: mockTripInfoData,
             plans: mockPlanData,
           },
         },
@@ -395,7 +378,6 @@ describe('旅行計画サービス', () => {
         ...structuredClone(mockTripData),
         id: result.id,
         endDate: '2024-01-01',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: [structuredClone(mockPlanData[0])],
       };
 
@@ -428,7 +410,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -445,7 +426,6 @@ describe('旅行計画サービス', () => {
         ...structuredClone(mockTripData),
         id: result.id,
         endDate: '2024-01-03',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: structuredClone(mockPlanData),
       };
 
@@ -480,7 +460,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -497,7 +476,6 @@ describe('旅行計画サービス', () => {
         ...structuredClone(mockTripData),
         id: result.id,
         endDate: '2024-01-03',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: structuredClone(mockPlanData),
       };
 
@@ -536,7 +514,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -554,7 +531,6 @@ describe('旅行計画サービス', () => {
         id: result.id,
         startDate: '2024-01-03',
         endDate: '2024-01-04',
-        tripInfo: structuredClone(mockTripInfoData),
         plans: structuredClone(mockPlanData),
       };
 
@@ -595,7 +571,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -627,7 +602,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -668,7 +642,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -682,11 +655,9 @@ describe('旅行計画サービス', () => {
       expect(res.status).toBe(200);
       const trip = await res.json();
       expect(trip).toHaveProperty('title', mockTripData.title);
-      expect(Array.isArray(trip.tripInfo)).toBe(true);
       expect(Array.isArray(trip.plans)).toBe(true);
 
       // 詳細情報の中身も確認
-      expect(trip.tripInfo.length).toBe(mockTripInfoData.length);
       expect(trip.plans.length).toBe(mockPlanData.length);
     });
 
@@ -702,7 +673,6 @@ describe('旅行計画サービス', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -741,7 +711,6 @@ describe('旅行計画サービス', () => {
       // 最寄駅情報付きのプランデータを作成
       const tripWithNearestStation = {
         ...mockTripData,
-        tripInfo: mockTripInfoData,
         plans: [
           {
             date: '2024-01-01',
@@ -819,7 +788,6 @@ describe('旅行計画サービス', () => {
       // nearestStation情報付きでtrip作成
       const tripWithAutoGeneratedStation = {
         ...mockTripData,
-        tripInfo: [mockTripInfoData[0]],
         plans: [
           {
             date: '2024-01-01',
@@ -895,7 +863,6 @@ describe('旅行計画サービス', () => {
     it('出発地・目的地の最寄駅情報が placeId と stationType を含むこと', async () => {
       const payloadWithLocationStations = {
         ...mockTripData,
-        tripInfo: [mockTripInfoData[0]],
         plans: [
           {
             ...mockPlanData[0],
@@ -1011,7 +978,6 @@ describe('旅行計画サービス', () => {
           name: 'テスト出発地',
           latitude: 35.6762,
           longitude: 139.7674,
-          address: 'テスト住所',
           time: '09:00',
           locationType: 'DEPARTURE',
           planId: newPlanId,
@@ -1076,7 +1042,6 @@ describe('旅行計画サービス', () => {
           json: {
             ...structuredClone(mockTripData),
             title: 'User1の旅行1',
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -1087,7 +1052,6 @@ describe('旅行計画サービス', () => {
           json: {
             ...structuredClone(mockTripData),
             title: 'User1の旅行2',
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -1101,7 +1065,6 @@ describe('旅行計画サービス', () => {
           json: {
             ...structuredClone(mockTripData),
             title: 'User2の旅行1',
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -1154,7 +1117,6 @@ describe('旅行計画サービス', () => {
           json: {
             ...structuredClone(mockTripData),
             title: 'ターゲットユーザーの旅行',
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -1167,7 +1129,6 @@ describe('旅行計画サービス', () => {
           json: {
             ...structuredClone(mockTripData),
             title: 'その他ユーザーの旅行',
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -1197,7 +1158,6 @@ describe('旅行計画サービス', () => {
             json: {
               ...structuredClone(mockTripData),
               title: `大量テスト用旅行${i}`,
-              tripInfo: structuredClone(mockTripInfoData),
               plans: structuredClone(mockPlanData),
             },
           },
@@ -1237,7 +1197,6 @@ describe('旅行計画サービス', () => {
             json: {
               ...structuredClone(mockTripData),
               title: `大量テスト用旅行${i}`,
-              tripInfo: structuredClone(mockTripInfoData),
               plans: structuredClone(mockPlanData),
             },
           },
@@ -1255,7 +1214,6 @@ describe('旅行計画サービス', () => {
             json: {
               ...structuredClone(mockTripData),
               title: `大量テスト用旅行${i}`,
-              tripInfo: structuredClone(mockTripInfoData),
               plans: structuredClone(mockPlanData),
             },
           },
@@ -1296,7 +1254,6 @@ describe('旅行計画サービス', () => {
             json: {
               ...structuredClone(mockTripData),
               title: `大量テスト用旅行${i}`,
-              tripInfo: structuredClone(mockTripInfoData),
               plans: structuredClone(mockPlanData),
             },
           },
@@ -1312,7 +1269,6 @@ describe('旅行計画サービス', () => {
             json: {
               ...structuredClone(mockTripData),
               title: `大量テスト用旅行${i}`,
-              tripInfo: structuredClone(mockTripInfoData),
               plans: structuredClone(mockPlanData),
             },
           },

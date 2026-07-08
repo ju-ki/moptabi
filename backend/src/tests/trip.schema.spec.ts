@@ -8,10 +8,10 @@ describe('旅行計画スキーマ検証', () => {
       title: 'No229',
       startDate: '2026-04-21',
       endDate: '2026-04-21',
-      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1, memo: 'メモ' }],
       plans: [
         {
           date: '2026-04-21',
+          memo: 'メモ',
           spots: [
             {
               id: 'place_id_1',
@@ -37,7 +37,6 @@ describe('旅行計画スキーマ検証', () => {
             name: '出発',
             latitude: 35.0,
             longitude: 139.0,
-            address: null,
             label: null,
             isDefault: false,
             locationType: 'DEPARTURE',
@@ -60,7 +59,6 @@ describe('旅行計画スキーマ検証', () => {
             name: '到着',
             latitude: 35.1,
             longitude: 139.1,
-            address: null,
             label: null,
             isDefault: false,
             locationType: 'DESTINATION',
@@ -91,10 +89,10 @@ describe('旅行計画スキーマ検証', () => {
       title: 'No229',
       startDate: '2026-04-21',
       endDate: '2026-04-21',
-      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1, memo: 'メモ' }],
       plans: [
         {
           date: '2026-04-21',
+          memo: 'メモ',
           spots: [
             {
               id: 'place_id_1',
@@ -119,7 +117,6 @@ describe('旅行計画スキーマ検証', () => {
             name: '出発',
             latitude: 35.0,
             longitude: 139.0,
-            address: null,
             label: null,
             isDefault: false,
             locationType: 'DEPARTURE',
@@ -132,7 +129,6 @@ describe('旅行計画スキーマ検証', () => {
             name: '到着',
             latitude: 35.1,
             longitude: 139.1,
-            address: null,
             label: null,
             isDefault: false,
             locationType: 'DESTINATION',

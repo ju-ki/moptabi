@@ -20,17 +20,6 @@ export const transportNodeType = pgEnum('TransportNodeType', ['DEPARTURE', 'DEST
 export const locationType = pgEnum('LocationType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
 export const stationType = pgEnum('StationType', ['BUS', 'TRAIN', 'OTHER']);
 
-export const prismaMigrations = pgTable('_prisma_migrations', {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
-  migrationName: varchar('migration_name', { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp('rolled_back_at', { withTimezone: true, mode: 'string' }),
-  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
-});
-
 export const transport = pgTable(
   'Transport',
   {
@@ -49,27 +38,6 @@ export const transport = pgTable(
       columns: [table.planId],
       foreignColumns: [plan.id],
       name: 'Transport_planId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
-export const tripInfo = pgTable(
-  'TripInfo',
-  {
-    id: serial().primaryKey().notNull(),
-    tripId: integer().notNull(),
-    genreId: integer().notNull(),
-    memo: text(),
-    date: varchar({ length: 10 }).notNull(),
-    transportationMethods: integer().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.tripId],
-      foreignColumns: [trip.id],
-      name: 'TripInfo_tripId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
@@ -131,7 +99,6 @@ export const userLocation = pgTable(
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
     name: varchar({ length: 255 }),
-    address: varchar({ length: 255 }),
     label: varchar({ length: 255 }),
     usageCount: integer().default(0).notNull(),
     isDefault: boolean().default(false).notNull(),
@@ -159,6 +126,7 @@ export const plan = pgTable(
     id: serial().primaryKey().notNull(),
     tripId: integer().notNull(),
     date: varchar({ length: 10 }).notNull(),
+    memo: text(),
   },
   (table) => [
     foreignKey({
@@ -255,15 +223,6 @@ export const wishlist = pgTable(
   ],
 );
 
-export const nearestStation = pgTable('NearestStation', {
-  id: serial().primaryKey().notNull(),
-  spotId: text(),
-  name: varchar({ length: 255 }).notNull(),
-  walkingTime: integer().notNull(),
-  latitude: doublePrecision().notNull(),
-  longitude: doublePrecision().notNull(),
-});
-
 export const planSpotNearestStation = pgTable(
   'PlanSpotNearestStation',
   {
@@ -342,8 +301,6 @@ export const planLocation = pgTable(
     // 位置情報
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
-    // 住所（任意）
-    address: varchar({ length: 255 }),
     // 出発時間または到着時間（HH:MM）
     time: varchar('time', { length: 5 }).notNull(),
     // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）

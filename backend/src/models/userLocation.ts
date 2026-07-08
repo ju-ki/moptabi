@@ -12,7 +12,6 @@ export const UserLocationSchema = z.object({
   name: z.string().nullable().openapi({ example: '自宅' }),
   latitude: z.number().min(-90).max(90).openapi({ example: 35.6895 }),
   longitude: z.number().min(-180).max(180).openapi({ example: 139.6917 }),
-  address: z.string().nullable().openapi({ example: '東京都千代田区千代田1-1' }),
   label: z.string().nullable().openapi({ example: '自宅' }),
   usageCount: z.number().min(0).openapi({ example: 5 }),
   isDefault: z.boolean().openapi({ example: false }),
@@ -40,7 +39,6 @@ export const CreateUserLocationSchema = z.object({
     .min(-180, { message: '経度は-180から180の範囲で入力してください' })
     .max(180, { message: '経度は-180から180の範囲で入力してください' })
     .openapi({ example: 139.6917 }),
-  address: z.string().max(255).nullable().optional().openapi({ example: '東京都千代田区千代田1-1' }),
   label: z.string().max(255).nullable().optional().openapi({ example: '自宅' }),
   isDefault: z.boolean().optional().default(false).openapi({ example: false }),
 });
@@ -65,7 +63,6 @@ export const UpdateUserLocationSchema = z.object({
     .max(180, { message: '経度は-180から180の範囲で入力してください' })
     .optional()
     .openapi({ example: 139.6917 }),
-  address: z.string().max(255).nullable().optional().openapi({ example: '東京都千代田区千代田1-1' }),
   label: z.string().max(255).nullable().optional().openapi({ example: '自宅' }),
   isDefault: z.boolean().optional().openapi({ example: false }),
 });

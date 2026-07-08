@@ -148,6 +148,7 @@ async function enrichTripWithPlaceDetails(raw: TripDetailApiResponse): Promise<T
 
       return {
         date: plan.date,
+        memo: plan.memo,
         spots: await Promise.all(plan.spots.map(enrichSpot)),
         departure,
         destination,
@@ -160,7 +161,6 @@ async function enrichTripWithPlaceDetails(raw: TripDetailApiResponse): Promise<T
     imageUrl: raw.imageUrl,
     startDate: raw.startDate,
     endDate: raw.endDate,
-    tripInfo: raw.tripInfo,
     plans: enrichedPlans,
   };
 }

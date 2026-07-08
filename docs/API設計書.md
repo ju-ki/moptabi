@@ -137,7 +137,6 @@ Image 関連
 - title: string (1-50)
 - imageUrl?: string
 - startDate, endDate: string
-- tripInfo: array of { date, genreId, transportationMethod[], memo? }
 - plans: array of { date, spots[], departure, destination }
   - spot: { id, location: { name, lat, lng }, stayStart, stayEnd, stayDuration?, transports: { transportMethodIds[], fromType, toType, travelTime?, cost? }, order, nearestStation? }
   - spot.nearestStation: { placeId?, stationType?, name, walkingTime, latitude, longitude }

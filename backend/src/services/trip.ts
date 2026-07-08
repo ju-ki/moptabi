@@ -271,6 +271,14 @@ export const updateTrip = async (c: Context) => {
     const deletedPlanDateList = existedPlanDate.filter((plan) => !newPlanDateList.includes(plan.date));
     const newPlanData = tripData.plans.filter((plan) => !existedPlanDate.map((pn) => pn.date).includes(plan.date));
 
+    // 既に登録されているプランデータのメモを更新
+    for (const planData of tripData.plans) {
+      await tx
+        .update(plan)
+        .set({ memo: planData.memo ?? null })
+        .where(and(eq(plan.tripId, tripId), eq(plan.date, planData.date)));
+    }
+
     // 削除対象の日付のプランデータを削除
     await tx.delete(plan).where(
       and(
@@ -289,6 +297,7 @@ export const updateTrip = async (c: Context) => {
         .values({
           tripId: tripId,
           date: planData.date,
+          memo: planData.memo ?? null,
         })
         .returning();
 
@@ -318,7 +327,6 @@ export const updateTrip = async (c: Context) => {
           name: planData.departure.name,
           latitude: planData.departure.latitude,
           longitude: planData.departure.longitude,
-          address: planData.departure.address ?? null,
           time: planData.departure.time ?? DEFAULT_DEPARTURE_TIME,
           locationType: 'DEPARTURE',
         })
@@ -332,7 +340,6 @@ export const updateTrip = async (c: Context) => {
           name: planData.destination.name,
           latitude: planData.destination.latitude,
           longitude: planData.destination.longitude,
-          address: planData.destination.address ?? null,
           time: planData.destination.time ?? DEFAULT_DESTINATION_TIME,
           locationType: 'DESTINATION',
         })

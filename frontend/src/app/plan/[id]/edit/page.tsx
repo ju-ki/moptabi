@@ -46,14 +46,13 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
     fields.resetPlanningStore();
     fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
-    trip.tripInfo.forEach((data) => {
-      fields.setTripInfo(data.date, 'memo', data.memo ?? '');
-    });
+
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
     trip.plans.forEach((plan) => {
       plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
       });
+      fields.setPlanInfo(plan.date, { ...plan, memo: plan.memo ?? '' });
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
     });

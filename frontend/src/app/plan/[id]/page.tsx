@@ -32,14 +32,12 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     }
     fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
-    trip.tripInfo.forEach((data) => {
-      fields.setTripInfo(data.date, 'memo', data.memo ?? '');
-    });
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
     trip.plans.forEach((plan) => {
       plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
       });
+      fields.setPlanInfo(plan.date, { ...plan, memo: plan.memo ?? '' });
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
     });
@@ -112,12 +110,6 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
                   )}
                 </span>
               </div>
-              {trip.tripInfo.map((info, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  <span>{info.memo || 'ここにメモが表示されます'}</span>
-                </div>
-              ))}
             </div>
           </CardHeader>
         </Card>

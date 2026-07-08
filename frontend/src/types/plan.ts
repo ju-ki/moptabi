@@ -64,13 +64,6 @@ type SpotRouteDraft = {
   memo?: string; //メモ
 };
 
-export type TripInfo = {
-  date: string;
-  genreId: number;
-  transportationMethod: number;
-  memo?: string;
-};
-
 export type Spot = {
   id: string;
   clientRef?: string;
@@ -106,6 +99,7 @@ export type Spot = {
 
 export type TravelPlanType = {
   date: string;
+  memo?: string;
   spots: Spot[];
   departure: DepartureAndDestinationType;
   destination: DepartureAndDestinationType;

@@ -9,7 +9,6 @@ export const UserLocationSchema = z.object({
   name: z.string().nullable(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  address: z.string().nullable(),
   label: z.string().nullable(),
   usageCount: z.number(),
   isDefault: z.boolean(),
@@ -31,7 +30,6 @@ export const CreateUserLocationSchema = z.object({
     .number()
     .min(-180, { message: '経度は-180から180の範囲で入力してください' })
     .max(180, { message: '経度は-180から180の範囲で入力してください' }),
-  address: z.string().max(255).nullable().optional(),
   label: z.string().max(255).nullable().optional(),
   isDefault: z.boolean().optional().default(false),
 });
@@ -53,7 +51,6 @@ export const UpdateUserLocationSchema = z.object({
     .min(-180, { message: '経度は-180から180の範囲で入力してください' })
     .max(180, { message: '経度は-180から180の範囲で入力してください' })
     .optional(),
-  address: z.string().max(255).nullable().optional(),
   label: z.string().max(255).nullable().optional(),
   isDefault: z.boolean().optional(),
 });
@@ -63,7 +60,6 @@ export const PlanLocationCandidateItemSchema = z.object({
   name: z.string(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  address: z.string().nullable(),
   label: z.string().nullable(),
   isDefault: z.boolean(),
   locationType: LocationTypeSchema,

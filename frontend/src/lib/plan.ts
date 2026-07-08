@@ -10,7 +10,6 @@ import {
   TransportNodeType,
   TravelModeType,
   TravelPlanType,
-  TripInfo,
 } from '@/types/plan';
 import { TripSchema } from '@/models/trip';
 import { DepartureAndDestinationType, PlanLocationCandidatesResponse } from '@/models/planLocation';
@@ -65,13 +64,11 @@ type PlanningInitialState = Pick<
   | 'imageUrl'
   | 'startDate'
   | 'endDate'
-  | 'tripInfo'
   | 'plans'
   | 'departureList'
   | 'destinationList'
   | 'isLocationLinked'
   | 'errors'
-  | 'tripInfoErrors'
   | 'planErrors'
   | 'spotErrors'
   | 'planningInfo'
@@ -92,13 +89,11 @@ function createPlanningInitialState(): PlanningInitialState {
     imageUrl: '',
     startDate: '',
     endDate: '',
-    tripInfo: [],
     plans: [],
     departureList: { favorites: [], history: [] },
     destinationList: { favorites: [], history: [] },
     isLocationLinked: false,
     errors: {},
-    tripInfoErrors: {},
     planErrors: {},
     spotErrors: {},
     planningInfo: {},
@@ -137,14 +132,12 @@ interface FormState {
   imageUrl?: string;
   startDate: string;
   endDate: string;
-  tripInfo: TripInfo[];
   plans: TravelPlanType[];
   departureList: PlanLocationCandidatesResponse;
   destinationList: PlanLocationCandidatesResponse;
   /** 出発地・目的地連動チェックボックスの状態 */
   isLocationLinked: boolean;
   errors: Partial<Record<keyof FormData, string>>;
-  tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
   planErrors: Record<string, Record<PlanErrorType, string>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
   /** プランニング必要な情報 */
@@ -177,12 +170,8 @@ interface FormState {
   setDestinationList: (list: PlanLocationCandidatesResponse) => void;
   /** 出発地・目的地連動チェックボックスの状態を設定 */
   setIsLocationLinked: (isLinked: boolean) => void;
-  getTripInfo: (date: string) => TripInfo;
-  setTripInfo: (
-    date: string,
-    name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
-    value: string | number,
-  ) => void;
+  getPlanInfo: (date: string) => TravelPlanType | undefined;
+  setPlanInfo: (date: string, info: TravelPlanType) => void;
   getSpotInfo: (date: string, type: TransportNodeType | null) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
@@ -194,8 +183,8 @@ interface FormState {
   getFields: <K extends keyof FormState>(field: K) => FormState[K];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
-  setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
   setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
+  getPlanErrors: (date: string) => Partial<Record<PlanErrorType, string>> | undefined;
   setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
   getSpotCoordination: (date: string) => Record<string, Spot>;
@@ -330,26 +319,21 @@ export const useStoreForPlanning = create<FormState>()(
         }
         return [];
       },
-      getTripInfo: (date) => {
-        return get().tripInfo.find((info) => info.date == date);
+      getPlanInfo: (date) => {
+        const plansForDate = get().plans.filter((plan) => plan.date === date);
+        if (plansForDate.length == 0) {
+          return undefined;
+        }
+        return plansForDate[0];
       },
-      setTripInfo: (date, name, value) => {
+      setPlanInfo: (date, info) => {
         set((state) => {
-          const existingTripInfoIndex = state.tripInfo.findIndex((info) => info.date === date);
-
-          if (existingTripInfoIndex >= 0) {
-            state.tripInfo[existingTripInfoIndex] = {
-              ...state.tripInfo[existingTripInfoIndex],
-              [name]: value,
-            };
-          } else {
-            state.tripInfo.push({
-              date: date,
-              genreId: name === 'genreId' ? Number(value) : 0,
-              transportationMethod: name === 'transportationMethod' ? (value as number) : 1,
-              memo: name === 'memo' ? (value as string) : '',
-            });
+          const existingPlansIndex = state.plans.findIndex((plan) => plan.date === date);
+          // 既存のプランがないことはないため、その場合はスキップ
+          if (existingPlansIndex < 0) {
+            return;
           }
+          state.plans[existingPlansIndex] = info;
         });
       },
       setDepartureAndDestination: (date, type, value) => {
@@ -516,15 +500,10 @@ export const useStoreForPlanning = create<FormState>()(
         });
       },
       setErrors: (errors) => set((state) => ({ ...state, errors })),
-      setTripInfoErrors: (date, errors) =>
-        set((state) => {
-          const dateKey = date;
-          state.tripInfoErrors[dateKey] = {
-            ...state.tripInfoErrors[dateKey],
-            ...errors,
-          };
-          return state;
-        }),
+      getPlanErrors: (date) => {
+        const planErrors = get().planErrors[date];
+        return planErrors ? planErrors : undefined;
+      },
       setPlanErrors: (date, errors) =>
         set((state) => {
           const dateKey = date;

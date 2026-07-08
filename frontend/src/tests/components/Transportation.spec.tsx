@@ -114,24 +114,4 @@ describe('Transportation', () => {
       });
     });
   });
-
-  describe('バリデーションエラー', () => {
-    it('エラーがある場合エラーメッセージが表示されること', () => {
-      (useStoreForPlanning as any).mockReturnValue(
-        createMockFields({
-          tripInfoErrors: { '2025-12-20': { transportationMethod: '移動手段を選択してください' } },
-        }),
-      );
-      render(<Transportation date="2025-12-20" />);
-
-      expect(screen.getByText('移動手段を選択してください')).toBeInTheDocument();
-    });
-
-    it('エラーがない場合エラーメッセージが表示されないこと', () => {
-      (useStoreForPlanning as any).mockReturnValue(createMockFields({ tripInfoErrors: null }));
-      render(<Transportation date="2025-12-20" />);
-
-      expect(screen.queryByText('移動手段を選択してください')).not.toBeInTheDocument();
-    });
-  });
 });

@@ -28,7 +28,6 @@ type AlternativeTransport = {
 function createDestination(overrides?: Partial<Record<string, unknown>>) {
   return {
     name: '大阪駅',
-    address: '大阪府大阪市北区梅田3-1-1',
     time: '18:00',
     transports: {
       transportMethod: 4,

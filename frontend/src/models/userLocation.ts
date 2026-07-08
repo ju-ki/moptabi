@@ -15,7 +15,6 @@ export interface UserLocation {
   name: string | null;
   latitude: number;
   longitude: number;
-  address: string | null;
   label: string | null;
   usageCount: number;
   isDefault: boolean;

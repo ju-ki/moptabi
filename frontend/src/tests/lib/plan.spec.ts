@@ -44,10 +44,8 @@ describe('useStoreForPlanning', () => {
     store.setFields('startDate', '2026-06-01');
     store.setFields('endDate', '2026-06-02');
     store.setFields('plans', [{ date: '2026-06-01', spots: [], departure: {} as any, destination: {} as any }]);
-    store.setFields('tripInfo', [{ date: '2026-06-01', memo: 'test', genreId: 1, transportationMethod: 1 }]);
     store.setIsLocationLinked(true);
     store.setErrors({ title: 'error' });
-    store.setTripInfoErrors('2026-06-01', { memo: 'error' });
     store.setPlanErrors('2026-06-01', { spots: 'error' });
     store.setSpotErrors('2026-06-01', { memo: 'error' });
     store.setPlanningInfo('2026-06-01', { transportationMethodId: [1] } as any);
@@ -61,11 +59,9 @@ describe('useStoreForPlanning', () => {
     expect(resetStore.title).toBe('');
     expect(resetStore.startDate).toBe('');
     expect(resetStore.endDate).toBe('');
-    expect(resetStore.tripInfo).toEqual([]);
     expect(resetStore.plans).toEqual([]);
     expect(resetStore.isLocationLinked).toBe(false);
     expect(resetStore.errors).toEqual({});
-    expect(resetStore.tripInfoErrors).toEqual({});
     expect(resetStore.planErrors).toEqual({});
     expect(resetStore.spotErrors).toEqual({});
     expect(resetStore.planningInfo).toEqual({});

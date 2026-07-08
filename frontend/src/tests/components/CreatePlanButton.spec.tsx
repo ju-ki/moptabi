@@ -35,7 +35,6 @@ vi.mock('@/lib/plan', () => ({
     imageUrl: '',
     startDate: '2026-06-01',
     endDate: '2026-06-01',
-    tripInfo: [],
     plans: [],
     getSpotInfo: () => [
       {
@@ -43,6 +42,10 @@ vi.mock('@/lib/plan', () => ({
         memo: '',
       },
     ],
+    getPlanInfo: () => ({
+      date: '2026-06-01',
+      memo: '',
+    }),
     getDirtyPlanningDates: mockGetDirtyPlanningDates,
     setErrors: vi.fn(),
     setTripInfoErrors: vi.fn(),
@@ -63,7 +66,7 @@ describe('CreatePlanButton', () => {
   it('保存成功で詳細画面へ遷移する場合、遷移前にストアを初期化すること', async () => {
     mockPostTrip.mockResolvedValue(123);
 
-    render(<CreatePlanButton />);
+    render(<CreatePlanButton isEdit={false} />);
 
     await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
 
@@ -78,7 +81,7 @@ describe('CreatePlanButton', () => {
   it('保存失敗の場合はストア初期化を実行しないこと', async () => {
     mockPostTrip.mockRejectedValue(new Error('failed'));
 
-    render(<CreatePlanButton />);
+    render(<CreatePlanButton isEdit={false} />);
 
     await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
 
@@ -92,7 +95,7 @@ describe('CreatePlanButton', () => {
   it('dirty日付が存在する場合は保存をブロックし、APIを呼ばないこと', async () => {
     mockGetDirtyPlanningDates.mockReturnValue(['2026-06-01']);
 
-    render(<CreatePlanButton />);
+    render(<CreatePlanButton isEdit={false} />);
 
     await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
 

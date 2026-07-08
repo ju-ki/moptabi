@@ -28,7 +28,6 @@ type AlternativeTransport = {
 function createDeparture(overrides?: Partial<Record<string, unknown>>) {
   return {
     name: '新宿駅',
-    address: '東京都新宿区新宿3-38-1',
     time: DEFAULT_DEPARTURE_TIME,
     transports: {
       transportMethod: 4,

@@ -45,9 +45,6 @@ const Transportation = ({ date }: { date: string }) => {
           </div>
         ))}
       </div>
-      {fields.tripInfoErrors && (
-        <span className="text-red-500">{fields.tripInfoErrors[date]?.transportationMethod}</span>
-      )}
     </div>
   );
 };
