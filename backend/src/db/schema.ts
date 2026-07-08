@@ -55,27 +55,6 @@ export const transport = pgTable(
   ],
 );
 
-export const tripInfo = pgTable(
-  'TripInfo',
-  {
-    id: serial().primaryKey().notNull(),
-    tripId: integer().notNull(),
-    genreId: integer().notNull(),
-    memo: text(),
-    date: varchar({ length: 10 }).notNull(),
-    transportationMethods: integer().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.tripId],
-      foreignColumns: [trip.id],
-      name: 'TripInfo_tripId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
 export const userNotification = pgTable(
   'UserNotification',
   {
@@ -158,6 +137,7 @@ export const plan = pgTable(
     id: serial().primaryKey().notNull(),
     tripId: integer().notNull(),
     date: varchar({ length: 10 }).notNull(),
+    memo: text(),
   },
   (table) => [
     foreignKey({

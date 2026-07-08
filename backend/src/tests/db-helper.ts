@@ -9,7 +9,6 @@ import {
   trip,
   plan,
   planSpot,
-  tripInfo,
   wishlist,
   nearestStation,
   userNotification,
@@ -30,7 +29,6 @@ export {
   trip,
   plan,
   planSpot,
-  tripInfo,
   wishlist,
   nearestStation,
   userNotification,
@@ -67,7 +65,6 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(transport);
     await db.delete(planSpotNearestStation);
     await db.delete(planSpot);
-    await db.delete(tripInfo);
     await db.delete(planLocation);
     await db.delete(plan);
     await db.delete(trip);
@@ -126,7 +123,6 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
         await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
       }
 
-      await db.delete(tripInfo).where(inArray(tripInfo.tripId, tripIds));
       await db.delete(plan).where(inArray(plan.tripId, tripIds));
       await db.delete(trip).where(eq(trip.userId, userId));
     }
@@ -385,7 +381,6 @@ export async function deleteAllWishlists() {
 export async function deleteAllTrips() {
   await db.delete(transport);
   await db.delete(planSpot);
-  await db.delete(tripInfo);
   await db.delete(plan);
   await db.delete(trip);
 }
@@ -423,7 +418,6 @@ export async function deleteTripsByUser(userId: string) {
       await db.delete(transport).where(inArray(transport.planId, planIds));
       await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
     }
-    await db.delete(tripInfo).where(inArray(tripInfo.tripId, tripIds));
     await db.delete(plan).where(inArray(plan.tripId, tripIds));
     await db.delete(trip).where(eq(trip.userId, userId));
   }

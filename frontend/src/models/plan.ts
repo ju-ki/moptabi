@@ -21,6 +21,7 @@ export const CoordinationSchema = z.object({
 
 export const PlanSchema = z.object({
   date: z.string(),
+  memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
   spots: z.array(
     z.object({
       id: z.string(),

@@ -15,7 +15,7 @@ import {
   deleteTripsByUser,
   createTrip,
 } from './db-helper';
-import { mockPlanData, mockTripData, mockTripInfoData } from './libs/data';
+import { mockPlanData, mockTripData } from './libs/data';
 import { createSpotData } from './test-client';
 
 // 認証用のモックユーザーID
@@ -115,7 +115,6 @@ const createTripPayload = (
     title: string;
     startDate: string;
     endDate: string;
-    tripInfo: Array<{ date: string; genreId: number; transportationMethod: number }>;
     plans: Array<{
       date: string;
       spots: any[];
@@ -127,13 +126,7 @@ const createTripPayload = (
   title: params.title ?? '通常プラン',
   startDate: params.startDate ?? '2025-01-01',
   endDate: params.endDate ?? '2025-01-01',
-  tripInfo: params.tripInfo ?? [
-    {
-      date: '2025-01-01',
-      genreId: 1,
-      transportationMethod: 1,
-    },
-  ],
+
   plans: params.plans ?? [
     {
       date: '2025-01-01',
@@ -236,7 +229,6 @@ describe('🔒 上限チェック機能', () => {
         {
           json: {
             ...structuredClone(mockTripData),
-            tripInfo: structuredClone(mockTripInfoData),
             plans: structuredClone(mockPlanData),
           },
         },
@@ -296,10 +288,6 @@ describe('🔒 上限チェック機能', () => {
           json: createTripPayload({
             title: '更新後タイトル',
             endDate: '2025-01-02',
-            tripInfo: [
-              { date: '2025-01-01', genreId: 1, transportationMethod: 1 },
-              { date: '2025-01-02', genreId: 1, transportationMethod: 1 },
-            ],
             plans: [
               {
                 date: '2025-01-01',
@@ -338,13 +326,6 @@ describe('🔒 上限チェック機能', () => {
             title: 'スポット過多プラン',
             startDate: '2025-01-01',
             endDate: '2025-01-01',
-            tripInfo: [
-              {
-                date: '2025-01-01',
-                genreId: 1,
-                transportationMethod: 1,
-              },
-            ],
             plans: [
               {
                 date: '2025-01-01',
@@ -419,10 +400,6 @@ describe('🔒 上限チェック機能', () => {
                 destination: createBasePlanLocation('DESTINATION'),
               },
             ],
-            tripInfo: [
-              { date: '2025-01-01', genreId: 1, transportationMethod: 1 },
-              { date: '2025-01-02', genreId: 1, transportationMethod: 1 },
-            ],
             endDate: '2025-01-02',
           }),
         },
@@ -489,7 +466,6 @@ describe('🔒 上限チェック機能', () => {
             title: '長期プラン',
             startDate: '2025-01-01',
             endDate: endDate.toISOString().split('T')[0],
-            tripInfo,
             plans,
           },
         },
@@ -507,11 +483,7 @@ describe('🔒 上限チェック機能', () => {
           json: createTripPayload({
             title: '通常日数プラン',
             endDate: '2025-01-03',
-            tripInfo: [
-              { date: '2025-01-01', genreId: 1, transportationMethod: 1 },
-              { date: '2025-01-02', genreId: 1, transportationMethod: 1 },
-              { date: '2025-01-03', genreId: 1, transportationMethod: 1 },
-            ],
+
             plans: [
               {
                 date: '2025-01-01',
@@ -572,7 +544,6 @@ describe('🔒 上限チェック機能', () => {
           json: createTripPayload({
             title: '更新長期プラン',
             endDate: endDate.toISOString().split('T')[0],
-            tripInfo,
             plans,
           }),
         },

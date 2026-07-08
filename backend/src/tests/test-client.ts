@@ -3,7 +3,7 @@ import { testClient } from 'hono/testing';
 import { TripDetailResponseType, TripDetailSpotType } from '@/models/trip';
 
 import app from '..';
-import { mockPlanData, mockTripData, mockTripInfoData, spotId } from './libs/data';
+import { mockPlanData, mockTripData, spotId } from './libs/data';
 
 // テスト用ユーザーID
 export const TEST_USER_ID = 'test_user_id';
@@ -138,7 +138,6 @@ export async function createTripViaTripService(params: {
         title,
         startDate,
         endDate,
-        tripInfo: structuredClone(mockTripInfoData),
         plans: structuredClone(mockPlanData).map((plan, index) => ({
           ...plan,
           date: startDate, // すべてのプランの日付をstartDateに設定

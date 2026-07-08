@@ -1,6 +1,6 @@
 import z from 'zod';
 
-import type { Transport, TripInfo } from '@/types/plan';
+import type { Transport } from '@/types/plan';
 
 import { PlanListSchema } from './plan';
 
@@ -15,14 +15,6 @@ export const TripSchema = z.object({
   imageUrl: z.string().optional(),
   startDate: z.string({ message: '予定日の開始日を入力してください' }),
   endDate: z.string({ message: '予定日の終了日を入力してください' }),
-  tripInfo: z.array(
-    z.object({
-      date: z.string(),
-      genreId: z.number().default(1),
-      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }),
-      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-    }),
-  ),
   plans: PlanListSchema,
 });
 
@@ -41,7 +33,6 @@ export type TripDetailApiNearestStation = TripDetailApiSpot['nearestStation'];
 
 /** frontend補完後の詳細レスポンス型 */
 export type TripDetailApiResponseEnriched = Omit<TripType, 'tripInfo'> & {
-  tripInfo: TripInfo[];
   plans: Array<{
     date: string;
     spots: Array<Omit<TripDetailApiSpot, 'transports'> & { transports: Transport }>;

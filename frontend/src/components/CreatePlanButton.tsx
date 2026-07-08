@@ -64,15 +64,14 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
 
     dates.map((date) => {
       const spotsData = fields.getSpotInfo(date, TransportNodeType.SPOT);
-      const targetTripInfo = fields.tripInfo.filter((val) => val.date === date)[0];
+      const targetTripInfo = fields.getPlanInfo(date);
 
       if (targetTripInfo && targetTripInfo.memo && targetTripInfo.memo.length > 1000) {
-        fields.setTripInfoErrors(date, {
+        fields.setPlanErrors(date, {
           memo: 'メモは1000文字以内で入力してください。',
         });
         isError = true;
       }
-
       if (!spotsData || spotsData.length === 0) {
         fields.setPlanErrors(date, {
           spots: '観光地スポットは1つ以上選択してください',
@@ -114,7 +113,6 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
         imageUrl: fields.imageUrl,
         startDate: fields.startDate,
         endDate: fields.endDate,
-        tripInfo: fields.tripInfo,
         plans: fields.plans,
       };
       const validationResult = checkValidation();
