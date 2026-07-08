@@ -306,8 +306,9 @@ describe('useMypageData', () => {
         { id: 5, visited: 0 },
       ];
 
+      // 課題278でキーを区別するために、urlから独自のキーになったため
       mockUseSWR.mockImplementation((key: string | null) => {
-        if (key?.includes('/wishlist') && !key?.includes('count')) {
+        if (key?.includes('mypage') && !key?.includes('count')) {
           return {
             data: mockWishlist,
             error: undefined,

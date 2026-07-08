@@ -83,7 +83,14 @@ export function useMypageData(): MypageData {
     data: wishlist,
     error: wishlistError,
     isLoading: wishlistLoading,
-  } = useSWR<WishlistSummary[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist` : null, getFetcher);
+  } = useSWR<WishlistSummary[]>(
+    shouldFetch ? [`${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist`, 'mypage'] : null,
+    async (key) => {
+      // 課題278対応、urlが重複しているためキーを持たせ、fetcher内でurlを取得して渡す
+      const url = Array.isArray(key) ? key[0] : key;
+      return getFetcher(url);
+    },
+  );
 
   const {
     data: wishlistCount,
