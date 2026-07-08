@@ -20,17 +20,6 @@ export const transportNodeType = pgEnum('TransportNodeType', ['DEPARTURE', 'DEST
 export const locationType = pgEnum('LocationType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
 export const stationType = pgEnum('StationType', ['BUS', 'TRAIN', 'OTHER']);
 
-export const prismaMigrations = pgTable('_prisma_migrations', {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
-  migrationName: varchar('migration_name', { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp('rolled_back_at', { withTimezone: true, mode: 'string' }),
-  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
-});
-
 export const transport = pgTable(
   'Transport',
   {
@@ -233,15 +222,6 @@ export const wishlist = pgTable(
       .onDelete('cascade'),
   ],
 );
-
-export const nearestStation = pgTable('NearestStation', {
-  id: serial().primaryKey().notNull(),
-  spotId: text(),
-  name: varchar({ length: 255 }).notNull(),
-  walkingTime: integer().notNull(),
-  latitude: doublePrecision().notNull(),
-  longitude: doublePrecision().notNull(),
-});
 
 export const planSpotNearestStation = pgTable(
   'PlanSpotNearestStation',
