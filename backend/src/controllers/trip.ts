@@ -4,7 +4,6 @@ import { eq, and, count, sql, inArray } from 'drizzle-orm';
 import {
   getDbFromContext,
   trip,
-  tripInfo,
   plan,
   planSpot,
   transport,
@@ -26,14 +25,6 @@ import {
   TripSchema,
 } from '../models/trip';
 import { APP_LIMITS } from '../constants/limits';
-
-/**
- * metaを配列から単一オブジェクトに変換するヘルパー
- */
-const getMeta = (spotData: { meta?: unknown[] | unknown } | null | undefined) => {
-  if (!spotData) return null;
-  return Array.isArray(spotData.meta) ? spotData.meta[0] || null : spotData.meta || null;
-};
 
 const DEFAULT_DEPARTURE_TIME = '09:00';
 const DEFAULT_DESTINATION_TIME = '18:00';
@@ -62,7 +53,6 @@ export const getTripHandler = {
     const trips = await db.query.trip.findMany({
       where: eq(trip.userId, userId),
       with: {
-        tripInfos: true,
         plans: true,
       },
     });
@@ -71,7 +61,6 @@ export const getTripHandler = {
     return c.json(
       trips.map((t) => ({
         ...t,
-        tripInfo: t.tripInfos,
       })),
       200,
     );
@@ -93,7 +82,6 @@ export const getTripHandler = {
     const targetTrip = await db.query.trip.findFirst({
       where: and(eq(trip.id, tripId), eq(trip.userId, userId)),
       with: {
-        tripInfos: true,
         plans: {
           with: {
             planSpots: {
@@ -191,14 +179,9 @@ export const getTripHandler = {
       imageUrl: targetTrip.imageUrl ?? undefined,
       startDate: targetTrip.startDate,
       endDate: targetTrip.endDate,
-      tripInfo: targetTrip.tripInfos.map((tripInfo) => ({
-        date: tripInfo.date,
-        genreId: tripInfo.genreId,
-        transportationMethod: tripInfo.transportationMethods,
-        memo: tripInfo.memo || '',
-      })),
       plans: targetTrip.plans.map((plan) => ({
         date: plan.date,
+        memo: plan.memo || '',
         spots: plan.planSpots
           .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
           .map((planSpot) => {
@@ -335,17 +318,6 @@ export const getTripHandler = {
         })
         .returning();
 
-      // TripInfoを作成
-      for (const info of tripData.tripInfo) {
-        await executor.insert(tripInfo).values({
-          tripId: newTrip.id,
-          date: info.date,
-          genreId: info.genreId,
-          transportationMethods: info.transportationMethod ?? 1,
-          memo: info.memo ?? '',
-        });
-      }
-
       // planDataからUserLocationIdを抽出して、重複を除去
       const userLocationIds = new Set<number>();
       tripData.plans.forEach((plan) => {
@@ -372,6 +344,7 @@ export const getTripHandler = {
           .values({
             tripId: newTrip.id,
             date: planData.date,
+            memo: planData.memo ?? null,
           })
           .returning();
 
@@ -561,7 +534,6 @@ export const getTripHandler = {
       return await executor.query.trip.findFirst({
         where: eq(trip.id, newTrip.id),
         with: {
-          tripInfos: true,
           plans: {
             with: {
               planSpots: true,

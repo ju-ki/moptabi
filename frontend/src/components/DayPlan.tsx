@@ -60,6 +60,12 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
           <RouteSummary date={plan.date} />
 
           <SpotSummary date={plan.date} />
+
+          {/* プランごとのメモ表示 */}
+          <div className="mt-4 p-4 bg-gray-100 rounded-md">
+            <h3 className="text-lg font-semibold mb-2">メモ</h3>
+            <p className="text-gray-700">{plan.memo || 'ここにメモが表示されます'}</p>
+          </div>
         </div>
       </CardContent>
     </Card>

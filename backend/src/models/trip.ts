@@ -59,17 +59,10 @@ export const TripSchema = z.object({
   imageUrl: z.string().optional(),
   startDate: z.string({ message: '予定日の開始日を入力してください' }),
   endDate: z.string({ message: '予定日の終了日を入力してください' }),
-  tripInfo: z.array(
-    z.object({
-      date: z.string(),
-      genreId: z.number().default(1),
-      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }).optional(),
-      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-    }),
-  ),
   plans: z.array(
     z.object({
       date: z.string(),
+      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
       spots: z.array(
         z.object({
           id: z.string(),
@@ -146,6 +139,7 @@ export type TripDetailSpotType = z.infer<typeof TripDetailSpotSchema>;
 
 const TripDetailPlanSchema = z.object({
   date: z.string(),
+  memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
   spots: z.array(TripDetailSpotSchema),
   departure: DepartureAndDestinationSchema,
   destination: DepartureAndDestinationSchema,
@@ -156,14 +150,6 @@ export const TripDetailResponseSchema = z.object({
   imageUrl: z.string().optional(),
   startDate: z.string(),
   endDate: z.string(),
-  tripInfo: z.array(
-    z.object({
-      date: z.string(),
-      genreId: z.number(),
-      transportationMethod: z.number(),
-      memo: z.string().optional(),
-    }),
-  ),
   plans: z.array(TripDetailPlanSchema),
 });
 

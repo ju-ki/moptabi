@@ -26,21 +26,6 @@ export const mockTripData = {
   endDate: '2024-01-02',
 };
 
-// モックtripInfoデータ
-export const mockTripInfoData = [
-  {
-    date: '2024-01-01',
-    genreId: 1,
-    transportationMethod: 1,
-    memo: 'モックの旅行情報メモ',
-  },
-  {
-    date: '2024-01-02',
-    genreId: 2,
-    transportationMethod: 2,
-  },
-];
-
 /** 最寄駅なし旅行計画データ */
 export const mockPlanData = [
   {

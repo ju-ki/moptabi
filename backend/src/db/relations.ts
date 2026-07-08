@@ -5,7 +5,6 @@ import {
   transport,
   planSpot,
   trip,
-  tripInfo,
   user,
   userNotification,
   notification,
@@ -48,15 +47,7 @@ export const planSpotNearestStationRelations = relations(planSpotNearestStation,
   }),
 }));
 
-export const tripInfoRelations = relations(tripInfo, ({ one }) => ({
-  trip: one(trip, {
-    fields: [tripInfo.tripId],
-    references: [trip.id],
-  }),
-}));
-
 export const tripRelations = relations(trip, ({ one, many }) => ({
-  tripInfos: many(tripInfo),
   plans: many(plan),
   user: one(user, {
     fields: [trip.userId],

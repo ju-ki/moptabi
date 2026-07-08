@@ -8,10 +8,10 @@ describe('旅行計画スキーマ検証', () => {
       title: 'No229',
       startDate: '2026-04-21',
       endDate: '2026-04-21',
-      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1, memo: 'メモ' }],
       plans: [
         {
           date: '2026-04-21',
+          memo: 'メモ',
           spots: [
             {
               id: 'place_id_1',
@@ -89,10 +89,10 @@ describe('旅行計画スキーマ検証', () => {
       title: 'No229',
       startDate: '2026-04-21',
       endDate: '2026-04-21',
-      tripInfo: [{ date: '2026-04-21', genreId: 1, transportationMethod: 1, memo: 'メモ' }],
       plans: [
         {
           date: '2026-04-21',
+          memo: 'メモ',
           spots: [
             {
               id: 'place_id_1',

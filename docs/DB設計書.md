@@ -13,7 +13,6 @@ AI旅行計画プランナーのデータベース設計書です。PostgreSQL�
 ```
 User (1)
  ├─< Trip (1)
- │    ├─< TripInfo
  │    ├─< Plan (1)
  │    │    ├─< PlanSpot (N)
  │    │    │    └─ spotId (Google Place ID参照)
@@ -77,20 +76,12 @@ PlanSpot
 
 **リレーション**:
 - User (N:1)
-- TripInfo (1:N)
 - Plan (1:N)
 
 ### 3. TripInfo（旅行情報）
 **目的**: 日別の旅行情報を管理
 
-| カラム名 | データ型 | 制約 | 説明 |
-|---------|---------|------|------|
-| id | SERIAL | PRIMARY KEY | 旅行情報ID |
-| tripId | INTEGER | NOT NULL, FK | 旅行ID |
-| date | VARCHAR(10) | NOT NULL | 日付 |
-| genreId | INTEGER | NOT NULL | ジャンルID |
-| transportationMethods | INTEGER[] | NOT NULL | 移動手段ID配列 |
-| memo | TEXT | NULL | メモ |
+課題272で削除
 
 **リレーション**:
 - Trip (N:1)
@@ -102,6 +93,7 @@ PlanSpot
 |---------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | プランID |
 | tripId | INTEGER | NOT NULL, FK | 旅行ID |
+| memo | TEXT | - | メモ |
 | date | VARCHAR(10) | NOT NULL | 日付 |
 
 **リレーション**:
@@ -322,7 +314,6 @@ No.229追加カラム:
 
 ## 外部キー制約
 - Trip.userId → User.id (CASCADE DELETE)
-- TripInfo.tripId → Trip.id (CASCADE DELETE)
 - Plan.tripId → Trip.id (CASCADE DELETE)
 - PlanSpot.planId → Plan.id (CASCADE DELETE)
 - PlanLocation.userId → User.id (CASCADE DELETE)
