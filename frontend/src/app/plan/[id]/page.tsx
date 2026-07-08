@@ -30,6 +30,8 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     if (!trip || error) {
       return;
     }
+    //一回クリアにする
+    fields.resetPlanningStore();
     fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });

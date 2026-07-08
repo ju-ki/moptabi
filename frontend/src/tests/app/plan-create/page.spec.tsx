@@ -65,9 +65,9 @@ describe('plan/create page', () => {
     expect(mockResetPlanningStore).toHaveBeenCalledTimes(1);
   });
 
-  it('画面をマウントしただけではプラン作成ストアを初期化しないこと', () => {
+  it('画面をマウントした際もプラン作成ストアを初期化すること', () => {
     render(<TravelPlanCreate />);
 
-    expect(mockResetPlanningStore).not.toHaveBeenCalled();
+    expect(mockResetPlanningStore).toHaveBeenCalled();
   });
 });
