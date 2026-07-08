@@ -10,7 +10,6 @@ import {
   plan,
   planSpot,
   wishlist,
-  nearestStation,
   userNotification,
   notification,
   transport,
@@ -30,7 +29,6 @@ export {
   plan,
   planSpot,
   wishlist,
-  nearestStation,
   userNotification,
   notification,
   transport,
@@ -69,7 +67,6 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(plan);
     await db.delete(trip);
     await db.delete(wishlist);
-    await db.delete(nearestStation);
     await db.delete(userNotification);
     await db.delete(notification);
     await db.delete(userLocation);
