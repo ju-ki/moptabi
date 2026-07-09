@@ -36,6 +36,62 @@
       "when": 1775343791466,
       "tag": "0004_drop_spot_and_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776772173796,
+      "tag": "0005_no229",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779021900238,
+      "tag": "0007_ancient_namorita",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780000000000,
+      "tag": "0008_extend_nearest_station_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780000000001,
+      "tag": "0009_drop_spot_route",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782169226859,
+      "tag": "0010_add_planspot_planLocation_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783236954110,
+      "tag": "0011_drop_address_column",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783340991930,
+      "tag": "0012_drop_tripInfo",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783513811552,
+      "tag": "0013_drop_other_table",
+      "breakpoints": true
     }
   ]
 }

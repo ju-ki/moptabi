@@ -13,18 +13,38 @@ AI旅行計画プランナーのデータベース設計書です。PostgreSQL�
 ```
 User (1)
  ├─< Trip (1)
- │    ├─< TripInfo
  │    ├─< Plan (1)
  │    │    ├─< PlanSpot (N)
- │    │    │    └─< Spot (1)
- │    │    │         ├─< SpotMeta
- │    │    │         ├─< NearestStation (N)
- │    │    │         └─< Wishlist (N) >─ User (1)
- │    │    └─< Transport (N)
- │    │         └─< TransportMethodOnTransport (N)
- │    │              └─< TransportMethod
- ├─< Wishlist (N) >─ Spot (1)
+ │    │    │    └─ spotId (Google Place ID参照)
+ │    │    │    └─< PlanSpotNearestStation (N)  ← No.229追加
+ │    │    ├─< PlanLocation (N)
+ │    │    │    └─ locationType: DEPARTURE | DESTINATION
+ │    │    │    └─< PlanLocationNearestStation (1) ← No.229追加
+ ├─< Wishlist (N)
  └─< UserNotification (N) >─ Notification (1)
+```
+
+### テーブル関係図（No.229 関連）
+
+```
+PlanLocation
+ ├─ id
+ ├─ locationType: DEPARTURE | DESTINATION
+ ├─ time: "HH:MM"  ← 出発時間 or 到着時間（No.229追加）
+ └─ PlanLocationNearestStation (1:1) ← No.229追加
+    ├─ placeId (Google Place ID of Station)
+    └─ stationType: BUS | TRAIN | OTHER
+
+PlanSpot
+ ├─ id
+ ├─ planId → Plan
+ ├─ spotId (Google Place ID)
+ ├─ order
+ ├─ stayStart, stayEnd（既存）
+ ├─ stayDuration: 分数            ← No.229追加
+ └─< PlanSpotNearestStation (N)
+    ├─ placeId (Google Place ID of Station)
+    └─ stationType: BUS | TRAIN | OTHER
 
 ```
 
@@ -56,20 +76,12 @@ User (1)
 
 **リレーション**:
 - User (N:1)
-- TripInfo (1:N)
 - Plan (1:N)
 
 ### 3. TripInfo（旅行情報）
 **目的**: 日別の旅行情報を管理
 
-| カラム名 | データ型 | 制約 | 説明 |
-|---------|---------|------|------|
-| id | SERIAL | PRIMARY KEY | 旅行情報ID |
-| tripId | INTEGER | NOT NULL, FK | 旅行ID |
-| date | VARCHAR(10) | NOT NULL | 日付 |
-| genreId | INTEGER | NOT NULL | ジャンルID |
-| transportationMethods | INTEGER[] | NOT NULL | 移動手段ID配列 |
-| memo | TEXT | NULL | メモ |
+課題272で削除
 
 **リレーション**:
 - Trip (N:1)
@@ -81,6 +93,7 @@ User (1)
 |---------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | プランID |
 | tripId | INTEGER | NOT NULL, FK | 旅行ID |
+| memo | TEXT | - | メモ |
 | date | VARCHAR(10) | NOT NULL | 日付 |
 
 **リレーション**:
@@ -103,22 +116,7 @@ User (1)
 ### 6. SpotMeta（スポットメタデータ）
 **目的**: スポットの詳細情報を管理
 
-| カラム名 | データ型 | 制約 | 説明 |
-|---------|---------|------|------|
-| id | VARCHAR(255) | PRIMARY KEY | メタデータID |
-| spotId | VARCHAR(255) | NOT NULL, UNIQUE, FK | スポットID |
-| name | VARCHAR(255) | NOT NULL | スポット名 |
-| latitude | DOUBLE PRECISION | NOT NULL | 緯度 |
-| longitude | DOUBLE PRECISION | NOT NULL | 経度 |
-| image | TEXT | NULL | 画像URL |
-| rating | DOUBLE PRECISION | NULL | 評価 |
-| url | TEXT | NULL | ウェブサイトURL |
-| prefecture | VARCHAR(50) | NULL | 都道府県 |
-| address | VARCHAR(255) | NULL | 住所 |
-| categories | TEXT[] | NULL | カテゴリ配列 |
-| catchphrase | TEXT | NULL | キャッチフレーズ |
-| description | TEXT | NULL | 説明 |
-| openingHours | JSON | NULL | 営業時間 |
+課題230で削除済み
 
 **リレーション**:
 - Spot (1:1)
@@ -130,17 +128,16 @@ User (1)
 |---------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | プランスポットID |
 | planId | INTEGER | NOT NULL, FK | プランID |
-| spotId | VARCHAR(255) | NOT NULL, FK | スポットID |
-| stayStart | VARCHAR(5) | NOT NULL | 滞在開始時間 |
-| stayEnd | VARCHAR(5) | NOT NULL | 滞在終了時間 |
+| spotId | VARCHAR(255) | NOT NULL | スポットID（Google Place ID） |
+| stayStart | VARCHAR(5) | NOT NULL | 滞在開始時間（HH:MM） |
+| stayEnd | VARCHAR(5) | NOT NULL | 滞在終了時間（HH:MM） |
+| stayDuration | INTEGER | NOT NULL | 滞在時間（分単位）※No.229追加 |
 | memo | TEXT | NULL | メモ |
 | order | INTEGER | DEFAULT 0 | 順序 |
 
 **リレーション**:
 - Plan (N:1)
-- Spot (N:1)
-- Transport (1:N) - FromLocation
-- Transport (1:N) - ToLocation
+- PlanSpotNearestStation (1:N)
 
 ### 8. TransportMethod（移動手段）
 **目的**: 移動手段のマスタ情報を管理
@@ -186,20 +183,51 @@ User (1)
 - TransportMethod (N:1)
 
 ### 11. NearestStation（最寄り駅）
-**目的**: スポットの最寄り駅情報を管理
+**目的**: ~~スポットの最寄り駅情報を管理~~ → **No.229で廃止。`PlanSpotNearestStation` に統合。**
+
+> Spotテーブルが廃止となったため、Spotへの紐付けを前提とした本テーブルも廃止。
+> プラン単位で最寄駅を管理する `PlanSpotNearestStation` を新設。
+
+---
+
+### 11-A. PlanSpotNearestStation（プランスポット最寄駅）※No.229新規
+**目的**: PlanSpot（プラン内スポット）に紐づく最寄駅情報をプラン単位で管理する
 
 | カラム名 | データ型 | 制約 | 説明 |
 |---------|---------|------|------|
-| id | SERIAL | PRIMARY KEY | 最寄り駅ID |
-| spotId | VARCHAR(255) | NULL, FK | スポットID |
-| name | VARCHAR(255) | NOT NULL | 駅名 |
-| walkingTime | INTEGER | NOT NULL | 徒歩時間（分） |
-| latitude | DOUBLE PRECISION | NOT NULL | 緯度 |
-| longitude | DOUBLE PRECISION | NOT NULL | 経度 |
+| id | SERIAL | PRIMARY KEY | ID |
+| planSpotId | INTEGER | NOT NULL, FK | PlanSpot ID |
+| placeId | TEXT | NOT NULL | 最寄駅のGoogle Place ID |
+| stationType | StationType | NOT NULL | 駅種別（BUS / TRAIN / OTHER） |
 
 **リレーション**:
-- Spot (N:1)
+- PlanSpot (N:1)
 
+> ⚠️ 駅の名前・歩行時間・座標はDBに保存しない（Google Maps Platform利用規約 No.230準拠）。
+> フロントエンドが `placeId` をもとにGoogle Places APIから都度取得する。
+
+---
+
+### 11-B. PlanLocationNearestStation（出発地・目的地最寄駅）※No.229新規
+**目的**: PlanLocation（出発地・目的地）に紐づく最寄駅情報を管理する
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---------|---------|------|------|
+| id | SERIAL | PRIMARY KEY | ID |
+| planLocationId | INTEGER | NOT NULL, FK, UNIQUE | PlanLocation ID（1地点1最寄駅） |
+| placeId | TEXT | NOT NULL | 最寄駅のGoogle Place ID |
+| stationType | StationType | NOT NULL | 駅種別（BUS / TRAIN / OTHER） |
+
+**リレーション**:
+- PlanLocation (1:1)
+
+> ⚠️ 駅の名前・歩行時間・座標はDBに保存しない（Google Maps Platform利用規約 No.230準拠）。
+> フロントエンドが `placeId` をもとにGoogle Places APIから都度取得する。
+
+**ユニーク制約**:
+- planLocationId はユニーク（1つのPlanLocationに対して最大1つの最寄駅）
+
+---
 
 ### 12. Wishlist(行きたいリスト)
 **目的**: ユーザーのスポットの行きたいリストを管理
@@ -254,6 +282,17 @@ User (1)
 **ユニーク制約**:
 - (userId, notificationId)
 
+---
+
+## Also参照：PlanLocation（出発地・目的地）
+**目的（抜粋）**: プラン作成時の出発地・目的地履歴を管理する
+
+No.229追加カラム:
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---------|---------|------|------|
+| time | VARCHAR(5) | NOT NULL | 出発時間または到着時間（HH:MM）。DEPARTURE なら出発時間、DESTINATION なら到着時間 |
+
 ## 列挙型
 
 ### TransportNodeType
@@ -265,20 +304,22 @@ User (1)
 - `SYSTEM`: システムお知らせ（メンテナンス告知、新機能リリースなど）
 - `INFO`: 一般情報（Tips、使い方ガイドなど）
 
+### StationType ※No.229追加
+- `BUS`: バス停
+- `TRAIN`: 鉄道駅
+- `OTHER`: その他
+
 ## インデックス
 - `SpotMeta_spotId_key`: SpotMeta.spotId のユニークインデックス
 
 ## 外部キー制約
 - Trip.userId → User.id (CASCADE DELETE)
-- TripInfo.tripId → Trip.id (CASCADE DELETE)
 - Plan.tripId → Trip.id (CASCADE DELETE)
 - PlanSpot.planId → Plan.id (CASCADE DELETE)
-- PlanSpot.spotId → Spot.id (CASCADE DELETE)
-- SpotMeta.spotId → Spot.id (RESTRICT DELETE)
-- Transport.planId → Plan.id (CASCADE DELETE)
-- Transport.fromSpotId → PlanSpot.id
-- Transport.toSpotId → PlanSpot.id
-- NearestStation.spotId → Spot.id
+- PlanLocation.userId → User.id (CASCADE DELETE)
+- PlanLocation.planId → Plan.id (SET NULL)
+- PlanSpotNearestStation.planSpotId → PlanSpot.id (CASCADE DELETE) ※No.229追加
+- PlanLocationNearestStation.planLocationId → PlanLocation.id (CASCADE DELETE) ※No.229追加
 - UserNotification.userId → User.id (CASCADE DELETE)
 - UserNotification.notificationId → Notification.id (CASCADE DELETE)
 

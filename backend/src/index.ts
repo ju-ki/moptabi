@@ -12,6 +12,7 @@ import {
   deleteTripRoute,
   uploadImageRoute,
   getTripCountRoute,
+  patchTripRoute,
 } from './routes/trip';
 import { getTripHandler } from './controllers/trip';
 import { findExistingUserRoute, getDashboardStatsRoute, getUserListRoute } from './routes/auth';
@@ -187,6 +188,7 @@ authApp.use('*', optionalAuth);
 tripApp.openapi(getTripsRoute, getTripHandler.getTrips);
 tripApp.openapi(getTripCountRoute, getTripHandler.getTripCount);
 tripApp.openapi(createTripRoute, getTripHandler.createTrip);
+tripApp.openapi(patchTripRoute, getTripHandler.updateTrip);
 tripApp.openapi(getTripDetailRoute, getTripHandler.getTripDetail);
 tripApp.openapi(deleteTripRoute, getTripHandler.deleteTrip);
 imageApp.openapi(uploadImageRoute, getImageHandler.uploadImage);

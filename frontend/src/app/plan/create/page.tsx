@@ -16,6 +16,11 @@ import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { TransportNodeType } from '@/types/plan';
 
+/**
+ * プラン作成画面の入力フォーム全体を描画する。
+ * 初回候補の反映と、画面離脱時のストア初期化もここで管理する。
+ * @returns プラン作成ページ
+ */
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
@@ -63,6 +68,11 @@ const TravelPlanCreate = () => {
       fields.setDestinationList(destinationCandidates);
     }
   }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
+
+  // コンポーネントのマウント時にストアを初期化
+  useEffect(() => {
+    fields.resetPlanningStore();
+  }, []);
 
   // TODO: 対応できていない機能のためコメントアウト
   // const { trigger: uploadImageTrigger } = useSWRMutation(
@@ -191,7 +201,7 @@ const TravelPlanCreate = () => {
             </Tabs>
 
             {/* 作成ボタン */}
-            <CreatePlanButton />
+            <CreatePlanButton isEdit={false} />
           </CardContent>
         </Card>
       </div>

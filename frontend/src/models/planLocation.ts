@@ -3,6 +3,9 @@
  */
 import { PlanLocationCandidateItemSchema, PlanLocationCandidateResponseSchema } from '@shared/user/schema';
 
+import { AlternativeRouteInfo } from '@/lib/planning';
+import type { StationType } from '@/types/nearestStation';
+
 import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType } from '@shared/user/types';
 
 // 地点タイプ
@@ -14,7 +17,28 @@ export const LOCATION_TYPE = {
 export { PlanLocationCandidateItemSchema as DepartureAndDestinationSchema };
 export { PlanLocationCandidateResponseSchema };
 
-export type DepartureAndDestinationType = PlanLocationCandidateItemType;
+/** 出発地・目的地に紐づく最寄駅情報 */
+export type DepartureDestinationNearestStation = {
+  spotId?: string;
+  placeId: string;
+  stationType: StationType;
+  name?: string;
+  walkingTime?: number;
+  latitude: number;
+  longitude: number;
+  transitTime?: number;
+  isManualTransitTime?: boolean;
+  scheduledDepartureTime?: string;
+  scheduledDepartureTimes?: string[];
+  waitingTime?: number;
+  transitMemo?: string;
+};
+
+export type DepartureAndDestinationType = PlanLocationCandidateItemType & {
+  time?: string;
+  nearestStation?: DepartureDestinationNearestStation;
+  alternativeTransports?: AlternativeRouteInfo[]; // 代替移動手段の候補
+};
 export type { PlanLocationCandidateResponseType as PlanLocationCandidatesResponse };
 
 export type LocationType = (typeof LOCATION_TYPE)[keyof typeof LOCATION_TYPE];
@@ -26,7 +50,6 @@ export interface PlanLocation {
   name: string;
   latitude: number;
   longitude: number;
-  address: string | null;
   locationType: LocationType;
   usageCount: number;
   createdAt: string;
@@ -38,7 +61,6 @@ export interface CreatePlanLocationRequest {
   name?: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   locationType: LocationType;
   planId?: number | null;
 }
@@ -49,6 +71,5 @@ export interface UpdatePlanLocationRequest {
   name?: string;
   latitude?: number;
   longitude?: number;
-  address?: string | null;
   usageCount?: number;
 }

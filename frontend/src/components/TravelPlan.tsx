@@ -4,11 +4,16 @@ import { Info, Check, Clock, Train, FootprintsIcon, Car, Bike, CircleHelp } from
 
 import { TransportNodeType, TravelModeTypeForDisplay, TravelPlanType } from '@/types/plan';
 import { useStoreForPlanning } from '@/lib/plan';
+// import { calculateArrivalWarning } from '@/lib/planning';
 
 import TravelMap from './TravelMap';
 import SpotDetailCard from './travel-plan/SpotDetailCard';
 import DestinationDetailCard from './travel-plan/DestinationDetailCard';
 import DepartureDetailCard from './travel-plan/DepartureDetailCard';
+import PlanningWarningList from './travel-plan/PlanningWarningList';
+import ExtraTimeSuggestions from './travel-plan/ExtraTimeSuggestions';
+import ArrivalTimeWarning from './travel-plan/ArrivalTimeWarning';
+import TimelineStatus from './travel-plan/TimelineStatus';
 
 // transportIconsをエクスポート（他の場所で使われている可能性があるため）
 export const transportIcons: TravelModeTypeForDisplay = {
@@ -70,6 +75,11 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
 
   return (
     <div className="p-6 space-y-10 border-l-4 border-gray-300">
+      <TimelineStatus date={travelPlan.date} />
+      <ArrivalTimeWarning date={travelPlan.date} />
+      <PlanningWarningList date={travelPlan.date} />
+      <ExtraTimeSuggestions date={travelPlan.date} />
+
       {/* マップを追加 */}
       <div className="mb-10 bg-white p-4 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">旅行ルート</h2>
@@ -77,14 +87,16 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
       </div>
 
       {/* 出発地 */}
-      {departureData && <DepartureDetailCard departure={departureData} index={0} />}
+      {departureData && <DepartureDetailCard date={travelPlan.date} index={0} />}
 
       {/* 観光スポット */}
       {spots.map((spot, index) => {
         return (
           <SpotDetailCard
+            date={travelPlan.date}
             key={spot.id}
             spot={spot}
+            nextSpot={spots[index + 1]}
             index={index == spots.length - 1 ? -1 : index}
             onDelete={handleDeleteSpot}
             onMemoChange={(memo) => fields.setSpots(travelPlan.date, { ...spot, memo }, false)}
@@ -93,7 +105,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
       })}
 
       {/* 目的地 */}
-      {destinationData && <DestinationDetailCard destination={destinationData} index={spots.length + 1} />}
+      {destinationData && <DestinationDetailCard date={travelPlan.date} index={spots.length + 1} />}
     </div>
   );
 };

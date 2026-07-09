@@ -10,44 +10,168 @@ import {
   TransportNodeType,
   TravelModeType,
   TravelPlanType,
-  TripInfo,
 } from '@/types/plan';
 import { TripSchema } from '@/models/trip';
 import { DepartureAndDestinationType, PlanLocationCandidatesResponse } from '@/models/planLocation';
-import { DEFAULT_DEPARTURE_AND_DESTINATION } from '@/data/constants';
+import {
+  DEFAULT_ARRIVAL_TIME,
+  DEFAULT_DEPARTURE_AND_DESTINATION,
+  DEFAULT_DEPARTURE_TIME,
+  PLANNING_DIRTY_SPOT_FIELDS,
+} from '@/data/constants';
 
 import { getPrefectures } from './algorithm';
 import { formatOpeningHours } from './google-maps';
 import { getDatesBetween } from './utils';
+import { PlanningInfo, PlanningResult } from './planning';
 
 export type FormData = z.infer<typeof TripSchema>;
 
+/**
+ * スポット配列をディープコピーし、スナップショット保存/復元時の参照共有を防ぐ。
+ * @param spots コピー対象のスポット配列
+ * @returns ディープコピー済みのスポット配列
+ */
+function cloneSpots(spots: Spot[]): Spot[] {
+  return JSON.parse(JSON.stringify(spots)) as Spot[];
+}
+
+/**
+ * 更新差分にdirty対象項目が含まれているかを判定する。
+ * @param updatedSpot 更新差分として渡されたスポットの部分データ
+ * @returns dirty対象項目が含まれている場合はtrue
+ */
+function isDirtySpotFieldUpdated(updatedSpot: Partial<Spot>): boolean {
+  return PLANNING_DIRTY_SPOT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(updatedSpot, field));
+}
+
+/**
+ * 変更前後のスポットを比較し、dirty対象項目に差分があるかを判定する。
+ * @param previousSpot 変更前のスポット
+ * @param nextSpot 変更後のスポット
+ * @returns dirty対象項目に差分がある場合はtrue
+ */
+function hasDirtySpotChange(previousSpot: Spot, nextSpot: Spot): boolean {
+  return PLANNING_DIRTY_SPOT_FIELDS.some((field) => {
+    return JSON.stringify(previousSpot[field]) !== JSON.stringify(nextSpot[field]);
+  });
+}
+
+type PlanningInitialState = Pick<
+  FormState,
+  | 'id'
+  | 'title'
+  | 'imageUrl'
+  | 'startDate'
+  | 'endDate'
+  | 'plans'
+  | 'departureList'
+  | 'destinationList'
+  | 'isLocationLinked'
+  | 'errors'
+  | 'planErrors'
+  | 'spotErrors'
+  | 'planningInfo'
+  | 'planningResults'
+  | 'planningSpotSnapshots'
+  | 'dirtyPlanningDates'
+  | 'simulationStatus'
+>;
+
+/**
+ * プラン作成画面のストア初期値をまとめて生成する。
+ * @returns プラン作成画面の初期状態
+ */
+function createPlanningInitialState(): PlanningInitialState {
+  return {
+    id: undefined,
+    title: '',
+    imageUrl: '',
+    startDate: '',
+    endDate: '',
+    plans: [],
+    departureList: { favorites: [], history: [] },
+    destinationList: { favorites: [], history: [] },
+    isLocationLinked: false,
+    errors: {},
+    planErrors: {},
+    spotErrors: {},
+    planningInfo: {},
+    planningResults: {},
+    planningSpotSnapshots: {},
+    dirtyPlanningDates: {},
+    simulationStatus: null,
+  };
+}
+
+/**
+ * 地点連動時に、元の地点情報を引き継ぎつつ時刻だけは現在値を保持した地点情報を作る。
+ * @param source 連動元の地点情報
+ * @param current 時刻を保持したい現在の地点情報
+ * @param name 連動後に設定する地点名
+ * @param locationType 上書きしたい地点種別
+ * @returns 時刻を保持した連動後の地点情報
+ */
+function copyLinkedLocationPreservingTime(
+  source: DepartureAndDestinationType,
+  current: DepartureAndDestinationType,
+  name: string,
+  locationType?: TransportNodeType,
+): DepartureAndDestinationType {
+  return {
+    ...source,
+    name,
+    time: current.time,
+    locationType: locationType ?? source.locationType,
+  };
+}
+
 interface FormState {
-  id?: string;
+  id?: number;
   title: string;
   imageUrl?: string;
   startDate: string;
   endDate: string;
-  tripInfo: TripInfo[];
   plans: TravelPlanType[];
   departureList: PlanLocationCandidatesResponse;
   destinationList: PlanLocationCandidatesResponse;
   /** 出発地・目的地連動チェックボックスの状態 */
   isLocationLinked: boolean;
   errors: Partial<Record<keyof FormData, string>>;
-  tripInfoErrors: Partial<Record<string, Partial<Record<keyof TripInfo, string>>>>;
   planErrors: Record<string, Record<PlanErrorType, string>>;
   spotErrors: Partial<Record<string, Partial<Record<keyof Spot, string>>>>;
+  /** プランニング必要な情報 */
+  planningInfo: Record<string, PlanningInfo>;
+  /** プランニング情報を取得 */
+  getPlanningInfo: (date: string) => PlanningInfo;
+  /** プランニング情報を設定 */
+  setPlanningInfo: (date: string, info: PlanningInfo) => void;
+  /** 日付ごとのプランニング結果 */
+  planningResults: Record<string, PlanningResult>;
+  /** 前回プランニング時点のスポット情報スナップショット */
+  planningSpotSnapshots: Record<string, Spot[]>;
+  /** 再プランニングが必要な日付 */
+  dirtyPlanningDates: Record<string, boolean>;
+  /** プランニング結果を設定 */
+  setPlanningResult: (date: string, result: PlanningResult) => void;
+  /** プランニング結果を取得 */
+  getPlanningResult: (date: string) => PlanningResult | undefined;
+  /** プランニング結果をクリア */
+  clearPlanningResult: (date: string) => void;
+  /** 日付単位のdirty状態を取得 */
+  isPlanningDirty: (date: string) => boolean;
+  /** dirty状態の日付一覧を取得 */
+  getDirtyPlanningDates: () => string[];
+  /** 日付単位のdirty状態を解除 */
+  clearPlanningDirty: (date: string) => void;
+  /** 前回プランニング時点のスポットへ復元 */
+  restorePlannedSpots: (date: string) => void;
   setDepartureList: (list: PlanLocationCandidatesResponse) => void;
   setDestinationList: (list: PlanLocationCandidatesResponse) => void;
   /** 出発地・目的地連動チェックボックスの状態を設定 */
   setIsLocationLinked: (isLinked: boolean) => void;
-  getTripInfo: (date: string) => TripInfo;
-  setTripInfo: (
-    date: string,
-    name: 'date' | 'genreId' | 'transportationMethod' | 'memo',
-    value: string | number,
-  ) => void;
+  getPlanInfo: (date: string) => TravelPlanType | undefined;
+  setPlanInfo: (date: string, info: TravelPlanType) => void;
   getSpotInfo: (date: string, type: TransportNodeType | null) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
@@ -56,10 +180,11 @@ interface FormState {
   setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
   editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
   getSortedSpots: (date: string) => Spot[];
+  getFields: <K extends keyof FormState>(field: K) => FormState[K];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
-  setTripInfoErrors: (date: string, errors: Partial<Record<keyof TripInfo, string>>) => void;
   setSpotErrors: (date: string, errors: Partial<Record<keyof Spot, string>>) => void;
+  getPlanErrors: (date: string) => Partial<Record<PlanErrorType, string>> | undefined;
   setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
   getSpotCoordination: (date: string) => Record<string, Spot>;
@@ -71,18 +196,15 @@ interface FormState {
   ) => void;
   resetErrors: () => void;
   resetForm: () => void;
+  resetPlanningStore: () => void;
+  /** 代替ルートに切り替え */
+  switchAlternativeRoute: (date: string, routeId: string, selectedTransportMethodId: number) => void;
 }
 
 export const useStoreForPlanning = create<FormState>()(
   immer(
     devtools((set, get) => ({
-      title: '',
-      imageUrl: '',
-      startDate: '',
-      endDate: '',
-      tripInfo: [],
-      plans: [],
-      simulationStatus: null,
+      ...createPlanningInitialState(),
       setSimulationStatus: (status) => {
         set((state) => {
           if (state.simulationStatus) {
@@ -108,15 +230,77 @@ export const useStoreForPlanning = create<FormState>()(
           }
         });
       },
-      errors: {},
-      tripInfoErrors: {},
-      spotErrors: {},
-      planErrors: {},
-      departureList: [],
-      destinationList: [],
+      getPlanningInfo: (date) => {
+        return get().planningInfo[date];
+      },
+      setPlanningInfo: (date, info) => {
+        set((state) => {
+          state.planningInfo[date] = info;
+        });
+      },
+      setPlanningResult: (date, result) => {
+        set((state) => {
+          state.planningResults[date] = result;
+          const plansForDate = state.plans.find((plan) => plan.date === date);
+          if (plansForDate) {
+            state.planningSpotSnapshots[date] = cloneSpots(plansForDate.spots);
+          }
+          delete state.dirtyPlanningDates[date];
+        });
+      },
+      getPlanningResult: (date) => {
+        return get().planningResults[date];
+      },
+      clearPlanningResult: (date) => {
+        set((state) => {
+          delete state.planningResults[date];
+        });
+      },
+      /**
+       * 指定日付がdirty状態かを判定する。
+       * @param date 判定対象の日付
+       * @returns dirty状態の場合はtrue
+       */
+      isPlanningDirty: (date) => {
+        return !!get().dirtyPlanningDates[date];
+      },
+      /**
+       * dirty状態の全日付を列挙する。
+       * @returns dirty状態の日付配列
+       */
+      getDirtyPlanningDates: () => {
+        const dirtyPlanningDates = get().dirtyPlanningDates;
+        return Object.keys(dirtyPlanningDates).filter((date) => dirtyPlanningDates[date]);
+      },
+      /**
+       * 指定日付のdirty状態を解除する。
+       * @param date dirty解除対象の日付
+       * @returns なし
+       */
+      clearPlanningDirty: (date) => {
+        set((state) => {
+          delete state.dirtyPlanningDates[date];
+        });
+      },
+      /**
+       * 指定日付のスポット情報を前回プランニング時点のスナップショットへ復元する。
+       * @param date 復元対象の日付
+       * @returns なし
+       */
+      restorePlannedSpots: (date) => {
+        set((state) => {
+          const plannedSpotsSnapshot = state.planningSpotSnapshots[date];
+          if (!plannedSpotsSnapshot) return;
+
+          const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
+          if (plansForDateIndex < 0) return;
+
+          state.plans[plansForDateIndex].spots = cloneSpots(plannedSpotsSnapshot);
+          delete state.dirtyPlanningDates[date];
+        });
+      },
       setDepartureList: (list) => set((state) => ({ ...state, departureList: list })),
       setDestinationList: (list) => set((state) => ({ ...state, destinationList: list })),
-      isLocationLinked: false,
       setIsLocationLinked: (isLinked) => set((state) => ({ ...state, isLocationLinked: isLinked })),
       getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
@@ -135,26 +319,21 @@ export const useStoreForPlanning = create<FormState>()(
         }
         return [];
       },
-      getTripInfo: (date) => {
-        return get().tripInfo.find((info) => info.date == date);
+      getPlanInfo: (date) => {
+        const plansForDate = get().plans.filter((plan) => plan.date === date);
+        if (plansForDate.length == 0) {
+          return undefined;
+        }
+        return plansForDate[0];
       },
-      setTripInfo: (date, name, value) => {
+      setPlanInfo: (date, info) => {
         set((state) => {
-          const existingTripInfoIndex = state.tripInfo.findIndex((info) => info.date === date);
-
-          if (existingTripInfoIndex >= 0) {
-            state.tripInfo[existingTripInfoIndex] = {
-              ...state.tripInfo[existingTripInfoIndex],
-              [name]: value,
-            };
-          } else {
-            state.tripInfo.push({
-              date: date,
-              genreId: name === 'genreId' ? Number(value) : 0,
-              transportationMethod: name === 'transportationMethod' ? (value as number) : 1,
-              memo: name === 'memo' ? (value as string) : '',
-            });
+          const existingPlansIndex = state.plans.findIndex((plan) => plan.date === date);
+          // 既存のプランがないことはないため、その場合はスキップ
+          if (existingPlansIndex < 0) {
+            return;
           }
+          state.plans[existingPlansIndex] = info;
         });
       },
       setDepartureAndDestination: (date, type, value) => {
@@ -198,29 +377,43 @@ export const useStoreForPlanning = create<FormState>()(
 
           if (isSingleDay && state.isLocationLinked) {
             const oppositeType = type === TransportNodeType.DEPARTURE ? 'destination' : 'departure';
+            const currentOppositeLocation = state.plans[existingPlansIndex][oppositeType];
+            const linkedLocationName =
+              value.name === '' ? (oppositeType === 'departure' ? '出発地_' + date : '目的地_' + date) : value.name;
+            const linkedLocationType =
+              oppositeType === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.DESTINATION;
 
             // 名前が空の場合は、登録値に合わせたデフォルトの名前を入れる
             if (value.name === '') {
-              state.plans[existingPlansIndex][oppositeType] = {
-                ...value,
-                name: oppositeType === 'departure' ? '出発地_' + date : '目的地_' + date,
-              };
+              state.plans[existingPlansIndex][oppositeType] = copyLinkedLocationPreservingTime(
+                value,
+                currentOppositeLocation,
+                linkedLocationName,
+                linkedLocationType,
+              );
               return;
             }
-            state.plans[existingPlansIndex][oppositeType] = {
-              ...value,
-            };
+
+            // 連動ONの場合でも、出発時間または到着時間は連動させない
+            state.plans[existingPlansIndex][oppositeType] = copyLinkedLocationPreservingTime(
+              value,
+              currentOppositeLocation,
+              linkedLocationName,
+              linkedLocationType,
+            );
           }
           if (state.isLocationLinked && type === TransportNodeType.DESTINATION) {
             // 複数日の場合は、当日の目的地を翌日の出発地に連動させる(片方向)
             const nextDate = dates[currentDayIndex + 1];
             const nextDayPlanIndex = state.plans.findIndex((plan) => plan.date === nextDate);
             if (!isSingleDay && nextDayPlanIndex > 0) {
-              state.plans[nextDayPlanIndex].departure = {
-                ...value,
-                name: value.name === '' ? '出発地_' + nextDate : value.name,
-                locationType: TransportNodeType.DEPARTURE,
-              };
+              // 連動ONの場合でも、出発時間または到着時間は連動させない
+              state.plans[nextDayPlanIndex].departure = copyLinkedLocationPreservingTime(
+                value,
+                state.plans[nextDayPlanIndex].departure,
+                value.name === '' ? '出発地_' + nextDate : value.name,
+                TransportNodeType.DEPARTURE,
+              );
             }
           }
         });
@@ -250,16 +443,28 @@ export const useStoreForPlanning = create<FormState>()(
             return;
           }
           const existingSpotIndex = state.plans[existingPlansIndex].spots.findIndex((info) => info.id === spot.id);
+          const hasPlanningSnapshot = !!state.planningSpotSnapshots[date];
 
           if (existingSpotIndex >= 0 && !isDeleted) {
+            const previousSpot = state.plans[existingPlansIndex].spots[existingSpotIndex];
             state.plans[existingPlansIndex].spots[existingSpotIndex] = spot;
+            if (hasPlanningSnapshot && hasDirtySpotChange(previousSpot, spot)) {
+              state.dirtyPlanningDates[date] = true;
+            }
           } else if (existingSpotIndex >= 0 && isDeleted) {
             state.plans[existingPlansIndex].spots.splice(existingSpotIndex, 1);
+            if (hasPlanningSnapshot) {
+              state.dirtyPlanningDates[date] = true;
+            }
           } else if (existingSpotIndex < 0 && !isDeleted) {
             state.plans[existingPlansIndex].spots.push(spot);
+            if (hasPlanningSnapshot) {
+              state.dirtyPlanningDates[date] = true;
+            }
           }
         });
       },
+      getFields: (field) => get()[field],
       setFields: (field, value) =>
         set((state) => {
           state[field] = value;
@@ -279,11 +484,13 @@ export const useStoreForPlanning = create<FormState>()(
             spots: [],
             departure: {
               ...defaultDeparture,
+              time: DEFAULT_DEPARTURE_TIME,
               name: defaultDeparture.name === '' ? '出発地_' + date : defaultDeparture.name,
               locationType: TransportNodeType.DEPARTURE,
             },
             destination: {
               ...defaultDestination,
+              time: DEFAULT_ARRIVAL_TIME,
               name: defaultDestination.name === '' ? '目的地_' + date : defaultDestination.name,
               locationType: TransportNodeType.DESTINATION,
             },
@@ -293,15 +500,10 @@ export const useStoreForPlanning = create<FormState>()(
         });
       },
       setErrors: (errors) => set((state) => ({ ...state, errors })),
-      setTripInfoErrors: (date, errors) =>
-        set((state) => {
-          const dateKey = date;
-          state.tripInfoErrors[dateKey] = {
-            ...state.tripInfoErrors[dateKey],
-            ...errors,
-          };
-          return state;
-        }),
+      getPlanErrors: (date) => {
+        const planErrors = get().planErrors[date];
+        return planErrors ? planErrors : undefined;
+      },
       setPlanErrors: (date, errors) =>
         set((state) => {
           const dateKey = date;
@@ -324,6 +526,7 @@ export const useStoreForPlanning = create<FormState>()(
       editSpots: (date, spotId, updatedSpot) => {
         set((state) => {
           const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
+          const hasPlanningSnapshot = !!state.planningSpotSnapshots[date];
 
           if (plansForDateIndex >= 0) {
             const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === spotId);
@@ -332,6 +535,9 @@ export const useStoreForPlanning = create<FormState>()(
                 ...state.plans[plansForDateIndex].spots[spotIndex],
                 ...updatedSpot,
               };
+              if (hasPlanningSnapshot && isDirtySpotFieldUpdated(updatedSpot)) {
+                state.dirtyPlanningDates[date] = true;
+              }
             } else {
               console.warn(`Spot with id ${spotId} not found in plans for date ${date}`);
             }
@@ -362,8 +568,133 @@ export const useStoreForPlanning = create<FormState>()(
           };
         }
       },
-      resetErrors: () => set((state) => ({ ...state, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
+      resetErrors: () => set((state) => ({ ...state, errors: {}, tripInfoErrors: {}, planErrors: {}, spotErrors: {} })),
       resetForm: () => set((state) => ({ ...state, errors: {} })),
+      resetPlanningStore: () => set(() => ({ ...createPlanningInitialState() })),
+      switchAlternativeRoute: (date, routeId, selectedTransportMethodId) => {
+        set((state) => {
+          const planningResult = state.planningResults[date];
+
+          if (!planningResult) return;
+
+          const routeIndex = planningResult.routes.findIndex((route) => route.id === routeId);
+          if (routeIndex === -1) return;
+
+          const route = planningResult.routes[routeIndex];
+          const selectedAlternativeRoute = route.alternativeRoutes?.find(
+            (alt) => alt.transportMethodId === selectedTransportMethodId,
+          );
+          const isSameTransportMethodSelected = route.transportMethodId === selectedTransportMethodId;
+          const selectedRouteInfo = isSameTransportMethodSelected ? route : selectedAlternativeRoute;
+
+          if (!selectedRouteInfo) return;
+
+          // transportMethodIdからTravelModeTypeに変換するヘルパー
+          const getTransportName = (methodId: number): 'WALKING' | 'DRIVING' | 'BICYCLING' | 'TRANSIT' | 'DEFAULT' => {
+            switch (methodId) {
+              case 1:
+                return 'WALKING';
+              case 2:
+                return 'BICYCLING';
+              case 3:
+                return 'DRIVING';
+              case 4:
+              case 5:
+                return 'TRANSIT';
+              default:
+                return 'DEFAULT';
+            }
+          };
+
+          // ルートを更新
+          state.planningResults[date].routes[routeIndex] = {
+            ...route,
+            transportMethod: selectedRouteInfo.transportMethod,
+            transportMethodId: selectedRouteInfo.transportMethodId,
+            duration: selectedRouteInfo.duration,
+            distance: selectedRouteInfo.distance,
+            durationText: selectedRouteInfo.durationText,
+            distanceText: selectedRouteInfo.distanceText,
+          };
+
+          // 総距離と総時間を再計算
+          const newTotalDuration = state.planningResults[date].routes.reduce((sum, r) => sum + r.duration, 0);
+          const newTotalDistance = state.planningResults[date].routes.reduce((sum, r) => sum + r.distance, 0);
+          state.planningResults[date].totalDuration = newTotalDuration;
+          state.planningResults[date].totalDistance = newTotalDistance;
+
+          // 新しいTravelModeType
+          const newTransportName = getTransportName(selectedTransportMethodId);
+
+          // スポット・出発地・目的地のtransportsも更新
+          const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
+          if (plansForDateIndex === -1) return;
+
+          // 出発地から最初のスポットへのルートの場合
+          if (route.fromType === 'DEPARTURE' && route.toType === 'SPOT') {
+            // 直接departureを更新（immer内なのでsetterを使わない）
+            const currentDeparture = state.plans[plansForDateIndex].departure;
+
+            if (currentDeparture) {
+              state.plans[plansForDateIndex].departure = {
+                ...currentDeparture,
+                transports: {
+                  ...currentDeparture.transports,
+                  name: newTransportName,
+                  transportMethod: selectedTransportMethodId,
+                  travelTime: selectedRouteInfo.durationText,
+                  fromType: TransportNodeType.DEPARTURE,
+                  toType: TransportNodeType.SPOT,
+                },
+                alternativeTransports: route.alternativeRoutes,
+              };
+            }
+          }
+          // スポット間のルートの場合（fromSpotIdのスポットのtransportsを更新）
+          else if (route.fromType === 'SPOT' && route.toType === 'SPOT') {
+            const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === route.fromSpotId);
+            if (spotIndex !== -1) {
+              const currentSpot = state.plans[plansForDateIndex].spots[spotIndex];
+              state.plans[plansForDateIndex].spots[spotIndex] = {
+                ...currentSpot,
+                transports: {
+                  ...currentSpot.transports,
+                  name: newTransportName,
+                  transportMethod: selectedTransportMethodId,
+                  travelTime: selectedRouteInfo.durationText,
+                  fromType: TransportNodeType.SPOT,
+                  toType: TransportNodeType.SPOT,
+                },
+                alternateRoutes: route.alternativeRoutes,
+              };
+            }
+          }
+          // 最後のスポットから目的地へのルートの場合
+          else if (route.toType === 'DESTINATION') {
+            // 直接destinationを更新（immer内なのでsetterを使わない）
+            const currentDestination = state.plans[plansForDateIndex].destination;
+            if (currentDestination) {
+              state.plans[plansForDateIndex].destination = {
+                ...currentDestination,
+                transports: {
+                  ...currentDestination.transports,
+                  name: newTransportName,
+                  transportMethod: selectedTransportMethodId,
+                  travelTime: selectedRouteInfo.durationText,
+                  fromType: TransportNodeType.SPOT,
+                  toType: TransportNodeType.DESTINATION,
+                },
+                alternativeTransports: route.alternativeRoutes,
+              };
+            }
+          }
+
+          const hasPlanningSnapshot = !!state.planningSpotSnapshots[date];
+          if (hasPlanningSnapshot && !isSameTransportMethodSelected) {
+            state.dirtyPlanningDates[date] = true;
+          }
+        });
+      },
     })),
   ),
 );
@@ -411,6 +742,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     rating: place.rating ?? 0,
     stayStart: '09:00',
     stayEnd: '10:00',
+    stayDuration: 60,
     description: place.editorialSummary ?? '説明なし',
     category: place.types, // TODO: 日本語化
     prefecture: getPrefectures(place.addressComponents),
@@ -424,7 +756,7 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
       fromType: TransportNodeType.SPOT,
       toType: TransportNodeType.SPOT,
     },
-    order: 0,
+    order: 1,
   });
 
   const fields = [

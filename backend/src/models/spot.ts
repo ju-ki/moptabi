@@ -106,6 +106,7 @@ export const PlanSpotSchema = z.object({
   spotId: z.string().openapi({ example: 'spot_abc123' }),
   stayStart: z.string().openapi({ example: '2025-12-01T10:00:00Z' }),
   stayEnd: z.string().openapi({ example: '2025-12-01T12:00:00Z' }),
+  stayDuration: z.number().int().min(0).openapi({ example: 120 }),
   memo: z.string().optional().openapi({ example: 'ここでランチを食べる予定' }),
   order: z.number().openapi({ example: 1 }),
 });

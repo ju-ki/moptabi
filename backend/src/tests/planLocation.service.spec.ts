@@ -222,12 +222,22 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         latitude: 35.0,
         longitude: 139.0,
       });
+
+      await createSpotWithMeta(spotId('1'), { name: `スポット1` });
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: OTHER_USER_ID,
+      });
+      const plan = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
       await createPlanLocation({
         userId: OTHER_USER_ID,
         name: '他人の履歴',
         latitude: 35.0,
         longitude: 139.0,
         locationType: 'DEPARTURE',
+        planId: plan.id,
       });
 
       const result = await getPlanLocationCandidates(TEST_USER_ID);
@@ -241,13 +251,19 @@ describe('🧪 PlanLocationサービス層テスト', () => {
   // ========================================
   describe('createOrUpdatePlanLocation', () => {
     it('新規地点の場合は作成される', async () => {
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
+      });
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
       const data = {
         name: '新しい出発地',
         latitude: 35.6895,
         longitude: 139.6917,
-        address: '東京都千代田区',
         locationType: 'DEPARTURE' as const,
-        planId: null,
+        planId: plan1.id,
       };
 
       const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
@@ -258,10 +274,18 @@ describe('🧪 PlanLocationサービス層テスト', () => {
     });
 
     it('nameが省略された場合はデフォルト名が設定される', async () => {
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
+      });
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
       const data = {
         latitude: 35.6895,
         longitude: 139.6917,
         locationType: 'DEPARTURE' as const,
+        planId: plan1.id,
       };
 
       const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
@@ -270,12 +294,20 @@ describe('🧪 PlanLocationサービス層テスト', () => {
     });
 
     it('DESTINATIONの場合のデフォルト名は「YYYY-MM-DD_目的地」', async () => {
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
+      });
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+
       const data = {
         latitude: 35.6895,
         longitude: 139.6917,
         locationType: 'DESTINATION' as const,
+        planId: plan1.id,
       };
-
       const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
       expect(result.name).toMatch(/^\d{4}-\d{2}-\d{2}_目的地$/);
     });
@@ -311,12 +343,20 @@ describe('🧪 PlanLocationサービス層テスト', () => {
   // ========================================
   describe('deletePlanLocation', () => {
     it('自分の履歴を削除できる', async () => {
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: TEST_USER_ID,
+      });
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
       const created = await createPlanLocation({
         userId: TEST_USER_ID,
         name: '削除対象',
         latitude: 35.6895,
         longitude: 139.6917,
         locationType: 'DEPARTURE',
+        planId: plan1.id,
       });
 
       const result = await deletePlanLocation(TEST_USER_ID, created.id);
@@ -333,12 +373,20 @@ describe('🧪 PlanLocationサービス層テスト', () => {
     });
 
     it('他のユーザーの履歴は削除できない', async () => {
+      const trip1 = await createTrip({
+        title: '古い旅行',
+        startDate: '2024-01-01',
+        endDate: '2024-01-02',
+        userId: OTHER_USER_ID,
+      });
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
       const created = await createPlanLocation({
         userId: OTHER_USER_ID,
         name: '他人の地点',
         latitude: 35.6895,
         longitude: 139.6917,
         locationType: 'DEPARTURE',
+        planId: plan1.id,
       });
 
       const result = await deletePlanLocation(TEST_USER_ID, created.id);

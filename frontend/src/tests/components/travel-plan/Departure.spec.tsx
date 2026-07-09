@@ -39,7 +39,6 @@ const defaultDepartureData = {
   name: '',
   latitude: 35.6813,
   longitude: 139.7671,
-  address: null,
   label: null,
   locationType: 'SPOT' as const,
   isDefault: false,

@@ -6,6 +6,11 @@ import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType }
 export const LocationTypeEnum = z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']);
 export type LocationType = z.infer<typeof LocationTypeEnum>;
 
+export const LOCATION_TYPE = {
+  DEPARTURE: 'DEPARTURE',
+  DESTINATION: 'DESTINATION',
+} as const;
+
 // プラン作成時の出発地・目的地履歴スキーマ（レスポンス用）
 export const PlanLocationSchema = z.object({
   id: z.number().openapi({ example: 1 }),
@@ -13,7 +18,10 @@ export const PlanLocationSchema = z.object({
   name: z.string().openapi({ example: '2025-01-15_出発地' }),
   latitude: z.number().min(-90).max(90).openapi({ example: 35.6895 }),
   longitude: z.number().min(-180).max(180).openapi({ example: 139.6917 }),
-  address: z.string().nullable().openapi({ example: '東京都千代田区千代田1-1' }),
+  time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .openapi({ example: '09:00' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
   planId: z.number().nullable().openapi({ example: 1 }),
   createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
@@ -40,9 +48,13 @@ export const CreatePlanLocationSchema = z.object({
     .min(-180, { message: '経度は-180から180の範囲で入力してください' })
     .max(180, { message: '経度は-180から180の範囲で入力してください' })
     .openapi({ example: 139.6917 }),
-  address: z.string().max(255).nullable().optional().openapi({ example: '東京都千代田区千代田1-1' }),
+  time: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: '時刻はHH:MM形式で入力してください' })
+    .optional()
+    .openapi({ example: '09:00' }),
   locationType: LocationTypeEnum.openapi({ example: 'DEPARTURE' }),
-  planId: z.number().nullable().optional().openapi({ example: 1 }),
+  planId: z.number().openapi({ example: 1 }),
   userLocationId: z
     .number()
     .nullable()
@@ -76,7 +88,6 @@ export const PlanLocationCandidateResponseSchema = z.object({
         name: z.string(),
         latitude: z.number().min(-90).max(90),
         longitude: z.number().min(-180).max(180),
-        address: z.string().nullable(),
         label: z.string().nullable(),
         isDefault: z.boolean(),
         locationType: LocationTypeEnum,
@@ -94,7 +105,6 @@ export const PlanLocationCandidateResponseSchema = z.object({
         name: z.string(),
         latitude: z.number().min(-90).max(90),
         longitude: z.number().min(-180).max(180),
-        address: z.string().nullable(),
         label: z.string().nullable(),
         isDefault: z.boolean(),
         locationType: LocationTypeEnum,

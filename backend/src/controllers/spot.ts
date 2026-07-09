@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 
+import { getDbFromContext } from '@/db';
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
 import {
   getUnvisitedWishlistSpots as fetchUnvisitedWishlistSpots,
@@ -14,6 +15,7 @@ import { getUserId } from '@/middleware/auth';
  * - フィルター・ソートパラメータに対応
  */
 export const getUnvisitedSpots = async (c: Context) => {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
   if (!userId) {
     throw new HTTPException(401, { message: 'Unauthorized' });
@@ -38,6 +40,7 @@ export const getUnvisitedSpots = async (c: Context) => {
  * - 重複は除外
  */
 export const getVisitedSpots = async (c: Context) => {
+  const db = getDbFromContext(c);
   const userId = getUserId(c);
   if (!userId) {
     throw new HTTPException(401, { message: 'Unauthorized' });

@@ -61,6 +61,7 @@ export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot =>
     // TODO: どこかで管理する
     clonedNewSpot.stayStart = '09:00';
     clonedNewSpot.stayEnd = '10:00';
+    clonedNewSpot.stayDuration = 60;
     return clonedNewSpot;
   }
 
@@ -166,10 +167,15 @@ export const timeToTotalMinutes = (time: { days: number; hours: number; minutes:
 /**
  * 所要時間の合計値を計算する処理
  * @param departure - 出発地の情報
+ * @param destination - 目的地の情報
  * @param spots - スポット一覧
  * @returns 文字列化した合計値
  */
-export const calcTotalTransportTime = (departure: DepartureAndDestinationType, spots: Spot[]): string => {
+export const calcTotalTransportTime = (
+  departure: DepartureAndDestinationType,
+  destination: DepartureAndDestinationType,
+  spots: Spot[],
+): string => {
   let totalMinutes = 0;
 
   // 出発地から最初のスポットへの移動時間を加算
@@ -186,6 +192,12 @@ export const calcTotalTransportTime = (departure: DepartureAndDestinationType, s
     const parsedTime = parseTimeString(spot.transports.travelTime);
     totalMinutes += timeToTotalMinutes(parsedTime);
   });
+
+  // 最後のスポットから目的地への移動時間を加算
+  if (destination.transports?.travelTime) {
+    const parsedTime = parseTimeString(destination.transports.travelTime);
+    totalMinutes += timeToTotalMinutes(parsedTime);
+  }
 
   // 合計分を表示形式に変換
   const totalDays = Math.floor(totalMinutes / (24 * 60));

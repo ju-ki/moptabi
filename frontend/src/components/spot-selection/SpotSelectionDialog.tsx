@@ -5,7 +5,6 @@ import { AlertCircle, Asterisk, Heart, History, Search } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { Spot } from '@/types/plan';
-import { setStartTimeAutomatically } from '@/lib/algorithm';
 import { APP_LIMITS } from '@/data/constants';
 import { isSpotsPerDayLimitReached, getLimitErrorMessage, getRemainingCount } from '@/lib/limits';
 import { getActualSpotCount } from '@/lib/utils';
@@ -53,7 +52,13 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
       });
       return;
     }
-    const updatedSpot = setStartTimeAutomatically(spot, plans.find((p) => p.date === date)?.spots ?? []);
+
+    const selectedSpots = plans.find((plan) => plan.date === date)?.spots ?? [];
+    const updatedSpot: Spot = {
+      ...spot,
+      stayDuration: 60, // デフォルトの滞在時間を60分に設定
+      order: selectedSpots.length + 1, // 追加するスポットの順番は現在のスポット数 + 1
+    };
     setSpots(date, updatedSpot, isDeleted);
   };
 

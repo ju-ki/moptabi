@@ -33,7 +33,6 @@ const mockUserLocationData = {
   name: '自宅',
   latitude: 35.6895,
   longitude: 139.6917,
-  address: '東京都千代田区千代田1-1',
   label: '自宅',
   isDefault: false,
 };
@@ -363,7 +362,6 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
         name: '自宅',
         latitude: 35.6895,
         longitude: 139.6917,
-        address: '東京都千代田区千代田1-1',
       });
 
       const response = await client.api.userLocation[':id'].$patch(
@@ -378,7 +376,6 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       expect(data.name).toBe('新しい名前だけ更新');
       // 他のフィールドは変更されていない
       expect(data.latitude).toBe(35.6895);
-      expect(data.address).toBe('東京都千代田区千代田1-1');
     });
 
     it('isDefaultをtrueに更新すると既存のデフォルトが解除される', async () => {

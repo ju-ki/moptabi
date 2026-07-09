@@ -1,69 +1,26 @@
 import React from 'react';
 
-import { useStoreForPlanning } from '@/lib/plan';
-import { sortSpotByStartTime } from '@/lib/algorithm';
-import { TransportNodeType } from '@/types/plan';
+import { usePlanning } from '@/hooks/use-planning';
 
 import { Button } from './ui/button';
 
+/**
+ * 指定日付のプランニングを実行し、結果をストアへ反映するボタン。
+ * 再プランニング時は現在選択中の区間別移動手段も優先条件として渡す。
+ * @param date 対象日付
+ * @returns プラン作成ボタンUI
+ */
 const PlanningButton = ({ date }: { date: string }) => {
-  const fields = useStoreForPlanning();
+  const { handlePreprocessingPlanning } = usePlanning();
 
-  const onClickPlanningButton = (): void => {
-    let isError = false;
-    fields.resetErrors();
-    //推した時点で予定日、目的地、出発地、交通手段、観光スポットが空の場合はエラーを出す
-    if (!fields.startDate || !fields.endDate) {
-      fields.setErrors({ startDate: 'プランの日付を入力してください' });
-      isError = true;
-    }
-
-    const targetPlans = fields.plans.filter((val) => val.date === date)[0];
-
-    // if (!targetTripInfo || !targetTripInfo.transportationMethod.length) {
-    //   fields.setTripInfoErrors(date, {
-    //     transportationMethod: '計画設定の移動手段を一つ以上チェックしてください',
-    //   });
-    //   isError = true;
-    // }
-
-    // if (!targetTripInfo || !targetTripInfo.genreId) {
-    //   fields.setTripInfoErrors(date, {
-    //     genreId: '計画設定のジャンルを選択してください',
-    //   });
-    //   isError = true;
-    // }
-
-    const spotsData = fields.getSpotInfo(date, TransportNodeType.SPOT);
-
-    if (!spotsData || spotsData.length === 0) {
-      fields.setPlanErrors(date, {
-        spots: '観光地スポットは1つ以上選択してください',
-      });
-      isError = true;
-    }
-
-    if (isError) {
-      fields.setSimulationStatus({ date: date, status: 9 });
-      return;
-    }
-
-    fields.setSimulationStatus({ date: date, status: 1 });
-    alert('プランニング中です');
-
-    // 開始時間を元にスポットをソートする
-    const sortedSpots = sortSpotByStartTime(targetPlans.spots);
-
-    // ソート後の順番を反映処理
-    sortedSpots.forEach((spot) => {
-      fields.editSpots(date, spot.spotId, { order: spot.order });
-    });
-
-    //TODO: 非同期でプラン作成をシミュレーションする機能の追加
-    setTimeout(() => {
-      fields.setSimulationStatus({ date: date, status: 2 });
-    }, 2000); // 2秒後にシミュレーション完了状態に
+  /**
+   * 入力値を検証したうえでプランニングを実行し、計算結果と選択中の移動手段をストアへ反映する。
+   * @returns なし
+   */
+  const onClickPlanningButton = async (): Promise<void> => {
+    await handlePreprocessingPlanning({ date });
   };
+
   return (
     <div>
       <Button type="button" onClick={onClickPlanningButton}>
