@@ -69,12 +69,9 @@ const TravelPlanCreate = () => {
     }
   }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
 
-  // コンポーネントのアンマウント時（画面離脱時）にストアを初期化
-  // 依存配列を空にすることで、マウント時ではなくアンマウント時のみ
+  // コンポーネントのマウント時にストアを初期化
   useEffect(() => {
-    return () => {
-      fields.resetPlanningStore();
-    };
+    fields.resetPlanningStore();
   }, []);
 
   // TODO: 対応できていない機能のためコメントアウト
