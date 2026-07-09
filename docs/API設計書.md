@@ -108,7 +108,12 @@
 - POST /create
   - 概要: 新しい旅行計画を作成
   - リクエストボディ: `TripSchema`（作成に必要なフィールド）
-  - レスポンス 201: 作成された `TripSchema`
+  - レスポンス 201: 作成された計画の`tripId`
+
+- PATCH /{id}
+  - 概要: 既存の旅行計画を更新
+  - リクエストボディ: `TripSchema`（更新に必要なフィールド）
+  - レスポンス 201: 作成された計画の`tripId`
 
 - DELETE /{id}
   - 概要: 旅行計画を削除
@@ -132,9 +137,21 @@ Image 関連
 - title: string (1-50)
 - imageUrl?: string
 - startDate, endDate: string
-- tripInfo: array of { date, genreId, transportationMethod[], memo? }
-- plans: array of { date, spots[] }
-  - spot: { id, location: { name, lat, lng }, stayStart, stayEnd, transports: { transportMethodIds[], fromType, toType, travelTime?, cost? }, order }
+- plans: array of { date, spots[], departure, destination }
+  - spot: { id, location: { name, lat, lng }, stayStart, stayEnd, stayDuration?, transports: { transportMethodIds[], fromType, toType, travelTime?, cost? }, order, nearestStation? }
+  - spot.nearestStation: { placeId?, stationType?, name, walkingTime, latitude, longitude }
+  - departure / destination: { name, latitude, longitude, ... , nearestStation? }
+  - departure.nearestStation / destination.nearestStation: { placeId, stationType }
+
+No.229 追記（最寄駅情報の保存/取得）:
+- 保存対象（DB）
+  - 出発地・目的地: placeId, stationType を保存
+  - スポット: placeId, stationType を保存
+- 取得レスポンス
+  - departure.nearestStation, destination.nearestStation は { placeId, stationType } を返却
+  - spots[].nearestStation は { placeId, stationType } を返却
+- 注意
+  - Google Maps ToS順守のため、駅名・徒歩分数・緯度経度はDB永続化しない
 
 注: `fromType` / `toType` は Prisma の enum (`TransportNodeType`) を使用するため、テスト環境では enum を mock する必要があります。
 
@@ -255,3 +272,53 @@ Image 関連
 
 
 作成者: 自動生成（リポジトリ内の route/model 定義を元に要約作成）
+
+---
+
+## No.229 / No.225 データ保存方針（専用エンドポイントなし）
+
+No.229 で追加した最寄駅関連データは専用APIを作成せず、
+`POST /trip/create` に一括登録データとして内包する。
+
+No.225 で `spotRoutes` は契約対象から削除する。
+
+### POST /trip/create への追加データ
+
+`plans[].spots[]` の既存データに加えて、以下を受け取る。
+
+1. `planSpotNearestStations`
+  - 役割: PlanSpotごとの最寄駅（Place ID）を保存
+  - 例:
+  ```json
+  [
+    {
+      "planSpotRef": "temp-spot-1",
+      "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+      "stationType": "TRAIN"
+    }
+  ]
+  ```
+
+補足:
+- 最寄駅はプラン作成フローと同時に登録する想定のため、一覧取得API・更新APIは今回提供しない。
+- No.225 で `spotRoutes` は契約対象から削除済み。
+- 駅名・歩行時間はフロントエンドが `placeId` をもとにGoogle Places APIから取得する。
+
+---
+
+## PlanLocation ※No.229: timeカラム追加
+
+既存エンドポイントへの変更点:
+
+| エンドポイント | 変更内容 |
+|--------------|---------|
+| POST /plan-locations | リクエスト・レスポンスに `time: "HH:MM"` フィールドを追加 |
+| PATCH /plan-locations/:id | `time` の更新が可能になった |
+| GET /plan-locations | レスポンスに `time` フィールドが含まれる |
+
+### timeフィールドの役割
+
+| locationType | time の意味 |
+|-------------|------------|
+| DEPARTURE | 出発地からの出発時刻（例: "09:00"） |
+| DESTINATION | 目的地への到着予定時刻（例: "18:00"） |

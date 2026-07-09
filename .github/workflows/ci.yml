@@ -192,14 +192,14 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: romeovs/lcov-reporter-action@v0.2.16
         with:
-          github-token: ${{ secrets.ACTION_TOKEN }}
+          github-token: ${{ secrets.GH_TOKEN }}
           lcov-file: backend/coverage/lcov.info
 
       - name: Post or update PR comment with test summary
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v6
         with:
-          github-token: ${{ secrets.ACTION_TOKEN }}
+          github-token: ${{ secrets.GH_TOKEN }}
           script: |
             const fs = require('fs');
             const owner = context.repo.owner;
@@ -300,7 +300,7 @@ jobs:
       - name: Check and Create Pull Request
         id: create-pr
         env:
-          GH_TOKEN: ${{ secrets.ACTION_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)

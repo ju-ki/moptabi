@@ -17,7 +17,6 @@ const mockUserLocation = {
   name: '自宅',
   latitude: 35.6895,
   longitude: 139.6917,
-  address: '東京都千代田区千代田1-1',
   label: '自宅',
   usageCount: 5,
   isDefault: true,
@@ -42,12 +41,6 @@ describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {
 
     it('nameがnullでもスキーマに一致する', () => {
       const data = { ...mockUserLocation, name: null };
-      const result = UserLocationSchema.safeParse(data);
-      expect(result.success).toBe(true);
-    });
-
-    it('addressがnullでもスキーマに一致する', () => {
-      const data = { ...mockUserLocation, address: null };
       const result = UserLocationSchema.safeParse(data);
       expect(result.success).toBe(true);
     });
@@ -116,7 +109,6 @@ describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {
         name: '自宅',
         latitude: 35.6895,
         longitude: 139.6917,
-        address: '東京都千代田区千代田1-1',
         label: '自宅',
         isDefault: false,
       };
@@ -192,7 +184,6 @@ describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {
         name: '自宅',
         latitude: 35.6895,
         longitude: 139.6917,
-        address: null,
       };
       const result = CreateUserLocationSchema.safeParse(mockRequest);
       expect(result.success).toBe(true);
@@ -207,7 +198,6 @@ describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {
         name: '新しい自宅',
         latitude: 35.6896,
         longitude: 139.6918,
-        address: '東京都千代田区千代田1-2',
         label: '新しいラベル',
         isDefault: true,
       };

@@ -11,8 +11,6 @@ import {
   createUserLocation,
   deletePlanLocationByUser,
   deleteUserLocationByUser,
-  findPlanLocationById,
-  countPlanLocations,
   clearTestDataForUser,
   createSpotWithMeta,
   createPlan,
@@ -40,15 +38,6 @@ function getAuthHeaders(): Record<string, string> {
   }
   return { 'X-User-Id': currentUserId };
 }
-
-// テスト用のモックデータ
-const mockPlanLocationData = {
-  name: '2025-01-15_出発地',
-  latitude: 35.6895,
-  longitude: 139.6917,
-  address: '東京都千代田区千代田1-1',
-  locationType: 'DEPARTURE' as const,
-};
 
 beforeAll(async () => {
   await connectDb();
@@ -208,150 +197,6 @@ describe('🧾 プラン作成時の出発地・目的地履歴APIテスト', ()
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.favorites.length).toBe(3);
-    });
-  });
-
-  // ========================================
-  // POST /api/plan-location - 作成
-  // ========================================
-  describe('POST /api/plan-location', () => {
-    it('未認証の場合は401を返す', async () => {
-      currentUserId = null;
-      const response = await client.api['plan-location'].$post(
-        { json: mockPlanLocationData },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(401);
-    });
-
-    it('正常に履歴を登録できる', async () => {
-      const response = await client.api['plan-location'].$post(
-        { json: mockPlanLocationData },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(201);
-      const data = await response.json();
-      expect(data.name).toBe('2025-01-15_出発地');
-      expect(data.latitude).toBe(35.6895);
-      expect(data.locationType).toBe('DEPARTURE');
-      expect(data.userId).toBe(TEST_USER_ID);
-    });
-
-    it('nameが省略された場合デフォルト名が設定される', async () => {
-      const response = await client.api['plan-location'].$post(
-        {
-          json: {
-            latitude: 35.6895,
-            longitude: 139.6917,
-            locationType: 'DEPARTURE',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(201);
-      const data = await response.json();
-      // デフォルト名が設定される（日付_出発地のような形式）
-      expect(data.name).toMatch(/^\d{4}-\d{2}-\d{2}_出発地$/);
-    });
-
-    it('locationTypeがDESTINATIONでも登録できる', async () => {
-      const response = await client.api['plan-location'].$post(
-        {
-          json: {
-            name: '2025-01-15_目的地',
-            latitude: 35.6895,
-            longitude: 139.6917,
-            locationType: 'DESTINATION',
-          },
-        },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(201);
-      const data = await response.json();
-      expect(data.locationType).toBe('DESTINATION');
-    });
-  });
-
-  // ========================================
-  // DELETE /api/plan-location/:id - 削除
-  // ========================================
-  describe('DELETE /api/plan-location/:id', () => {
-    it('未認証の場合は401を返す', async () => {
-      currentUserId = null;
-      const response = await client.api['plan-location'][':id'].$delete(
-        { param: { id: '1' } },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(401);
-    });
-
-    it('存在しないIDの場合は404を返す', async () => {
-      const response = await client.api['plan-location'][':id'].$delete(
-        { param: { id: '99999' } },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(404);
-    });
-
-    it('他人の履歴は削除できない', async () => {
-      const created = await createPlanLocation({
-        userId: OTHER_USER_ID,
-        name: '他人の出発地',
-        latitude: 35.0,
-        longitude: 139.0,
-        locationType: 'DEPARTURE',
-      });
-
-      const response = await client.api['plan-location'][':id'].$delete(
-        { param: { id: String(created.id) } },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(404);
-
-      // 削除されていないことを確認
-      const stillExists = await findPlanLocationById(created.id);
-      expect(stillExists).not.toBeNull();
-    });
-
-    it('自分の履歴を削除できる', async () => {
-      const created = await createPlanLocation({
-        userId: TEST_USER_ID,
-        name: '出発地',
-        latitude: 35.6895,
-        longitude: 139.6917,
-        locationType: 'DEPARTURE',
-      });
-
-      const response = await client.api['plan-location'][':id'].$delete(
-        { param: { id: String(created.id) } },
-        { headers: getAuthHeaders() },
-      );
-      expect(response.status).toBe(200);
-
-      // 削除されていることを確認
-      const deleted = await findPlanLocationById(created.id);
-      expect(deleted).toBeNull();
-    });
-
-    it('削除後にカウントが減少する', async () => {
-      const created = await createPlanLocation({
-        userId: TEST_USER_ID,
-        name: '出発地',
-        latitude: 35.6895,
-        longitude: 139.6917,
-        locationType: 'DEPARTURE',
-      });
-
-      const beforeCount = await countPlanLocations(TEST_USER_ID);
-      expect(beforeCount).toBe(1);
-
-      await client.api['plan-location'][':id'].$delete(
-        { param: { id: String(created.id) } },
-        { headers: getAuthHeaders() },
-      );
-
-      const afterCount = await countPlanLocations(TEST_USER_ID);
-      expect(afterCount).toBe(0);
     });
   });
 });

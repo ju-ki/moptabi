@@ -49,7 +49,7 @@ export type MypageData = {
   wishlistLimit: number;
   recentTrips: RecentTrip[];
   userLocations: UserLocation[];
-  postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<Response>;
+  postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<UserLocation>;
   updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
   deleteUserLocation: (id: number) => Promise<Response>;
 };

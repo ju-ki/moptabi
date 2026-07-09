@@ -1,6 +1,6 @@
 import { createRoute, z } from '@hono/zod-openapi';
 
-import { TripSchema } from '../models/trip';
+import { TripDetailResponseSchema, TripSchema } from '../models/trip';
 
 export const requestParams = z
   .object({
@@ -88,7 +88,7 @@ export const getTripDetailRoute = createRoute({
       description: '特定の旅行計画詳細',
       content: {
         'application/json': {
-          schema: TripSchema,
+          schema: TripDetailResponseSchema,
         },
       },
     },
@@ -154,6 +154,36 @@ export const createTripRoute = createRoute({
     },
     500: {
       description: '旅行計画取得時のエラー',
+    },
+  },
+});
+
+export const patchTripRoute = createRoute({
+  method: 'patch',
+  path: '/{id}',
+  tags: ['Trip'],
+  summary: '旅行計画を更新',
+  request: {
+    params: requestParams,
+    body: {
+      content: {
+        'application/json': {
+          schema: TripSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: '更新された旅行計画',
+      content: {
+        'application/json': {
+          schema: TripSchema,
+        },
+      },
+    },
+    500: {
+      description: '旅行計画更新時のエラー',
     },
   },
 });

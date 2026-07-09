@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const LocationTypeSchema = z.enum(['DEPARTURE', 'DESTINATION', 'SPOT']);
+export const StationTypeSchema = z.enum(['BUS', 'TRAIN', 'OTHER']);
 
 export const OpeningHoursSchema = z.array(
   z.object({
@@ -25,14 +26,35 @@ export const DepartureAndDestinationSchema = z.object({
   name: z.string(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  address: z.string().nullable(),
   label: z.string().nullable(),
   isDefault: z.boolean(),
   locationType: LocationTypeSchema,
   usageCount: z.number().nullable(),
   userLocationId: z.number().nullable(),
   planLocationId: z.number().nullable(),
+  time: z.string().optional(),
   transports: TransportSchema.optional(),
+  nearestStation: z
+    .object({
+      placeId: z.string().min(1),
+      stationType: StationTypeSchema,
+      transitTime: z.number().int().min(0).optional(),
+      scheduledDepartureTime: z.string().optional(),
+      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+      transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+    })
+    .nullable()
+    .optional(),
+});
+
+const PlanSpotNearestStationSchema = z.object({
+  planSpotRef: z.string().min(1, { message: 'planSpotRefは必須です' }),
+  placeId: z.string().min(1, { message: 'placeIdは必須です' }),
+  stationType: StationTypeSchema,
+  transitTime: z.number().int().min(0).optional(),
+  scheduledDepartureTime: z.string().optional(),
+  memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+  transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
 });
 
 export const TripSchema = z.object({
@@ -43,20 +65,14 @@ export const TripSchema = z.object({
   imageUrl: z.string().optional(),
   startDate: z.string({ message: '予定日の開始日を入力してください' }),
   endDate: z.string({ message: '予定日の終了日を入力してください' }),
-  tripInfo: z.array(
-    z.object({
-      date: z.string(),
-      genreId: z.number().default(1),
-      transportationMethod: z.number().min(1, { message: '移動手段を選択してください' }),
-      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
-    }),
-  ),
   plans: z.array(
     z.object({
       date: z.string(),
+      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
       spots: z.array(
         z.object({
           id: z.string(),
+          clientRef: z.string().optional(),
           location: z.object({
             id: z.string().optional(),
             name: z.string().min(1, { message: '観光地名は必須です' }),
@@ -65,6 +81,7 @@ export const TripSchema = z.object({
           }),
           stayStart: z.string(),
           stayEnd: z.string(),
+          stayDuration: z.number().int().min(0).optional(),
           memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
           image: z.string().optional(),
           url: z.string().optional(),
@@ -79,16 +96,23 @@ export const TripSchema = z.object({
           order: z.number().default(0),
           nearestStation: z
             .object({
+              placeId: z.string().optional(),
+              stationType: StationTypeSchema.optional(),
               name: z.string(),
               walkingTime: z.number(),
               latitude: z.number().min(-90).max(90, { message: '緯度は -90 から 90 の範囲で指定してください' }),
               longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
+              transitTime: z.number().int().min(0).optional(),
+              scheduledDepartureTime: z.string().optional(),
+              memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+              transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
             })
             .optional(),
         }),
       ),
       departure: DepartureAndDestinationSchema,
       destination: DepartureAndDestinationSchema,
+      planSpotNearestStations: z.array(PlanSpotNearestStationSchema).optional(),
     }),
   ),
 });
@@ -97,22 +121,26 @@ const TripDetailSpotSchema = z.object({
   id: z.string(),
   stayStart: z.string(),
   stayEnd: z.string(),
+  stayDuration: z.number().int().min(0),
   memo: z.string().optional(),
   order: z.number(),
   transports: TransportSchema,
   nearestStation: z
     .object({
-      name: z.string(),
-      walkingTime: z.number(),
-      latitude: z.number(),
-      longitude: z.number(),
+      placeId: z.string(),
+      stationType: StationTypeSchema,
+      transitTime: z.number().int().min(0).optional(),
+      scheduledDepartureTime: z.string().optional(),
+      memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+      transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
     })
-    .nullable(),
+    .optional(),
 });
 
 const TripDetailPlanSchema = z.object({
   date: z.string(),
   spots: z.array(TripDetailSpotSchema),
+  memo: z.string().optional(),
   departure: DepartureAndDestinationSchema,
   destination: DepartureAndDestinationSchema,
 });
@@ -122,13 +150,5 @@ export const TripDetailResponseSchema = z.object({
   imageUrl: z.string().optional(),
   startDate: z.string(),
   endDate: z.string(),
-  tripInfo: z.array(
-    z.object({
-      date: z.string(),
-      genreId: z.number(),
-      transportationMethod: z.number(),
-      memo: z.string().optional(),
-    }),
-  ),
   plans: z.array(TripDetailPlanSchema),
 });

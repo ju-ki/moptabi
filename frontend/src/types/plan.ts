@@ -4,6 +4,9 @@ import { placeTypeMap } from '@/data/constants';
 import type { CoordinationType } from '@/models/plan';
 import { OpeningHoursSchema } from '@/models/spot';
 import { DepartureAndDestinationType } from '@/models/planLocation';
+import { AlternativeRouteInfo } from '@/lib/planning';
+
+import { StationType } from './nearestStation';
 
 export type Coordination = CoordinationType;
 
@@ -24,25 +27,50 @@ export enum TransportNodeType {
 
 export type SpotType = 'SPOT' | 'DEPARTURE' | 'DESTINATION';
 
-type NearestStation = {
-  name: string; // 最寄駅の名前
-  walkingTime: number; // 徒歩時間（分）
+export type NearestStation = {
+  spotId?: string; //  スポットのID
+  placeId: string; //最寄駅のID
+  name?: string; // 最寄駅の名前
+  stationType: StationType; // 最寄駅の種別（例: "TRAIN", "BUS"）
+  walkingTime?: number; // 徒歩時間（分）
   latitude: number;
   longitude: number;
+  /** 公共交通機関での移動時間（分）- 次のスポットの最寄駅までの時間 */
+  transitTime?: number;
+  /** 手入力フラグ - trueの場合はユーザーが入力した値 */
+  isManualTransitTime?: boolean;
+  /** 電車/バスの発車時間（HH:mm形式） */
+  scheduledDepartureTime?: string;
+  /** 電車/バスの発車時間候補（最大3件） */
+  scheduledDepartureTimes?: string[];
+  /** 駅での待機時間（分）- 自動計算または手入力 */
+  waitingTime?: number;
+  distance?: number; // メートル
+  /** 路線名や行き先などのメモ */
+  transitMemo?: string;
+  /** 移動手段 */
+  transportMethodId?: number;
 };
 
-export type TripInfo = {
-  date: string;
-  genreId: number;
-  transportationMethod: number;
-  memo?: string;
+/**
+ * 最寄駅情報の型
+ */
+type SpotRouteDraft = {
+  transportType?: 'WALK' | 'CAR' | 'TRAIN' | 'BUS' | 'OTHER'; //移動手段
+  transitTime?: number; //移動時間
+  waitingTime?: number; // 待機時間
+  scheduledDepartureTime?: string;
+  scheduledDepartureTimes?: string[]; //発車時間の候補
+  memo?: string; //メモ
 };
 
 export type Spot = {
   id: string;
+  clientRef?: string;
   location: Coordination;
   stayStart: string;
   stayEnd: string;
+  stayDuration: number; //滞在時間
   transports: Transport;
   url?: string;
   memo?: string;
@@ -56,6 +84,8 @@ export type Spot = {
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;
   nearestStation?: NearestStation; // 最寄駅
+  routeToNext?: SpotRouteDraft;
+  alternateRoutes?: AlternativeRouteInfo[]; // 代替ルートの候補
   order: number;
   // 行きたいリスト用のプロパティ
   priority?: number; // 優先度（1-5）
@@ -69,6 +99,7 @@ export type Spot = {
 
 export type TravelPlanType = {
   date: string;
+  memo?: string;
   spots: Spot[];
   departure: DepartureAndDestinationType;
   destination: DepartureAndDestinationType;

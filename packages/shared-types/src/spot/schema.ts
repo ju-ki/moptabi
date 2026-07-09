@@ -29,6 +29,7 @@ export const PlanSpotSchema = z.object({
   spotId: z.string(),
   stayStart: z.string(),
   stayEnd: z.string(),
+  stayDuration: z.number(),
   memo: z.string().optional(),
   order: z.number(),
 });

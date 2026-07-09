@@ -8,15 +8,16 @@ import Transportation from './Transportation';
 import Departure from './Departure';
 import { Textarea } from './ui/textarea';
 import Destination from './Destination';
-import GanttChart from './GanttChart';
-import { Button } from './ui/button';
 import PlanningButton from './PlanningButton';
 import TravelPlan from './TravelPlan';
 import SpotSelectionDialog from './spot-selection/SpotSelectionDialog';
 import LocationLinkCheckbox from './LocationLinkCheckbox';
+import { SpotSettingList } from './travel-plan/SpotSettingEditor';
+import PlanConsistencyAction from './PlanConsistencyAction';
 
 const PlanningComp = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
+  const targetPlan = fields.getPlanInfo(date);
 
   // 日数を計算して単一日か複数日かを判定
   const dates =
@@ -55,27 +56,34 @@ const PlanningComp = ({ date }: { date: string }) => {
         <Label className="block text-lg font-semibold text-gray-800">備考</Label>
         <Textarea
           placeholder="メモや注意点を記載"
-          value={fields.tripInfo.filter((val) => val.date === date)[0]?.memo || ''}
-          onChange={(e) => fields.setTripInfo(date, 'memo', e.target.value)}
+          value={targetPlan?.memo || ''}
+          onChange={(e) =>
+            targetPlan != undefined ? fields.setPlanInfo(date, { ...targetPlan, memo: e.target.value }) : undefined
+          }
         />
 
-        {fields.tripInfoErrors && <span className="text-red-500">{fields.tripInfoErrors[date]?.memo}</span>}
+        {fields.getPlanErrors(date)?.memo && <span className="text-red-500">{fields.getPlanErrors(date)?.memo}</span>}
       </div>
 
       {/* スポット選択 */}
       <div className="space-y-4">
         <SpotSelectionDialog date={date} />
       </div>
-      {/* タイムライン */}
+      {/* スポット設定 */}
       <div className="space-y-4">
         <div className="w-full max-w-6xl mx-auto p-4">
-          <GanttChart date={date} />
+          <SpotSettingList date={date} />
         </div>
       </div>
 
       {/* プランの仮作成ボタン */}
       <div className="space-y-2">
         <PlanningButton date={date} />
+      </div>
+
+      {/* 日付単位の整合性導線 */}
+      <div className="space-y-2 my-4">
+        <PlanConsistencyAction date={date} />
       </div>
 
       {/* プランニング計画シート */}

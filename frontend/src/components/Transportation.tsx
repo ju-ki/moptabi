@@ -9,7 +9,7 @@ import { Input } from './ui/input';
 
 const Transportation = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
-  const currentTransportMethod = fields.tripInfo.find((val) => val.date === date)?.transportationMethod;
+  const currentTransportMethods = fields.getPlanningInfo(date)?.transportationMethodId ?? [];
 
   return (
     <div className="my-4">
@@ -25,13 +25,19 @@ const Transportation = ({ date }: { date: string }) => {
           <div key={idx} className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
               <Input
-                type="radio"
+                type="checkbox"
                 name={`transportation-${date}`}
-                checked={currentTransportMethod === method.id}
+                checked={currentTransportMethods.includes(method.id)}
                 id={`transportation-${method.id}-${date}`}
                 className="h-5 w-5 text-blue-500 gap-2"
                 onChange={() => {
-                  fields.setTripInfo(date, 'transportationMethod', method.id);
+                  const updatedMethods = currentTransportMethods.includes(method.id)
+                    ? currentTransportMethods.filter((id) => id !== method.id)
+                    : [...currentTransportMethods, method.id];
+                  fields.setPlanningInfo(date, {
+                    ...fields.getPlanningInfo(date),
+                    transportationMethodId: updatedMethods,
+                  });
                 }}
               />
               <Label htmlFor={`transportation-${method.id}-${date}`}>{method.jp_label}</Label>
@@ -39,9 +45,6 @@ const Transportation = ({ date }: { date: string }) => {
           </div>
         ))}
       </div>
-      {fields.tripInfoErrors && (
-        <span className="text-red-500">{fields.tripInfoErrors[date]?.transportationMethod}</span>
-      )}
     </div>
   );
 };

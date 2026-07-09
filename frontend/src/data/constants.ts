@@ -1,5 +1,5 @@
 import { DepartureAndDestinationType } from '@/models/planLocation';
-import { Coordination, PlaceTypeGroupKey, TransportNodeType } from '@/types/plan';
+import { Coordination, PlaceTypeGroupKey, TransportNodeType, TravelModeType } from '@/types/plan';
 
 /**
  * アプリケーション全体の上限設定
@@ -23,11 +23,61 @@ export const defaultLocation: Coordination = {
   name: '東京駅',
 };
 
+export const DEFAULT_DEPARTURE_TIME = '09:00';
+export const DEFAULT_ARRIVAL_TIME = '18:00';
+
+export const DEPARTURE_NAME = '出発地';
+export const DESTINATION_NAME = '目的地';
+
+export const THRESHOLD_FOR_DISTANCE = 1500; //1.5km以上離れている場合は最寄駅の利用を推奨
+
+/**
+ * プランニング結果に影響し、再プランニング判定の対象とするスポット項目。
+ */
+export const PLANNING_DIRTY_SPOT_FIELDS = [
+  'order',
+  'stayDuration',
+  'stayStart',
+  'stayEnd',
+  'nearestStation',
+  'routeToNext',
+] as const;
+
+/**
+ * 保存ブロック時の固定文言
+ */
+export const PLANNING_DIRTY_BLOCK_MESSAGE = {
+  title: 'プランニング結果が最新ではありません',
+  description:
+    'スポット内容が変更されたため、このままでは保存できません。再プランニングを実行するか、前回のプランニング結果に戻してください。',
+} as const;
+
+// メッセージタイプ
+export const PLANNING_MESSAGE_SEGMENT = {
+  OVER_TIME: 'OVER_TIME',
+  EXTRA_TIME: 'EXTRA_TIME',
+  ROUTE_FETCH_FAILED: 'ROUTE_FETCH_FAILED',
+  ROUTE_FALLBACK_WALKING: 'ROUTE_FALLBACK_WALKING',
+  DEPARTURE_CANDIDATE_ADJUSTED: 'DEPARTURE_CANDIDATE_ADJUSTED',
+  DEPARTURE_CANDIDATE_EMPTY: 'DEPARTURE_CANDIDATE_EMPTY',
+  LONG_WALK_RECOMMENDATION: 'LONG_WALK_RECOMMENDATION',
+} as const;
+
+// メッセージごとの優先順位
+export const PLANNING_MESSAGE_PRIORITY: Record<string, number> = {
+  [PLANNING_MESSAGE_SEGMENT.OVER_TIME]: 1,
+  [PLANNING_MESSAGE_SEGMENT.ROUTE_FETCH_FAILED]: 2,
+  [PLANNING_MESSAGE_SEGMENT.ROUTE_FALLBACK_WALKING]: 3,
+  [PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED]: 4,
+  [PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_EMPTY]: 5,
+  [PLANNING_MESSAGE_SEGMENT.LONG_WALK_RECOMMENDATION]: 6,
+  [PLANNING_MESSAGE_SEGMENT.EXTRA_TIME]: 7,
+};
+
 export const DEFAULT_DEPARTURE_AND_DESTINATION: DepartureAndDestinationType = {
   name: '',
   latitude: 35.6813,
   longitude: 139.7671,
-  address: null,
   label: null,
   locationType: 'SPOT',
   isDefault: false,
@@ -47,11 +97,19 @@ export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {
 
 export const TransportMethods: Record<string, { id: number; jp_label: string }> = {
   WALKING: { id: 1, jp_label: '徒歩' },
-  DRIVING: { id: 2, jp_label: '車' },
-  BICYCLING: { id: 3, jp_label: '自転車' },
+  BICYCLING: { id: 2, jp_label: '自転車' },
+  DRIVING: { id: 3, jp_label: '車' },
   // TODO: 公共交通機関は対応できていないためコメントアウト
   // TRANSIT: { id: 4, jp_label: '交通機関' },
   // OTHER: { id: 5, jp_label: 'その他' },
+};
+
+export const TransportMethodIdToLabel: Record<number, TravelModeType> = {
+  1: 'WALKING',
+  2: 'BICYCLING',
+  3: 'DRIVING',
+  4: 'TRANSIT',
+  0: 'DEFAULT',
 };
 
 export const SpotMakerColors: Record<TransportNodeType, string> = {

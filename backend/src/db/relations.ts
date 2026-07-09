@@ -5,13 +5,14 @@ import {
   transport,
   planSpot,
   trip,
-  tripInfo,
   user,
   userNotification,
   notification,
   wishlist,
   userLocation,
   planLocation,
+  planSpotNearestStation,
+  planLocationNearestStation,
 } from './schema';
 
 export const transportRelations = relations(transport, ({ one }) => ({
@@ -36,17 +37,17 @@ export const planSpotRelations = relations(planSpot, ({ one, many }) => ({
     fields: [planSpot.planId],
     references: [plan.id],
   }),
+  nearestStations: many(planSpotNearestStation),
 }));
 
-export const tripInfoRelations = relations(tripInfo, ({ one }) => ({
-  trip: one(trip, {
-    fields: [tripInfo.tripId],
-    references: [trip.id],
+export const planSpotNearestStationRelations = relations(planSpotNearestStation, ({ one }) => ({
+  planSpot: one(planSpot, {
+    fields: [planSpotNearestStation.planSpotId],
+    references: [planSpot.id],
   }),
 }));
 
 export const tripRelations = relations(trip, ({ one, many }) => ({
-  tripInfos: many(tripInfo),
   plans: many(plan),
   user: one(user, {
     fields: [trip.userId],
@@ -93,7 +94,7 @@ export const userLocationRelations = relations(userLocation, ({ one }) => ({
 }));
 
 // PlanLocation: プラン作成時の出発地・目的地履歴用
-export const planLocationRelations = relations(planLocation, ({ one }) => ({
+export const planLocationRelations = relations(planLocation, ({ one, many }) => ({
   user: one(user, {
     fields: [planLocation.userId],
     references: [user.id],
@@ -101,5 +102,14 @@ export const planLocationRelations = relations(planLocation, ({ one }) => ({
   plan: one(plan, {
     fields: [planLocation.planId],
     references: [plan.id],
+  }),
+  nearestStation: many(planLocationNearestStation),
+}));
+
+// PlanLocationNearestStation: 出発地・目的地に紐づく最寄駅情報用
+export const planLocationNearestStationRelations = relations(planLocationNearestStation, ({ one }) => ({
+  planLocation: one(planLocation, {
+    fields: [planLocationNearestStation.planLocationId],
+    references: [planLocation.id],
   }),
 }));

@@ -9,14 +9,14 @@ import {
   trip,
   plan,
   planSpot,
-  tripInfo,
   wishlist,
-  nearestStation,
   userNotification,
   notification,
   transport,
   userLocation,
   planLocation,
+  planLocationNearestStation,
+  planSpotNearestStation,
 } from '@db';
 
 // DBインスタンスを再エクスポート
@@ -28,14 +28,14 @@ export {
   trip,
   plan,
   planSpot,
-  tripInfo,
   wishlist,
-  nearestStation,
   userNotification,
   notification,
   transport,
   userLocation,
   planLocation,
+  planLocationNearestStation,
+  planSpotNearestStation,
 };
 
 // Drizzle演算子を再エクスポート
@@ -61,13 +61,12 @@ export async function disconnectDb(): Promise<void> {
 export async function clearAllTestData(): Promise<void> {
   try {
     await db.delete(transport);
+    await db.delete(planSpotNearestStation);
     await db.delete(planSpot);
-    await db.delete(tripInfo);
     await db.delete(planLocation);
     await db.delete(plan);
     await db.delete(trip);
     await db.delete(wishlist);
-    await db.delete(nearestStation);
     await db.delete(userNotification);
     await db.delete(notification);
     await db.delete(userLocation);
@@ -108,10 +107,19 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
           planSpotIdList = planSpots.map((ps) => ps.spotId);
         }
         await db.delete(transport).where(inArray(transport.planId, planIds));
+        const planSpotsForDelete = await db
+          .select({ id: planSpot.id })
+          .from(planSpot)
+          .where(inArray(planSpot.planId, planIds));
+        const planSpotIdsForDelete = planSpotsForDelete.map((ps) => ps.id);
+        if (planSpotIdsForDelete.length > 0) {
+          await db
+            .delete(planSpotNearestStation)
+            .where(inArray(planSpotNearestStation.planSpotId, planSpotIdsForDelete));
+        }
         await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
       }
 
-      await db.delete(tripInfo).where(inArray(tripInfo.tripId, tripIds));
       await db.delete(plan).where(inArray(plan.tripId, tripIds));
       await db.delete(trip).where(eq(trip.userId, userId));
     }
@@ -120,18 +128,6 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
     await db.delete(userNotification).where(eq(userNotification.userId, userId));
     await db.delete(userLocation).where(eq(userLocation.userId, userId));
     await db.delete(planLocation).where(eq(planLocation.userId, userId));
-
-    // spot/spotMetaテーブルはNo.230対応で削除済みのため削除処理不要
-    if (deleteSpots) {
-      if (typeof deleteSpots === 'string') {
-        await db.delete(nearestStation).where(like(nearestStation.spotId, `${deleteSpots}%`));
-      } else {
-        const allSpotIds = [...new Set([...wishlistSpotIds, ...planSpotIdList])];
-        if (allSpotIds.length > 0) {
-          await db.delete(nearestStation).where(inArray(nearestStation.spotId, allSpotIds));
-        }
-      }
-    }
   } catch (err) {
     console.warn(`clearUserTestData: failed for user ${userId}:`, (err as Error).message);
   }
@@ -298,6 +294,7 @@ export async function createPlanSpot(data: {
   order?: number;
   stayStart?: string;
   stayEnd?: string;
+  stayDuration?: number;
   memo?: string | null;
 }) {
   const [created] = await db
@@ -308,6 +305,7 @@ export async function createPlanSpot(data: {
       order: data.order ?? 0,
       stayStart: data.stayStart ?? '09:00',
       stayEnd: data.stayEnd ?? '10:00',
+      stayDuration: data.stayDuration ?? 60,
       memo: data.memo ?? null,
     })
     .returning();
@@ -380,7 +378,6 @@ export async function deleteAllWishlists() {
 export async function deleteAllTrips() {
   await db.delete(transport);
   await db.delete(planSpot);
-  await db.delete(tripInfo);
   await db.delete(plan);
   await db.delete(trip);
 }
@@ -418,7 +415,6 @@ export async function deleteTripsByUser(userId: string) {
       await db.delete(transport).where(inArray(transport.planId, planIds));
       await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
     }
-    await db.delete(tripInfo).where(inArray(tripInfo.tripId, tripIds));
     await db.delete(plan).where(inArray(plan.tripId, tripIds));
     await db.delete(trip).where(eq(trip.userId, userId));
   }
@@ -558,7 +554,6 @@ export async function createUserLocation(data: {
   name: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
   label?: string | null;
   usageCount?: number;
   isDefault?: boolean;
@@ -570,7 +565,6 @@ export async function createUserLocation(data: {
       name: data.name,
       latitude: data.latitude,
       longitude: data.longitude,
-      address: data.address ?? null,
       label: data.label ?? null,
       usageCount: data.usageCount ?? 0,
       isDefault: data.isDefault ?? false,
@@ -621,10 +615,10 @@ export async function createPlanLocation(data: {
   name: string;
   latitude: number;
   longitude: number;
-  address?: string | null;
+  time?: string;
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
-  planId?: number | null;
+  planId: number;
 }) {
   const [created] = await db
     .insert(planLocation)
@@ -633,9 +627,9 @@ export async function createPlanLocation(data: {
       name: data.name,
       latitude: data.latitude,
       longitude: data.longitude,
-      address: data.address ?? null,
+      time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
-      planId: data.planId ?? null,
+      planId: data.planId,
     })
     .returning();
   return created;

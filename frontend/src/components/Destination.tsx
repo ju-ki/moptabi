@@ -14,6 +14,7 @@ import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
 import AddressSearch from './AddressSearch';
 import SpotLocationSelector from './SpotLocationSelector';
+import TimeSetting from './travel-plan/TimeSetting';
 
 const containerStyle = {
   width: '100%',
@@ -148,8 +149,8 @@ const Destination = ({ date }: { date: string }) => {
       </Popover>
       <div className="space-y-4 p-4">
         <div>
-          <Label htmlFor="destination-input" className="block text-lg font-semibold text-gray-800">
-            目的地を地図から選択する
+          <Label htmlFor="destination-input" className="block text-sm font-medium text-gray-800">
+            目的地の名前を設定(空の場合は目的地_{date}になります)
           </Label>
           <Input
             id="destination-input"
@@ -161,12 +162,17 @@ const Destination = ({ date }: { date: string }) => {
               const destinationName = e.currentTarget.value;
               fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
                 ...destinationData,
+                planLocationId: null,
+                userLocationId: null,
                 name: destinationName,
                 locationType: TransportNodeType.DESTINATION,
               });
             }}
           />
         </div>
+
+        {/* 時間設定 */}
+        <TimeSetting type={TransportNodeType.DESTINATION} date={date} />
 
         {/* 住所検索 */}
         <AddressSearch
@@ -214,8 +220,8 @@ const Destination = ({ date }: { date: string }) => {
                 navigator.geolocation.getCurrentPosition((position) => {
                   const newCoordinate = {
                     id: '',
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
                     name: '',
                   };
                   fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {

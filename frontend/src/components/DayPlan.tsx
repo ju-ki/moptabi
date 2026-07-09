@@ -24,6 +24,7 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
   const allSpots = fields.getSpotInfo(plan.date, TransportNodeType.SPOT);
   const departureData = fields.getDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE);
   const destinationData = fields.getDepartureAndDestination(plan.date, TransportNodeType.DESTINATION);
+  const hasSpots = allSpots.length > 0;
 
   return (
     <Card>
@@ -42,13 +43,29 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
             タイムライン
           </h2>
           {departureData && <DepartureInfoCard departure={departureData} />}
-          {allSpots.map((planSpot) => (
-            <SpotInfoCard key={planSpot.id} spot={planSpot} />
-          ))}
-          {destinationData && <DestinationInfoCard destination={destinationData} />}
+          {allSpots.map((planSpot, index) => {
+            const nextSpot = allSpots[index + 1];
+            const nextNearestStation = nextSpot?.nearestStation ?? destinationData?.nearestStation;
+            const shouldShiftTransportToDestination = Boolean(destinationData) && index === allSpots.length - 1;
+            return (
+              <SpotInfoCard
+                key={planSpot.id}
+                spot={planSpot}
+                nextNearestStation={nextNearestStation}
+                isLastSpot={shouldShiftTransportToDestination}
+              />
+            );
+          })}
+          {destinationData && <DestinationInfoCard destination={destinationData} showTransportFromTop={hasSpots} />}
           <RouteSummary date={plan.date} />
 
           <SpotSummary date={plan.date} />
+
+          {/* プランごとのメモ表示 */}
+          <div className="mt-4 p-4 bg-gray-100 rounded-md">
+            <h3 className="text-lg font-semibold mb-2">メモ</h3>
+            <p className="text-gray-700">{plan.memo || 'ここにメモが表示されます'}</p>
+          </div>
         </div>
       </CardContent>
     </Card>

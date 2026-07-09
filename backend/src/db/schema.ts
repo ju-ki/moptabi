@@ -9,7 +9,6 @@ import {
   uniqueIndex,
   boolean,
   doublePrecision,
-  jsonb,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -19,17 +18,7 @@ export const roleType = pgEnum('RoleType', ['ADMIN', 'USER', 'GUEST']);
 export const transportNodeType = pgEnum('TransportNodeType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
 // 地点の種別（出発地、目的地、または両方）
 export const locationType = pgEnum('LocationType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
-
-export const prismaMigrations = pgTable('_prisma_migrations', {
-  id: varchar({ length: 36 }).primaryKey().notNull(),
-  checksum: varchar({ length: 64 }).notNull(),
-  finishedAt: timestamp('finished_at', { withTimezone: true, mode: 'string' }),
-  migrationName: varchar('migration_name', { length: 255 }).notNull(),
-  logs: text(),
-  rolledBackAt: timestamp('rolled_back_at', { withTimezone: true, mode: 'string' }),
-  startedAt: timestamp('started_at', { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-  appliedStepsCount: integer('applied_steps_count').default(0).notNull(),
-});
+export const stationType = pgEnum('StationType', ['BUS', 'TRAIN', 'OTHER']);
 
 export const transport = pgTable(
   'Transport',
@@ -49,27 +38,6 @@ export const transport = pgTable(
       columns: [table.planId],
       foreignColumns: [plan.id],
       name: 'Transport_planId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
-export const tripInfo = pgTable(
-  'TripInfo',
-  {
-    id: serial().primaryKey().notNull(),
-    tripId: integer().notNull(),
-    genreId: integer().notNull(),
-    memo: text(),
-    date: varchar({ length: 10 }).notNull(),
-    transportationMethods: integer().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.tripId],
-      foreignColumns: [trip.id],
-      name: 'TripInfo_tripId_fkey',
     })
       .onUpdate('cascade')
       .onDelete('cascade'),
@@ -131,7 +99,6 @@ export const userLocation = pgTable(
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
     name: varchar({ length: 255 }),
-    address: varchar({ length: 255 }),
     label: varchar({ length: 255 }),
     usageCount: integer().default(0).notNull(),
     isDefault: boolean().default(false).notNull(),
@@ -159,6 +126,7 @@ export const plan = pgTable(
     id: serial().primaryKey().notNull(),
     tripId: integer().notNull(),
     date: varchar({ length: 10 }).notNull(),
+    memo: text(),
   },
   (table) => [
     foreignKey({
@@ -181,8 +149,10 @@ export const planSpot = pgTable(
     order: integer().default(0).notNull(),
     stayStart: varchar({ length: 5 }).notNull(),
     stayEnd: varchar({ length: 5 }).notNull(),
+    stayDuration: integer().notNull(),
   },
   (table) => [
+    uniqueIndex('PlanSpot_idx1').on(table.planId, table.spotId),
     foreignKey({
       columns: [table.planId],
       foreignColumns: [plan.id],
@@ -253,14 +223,57 @@ export const wishlist = pgTable(
   ],
 );
 
-export const nearestStation = pgTable('NearestStation', {
-  id: serial().primaryKey().notNull(),
-  spotId: text(),
-  name: varchar({ length: 255 }).notNull(),
-  walkingTime: integer().notNull(),
-  latitude: doublePrecision().notNull(),
-  longitude: doublePrecision().notNull(),
-});
+export const planSpotNearestStation = pgTable(
+  'PlanSpotNearestStation',
+  {
+    id: serial().primaryKey().notNull(),
+    planSpotId: integer().notNull(),
+    placeId: text().notNull(),
+    stationType: stationType().notNull(),
+    transitTime: integer(),
+    scheduledDepartureTime: varchar({ length: 5 }),
+    memo: text(),
+  },
+  (table) => [
+    uniqueIndex('PlanSpotNearestStation_planSpotId_key').on(table.planSpotId),
+    foreignKey({
+      columns: [table.planSpotId],
+      foreignColumns: [planSpot.id],
+      name: 'PlanSpotNearestStation_planSpotId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
+/**
+ * PlanLocationNearestStation: 出発地・目的地に紐づく最寄駅情報
+ * - PlanLocationテーブルに紐づく最寄駅情報を管理
+ * - 1つのPlanLocationに対して最大1つの最寄駅を設定可能
+ * - 駅の詳細情報（名前、歩行時間、座標）はDBに保存しない（Google Maps Platform利用規約 No.230準拠）
+ */
+export const planLocationNearestStation = pgTable(
+  'PlanLocationNearestStation',
+  {
+    id: serial().primaryKey().notNull(),
+    planLocationId: integer().notNull(),
+    placeId: text().notNull(),
+    stationType: stationType().notNull(),
+    transitTime: integer(),
+    scheduledDepartureTime: varchar({ length: 5 }),
+    memo: text(),
+  },
+  (table) => [
+    uniqueIndex('PlanLocationNearestStation_planLocationId_key').on(table.planLocationId),
+    foreignKey({
+      columns: [table.planLocationId],
+      foreignColumns: [planLocation.id],
+      name: 'PlanLocationNearestStation_planLocationId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
 
 export const notification = pgTable('Notification', {
   id: serial().primaryKey().notNull(),
@@ -288,12 +301,12 @@ export const planLocation = pgTable(
     // 位置情報
     latitude: doublePrecision().notNull(),
     longitude: doublePrecision().notNull(),
-    // 住所（任意）
-    address: varchar({ length: 255 }),
+    // 出発時間または到着時間（HH:MM）
+    time: varchar('time', { length: 5 }).notNull(),
     // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）
     locationType: locationType().notNull(),
-    // 関連するPlanのID（任意: どのプランで使用されたかの追跡用）
-    planId: integer(),
+    // 関連するPlanのID
+    planId: integer().notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -302,6 +315,7 @@ export const planLocation = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex('PlanLocation_idx1').on(table.planId, table.locationType),
     foreignKey({
       columns: [table.userId],
       foreignColumns: [user.id],
@@ -315,6 +329,6 @@ export const planLocation = pgTable(
       name: 'PlanLocation_planId_fkey',
     })
       .onUpdate('cascade')
-      .onDelete('set null'),
+      .onDelete('cascade'),
   ],
 );

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Spot, TransportNodeType, TravelModeType } from '@/types/plan';
 import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
 import { useStoreForPlanning } from '@/lib/plan';
+import { parseDurationTextToMinutes } from '@/lib/planning';
 
 import { transportIcons } from './TravelPlan';
 import { convertHHmmToJpFormat } from '../lib/utils';
@@ -10,6 +11,46 @@ import { convertHHmmToJpFormat } from '../lib/utils';
 interface SpotProps {
   date: string;
   spots: Spot[];
+}
+
+type SegmentNode = {
+  name: string;
+  lat: number;
+  lng: number;
+  nearestStation?: {
+    name: string;
+    walkingTime: number;
+    transitTime?: number;
+  };
+};
+
+type DistanceInfoRowsInput =
+  | {
+      kind: 'STATION';
+      from: string;
+      fromStation: string;
+      toStation: string;
+      to: string;
+      walkToStationMinutes: number;
+      stationTransitMinutes: number;
+      walkFromStationMinutes: number;
+    }
+  | {
+      kind: 'DIRECT';
+      from: string;
+      to: string;
+      minutes: number;
+    };
+
+function buildDistanceInfoRows(input: DistanceInfoRowsInput): string[] {
+  if (input.kind === 'STATION') {
+    return [
+      `${input.from} → ${input.fromStation}（徒歩${input.walkToStationMinutes}分）`,
+      `${input.fromStation} → ${input.toStation}（${input.stationTransitMinutes}分）`,
+      `${input.toStation} → ${input.to}（徒歩${input.walkFromStationMinutes}分）`,
+    ];
+  }
+  return [`${input.from} → ${input.to}（${input.minutes}分）`];
 }
 
 const DistanceInfo = ({ date, spots }: SpotProps) => {
@@ -21,10 +62,37 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
   const [totalDuration, setTotalDuration] = useState<string>('不明');
 
   useEffect(() => {
-    if (spots.length && departure) {
-      setTotalDuration(calcTotalTransportTime(departure, spots));
+    if (spots.length && departure && destination) {
+      setTotalDuration(calcTotalTransportTime(departure, destination, spots));
     }
-  }, [spots, departure]);
+  }, [spots, departure, destination]);
+
+  const buildSegmentRows = (fromNode: SegmentNode, toNode: SegmentNode, fallbackMinutes?: string): string[] => {
+    if (fromNode.nearestStation && toNode.nearestStation) {
+      const stationTransitMinutes =
+        fromNode.nearestStation.transitTime ??
+        toNode.nearestStation.transitTime ??
+        parseDurationTextToMinutes(fallbackMinutes);
+
+      return buildDistanceInfoRows({
+        kind: 'STATION',
+        from: fromNode.name,
+        fromStation: fromNode.nearestStation.name,
+        toStation: toNode.nearestStation.name,
+        to: toNode.name,
+        walkToStationMinutes: fromNode.nearestStation.walkingTime,
+        stationTransitMinutes,
+        walkFromStationMinutes: toNode.nearestStation.walkingTime,
+      });
+    }
+
+    return buildDistanceInfoRows({
+      kind: 'DIRECT',
+      from: fromNode.name,
+      to: toNode.name,
+      minutes: parseDurationTextToMinutes(fallbackMinutes),
+    });
+  };
 
   const renderDetails = () => (
     <div
@@ -65,6 +133,39 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
               )}
             </div>
           </div>
+          <div className="mt-2 space-y-1" data-testid="distance-segment-rows">
+            {buildSegmentRows(
+              {
+                name: departure.name,
+                lat: departure.latitude,
+                lng: departure.longitude,
+                nearestStation: departure.nearestStation
+                  ? {
+                      name: departure.nearestStation.name ?? '最寄駅',
+                      walkingTime: departure.nearestStation.walkingTime ?? 0,
+                      transitTime: departure.nearestStation.transitTime,
+                    }
+                  : undefined,
+              },
+              {
+                name: spots[0].location.name,
+                lat: spots[0].location.lat,
+                lng: spots[0].location.lng,
+                nearestStation: spots[0].nearestStation
+                  ? {
+                      name: spots[0].nearestStation.name ?? '最寄駅',
+                      walkingTime: spots[0].nearestStation.walkingTime ?? 0,
+                      transitTime: spots[0].nearestStation.transitTime,
+                    }
+                  : undefined,
+              },
+              departure.transports?.travelTime,
+            ).map((row) => (
+              <p key={row} className="text-xs text-gray-600">
+                {row}
+              </p>
+            ))}
+          </div>
         </div>
         {spots.map(
           (spot, idx) =>
@@ -95,6 +196,39 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                   <div className="text-xs text-gray-500 flex-shrink-0">
                     {calcDistance(spot.location, spots[idx + 1].location)}
                   </div>
+                </div>
+                <div className="mt-2 space-y-1" data-testid="distance-segment-rows">
+                  {buildSegmentRows(
+                    {
+                      name: spot.location.name,
+                      lat: spot.location.lat,
+                      lng: spot.location.lng,
+                      nearestStation: spot.nearestStation
+                        ? {
+                            name: spot.nearestStation.name ?? '最寄駅',
+                            walkingTime: spot.nearestStation.walkingTime ?? 0,
+                            transitTime: spot.nearestStation.transitTime,
+                          }
+                        : undefined,
+                    },
+                    {
+                      name: spots[idx + 1].location.name,
+                      lat: spots[idx + 1].location.lat,
+                      lng: spots[idx + 1].location.lng,
+                      nearestStation: spots[idx + 1].nearestStation
+                        ? {
+                            name: spots[idx + 1].nearestStation?.name ?? '最寄駅',
+                            walkingTime: spots[idx + 1].nearestStation?.walkingTime ?? 0,
+                            transitTime: spots[idx + 1].nearestStation?.transitTime,
+                          }
+                        : undefined,
+                    },
+                    spot.transports?.travelTime,
+                  ).map((row) => (
+                    <p key={row} className="text-xs text-gray-600">
+                      {row}
+                    </p>
+                  ))}
                 </div>
               </div>
             ),
@@ -130,6 +264,39 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
               name: destination.name,
             })}
           </div>
+        </div>
+        <div className="mt-2 space-y-1" data-testid="distance-segment-rows">
+          {buildSegmentRows(
+            {
+              name: spots[spots.length - 1].location.name,
+              lat: spots[spots.length - 1].location.lat,
+              lng: spots[spots.length - 1].location.lng,
+              nearestStation: spots[spots.length - 1].nearestStation
+                ? {
+                    name: spots[spots.length - 1].nearestStation?.name ?? '最寄駅',
+                    walkingTime: spots[spots.length - 1].nearestStation?.walkingTime ?? 0,
+                    transitTime: spots[spots.length - 1].nearestStation?.transitTime,
+                  }
+                : undefined,
+            },
+            {
+              name: destination.name,
+              lat: destination.latitude,
+              lng: destination.longitude,
+              nearestStation: destination.nearestStation
+                ? {
+                    name: destination.nearestStation.name ?? '最寄駅',
+                    walkingTime: destination.nearestStation.walkingTime ?? 0,
+                    transitTime: destination.nearestStation.transitTime,
+                  }
+                : undefined,
+            },
+            destination.transports?.travelTime,
+          ).map((row) => (
+            <p key={row} className="text-xs text-gray-600">
+              {row}
+            </p>
+          ))}
         </div>
       </div>
     </div>

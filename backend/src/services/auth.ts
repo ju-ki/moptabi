@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { eq, desc } from 'drizzle-orm';
-import { db, user } from '@db';
+import { getDbFromContext, user } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 
@@ -14,6 +14,7 @@ export const getDashboardStats = async (c: Context) => {
   const userId = getUserId(c);
 
   // 管理者権限以外は401を返す
+  const db = getDbFromContext(c);
   const [targetUser] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
 
   if (targetUser?.role !== 'ADMIN') {
