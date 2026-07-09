@@ -107,14 +107,6 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
    */
   const handleCreatePlan = async () => {
     try {
-      const newData: TripType = {
-        id: fields.id,
-        title: fields.title,
-        imageUrl: fields.imageUrl,
-        startDate: fields.startDate,
-        endDate: fields.endDate,
-        plans: fields.plans,
-      };
       const validationResult = checkValidation();
       if (validationResult != 'success') {
         toast({
@@ -124,6 +116,34 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
         });
         return;
       }
+
+      //保存するボタンを押下時点でプランニング後の状態をストアに反映する
+      const dates = getDatesBetween(new Date(fields.startDate), new Date(fields.endDate));
+      dates.forEach((date) => {
+        const targetPlanning = fields.getPlanningResult(date);
+
+        if (!targetPlanning) {
+          return;
+        }
+        //到着時間と出発時間を更新した状態でストアに保存
+        fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
+          ...targetPlanning.updatedDeparture,
+          time: targetPlanning.departureTime, //出発時間を更新
+        });
+        fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+          ...targetPlanning.updatedDestination,
+          time: targetPlanning.arrivalTime, //到着時間を更新
+        });
+      });
+
+      const newData: TripType = {
+        id: fields.id,
+        title: fields.title,
+        imageUrl: fields.imageUrl,
+        startDate: fields.startDate,
+        endDate: fields.endDate,
+        plans: useStoreForPlanning.getState().plans,
+      };
 
       let resultId;
       if (newData.id && isEdit) {
