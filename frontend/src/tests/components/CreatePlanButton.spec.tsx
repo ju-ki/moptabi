@@ -29,31 +29,55 @@ vi.mock('@/hooks/use-trip', () => ({
   }),
 }));
 
-vi.mock('@/lib/plan', () => ({
-  useStoreForPlanning: () => ({
-    title: 'テスト旅行',
-    imageUrl: '',
-    startDate: '2026-06-01',
-    endDate: '2026-06-01',
-    plans: [],
-    getSpotInfo: () => [
-      {
-        id: 'spot-1',
+vi.mock('@/lib/plan', () => {
+  const useStoreForPlanning = Object.assign(
+    () => ({
+      title: 'テスト旅行',
+      imageUrl: '',
+      startDate: '2026-06-01',
+      endDate: '2026-06-01',
+      plans: [],
+      getSpotInfo: () => [
+        {
+          id: 'spot-1',
+          memo: '',
+        },
+      ],
+      getPlanInfo: () => ({
+        date: '2026-06-01',
         memo: '',
-      },
-    ],
-    getPlanInfo: () => ({
-      date: '2026-06-01',
-      memo: '',
+      }),
+      getPlanningResult: () => ({
+        date: '2026-06-01',
+        updatedDeparture: {
+          id: 'spot-1',
+          memo: '',
+        },
+        updatedDestination: {
+          id: 'spot-1',
+          memo: '',
+        },
+        arrivalTime: '18:00',
+        departureTime: '08:00',
+      }),
+
+      getDirtyPlanningDates: mockGetDirtyPlanningDates,
+      setErrors: vi.fn(),
+      setTripInfoErrors: vi.fn(),
+      setDepartureAndDestination: vi.fn(),
+      setPlanErrors: vi.fn(),
+      setSpotErrors: vi.fn(),
+      resetPlanningStore: mockResetPlanningStore,
     }),
-    getDirtyPlanningDates: mockGetDirtyPlanningDates,
-    setErrors: vi.fn(),
-    setTripInfoErrors: vi.fn(),
-    setPlanErrors: vi.fn(),
-    setSpotErrors: vi.fn(),
-    resetPlanningStore: mockResetPlanningStore,
-  }),
-}));
+    {
+      getState: vi.fn(() => ({
+        plans: [],
+      })),
+    },
+  );
+
+  return { useStoreForPlanning };
+});
 
 import CreatePlanButton from '@/components/CreatePlanButton';
 
