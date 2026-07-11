@@ -93,7 +93,7 @@ export const useWishlistStore = create<WishlistState>()(
       showAdvanced: false,
       highRating: false,
       getWishlist: () => {
-        return [];
+        return get().wishlist;
       },
       setWishlist: (wishlist) => {
         set((state) => {
