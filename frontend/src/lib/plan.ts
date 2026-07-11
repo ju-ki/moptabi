@@ -126,6 +126,12 @@ function copyLinkedLocationPreservingTime(
   };
 }
 
+type SpotCoordinationResult = {
+  departureCoordination: Spot | undefined;
+  destinationCoordination: Spot | undefined;
+  spotCoordination: Spot[];
+};
+
 interface FormState {
   id?: number;
   title: string;
@@ -179,7 +185,6 @@ interface FormState {
   setDepartureAndDestination: (date: string, type: TransportNodeType, value: DepartureAndDestinationType) => void;
   setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
   editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
-  getSortedSpots: (date: string) => Spot[];
   getFields: <K extends keyof FormState>(field: K) => FormState[K];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
@@ -187,7 +192,7 @@ interface FormState {
   getPlanErrors: (date: string) => Partial<Record<PlanErrorType, string>> | undefined;
   setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
-  getSpotCoordination: (date: string) => Record<string, Spot>;
+  getSpotCoordination: (date: string) => SpotCoordinationResult | undefined;
   /** 新規日付を追加。既存の日付は変更せず、新規日付にのみデフォルト値を設定 */
   addDateWithDefaultLocation: (
     date: string,
@@ -429,6 +434,8 @@ export const useStoreForPlanning = create<FormState>()(
             ? get().plans.filter((val) => val.date == date)[0].destination
             : DEFAULT_DEPARTURE_AND_DESTINATION;
         }
+
+        return DEFAULT_DEPARTURE_AND_DESTINATION;
       },
       setSpots: (date, spot, isDeleted = false) => {
         set((state) => {
