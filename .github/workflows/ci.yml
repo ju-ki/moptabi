@@ -304,6 +304,9 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+ 
+          # コミットメッセージの1行目（サブジェクト行）のみを使用
+          COMMIT_SUBJECT="${COMMIT_MESSAGE%%$'\n'*}"
 
           # 1. マージ先（ベース）ブランチの初期値を dev に設定
           BASE_BRANCH="dev"
@@ -330,31 +333,20 @@ jobs:
             # 4. PRが存在しない場合は新規作成
             echo "新規PRを作成します: $CURRENT_BRANCH -> $BASE_BRANCH"
 
-            # PRの本文（Body）をヒアドキュメントで作成して、インデントによるマークダウン崩れを防ぐ
-            PR_BODY=$(cat <<-EOF
-            ## 自動生成されたPR
-            このPRはGitHub Actionsによって自動的に作成されました。
 
-            ### 変更内容
-            ${COMMIT_MESSAGE}
+            PR_BODY=$(printf '## 自動生成されたPR\nこのPRはGitHub Actionsによって自動的に作成されました。\n\n### 変更内容\n%s\n\n### レビュー依頼\n@coderabbitai review' "$COMMIT_SUBJECT")
 
-            ### レビュー依頼
-            @coderabbitai review
-            EOF
-            )
+            PR_URL=$(gh pr create \
+              --base "$BASE_BRANCH" \
+              --head "$CURRENT_BRANCH" \
+              --title "🤖 [Auto] $COMMIT_SUBJECT" \
+              --body "$PR_BODY")
 
-              # 割り出した $BASE_BRANCH を --base に指定してPR作成
-              PR_URL=$(gh pr create \
-                --base "$BASE_BRANCH" \
-                --head "$CURRENT_BRANCH" \
-                --title "🤖 [Auto] $COMMIT_MESSAGE" \
-                --body "$PR_BODY")
+            echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+            echo "PR created at $PR_URL"
 
-              echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-              echo "PR created at $PR_URL"
-
-            else
-              # CURRENT_BRANCH と BASE_BRANCH が同じ、または作成対象外の場合
-              echo "pr_url=" >> $GITHUB_OUTPUT
-              echo "No changes or invalid branch to create a PR for."
-            fi
+          else
+            # CURRENT_BRANCH と BASE_BRANCH が同じ、または作成対象外の場合
+            echo "pr_url=" >> $GITHUB_OUTPUT
+            echo "No changes or invalid branch to create a PR for."
+          fi
