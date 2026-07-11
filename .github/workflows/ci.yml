@@ -313,7 +313,7 @@ jobs:
 
           # 2. ブランチ名が「feature/xxx-機能名」のパターンか判定
           # 例: feature/123-auth からハイフン以降を削って feature/123 を抽出
-          if [[ "$CURRENT_BRANCH" =~ ^(feature/[^-]+)-.+ ]]; then
+          if [[ "$CURRENT_BRANCH" =~ ^(feature[^-]+)-.+ ]]; then
             # 親ブランチ名を抽出してベースに設定
             BASE_BRANCH="${BASH_REMATCH[1]}"
             echo "子機能ブランチを検知しました。マージ先を親ブランチ($BASE_BRANCH)に変更します。"
