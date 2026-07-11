@@ -334,7 +334,7 @@ jobs:
             echo "新規PRを作成します: $CURRENT_BRANCH -> $BASE_BRANCH"
 
 
-            PR_BODY=$(printf '## 自動生成されたPR\nこのPRはGitHub Actionsによって自動的に作成されました。\n\n### 変更内容\n%s\n\n### レビュー依頼\n@coderabbitai review' "$COMMIT_SUBJECT")
+            PR_BODY=$(printf '## 自動生成されたPR\nこのPRはGitHub Actionsによって自動的に作成されました。(これはテストです)\n\n### 変更内容\n%s\n\n### レビュー依頼\n@coderabbitai review' "$COMMIT_SUBJECT")
 
             PR_URL=$(gh pr create \
               --base "$BASE_BRANCH" \
