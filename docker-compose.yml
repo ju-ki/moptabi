@@ -14,7 +14,6 @@ services:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public
       - ./backend/src:/app/backend/src
-      - ./backend/prisma:/app/backend/prisma
     working_dir: /app/frontend
     tty: true
     stdin_open: true
@@ -34,7 +33,6 @@ services:
     volumes:
       - ./backend:/app/backend
       - /app/backend/node_modules
-      - ./prisma:/app/prisma
     working_dir: /app/backend
     tty: true
     stdin_open: true
@@ -65,20 +63,6 @@ services:
       - '5433:5432'
     volumes:
       - postgres-test-data:/var/lib/postgresql
-
-  prisma-studio:
-    image: node:18-alpine
-    container_name: prisma-studio
-    ports:
-      - '5555:5555'
-    depends_on:
-      - dev-db
-    environment:
-      DATABASE_URL: 'postgresql://travel_user:travel_admin@dev-db:5432/ai_travel'
-    volumes:
-      - ./backend:/app
-    working_dir: /app
-    command: sh -c "npm install -g prisma && prisma studio --schema=./prisma/schema.prisma --port 5555 --hostname 0.0.0.0"
 
 volumes:
   postgres-data:
