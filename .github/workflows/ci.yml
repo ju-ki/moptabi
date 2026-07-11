@@ -304,30 +304,49 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          if [ "$CURRENT_BRANCH" != "dev" ]; then
-            # 既存のPRをチェック
-            EXISTING_PR=$(gh pr list --head "$CURRENT_BRANCH" --base dev --json number --jq '.[0].number')
+ 
+          # コミットメッセージの1行目（サブジェクト行）のみを使用
+          COMMIT_SUBJECT="${COMMIT_MESSAGE%%$'\n'*}"
+
+          # 1. マージ先（ベース）ブランチの初期値を dev に設定
+          BASE_BRANCH="dev"
+
+          # 2. ブランチ名が「feature/xxx-機能名」のパターンか判定
+          # 例: feature/123-auth からハイフン以降を削って feature/123 を抽出
+          if [[ "$CURRENT_BRANCH" =~ ^(feature[^-]+)-.+ ]]; then
+            # 親ブランチ名を抽出してベースに設定
+            BASE_BRANCH="${BASH_REMATCH[1]}"
+            echo "子機能ブランチを検知しました。マージ先を親ブランチ($BASE_BRANCH)に変更します。"
+          fi
+
+          # 自分自身へのPRを防ぐための安全弁
+          if [ "$CURRENT_BRANCH" != "$BASE_BRANCH" ]; then
+            # 3. 指定したベースブランチへの既存のPRをチェック
+            EXISTING_PR=$(gh pr list --head "$CURRENT_BRANCH" --base "$BASE_BRANCH" --json number --jq '.[0].number')
+
             if [ -n "$EXISTING_PR" ]; then
-              echo "既存のPRが見つかりました: #$EXISTING_PR"
+              echo "既存のPRが見つかりました: #$EXISTING_PR ($CURRENT_BRANCH -> $BASE_BRANCH)"
               echo "pr_url=$(gh pr view $EXISTING_PR --json url --jq .url)" >> $GITHUB_OUTPUT
               exit 0
             fi
 
+            # 4. PRが存在しない場合は新規作成
+            echo "新規PRを作成します: $CURRENT_BRANCH -> $BASE_BRANCH"
+
+
+            PR_BODY=$(printf '## 自動生成されたPR\nこのPRはGitHub Actionsによって自動的に作成されました。\n\n### 変更内容\n%s\n\n### レビュー依頼\n@coderabbitai review' "$COMMIT_SUBJECT")
+
             PR_URL=$(gh pr create \
-              --base dev \
+              --base "$BASE_BRANCH" \
               --head "$CURRENT_BRANCH" \
-              --title "🤖 [Auto] $COMMIT_MESSAGE" \
-              --body "## 自動生成されたPR
-              このPRはGitHub Actionsによって自動的に作成されました。
+              --title "🤖 [Auto] $COMMIT_SUBJECT" \
+              --body "$PR_BODY")
 
-              ### 変更内容
-              ${COMMIT_MESSAGE}
-
-              ### レビュー依頼
-              @coderabbitai review")
             echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
             echo "PR created at $PR_URL"
+
           else
+            # CURRENT_BRANCH と BASE_BRANCH が同じ、または作成対象外の場合
             echo "pr_url=" >> $GITHUB_OUTPUT
-            echo "No changes to create a PR for."
+            echo "No changes or invalid branch to create a PR for."
           fi
