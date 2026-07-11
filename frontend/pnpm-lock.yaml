@@ -14,9 +14,6 @@ importers:
       '@emotion/styled':
         specifier: ^11.13.5
         version: 11.14.1(@emotion/react@11.14.0(@types/react@18.3.31)(react@18.3.1))(@types/react@18.3.31)(react@18.3.1)
-      '@eslint/js':
-        specifier: ^10.0.1
-        version: 10.0.1(eslint@10.6.0(jiti@1.21.7))
       '@hono/clerk-auth':
         specifier: ^3.1.0
         version: 3.1.1(hono@4.12.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -159,6 +156,9 @@ importers:
         specifier: ^5.0.1
         version: 5.0.14(@types/react@18.3.31)(immer@10.2.0)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
     devDependencies:
+      '@eslint/js':
+        specifier: ^10.0.1
+        version: 10.0.1(eslint@10.6.0(jiti@1.21.7))
       '@next/eslint-plugin-next':
         specifier: ^15.3.1
         version: 15.5.20

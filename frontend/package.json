@@ -28,7 +28,6 @@
   "dependencies": {
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
-    "@eslint/js": "^10.0.1",
     "@hono/clerk-auth": "^3.1.0",
     "@hookform/resolvers": "^3.9.1",
     "@mui/icons-material": "^6.1.8",
@@ -78,6 +77,7 @@
     "zustand": "^5.0.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@next/eslint-plugin-next": "^15.3.1",
     "@soleo/google-maps-vitest-mocks": "^2.21.5",
     "@tanstack/eslint-plugin-query": "^5.60.1",

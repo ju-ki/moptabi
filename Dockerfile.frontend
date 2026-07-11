@@ -4,7 +4,6 @@ ENV CI=true
 WORKDIR /app
 
 COPY frontend ./frontend
-COPY frontend ./frontend
 COPY packages ./packages
 
 RUN npm install -g pnpm
@@ -12,10 +11,10 @@ RUN npm install -g pnpm
 WORKDIR /app/packages/shared-types
 RUN npm install
 
-WORKDIR /app/frontend 
+WORKDIR /app/frontend
 
 
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 RUN pnpm run prebuild
 
 CMD ["pnpm", "run", "dev"]
