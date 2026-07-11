@@ -1,0 +1,6 @@
+# frontend/pnpm-workspace.yaml
+allowBuilds:
+  sharp: true
+  esbuild: true
+  workerd: true
+  "@clerk/shared": true

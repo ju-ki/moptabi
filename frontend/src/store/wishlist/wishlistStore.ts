@@ -85,14 +85,15 @@ export const useWishlistStore = create<WishlistState>()(
       selectedWishlist: null,
       areaSearchResults: [],
       keywordSearchResults: [],
-      areaMapCenter: { lat: 35.6762, lng: 139.6503 },
-      keywordMapCenter: { lat: 35.6762, lng: 139.6503 },
+      areaMapCenter: { id: 'area-map-center', name: 'Area Map Center', lat: 35.6762, lng: 139.6503 },
+      keywordMapCenter: { id: 'keyword-map-center', name: 'Keyword Map Center', lat: 35.6762, lng: 139.6503 },
+      searchCenter: { id: 'search-center', name: 'Search Center', lat: 35.6762, lng: 139.6503 },
       searchKeyword: '',
       searchCategories: [],
       showAdvanced: false,
       highRating: false,
-      getWishList: () => {
-        return [];
+      getWishlist: () => {
+        return get().wishlist;
       },
       setWishlist: (wishlist) => {
         set((state) => {
