@@ -15,9 +15,31 @@ vi.mock('swr', () => ({
 
 vi.mock('@/hooks/use-fetcher', () => ({
   useFetcher: () => ({
+    useSession: vi.fn(),
     getFetcher: vi.fn(),
   }),
 }));
+
+// NextAuthのモック
+vi.mock('next-auth/react', async () => {
+  const actual = await vi.importActual('next-auth/react');
+  return {
+    ...actual,
+    useSession: () => ({
+      data: {
+        user: {
+          id: 'test-user-id',
+          name: 'テストユーザー',
+          email: 'test@example.com',
+          image: 'https://example.com/avatar.jpg',
+        },
+        expires: '2099-12-31T23:59:59.999Z',
+      },
+      status: 'authenticated',
+    }),
+    SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  };
+});
 
 import useSWR from 'swr';
 import { useNotificationList } from '@/hooks/use-notification-list';

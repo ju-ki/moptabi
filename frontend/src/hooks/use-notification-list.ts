@@ -1,6 +1,7 @@
 import useSWR from 'swr';
 import { useState, useCallback, useMemo } from 'react';
 import { NotificationFilter, NotificationSortBy, SortOrder } from '@shared/admin/types';
+import { useSession } from 'next-auth/react';
 
 import type { NotificationAdminListResponse, NotificationListQuery } from '@/models/admin';
 
@@ -28,7 +29,10 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
  * リスト部分のみでデータフェッチとローディング状態を管理
  */
 export function useNotificationList() {
-  const { getFetcher } = useFetcher();
+  const { data: session } = useSession();
+  const { getFetcher, isSessionLoading } = useFetcher();
+
+  const shouldFetch = !!session && !isSessionLoading;
 
   // APIクエリ状態（実際にAPIリクエストに使用される）
   const [query, setQuery] = useState<NotificationListQuery>({
@@ -57,7 +61,10 @@ export function useNotificationList() {
     return `${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/admin${queryString}`;
   }, [query]);
 
-  const { data, error, isLoading, mutate } = useSWR<NotificationAdminListResponse>(notificationListUrl, getFetcher);
+  const { data, error, isLoading, mutate } = useSWR<NotificationAdminListResponse>(
+    shouldFetch ? notificationListUrl : null,
+    getFetcher,
+  );
 
   // ハンドラー
   const handlePageChange = useCallback((page: number) => {
