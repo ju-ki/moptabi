@@ -2,7 +2,6 @@
 
 import { signOut } from 'next-auth/react';
 import { LogOut } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import { RecentTrips } from '@/components/mypage/RecentTrips';
 import { useMypageData } from '@/hooks/use-mypage';
 import LoadingState from '@/components/common/LoadingState';
 import { UserLocation } from '@/components/mypage';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * マイページ
@@ -37,12 +37,19 @@ export default function MyPage() {
     updateUserLocation,
     deleteUserLocation,
   } = useMypageData();
-  const router = useRouter();
+  const { toast } = useToast();
 
   const handleSignOut = async () => {
-    await signOut({ redirect: false });
-    router.push('/');
-    router.refresh();
+    try {
+      await signOut({ callbackUrl: '/' });
+    } catch (error) {
+      console.error('ログアウトに失敗しました:', error);
+      toast({
+        title: 'ログアウトに失敗しました',
+        description: '時間をおいて再度お試しください。',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (isLoading || error) {
