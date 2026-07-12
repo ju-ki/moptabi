@@ -159,8 +159,8 @@
 
 2. テスト（frontend）
 - `cd frontend`
-- `npm run test`
-- `npm run typecheck`
+- `pnpm run test`
+- `pnpm run typecheck`
 
 3. ワークフロー更新
 - `.github/workflows/staging-preview.yml` の Auth.js 変数注入部分を修正する。
