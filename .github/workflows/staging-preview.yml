@@ -139,7 +139,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Install root dependencies for shared-types
-        run: pnpm --prefix .. ci --ignore-scripts --include=dev
+        run: pnpm --prefix .. ci --no-frozen-lockfile --ignore-scripts --include=dev
 
       - name: Build shared-types
         run: pnpm exec -- tsc -p ../packages/shared-types/tsconfig.json
