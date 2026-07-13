@@ -136,7 +136,7 @@ jobs:
           version: 11
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Install root dependencies for shared-types
         run: pnpm --prefix .. ci --ignore-scripts --include=dev
