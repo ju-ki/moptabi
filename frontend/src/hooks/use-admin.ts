@@ -16,12 +16,12 @@ export type { NotificationSortBy, NotificationType, RoleType, SortOrder, UserSor
  */
 export function useAdminData() {
   const { data: session, status } = useSession();
-  const { getFetcher } = useFetcher();
+  const { getFetcher, isSessionLoading } = useFetcher();
 
   // セッションが確立されている場合のみAPIリクエストを発行
-  const isSessionLoading = status === 'loading';
+
   const isAuthenticated = status === 'authenticated';
-  const shouldFetch = isAuthenticated && !isSessionLoading;
+  const shouldFetch = isAuthenticated && session && !isSessionLoading;
 
   // 認証ヘッダーを生成
   const getAuthHeaders = (): Record<string, string> => {
