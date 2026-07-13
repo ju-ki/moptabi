@@ -2,12 +2,12 @@
 import { signIn, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { MenuIcon } from 'lucide-react';
 import useSWR from 'swr';
 import { useState } from 'react';
 
 import { useFetcher } from '@/hooks/use-fetcher';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
@@ -25,13 +25,20 @@ interface UserData {
 const Header = () => {
   const [isSheetOpen, setIsSheetOpen] = useState<boolean>(false);
   const { getFetcher, isSessionLoading, isAuthenticated } = useFetcher();
-  const router = useRouter();
+  const { toast } = useToast();
 
   // ログアウト処理（本番環境での問題を回避）
   const handleSignOut = async () => {
-    await signOut({ redirect: false });
-    router.push('/');
-    router.refresh();
+    try {
+      await signOut({ callbackUrl: '/' });
+    } catch (error) {
+      console.error('ログアウトに失敗しました:', error);
+      toast({
+        title: 'ログアウトに失敗しました',
+        description: '時間をおいて再度お試しください。',
+        variant: 'destructive',
+      });
+    }
   };
 
   // ユーザー情報を取得（roleを含む）
@@ -151,9 +158,9 @@ const Header = () => {
                   マイページ
                 </Link>
                 <button
-                  onClick={() => {
-                    handleSignOut();
+                  onClick={async () => {
                     setIsSheetOpen(false);
+                    await handleSignOut();
                   }}
                   className="text-sm font-medium hover:underline underline-offset-4 text-left"
                 >
