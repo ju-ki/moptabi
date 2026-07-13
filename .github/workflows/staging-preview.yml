@@ -130,24 +130,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup pnpm version 11
+        uses: pnpm/action-setup@v4
         with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          version: 11
 
       - name: Install dependencies
-        run: npm ci --include=dev
+        run: pnpm install --frozen-lockfile
 
       - name: Install root dependencies for shared-types
-        run: npm --prefix .. ci --ignore-scripts --include=dev
+        run: pnpm --prefix .. ci --ignore-scripts --include=dev
 
       - name: Build shared-types
-        run: npm exec -- tsc -p ../packages/shared-types/tsconfig.json
+        run: pnpm exec -- tsc -p ../packages/shared-types/tsconfig.json
 
       - name: Build frontend for Cloudflare
-        run: npm run build:cloudflare
+        run: pnpm run build:cloudflare
 
       - name: Deploy frontend preview
         run: |
