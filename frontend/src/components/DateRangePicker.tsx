@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { cn, getDatesBetween } from '@/lib/utils';
 import { APP_LIMITS } from '@/data/constants';
 
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from './ui/dialog';
 
 interface DateRangePickerProps {
   startDate: string | undefined;
@@ -200,16 +200,17 @@ export const DateRangePicker = ({
         />
         {showConfirm && (
           <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-            <DialogContent>
+            <DialogContent className="overflow-y-auto">
               <DialogTitle>日付変更の確認</DialogTitle>
-              <DialogDescription>
-                選択した日付により既存の計画日が削除されます。削除しますか？
-                <p className="mt-2 list-disc list-inside text-sm text-red-600">
+              <DialogDescription>選択した日付により既存の計画日が削除されます。削除しますか？</DialogDescription>
+              <div className="rounded-md border border-red-200 bg-red-50 p-3">
+                <div className="mb-2 text-sm font-medium text-red-700">削除対象の日付</div>
+                <ul className="max-h-32 space-y-1 overflow-y-auto pr-1 text-sm text-red-600">
                   {pendingDeletedDates.map((date) => (
-                    <p key={date}>{date}</p>
+                    <li key={date}>{date}</li>
                   ))}
-                </p>
-              </DialogDescription>
+                </ul>
+              </div>
               <DialogFooter>
                 <Button onClick={handleConfirmDelete} variant="destructive" role="button">
                   削除
