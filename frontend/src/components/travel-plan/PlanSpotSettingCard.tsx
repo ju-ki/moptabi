@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Bus,
@@ -107,6 +107,11 @@ export default function PlanSpotSettingCard({
 
   const [hasFetchedStations, setHasFetchedStations] = useState<boolean>(false);
 
+  const lastSearchBusStop = useRef<boolean>(excludeBusStop);
+  const lastSearchCoord = useRef<{ lat: number; lng: number } | null>(
+    spot.location ? { lat: spot.location.lat, lng: spot.location.lng } : null,
+  );
+
   useEffect(() => {
     if (spot.nearestStation && nearestStations.length > 0) {
       const existingStation = nearestStations.find(
@@ -137,9 +142,16 @@ export default function PlanSpotSettingCard({
   const handleUseNearestStationChange = (checked: boolean) => {
     setUseNearestStation(checked);
     setIsStationSectionExpanded(checked);
-    if (checked && !hasFetchedStations) {
+    if (
+      checked &&
+      (lastSearchBusStop.current !== excludeBusStop ||
+        lastSearchCoord.current?.lat !== spot.location?.lat ||
+        lastSearchCoord.current?.lng !== spot.location?.lng ||
+        nearestStations.length === 0)
+    ) {
       fetchNearestStations();
-      setHasFetchedStations(true);
+      lastSearchBusStop.current = excludeBusStop;
+      lastSearchCoord.current = spot.location ? { lat: spot.location.lat, lng: spot.location.lng } : null;
     }
     if (!checked) {
       onSettingChange({ ...spot, nearestStation: undefined });

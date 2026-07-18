@@ -70,6 +70,46 @@ describe('PlanSpotSettingCard', () => {
     expect(latestCall.stayDuration).toBe(120);
   });
 
+  it('最寄駅スイッチonでbusStopのチェックとスポットの座標が検索前後で変わっていない場合に searchNearestStationが呼び出されない', async () => {
+    render(<PlanSpotSettingCard {...baseProps} spot={createSpot()} />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('最寄駅スイッチonでbusStopのチェックが検索前後で変わっている場合に searchNearestStationが呼び出される', async () => {
+    render(<PlanSpotSettingCard {...baseProps} spot={createSpot()} />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    // チェックボックスを再度onにする(変更されている想定)
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    // 2回目の検索
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // スポットの座標は変わることはないので不要
+
   it('最寄駅スイッチをOFFにすると nearestStation をクリアする', () => {
     const onSettingChange = vi.fn();
     render(

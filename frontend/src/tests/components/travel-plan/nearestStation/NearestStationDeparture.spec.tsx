@@ -50,7 +50,9 @@ describe('NearestStationDeparture', () => {
         nearestStation: { name: '浅草駅', walkingTime: 4, latitude: 35.71, longitude: 139.79 },
       },
     ]);
-    mockSearchNearestStation.mockResolvedValue([]);
+    mockSearchNearestStation.mockResolvedValue([
+      { name: '浅草駅', walkingTime: 4, latitude: 35.71, longitude: 139.79 },
+    ]);
   });
 
   it('最寄駅スイッチONで searchNearestStation を呼び出す', async () => {
@@ -76,6 +78,94 @@ describe('NearestStationDeparture', () => {
         radius: 1,
         excludeBusStop: false,
       });
+    });
+  });
+
+  it('最寄駅スイッチonでbusStopのチェックとスポットの座標が検索前後で変わっていない場合に searchNearestStationが呼び出されない', async () => {
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '東京駅',
+      latitude: 35.6812,
+      longitude: 139.7671,
+      nearestStation: undefined,
+    });
+
+    render(<NearestStationDeparture date="2026-04-25" />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(mockSearchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(mockSearchNearestStation).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('最寄駅スイッチonでbusStopのチェックが検索前後で変わっている場合に searchNearestStationが呼び出される', async () => {
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '東京駅',
+      latitude: 35.6812,
+      longitude: 139.7671,
+      nearestStation: undefined,
+    });
+
+    render(<NearestStationDeparture date="2026-04-25" />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(mockSearchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    // チェックボックスを再度onにする(変更されている想定)
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    // 2回目の検索
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(mockSearchNearestStation).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('最寄駅スイッチonでスポットの座標が検索前後で変わっている場合に searchNearestStationが呼び出される', async () => {
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '東京駅',
+      latitude: 35.6812,
+      longitude: 139.7671,
+      nearestStation: undefined,
+    });
+
+    const { rerender } = render(<NearestStationDeparture date="2026-04-25" />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(mockSearchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    // 座標を変える
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '新宿駅',
+      latitude: 35.6895,
+      longitude: 139.6917,
+      nearestStation: undefined,
+    });
+
+    rerender(<NearestStationDeparture date="2026-04-25" />);
+
+    // 2回目の検索
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(mockSearchNearestStation).toHaveBeenCalledTimes(2);
     });
   });
 
