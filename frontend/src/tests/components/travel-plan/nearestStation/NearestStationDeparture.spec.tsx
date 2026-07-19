@@ -98,6 +98,8 @@ describe('NearestStationDeparture', () => {
     });
 
     fireEvent.click(screen.getByRole('switch'));
+    // 2回目の検索
+    fireEvent.click(screen.getByRole('switch'));
 
     await waitFor(() => {
       expect(mockSearchNearestStation).toHaveBeenCalledTimes(1);

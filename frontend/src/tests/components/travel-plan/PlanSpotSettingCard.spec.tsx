@@ -9,7 +9,14 @@ import { Spot, TransportNodeType } from '@/types/plan';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('@/lib/google-maps', () => ({
-  searchNearestStation: vi.fn().mockResolvedValue([]),
+  searchNearestStation: vi.fn().mockResolvedValue([
+    {
+      name: '東京タワー駅',
+      walkingTime: 5,
+      latitude: 35.6586,
+      longitude: 139.7454,
+    },
+  ]),
 }));
 
 const createSpot = (overrides: Partial<Spot> = {}): Spot => ({
@@ -79,6 +86,8 @@ describe('PlanSpotSettingCard', () => {
       expect(searchNearestStation).toHaveBeenCalledTimes(1);
     });
 
+    fireEvent.click(screen.getByRole('switch'));
+    // 2回目の検索
     fireEvent.click(screen.getByRole('switch'));
 
     await waitFor(() => {

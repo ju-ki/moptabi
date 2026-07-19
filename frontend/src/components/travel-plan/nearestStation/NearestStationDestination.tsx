@@ -96,6 +96,8 @@ const NearestStationDestination = ({ date }: { date: string }) => {
         excludeBusStop,
       });
       setDestinationNearestStations(stations);
+      lastSearchBusStop.current = excludeBusStop;
+      lastSearchCoord.current = { lat: destinationData.latitude, lng: destinationData.longitude };
     } catch (error) {
       console.error('目的地の最寄駅の取得に失敗しました:', error);
     } finally {
@@ -115,8 +117,6 @@ const NearestStationDestination = ({ date }: { date: string }) => {
         destinationNearestStations.length === 0)
     ) {
       fetchDestinationNearestStations();
-      lastSearchBusStop.current = excludeBusStop;
-      lastSearchCoord.current = { lat: destinationData.latitude, lng: destinationData.longitude };
     }
     if (!checked && destinationData) {
       // OFFにした場合、目的地の最寄駅情報をクリア
