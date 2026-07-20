@@ -9,7 +9,14 @@ import { Spot, TransportNodeType } from '@/types/plan';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('@/lib/google-maps', () => ({
-  searchNearestStation: vi.fn().mockResolvedValue([]),
+  searchNearestStation: vi.fn().mockResolvedValue([
+    {
+      name: '東京タワー駅',
+      walkingTime: 5,
+      latitude: 35.6586,
+      longitude: 139.7454,
+    },
+  ]),
 }));
 
 const createSpot = (overrides: Partial<Spot> = {}): Spot => ({
@@ -69,6 +76,48 @@ describe('PlanSpotSettingCard', () => {
     const latestCall = onSettingChange.mock.calls.at(-1)?.[0];
     expect(latestCall.stayDuration).toBe(120);
   });
+
+  it('最寄駅スイッチonでbusStopのチェックとスポットの座標が検索前後で変わっていない場合に searchNearestStationが呼び出されない', async () => {
+    render(<PlanSpotSettingCard {...baseProps} spot={createSpot()} />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+    // 2回目の検索
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('最寄駅スイッチonでbusStopのチェックが検索前後で変わっている場合に searchNearestStationが呼び出される', async () => {
+    render(<PlanSpotSettingCard {...baseProps} spot={createSpot()} />);
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('switch'));
+
+    // チェックボックスを再度onにする(変更されている想定)
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    // 2回目の検索
+    fireEvent.click(screen.getByRole('switch'));
+
+    await waitFor(() => {
+      expect(searchNearestStation).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // スポットの座標は変わることはないので不要
 
   it('最寄駅スイッチをOFFにすると nearestStation をクリアする', () => {
     const onSettingChange = vi.fn();

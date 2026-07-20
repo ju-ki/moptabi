@@ -1,5 +1,5 @@
 import { AlertTriangle, Bus, Calendar, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +59,11 @@ const NearestStationDestination = ({ date }: { date: string }) => {
     !!destinationData?.nearestStation,
   );
 
+  const lastSearchBusStop = useRef<boolean>(excludeBusStop);
+  const lastSearchCoord = useRef<{ lat: number; lng: number } | null>(
+    destinationData ? { lat: destinationData.latitude, lng: destinationData.longitude } : null,
+  );
+
   // スポット間の距離を計算
   const getDistanceFromPrevious = useCallback((): number | undefined => {
     return calculateDistance(
@@ -91,6 +96,8 @@ const NearestStationDestination = ({ date }: { date: string }) => {
         excludeBusStop,
       });
       setDestinationNearestStations(stations);
+      lastSearchBusStop.current = excludeBusStop;
+      lastSearchCoord.current = { lat: destinationData.latitude, lng: destinationData.longitude };
     } catch (error) {
       console.error('目的地の最寄駅の取得に失敗しました:', error);
     } finally {
@@ -102,7 +109,13 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   const handleUseDestinationNearestStationChange = (checked: boolean) => {
     setUseDestinationNearestStation(checked);
     setIsDestinationSectionExpanded(checked);
-    if (checked && destinationNearestStations.length === 0) {
+    if (
+      checked &&
+      (lastSearchBusStop.current !== excludeBusStop ||
+        lastSearchCoord.current?.lat !== destinationData.latitude ||
+        lastSearchCoord.current?.lng !== destinationData.longitude ||
+        destinationNearestStations.length === 0)
+    ) {
       fetchDestinationNearestStations();
     }
     if (!checked && destinationData) {
