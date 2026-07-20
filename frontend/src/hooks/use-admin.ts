@@ -21,7 +21,7 @@ export function useAdminData() {
   // セッションが確立されている場合のみAPIリクエストを発行
 
   const isAuthenticated = status === 'authenticated';
-  const shouldFetch = isAuthenticated && session && !isSessionLoading;
+  const shouldFetch = isAuthenticated && !!session && !isSessionLoading;
 
   // 認証ヘッダーを生成
   const getAuthHeaders = (): Record<string, string> => {
