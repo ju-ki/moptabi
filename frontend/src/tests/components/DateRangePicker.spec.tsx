@@ -43,7 +43,7 @@ describe('DateRangePicker', () => {
 
       fireEvent.click(screen.getByRole('button'));
 
-      // numberOfMonths=2 のため2つのグリッドが表示される
+      // numberOfMonths=1 のため1つのグリッドが表示される
       const grids = screen.getAllByRole('grid');
       expect(grids.length).toBeGreaterThan(0);
     });
@@ -53,25 +53,51 @@ describe('DateRangePicker', () => {
 
       fireEvent.click(screen.getByRole('button'));
 
-      // numberOfMonths=2 のため2つのグリッドが表示される
+      // numberOfMonths=1 のため1つのグリッドが表示される
       const grids = screen.getAllByRole('grid');
-      expect(grids.length).toBe(2);
+      expect(grids.length).toBe(1);
     });
   });
 
-  describe('maxDays制限', () => {
-    it('デフォルトのmaxDaysはAPP_LIMITSのMAX_PLAN_DAYS（7日）が適用されること', () => {
-      // maxDaysを指定しない場合にデフォルト値が使われることを
-      // コンポーネントがエラーなくレンダリングされることで確認する
-      render(<DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} />);
+  describe('カレンダーの選択制限（isDateDisabled）', () => {
+    it('指定した maxDays を超える日付は選択不可（disabled）になること', async () => {
+      const user = userEvent.setup();
+      // maxDays=3 を指定（15, 16, 17日が選択可能、18日以降は不可となる想定）
+      render(<DateRangePicker startDate="2025-12-15" endDate={undefined} maxDays={3} onDateChange={vi.fn()} />);
 
-      expect(screen.getByRole('button')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /2025-12-15/ }));
+
+      // 12月17日（範囲内）は選択可能
+      const validDateBtn = screen.getByRole('gridcell', { name: '17' });
+      expect(validDateBtn).not.toBeDisabled();
+
+      // 12月18日（上限超過）は選択不可
+      const overLimitBtn = screen.getByRole('gridcell', { name: '18' });
+      expect(overLimitBtn).toBeDisabled();
     });
 
-    it('カスタムmaxDaysを指定してもレンダリングされること', () => {
-      render(<DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} maxDays={3} />);
+    it('指定した maxDays を超える日付は選択不可（disabled）になること(既に選択済みの状態)', async () => {
+      const user = userEvent.setup();
+      // maxDays=3 を指定（15, 16, 17日が選択可能、18日以降は不可となる想定）
+      render(<DateRangePicker startDate="2025-12-15" endDate="2025-12-17" maxDays={7} onDateChange={vi.fn()} />);
 
-      expect(screen.getByRole('button')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /2025-12-15/ }));
+
+      // 12月10日（範囲外）は選択不可
+      const prevOverDateBtn = screen.getByRole('gridcell', { name: '10' });
+      expect(prevOverDateBtn).toBeDisabled();
+
+      // 12月11日（範囲内）は選択可能
+      const preValidDateBtn = screen.getByRole('gridcell', { name: '11' });
+      expect(preValidDateBtn).not.toBeDisabled();
+
+      // 12月21日（範囲内）は選択可能
+      const validDateBtn = screen.getByRole('gridcell', { name: '21' });
+      expect(validDateBtn).not.toBeDisabled();
+
+      // 12月22日（上限超過）は選択不可
+      const overLimitBtn = screen.getByRole('gridcell', { name: '22' });
+      expect(overLimitBtn).toBeDisabled();
     });
   });
 
@@ -158,8 +184,8 @@ describe('DateRangePicker', () => {
 
         await waitFor(() => expect(onDateChange).toHaveBeenCalled());
         const arg2 = onDateChange.mock.calls[0][0];
-        expect(arg2.from).toBe('2025-12-01');
-        expect(arg2.to).toBe('2025-12-01');
+        expect(arg2.from).toBeUndefined();
+        expect(arg2.to).toBeUndefined();
       });
 
       it('単日→単日に短縮して、削除ボタン押下時にonDateChange が呼ばれること', async () => {
@@ -181,6 +207,30 @@ describe('DateRangePicker', () => {
         const arg3 = onDateChange.mock.calls[0][0];
 
         expect(arg3.from).toBeUndefined();
+        expect(arg3.to).toBeUndefined();
+      });
+
+      it('後ろの日付にずらした際、削除ボタン押下時にonDateChange が呼ばれること', async () => {
+        const onDateChange = vi.fn();
+        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-02" onDateChange={onDateChange} />);
+
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole('button'));
+
+        // select new range 2025-12-02 ~ undefined (removes 2025-12-01)
+        const day2 = screen.getAllByText('2')[0];
+
+        fireEvent.click(day2);
+
+        fireEvent.click(screen.getByText('削除'));
+
+        await waitFor(() => expect(onDateChange).toHaveBeenCalled());
+        const grids = screen.getAllByRole('grid');
+        expect(grids.length).toBeGreaterThan(0);
+        const arg3 = onDateChange.mock.calls[0][0];
+
+        expect(arg3.from).toEqual('2025-12-02');
         expect(arg3.to).toBeUndefined();
       });
 

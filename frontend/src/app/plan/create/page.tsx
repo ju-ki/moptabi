@@ -185,14 +185,16 @@ const TravelPlanCreate = () => {
             </div>
 
             {/* 選択した日付分だけタブが生成されるようにする */}
-            <Tabs defaultValue={fields.startDate && fields.startDate} defaultChecked={true}>
-              <TabsList className="flex justify-start space-x-2">
-                {dates.map((date) => (
-                  <TabsTrigger key={date} value={date}>
-                    {date}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+            <Tabs className="w-full min-w-0" defaultValue={fields.startDate && fields.startDate} defaultChecked={true}>
+              <div className="w-full max-w-full overflow-x-auto pb-1">
+                <TabsList className="inline-flex w-max min-w-full flex-nowrap justify-start gap-2 whitespace-nowrap">
+                  {dates.map((date) => (
+                    <TabsTrigger key={date} value={date} className="shrink-0">
+                      {date}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
               {dates.map((date) => (
                 <TabsContent key={date} value={date}>
                   <PlanningComp date={date} />
