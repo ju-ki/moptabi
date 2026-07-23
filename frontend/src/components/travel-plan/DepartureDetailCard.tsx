@@ -76,6 +76,14 @@ export default function DepartureDetailCard({
     onDepartureTimeChange?.(time);
   };
 
+  if (!departure) {
+    return (
+      <div className="mb-10 border-b border-gray-300 pb-6 relative" data-testid={`departure-detail-card-${index}`}>
+        <p className="text-gray-500">出発地情報が取得できませんでした。</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-10 border-b border-gray-300 pb-6 relative" data-testid={`departure-detail-card-${index}`}>
       {/* スポット情報 */}
@@ -151,12 +159,12 @@ export default function DepartureDetailCard({
           </div>
         )}
 
-        {routeInfo && (
+        {departure.transports && (
           <>
             <div className="flex items-center space-x-2 text-gray-600">
-              {transportIcons[routeInfo.transportMethod]?.icon || transportIcons.DEFAULT.icon}
+              {transportIcons[departure.transports?.name as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
               <span>
-                {transportIcons[routeInfo.transportMethod]?.label || transportIcons.DEFAULT.label} (
+                {transportIcons[departure.transports?.name as TravelModeType]?.label || transportIcons.DEFAULT.label} (
                 {departure?.transports?.travelTime})
               </span>
               <div className="flex items-center flex-wrap gap-2 ml-2"></div>

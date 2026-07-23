@@ -1166,4 +1166,33 @@ describe('planning.ts', () => {
       expect(parseDurationTextToMinutes('不明')).toBe(0);
     });
   });
+
+  describe('2点間のルート取得処理における、手段の重複除去確認', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+    it('重複する手段が除去されること', async () => {
+      const checkedTransportMethodIds = [1, 2, 3];
+      const preferredTransportMethodIds = undefined;
+
+      mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
+        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        throw new Error('unexpected');
+      });
+      const result = await getOptimalRouteWithAlternatives(
+        { lat: 35.681236, lng: 139.767125 },
+        { lat: 35.6895, lng: 139.6917 },
+        [...checkedTransportMethodIds, preferredTransportMethodIds ?? 1],
+        1.5,
+        preferredTransportMethodIds,
+      );
+
+      expect(result.selectedRoute.transportMethodId).toBe(3);
+      expect(result.alternativeRoutes).toHaveLength(3);
+      expect(result.isFallbackToWalking).toBe(false);
+      expect(result.failedRoutes).toBeUndefined();
+    });
+  });
 });

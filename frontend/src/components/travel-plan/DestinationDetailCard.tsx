@@ -77,6 +77,14 @@ export default function DestinationDetailCard({
     onDepartureTimeChange?.(time);
   };
 
+  if (!destination) {
+    return (
+      <div className="mb-10 border-b border-gray-300 pb-6 relative" data-testid={`destination-detail-card-${index}`}>
+        <p className="text-gray-500">目的地情報が取得できませんでした。</p>
+      </div>
+    );
+  }
+
   return (
     <div className="my-10 border-t border-gray-300 py-8 relative" data-testid={`destination-detail-card-${index}`}>
       {/* 移動手段 */}
@@ -120,12 +128,12 @@ export default function DestinationDetailCard({
             </div>
           </div>
         )}
-        {routeInfo && (
+        {destination.transports && (
           <>
             <div className="flex items-center space-x-2 text-gray-600">
-              {transportIcons[routeInfo.transportMethod]?.icon || transportIcons.DEFAULT.icon}
+              {transportIcons[destination.transports.name as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
               <span>
-                {transportIcons[routeInfo.transportMethod]?.label || transportIcons.DEFAULT.label} (
+                {transportIcons[destination.transports.name as TravelModeType]?.label || transportIcons.DEFAULT.label} (
                 {destination?.transports?.travelTime})
               </span>
               <div className="flex items-center flex-wrap gap-2 ml-2"></div>

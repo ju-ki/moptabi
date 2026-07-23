@@ -125,15 +125,6 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
         if (!targetPlanning) {
           return;
         }
-        //到着時間と出発時間を更新した状態でストアに保存
-        fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-          ...targetPlanning.updatedDeparture,
-          time: targetPlanning.departureTime, //出発時間を更新
-        });
-        fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
-          ...targetPlanning.updatedDestination,
-          time: targetPlanning.arrivalTime, //到着時間を更新
-        });
       });
 
       const newData: TripType = {

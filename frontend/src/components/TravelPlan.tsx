@@ -35,8 +35,6 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
     : null;
 
   const spots = fields.getSpotInfo(travelPlan.date, null);
-  const departureData = fields.getDepartureAndDestination(travelPlan.date, TransportNodeType.DEPARTURE);
-  const destinationData = fields.getDepartureAndDestination(travelPlan.date, TransportNodeType.DESTINATION);
 
   const handleDeleteSpot = (id: string) => {
     const updatedSpots = spots.filter((spot) => spot.id == id)[0];
@@ -87,7 +85,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
       </div>
 
       {/* 出発地 */}
-      {departureData && <DepartureDetailCard date={travelPlan.date} index={0} />}
+      <DepartureDetailCard date={travelPlan.date} index={0} />
 
       {/* 観光スポット */}
       {spots.map((spot, index) => {
@@ -105,7 +103,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
       })}
 
       {/* 目的地 */}
-      {destinationData && <DestinationDetailCard date={travelPlan.date} index={spots.length + 1} />}
+      <DestinationDetailCard date={travelPlan.date} index={spots.length + 1} />
     </div>
   );
 };
