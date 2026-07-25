@@ -373,9 +373,9 @@ describe('DateRangePicker', () => {
 
         await user.click(screen.getByRole('button'));
 
-        const day2 = screen.getAllByRole('gridcell', { name: '1' })[0];
+        const day1 = screen.getAllByRole('gridcell', { name: '1' })[0];
 
-        await user.click(day2);
+        await user.click(day1);
 
         await user.click(screen.getByText('削除'));
 
@@ -473,7 +473,20 @@ describe('DateRangePicker', () => {
       expect(screen.getByText(/終了日を選ぶか、同じ日を選んで「日帰り」にしてください/)).toBeInTheDocument();
     });
 
-    it('開始日と終了日が設定されている場合は「選択中の日付をクリックするとリセットできます」が表示されること', async () => {
+    it('開始日と終了日が設定されているかつ同一日の場合は「同じ日を選ぶと選択を解除できます」が表示されること', async () => {
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate="2025-12-01"
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: /2025-12-01 ~ 2025-12-01/ }));
+      expect(screen.getByText(/同じ日を選ぶと選択を解除できます/)).toBeInTheDocument();
+    });
+
+    it('開始日と終了日が設定されている場合は「日付を減らすには、開始または終了日を選択してください」が表示されること', async () => {
       render(
         <DateRangePicker
           startDate="2025-12-01"
