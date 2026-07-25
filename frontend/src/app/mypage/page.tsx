@@ -41,7 +41,7 @@ export default function MyPage() {
 
   const handleSignOut = async () => {
     try {
-      await signOut({ callbackUrl: '/' });
+      await signOut({ redirectTo: '/' });
     } catch (error) {
       console.error('ログアウトに失敗しました:', error);
       toast({

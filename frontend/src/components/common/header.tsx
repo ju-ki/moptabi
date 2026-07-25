@@ -30,7 +30,7 @@ const Header = () => {
   // ログアウト処理（本番環境での問題を回避）
   const handleSignOut = async () => {
     try {
-      await signOut({ callbackUrl: '/' });
+      await signOut({ redirectTo: '/' });
     } catch (error) {
       console.error('ログアウトに失敗しました:', error);
       toast({
