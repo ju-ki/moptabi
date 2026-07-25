@@ -178,6 +178,7 @@ interface FormState {
   setIsLocationLinked: (isLinked: boolean) => void;
   getPlanInfo: (date: string) => TravelPlanType | undefined;
   setPlanInfo: (date: string, info: TravelPlanType) => void;
+  deletePlanInfo: (date: string[]) => void;
   getSpotInfo: (date: string, type: TransportNodeType | null) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
@@ -339,6 +340,18 @@ export const useStoreForPlanning = create<FormState>()(
             return;
           }
           state.plans[existingPlansIndex] = info;
+        });
+      },
+      deletePlanInfo: (date) => {
+        set((state) => {
+          state.plans = state.plans.filter((plan) => !date.includes(plan.date));
+          // プラン削除に伴い、プランニング結果やスナップショットも削除する
+          date.forEach((d) => {
+            delete state.planningInfo[d];
+            delete state.planningResults[d];
+            delete state.planningSpotSnapshots[d];
+            delete state.dirtyPlanningDates[d];
+          });
         });
       },
       setDepartureAndDestination: (date, type, value) => {

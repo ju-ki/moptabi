@@ -17,6 +17,7 @@ interface DateRangePickerProps {
   startDate: string | undefined;
   endDate: string | undefined;
   onDateChange: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
+  onDeletePlanData: (deletedDates: string[]) => void;
   className?: string;
   maxDays?: number;
 }
@@ -29,6 +30,7 @@ export const DateRangePicker = ({
   startDate,
   endDate,
   onDateChange,
+  onDeletePlanData,
   className,
   maxDays = APP_LIMITS.MAX_PLAN_DAYS,
 }: DateRangePickerProps) => {
@@ -132,6 +134,9 @@ export const DateRangePicker = ({
     const toDateStr = pendingRange.to ? pendingRange.to.toLocaleDateString('sv-SE') : undefined;
 
     onDateChange({ from: fromDateStr, to: toDateStr });
+
+    // 削除対象のプランデータも削除する
+    onDeletePlanData(pendingDeletedDates);
 
     setShowConfirm(false);
     setPendingRange(undefined);

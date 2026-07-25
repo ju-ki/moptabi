@@ -12,25 +12,43 @@ import userEvent from '@testing-library/user-event';
 describe('DateRangePicker', () => {
   describe('初期表示', () => {
     it('開始日と終了日が未設定の場合「日付範囲を選択」が表示されること', () => {
-      render(<DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+      );
 
       expect(screen.getByText('日付範囲を選択')).toBeInTheDocument();
     });
 
     it('開始日のみ設定されている場合開始日が表示されること', () => {
-      render(<DateRangePicker startDate="2025-12-01" endDate={undefined} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate={undefined}
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       expect(screen.getByText('2025-12-01')).toBeInTheDocument();
     });
 
     it('開始日と終了日が設定されている場合両方の日付が表示されること', () => {
-      render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-07" onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate="2025-12-07"
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       expect(screen.getByText(/2025-12-01 ~ 2025-12-07/)).toBeInTheDocument();
     });
 
     it('カレンダーアイコンが常に表示されること', () => {
-      render(<DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+      );
 
       // popover trigger ボタンが存在する
       expect(screen.getByRole('button')).toBeInTheDocument();
@@ -39,7 +57,9 @@ describe('DateRangePicker', () => {
 
   describe('カレンダーの開閉', () => {
     it('ボタンをクリックするとカレンダーが開くこと', () => {
-      render(<DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+      );
 
       fireEvent.click(screen.getByRole('button'));
 
@@ -49,7 +69,14 @@ describe('DateRangePicker', () => {
     });
 
     it('カレンダーが開いた状態で月の名前が表示されること', () => {
-      render(<DateRangePicker startDate="2025-12-01" endDate={undefined} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate={undefined}
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       fireEvent.click(screen.getByRole('button'));
 
@@ -63,7 +90,15 @@ describe('DateRangePicker', () => {
     it('指定した maxDays を超える日付は選択不可（disabled）になること', async () => {
       const user = userEvent.setup();
       // maxDays=3 を指定（15, 16, 17日が選択可能、18日以降は不可となる想定）
-      render(<DateRangePicker startDate="2025-12-15" endDate={undefined} maxDays={3} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-15"
+          endDate={undefined}
+          maxDays={3}
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       await user.click(screen.getByRole('button', { name: /2025-12-15/ }));
 
@@ -79,7 +114,15 @@ describe('DateRangePicker', () => {
     it('指定した maxDays を超える日付は選択不可（disabled）になること(既に選択済みの状態)', async () => {
       const user = userEvent.setup();
       // maxDays=3 を指定（15, 16, 17日が選択可能、18日以降は不可となる想定）
-      render(<DateRangePicker startDate="2025-12-15" endDate="2025-12-17" maxDays={7} onDateChange={vi.fn()} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-15"
+          endDate="2025-12-17"
+          maxDays={7}
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       await user.click(screen.getByRole('button', { name: /2025-12-15/ }));
 
@@ -104,7 +147,14 @@ describe('DateRangePicker', () => {
   describe('日付の追加や削除した際の動作確認', () => {
     it('日付を新規で追加した場合はモーダルが表示されないこと', async () => {
       const onDateChange = vi.fn();
-      render(<DateRangePicker startDate={undefined} endDate={undefined} onDateChange={onDateChange} />);
+      render(
+        <DateRangePicker
+          startDate={undefined}
+          endDate={undefined}
+          onDateChange={onDateChange}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       // open calendar
       fireEvent.click(screen.getByRole('button'));
@@ -123,7 +173,14 @@ describe('DateRangePicker', () => {
       // コンポーネント自体はモーダルを表示しないため、getOutSideDate の結果を console 出力で確認する
       // ここでは start/end を与えてレンダリングし、カレンダーを開けることを確認するテストに置き換える
       const onDateChange = vi.fn();
-      render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-05" onDateChange={onDateChange} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate="2025-12-05"
+          onDateChange={onDateChange}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
 
       fireEvent.click(screen.getByRole('button'));
 
@@ -134,7 +191,14 @@ describe('DateRangePicker', () => {
 
     it('終了日を変更して、プランの日数が減った場合はモーダルが表示されること', () => {
       const onDateChange = vi.fn();
-      render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-05" onDateChange={onDateChange} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate="2025-12-05"
+          onDateChange={onDateChange}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
       fireEvent.click(screen.getByRole('button'));
       const grids = screen.getAllByRole('grid');
       expect(grids.length).toBeGreaterThan(0);
@@ -142,7 +206,14 @@ describe('DateRangePicker', () => {
 
     it('開始日と終了日を両方を変更して、プランの日数が減った場合はモーダルが表示されること', () => {
       const onDateChange = vi.fn();
-      render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-07" onDateChange={onDateChange} />);
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate="2025-12-07"
+          onDateChange={onDateChange}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
       fireEvent.click(screen.getByRole('button'));
       const grids = screen.getAllByRole('grid');
       expect(grids.length).toBeGreaterThan(0);
@@ -151,27 +222,51 @@ describe('DateRangePicker', () => {
     describe('確認ダイアログでの動作確認', () => {
       it('複数日→複数日に短縮して、削除ボタン押下時にonDateChange が呼ばれること', async () => {
         const onDateChange = vi.fn();
-        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-05" onDateChange={onDateChange} />);
+        const onDeletePlanData = vi.fn();
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-05"
+            onDateChange={onDateChange}
+            onDeletePlanData={onDeletePlanData}
+          />,
+        );
         const user = userEvent.setup();
 
         await user.click(screen.getByRole('button'));
 
-        // select new range 2025-12-02 ~ 2025-12-04 (removes 2025-12-05)
+        // select new range 2025-12-01 ~ 2025-12-04 (removes 2025-12-05)
         const day2 = screen.getAllByText('4')[0];
         fireEvent.click(day2);
 
         await user.click(screen.getByText('削除'));
 
-        await waitFor(() => expect(onDateChange).toHaveBeenCalled());
+        await waitFor(() => {
+          expect(onDateChange).toHaveBeenCalled();
+          // 削除対象のプランデータが削除されていること
+          expect(onDeletePlanData).toHaveBeenCalled();
+        });
         const arg = onDateChange.mock.calls[0][0];
 
         expect(arg.from).toBe('2025-12-01');
         expect(arg.to).toBe('2025-12-04');
+
+        const deletedDates = onDeletePlanData.mock.calls[0][0];
+        expect(deletedDates).toEqual(['2025-12-05']);
       });
 
       it('複数日→単日に短縮して、削除ボタン押下時にonDateChange が呼ばれること', async () => {
         const onDateChange = vi.fn();
-        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-05" onDateChange={onDateChange} />);
+        const onDeletePlanData = vi.fn();
+
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-05"
+            onDateChange={onDateChange}
+            onDeletePlanData={onDeletePlanData}
+          />,
+        );
 
         fireEvent.click(screen.getByRole('button'));
 
@@ -182,15 +277,29 @@ describe('DateRangePicker', () => {
 
         fireEvent.click(screen.getByText('削除'));
 
-        await waitFor(() => expect(onDateChange).toHaveBeenCalled());
+        await waitFor(() => {
+          expect(onDateChange).toHaveBeenCalled();
+          expect(onDeletePlanData).toHaveBeenCalled();
+        });
         const arg2 = onDateChange.mock.calls[0][0];
         expect(arg2.from).toBeUndefined();
         expect(arg2.to).toBeUndefined();
+
+        const deletedDates = onDeletePlanData.mock.calls[0][0];
+        // TODO: 日帰りの設定ができない
+        expect(deletedDates).toEqual(['2025-12-01', '2025-12-02', '2025-12-03', '2025-12-04', '2025-12-05']);
       });
 
       it('単日→単日に短縮して、削除ボタン押下時にonDateChange が呼ばれること', async () => {
         const onDateChange = vi.fn();
-        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-01" onDateChange={onDateChange} />);
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-01"
+            onDateChange={onDateChange}
+            onDeletePlanData={vi.fn()}
+          />,
+        );
 
         const user = userEvent.setup();
 
@@ -212,7 +321,15 @@ describe('DateRangePicker', () => {
 
       it('後ろの日付にずらした際、削除ボタン押下時にonDateChange が呼ばれること', async () => {
         const onDateChange = vi.fn();
-        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-02" onDateChange={onDateChange} />);
+        const onDeletePlanData = vi.fn();
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-02"
+            onDateChange={onDateChange}
+            onDeletePlanData={onDeletePlanData}
+          />,
+        );
 
         const user = userEvent.setup();
 
@@ -225,18 +342,32 @@ describe('DateRangePicker', () => {
 
         fireEvent.click(screen.getByText('削除'));
 
-        await waitFor(() => expect(onDateChange).toHaveBeenCalled());
+        await waitFor(() => {
+          expect(onDateChange).toHaveBeenCalled();
+          expect(onDeletePlanData).toHaveBeenCalled();
+        });
         const grids = screen.getAllByRole('grid');
         expect(grids.length).toBeGreaterThan(0);
         const arg3 = onDateChange.mock.calls[0][0];
 
         expect(arg3.from).toEqual('2025-12-02');
         expect(arg3.to).toBeUndefined();
+
+        const deletedDates = onDeletePlanData.mock.calls[0][0];
+        expect(deletedDates).toEqual(['2025-12-01', '2025-12-02']);
       });
 
       it('複数日→複数日に短縮して、モーダルでキャンセルすると onDateChange は呼ばれないこと', async () => {
         const onDateChange = vi.fn();
-        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-05" onDateChange={onDateChange} />);
+        const onDeletePlanData = vi.fn();
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-05"
+            onDateChange={onDateChange}
+            onDeletePlanData={onDeletePlanData}
+          />,
+        );
 
         const user = userEvent.setup();
 
@@ -248,11 +379,20 @@ describe('DateRangePicker', () => {
         fireEvent.click(screen.getByText('キャンセル'));
 
         expect(onDateChange).not.toHaveBeenCalled();
+        expect(onDeletePlanData).not.toHaveBeenCalled();
       });
 
       it('単日→単日に短縮して、モーダルでキャンセルすると onDateChange は呼ばれないこと', async () => {
         const onDateChange = vi.fn();
-        render(<DateRangePicker startDate="2025-12-01" endDate="2025-12-01" onDateChange={onDateChange} />);
+        const onDeletePlanData = vi.fn();
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-01"
+            onDateChange={onDateChange}
+            onDeletePlanData={onDeletePlanData}
+          />,
+        );
 
         const user = userEvent.setup();
 
@@ -265,6 +405,7 @@ describe('DateRangePicker', () => {
         fireEvent.click(screen.getByText('キャンセル'));
 
         expect(onDateChange).not.toHaveBeenCalled();
+        expect(onDeletePlanData).not.toHaveBeenCalled();
       });
     });
   });
