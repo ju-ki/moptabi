@@ -164,7 +164,7 @@ describe('マイページ', () => {
       expect(screen.getByText('京都日帰り旅行')).toBeInTheDocument();
     });
 
-    it('ログアウト押下でトップへ遷移するcallbackUrl付きsignOutが呼ばれる', async () => {
+    it('ログアウト押下でトップへ遷移するredirectTo付きsignOutが呼ばれる', async () => {
       mockUseMypageData.mockReturnValue({
         isLoading: false,
         error: null,
@@ -185,7 +185,7 @@ describe('マイページ', () => {
       fireEvent.click(screen.getByRole('button', { name: 'ログアウト' }));
 
       await waitFor(() => {
-        expect(mockSignOut).toHaveBeenCalledWith({ callbackUrl: '/' });
+        expect(mockSignOut).toHaveBeenCalledWith({ redirectTo: '/' });
       });
     });
 
