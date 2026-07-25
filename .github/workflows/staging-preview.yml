@@ -61,12 +61,13 @@ jobs:
       - name: Prime backend worker
         run: |
           set -euo pipefail
+          trap 'echo "=== backend-prime.log ==="; cat /tmp/backend-prime.log || true' ERR
           bunx wrangler deploy \
             --config wrangler.toml \
             --name "${{ steps.meta.outputs.worker_name }}" \
             --var NODE_ENV:staging \
             --var ALLOWED_ORIGIN_SUFFIXES:.pages.dev,.workers.dev \
-            >/tmp/backend-prime.log 2>&1
+            > /tmp/backend-prime.log 2>&1
 
       - name: Upload backend secrets
         env:
