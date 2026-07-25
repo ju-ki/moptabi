@@ -265,7 +265,7 @@ app.onError((error: Error, c) => {
   }
   const runtimeNodeEnv = c.env?.NODE_ENV ?? process.env.NODE_ENV;
   const isDevelopment = runtimeNodeEnv === 'development';
-  const message = isDevelopment ? error.message : 'Internal Server Error';
+  const message = error.message;
   return withCorsHeaders(c.text(message, 500));
 });
 
