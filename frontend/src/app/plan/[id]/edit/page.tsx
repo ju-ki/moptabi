@@ -193,6 +193,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 startDate={fields.startDate}
                 endDate={fields.endDate}
                 onDateChange={fields.setRangeDate}
+                onDeletePlanData={fields.deletePlanInfo}
               />
               <div className="my-1">
                 {fields.errors.startDate && <span className="text-red-500">{fields.errors.startDate.toString()}</span>}
