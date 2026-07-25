@@ -114,7 +114,7 @@ export const usePlanning = () => {
         departure: departureData,
         destination: destinationData,
         spots: spotsData || [],
-        transportMethodIds: fields.getPlanningInfo(date)?.transportationMethodId || [1], // 何も設定されていなければ徒歩を選択
+        transportMethodIds: fields.getPlanningInfo(date)?.transportationMethodId || [],
         preferredTransportMethodIds,
         preferredDepartureTimes,
       };

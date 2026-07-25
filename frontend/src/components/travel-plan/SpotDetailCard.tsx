@@ -88,9 +88,6 @@ export default function SpotDetailCard({
   const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
     planningResult?.updatedSpots[index]?.routeToNext?.scheduledDepartureTime ?? '',
   );
-  const routeInfo = planningResult?.routes?.find(
-    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
-  );
 
   const selectableDepartureCandidates = useMemo(
     () => departureTimeCandidates.filter((time) => time !== activeDepartureTime),
@@ -101,6 +98,18 @@ export default function SpotDetailCard({
     setActiveDepartureTime(time);
     onDepartureTimeChange?.(time);
   };
+
+  if (!spot) {
+    return (
+      <div className="mb-10 border-b border-gray-300 pb-6 relative" data-testid={`spot-detail-card-${index}`}>
+        <p className="text-gray-500">スポット情報が取得できませんでした。</p>
+      </div>
+    );
+  }
+
+  const routeInfo = planningResult?.routes?.find(
+    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
+  );
 
   return (
     <div
@@ -298,16 +307,16 @@ export default function SpotDetailCard({
               </div>
             </div>
           )}
-          {routeInfo && (
+          {spot.transports && (
             <>
               <div className="flex items-center space-x-2 text-gray-600">
-                {transportIcons[routeInfo.transportMethod]?.icon || transportIcons.DEFAULT.icon}
+                {transportIcons[spot.transports.name as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
                 <span>
-                  {transportIcons[routeInfo.transportMethod]?.label || transportIcons.DEFAULT.label} (
+                  {transportIcons[spot.transports.name as TravelModeType]?.label || transportIcons.DEFAULT.label} (
                   {spot.transports.travelTime})
                 </span>
                 <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-                {transportCandidates.length > 0 && (
+                {routeInfo && transportCandidates.length > 0 && (
                   <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
                     {transportCandidates
                       .filter((candidate) => candidate.transportMethodId !== spot.transports.transportMethod)
