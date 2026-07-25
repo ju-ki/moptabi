@@ -258,6 +258,7 @@ describe('DateRangePicker', () => {
       it('複数日→単日に短縮して、削除ボタン押下時にonDateChange が呼ばれること', async () => {
         const onDateChange = vi.fn();
         const onDeletePlanData = vi.fn();
+        const user = userEvent.setup();
 
         render(
           <DateRangePicker
@@ -267,27 +268,26 @@ describe('DateRangePicker', () => {
             onDeletePlanData={onDeletePlanData}
           />,
         );
-
-        fireEvent.click(screen.getByRole('button'));
+        await user.click(screen.getByRole('button', { name: /2025-12-01/ }));
 
         // select new range 2025-12-01 ~ 2025-12-01 (removes 2025-12-02, 2025-12-03, 2025-12-04, 2025-12-05)
-        const day1 = screen.getAllByText('1')[0];
+        const day1 = screen.getAllByRole('gridcell', { name: '1' })[0];
 
-        fireEvent.click(day1);
+        await user.click(day1);
 
-        fireEvent.click(screen.getByText('削除'));
+        await user.click(screen.getByText('削除'));
 
         await waitFor(() => {
           expect(onDateChange).toHaveBeenCalled();
           expect(onDeletePlanData).toHaveBeenCalled();
         });
         const arg2 = onDateChange.mock.calls[0][0];
-        expect(arg2.from).toBeUndefined();
-        expect(arg2.to).toBeUndefined();
+        expect(arg2.from).toEqual('2025-12-01');
+        expect(arg2.to).toEqual('2025-12-01');
 
         const deletedDates = onDeletePlanData.mock.calls[0][0];
-        // TODO: 日帰りの設定ができない
-        expect(deletedDates).toEqual(['2025-12-01', '2025-12-02', '2025-12-03', '2025-12-04', '2025-12-05']);
+        // 12/01以外の日付が削除対象として渡されることを確認
+        expect(deletedDates).toEqual(['2025-12-02', '2025-12-03', '2025-12-04', '2025-12-05']);
       });
 
       it('単日→単日に短縮して、削除ボタン押下時にonDateChange が呼ばれること', async () => {
@@ -336,11 +336,11 @@ describe('DateRangePicker', () => {
         await user.click(screen.getByRole('button'));
 
         // select new range 2025-12-02 ~ undefined (removes 2025-12-01)
-        const day2 = screen.getAllByText('2')[0];
+        const day2 = screen.getAllByRole('gridcell', { name: '2' })[0];
 
-        fireEvent.click(day2);
+        await user.click(day2);
 
-        fireEvent.click(screen.getByText('削除'));
+        await user.click(screen.getByText('削除'));
 
         await waitFor(() => {
           expect(onDateChange).toHaveBeenCalled();
@@ -351,10 +351,47 @@ describe('DateRangePicker', () => {
         const arg3 = onDateChange.mock.calls[0][0];
 
         expect(arg3.from).toEqual('2025-12-02');
-        expect(arg3.to).toBeUndefined();
+        expect(arg3.to).toEqual('2025-12-02');
 
         const deletedDates = onDeletePlanData.mock.calls[0][0];
-        expect(deletedDates).toEqual(['2025-12-01', '2025-12-02']);
+        expect(deletedDates).toEqual(['2025-12-01']);
+      });
+
+      it('前の日付にずらした際、削除ボタン押下時にonDateChange が呼ばれること', async () => {
+        const onDateChange = vi.fn();
+        const onDeletePlanData = vi.fn();
+        render(
+          <DateRangePicker
+            startDate="2025-12-01"
+            endDate="2025-12-02"
+            onDateChange={onDateChange}
+            onDeletePlanData={onDeletePlanData}
+          />,
+        );
+
+        const user = userEvent.setup();
+
+        await user.click(screen.getByRole('button'));
+
+        const day2 = screen.getAllByRole('gridcell', { name: '1' })[0];
+
+        await user.click(day2);
+
+        await user.click(screen.getByText('削除'));
+
+        await waitFor(() => {
+          expect(onDateChange).toHaveBeenCalled();
+          expect(onDeletePlanData).toHaveBeenCalled();
+        });
+        const grids = screen.getAllByRole('grid');
+        expect(grids.length).toBeGreaterThan(0);
+        const arg3 = onDateChange.mock.calls[0][0];
+
+        expect(arg3.from).toEqual('2025-12-01');
+        expect(arg3.to).toEqual('2025-12-01');
+
+        const deletedDates = onDeletePlanData.mock.calls[0][0];
+        expect(deletedDates).toEqual(['2025-12-02']);
       });
 
       it('複数日→複数日に短縮して、モーダルでキャンセルすると onDateChange は呼ばれないこと', async () => {
@@ -407,6 +444,46 @@ describe('DateRangePicker', () => {
         expect(onDateChange).not.toHaveBeenCalled();
         expect(onDeletePlanData).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('ユーザー向けへのメッセージの確認', () => {
+    const user = userEvent.setup();
+    // getHintMessage の結果を確認するテスト
+    it('開始日が未設定の場合は「開始日を選んでください（最大 ${maxDays} 日間）」が表示されること', async () => {
+      render(
+        <DateRangePicker startDate={undefined} endDate={undefined} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+      );
+
+      await user.click(screen.getByRole('button'));
+
+      expect(screen.getByText(/開始日を選んでください/)).toBeInTheDocument();
+    });
+
+    it('開始日のみ設定されている場合は「終了日を選ぶか、同じ日を選んで「日帰り」にしてください」が表示されること', async () => {
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate={undefined}
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: /2025-12-01/ }));
+      expect(screen.getByText(/終了日を選ぶか、同じ日を選んで「日帰り」にしてください/)).toBeInTheDocument();
+    });
+
+    it('開始日と終了日が設定されている場合は「選択中の日付をクリックするとリセットできます」が表示されること', async () => {
+      render(
+        <DateRangePicker
+          startDate="2025-12-01"
+          endDate="2025-12-05"
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+        />,
+      );
+      await user.click(screen.getByRole('button', { name: /2025-12-01 ~ 2025-12-05/ }));
+      expect(screen.getByText(/日付を減らすには、開始または終了日を選択してください/)).toBeInTheDocument();
     });
   });
 });
