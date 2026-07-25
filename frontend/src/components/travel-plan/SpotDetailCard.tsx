@@ -88,9 +88,6 @@ export default function SpotDetailCard({
   const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
     planningResult?.updatedSpots[index]?.routeToNext?.scheduledDepartureTime ?? '',
   );
-  const routeInfo = planningResult?.routes?.find(
-    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
-  );
 
   const selectableDepartureCandidates = useMemo(
     () => departureTimeCandidates.filter((time) => time !== activeDepartureTime),
@@ -109,6 +106,10 @@ export default function SpotDetailCard({
       </div>
     );
   }
+
+  const routeInfo = planningResult?.routes?.find(
+    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
+  );
 
   return (
     <div

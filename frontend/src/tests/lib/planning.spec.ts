@@ -1173,7 +1173,7 @@ describe('planning.ts', () => {
     });
     it('重複する手段が除去されること', async () => {
       const checkedTransportMethodIds = [1, 2, 3];
-      const preferredTransportMethodIds = undefined;
+      const preferredTransportMethodId = undefined;
 
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
         if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
@@ -1184,9 +1184,9 @@ describe('planning.ts', () => {
       const result = await getOptimalRouteWithAlternatives(
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
-        [...checkedTransportMethodIds, preferredTransportMethodIds ?? 1],
+        [...checkedTransportMethodIds, preferredTransportMethodId ?? 1],
         1.5,
-        preferredTransportMethodIds,
+        preferredTransportMethodId,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(3);

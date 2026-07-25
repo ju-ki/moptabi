@@ -117,16 +117,6 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
         return;
       }
 
-      //保存するボタンを押下時点でプランニング後の状態をストアに反映する
-      const dates = getDatesBetween(new Date(fields.startDate), new Date(fields.endDate));
-      dates.forEach((date) => {
-        const targetPlanning = fields.getPlanningResult(date);
-
-        if (!targetPlanning) {
-          return;
-        }
-      });
-
       const newData: TripType = {
         id: fields.id,
         title: fields.title,
