@@ -94,6 +94,15 @@ export const DateRangePicker = ({
     // 2. 日帰り処理: 開始日のみがある状態で同じ日をクリック
     else if (fromDate && !toDate && selectedDay.getTime() === fromDate.getTime()) {
       nextRange = { from: selectedDay, to: selectedDay };
+    } else if (
+      // 3. 選択後に日数が減り、単数日になる場合は日帰り扱いにする
+      fromDate &&
+      toDate &&
+      fromDate.getTime() !== toDate.getTime() &&
+      (selectedDay.getTime() === fromDate.getTime() || selectedDay.getTime() === toDate.getTime())
+    ) {
+      // 日数が減り、単数日になる場合は日帰り扱い
+      nextRange = { from: selectedDay, to: selectedDay };
     }
 
     // 削除判定
@@ -120,7 +129,8 @@ export const DateRangePicker = ({
   const getHintMessage = () => {
     if (!fromDate) return `開始日を選んでください（最大 ${maxDays} 日間）`;
     if (fromDate && !toDate) return '終了日を選ぶか、同じ日を選んで「日帰り」にしてください';
-    return '選択中の日付をクリックするとリセットできます';
+    if (toDate && fromDate.getTime() === toDate.getTime()) return '同じ日を選ぶと選択を解除できます';
+    return '日付を減らすには、開始または終了日を選択してください';
   };
 
   /**
