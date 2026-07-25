@@ -345,13 +345,19 @@ export const useStoreForPlanning = create<FormState>()(
       deletePlanInfo: (date) => {
         set((state) => {
           state.plans = state.plans.filter((plan) => !date.includes(plan.date));
-          // プラン削除に伴い、プランニング結果やスナップショットも削除する
+          // プラン削除に伴い、日付に紐づく関連データも削除
           date.forEach((d) => {
             delete state.planningInfo[d];
             delete state.planningResults[d];
             delete state.planningSpotSnapshots[d];
             delete state.dirtyPlanningDates[d];
+            delete state.planErrors[d];
+            delete state.spotErrors[d];
           });
+          if (state.simulationStatus) {
+            state.simulationStatus = state.simulationStatus.filter((s) => !date.includes(s.date));
+            if (state.simulationStatus.length === 0) state.simulationStatus = null;
+          }
         });
       },
       setDepartureAndDestination: (date, type, value) => {
