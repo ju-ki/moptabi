@@ -55,10 +55,6 @@ const createDevDb = (): DbType => {
  * DBインスタンスを取得
  */
 export const getDb = (): DbType => {
-  if (isProduction) {
-    throw new Error('Use createDbForWorkers in production');
-  }
-
   if (!globalForDb.db) {
     globalForDb.db = createDevDb();
   }
@@ -92,20 +88,20 @@ export const getDbFromEnv = (env?: { DATABASE_URL?: string }): AnyDbType => {
  * 本番環境: c.env.DATABASE_URL を使用
  * 開発/テスト環境: グローバルな node-postgres 接続を使用
  */
-export const getDbFromContext = (c: Context): AnyDbType => {
+export const getDbFromContext = (c: Context, useTransaction: boolean = false): AnyDbType => {
   // コンテキストに既にDBが設定されている場合はそれを返す
   const existingDb = c.get('db');
   if (existingDb) {
     return existingDb as AnyDbType;
   }
 
-  // 本番環境の場合はenv から取得
-  if (isProduction) {
+  // トランザクションを使わない場合は, 環境によってDBのインスタンスを取得
+  if (!useTransaction) {
     const env = c.env as { DATABASE_URL?: string };
     return getDbFromEnv(env);
   }
 
-  // 開発/テスト環境
+  // トランザクションを使う場合は、WebSocketのDBインスタンスを使用
   return getDb();
 };
 

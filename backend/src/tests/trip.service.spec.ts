@@ -14,7 +14,6 @@ import {
   planSpotNearestStation,
   trip,
   clearAllTestData as clearTestData,
-  clearUserTestData as clearTestDataForUser,
   createTestUser,
   clearAllTestData,
 } from './db-helper';
