@@ -51,7 +51,7 @@ export const countPlanByUserId = async (userIds: string[]) => {
 };
 
 export const updateTrip = async (c: Context) => {
-  const transactionDb = getDbFromContext(c);
+  const transactionDb = getDbFromContext(c, true);
   const userId = getUserId(c);
   const tripId = parseInt(c.req.param('id'));
   if (!userId) {
