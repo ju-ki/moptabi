@@ -14,7 +14,7 @@ RUN npm install
 WORKDIR /app/frontend
 
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 RUN pnpm run prebuild
 
 CMD ["pnpm", "run", "dev"]

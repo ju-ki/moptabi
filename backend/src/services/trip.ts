@@ -9,6 +9,7 @@ import {
   planSpotNearestStation,
   transport,
   userLocation,
+  getDbFromContext,
 } from '@db';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -50,6 +51,7 @@ export const countPlanByUserId = async (userIds: string[]) => {
 };
 
 export const updateTrip = async (c: Context) => {
+  const transactionDb = getDbFromContext(c);
   const userId = getUserId(c);
   const tripId = parseInt(c.req.param('id'));
   if (!userId) {
@@ -71,7 +73,11 @@ export const updateTrip = async (c: Context) => {
   }
 
   // tripIdに紐づく旅行プランの更新者が現在のユーザーであることを確認
-  const existingTrip = await db.select({ userId: trip.userId }).from(trip).where(eq(trip.id, tripId)).limit(1);
+  const existingTrip = await transactionDb
+    .select({ userId: trip.userId })
+    .from(trip)
+    .where(eq(trip.id, tripId))
+    .limit(1);
   if (existingTrip.length === 0) {
     throw new HTTPException(404, { message: 'Trip not found' });
   }
@@ -84,7 +90,7 @@ export const updateTrip = async (c: Context) => {
   // 上限チェック
   await validateLimit(userId, tripData);
 
-  await db.transaction(async (tx) => {
+  await transactionDb.transaction(async (tx) => {
     await tx
       .update(trip)
       .set({ ...tripData })
