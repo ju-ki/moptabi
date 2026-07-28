@@ -97,7 +97,81 @@
 
 ---
 
-## 6. 対応方針の作成物（成果物）
+## 6. Docker 構成を考慮した追加計画
+
+### 6-1. Docker Compose と Wrangler の役割分離
+
+- DB（PostgreSQL）は既存の `docker-compose.yml` を利用して起動する。
+- frontend/backend アプリ実行は Docker コンテナ内 `next dev` / `bun --hot` ではなく、ホスト側から Wrangler で起動する。
+- これにより「DB は Docker」「アプリ実行形態は Cloudflare 相当」を両立する。
+
+### 6-2. Docker 前提の再現手順
+
+1. `docker-compose up -d dev-db` で DB を起動
+2. backend は `wrangler dev src/index.ts` で起動（Cloudflare bindings/vars を使用）
+3. frontend は OpenNext build 後に `wrangler dev` で起動
+4. #319 / #320 の再現シナリオを実行
+
+### 6-3. 追加予定項目（どの項目への追加か明示）
+
+#### 追加対象: `README.md`（ローカル起動手順）
+
+````markdown
+## Docker + Wrangler ローカル起動
+
+### 1) DB を Docker で起動
+```bash
+docker-compose up -d dev-db
+```
+
+### 2) Backend を Wrangler で起動
+```bash
+cd backend
+bun install
+bun run dev:wrangler
+```
+
+### 3) Frontend を Wrangler で起動
+```bash
+cd frontend
+npm install
+npm run build:cloudflare
+npx wrangler dev
+```
+````
+
+#### 追加対象: `docs/環境詳細書.md`（環境構築手順）
+
+```markdown
+### Docker利用方針（ローカル）
+- DB は Docker Compose で起動する
+- frontend/backend は Wrangler で起動する
+- `next dev` / `bun run --hot` は Cloudflare 事象再現には使用しない
+```
+
+#### 追加対象: `frontend/package.json`（開発スクリプト）
+
+```json
+{
+  "scripts": {
+    "dev:wrangler": "npm run build:cloudflare && wrangler dev"
+  }
+}
+```
+
+#### 追加対象: `backend/package.json`（開発スクリプト）
+
+```json
+{
+  "scripts": {
+    "dev:wrangler": "wrangler dev src/index.ts"
+  }
+}
+```
+
+---
+
+## 7. 対応方針の作成物（成果物）
 
 - 再現手順書（コマンド付き）
 - #319 / #320 の再現ログ
@@ -106,12 +180,13 @@
 
 ---
 
-## 7. 完了条件（DoD）
+## 8. 完了条件（DoD）
 
 1. `next dev` / `bun run --hot` を使わず、Wrangler 手順でローカル起動できる。
 2. #319 / #320 をローカルで再現した記録が残っている。
 3. #320 は transaction 利用状態の再現結果が確認できる。
 4. #319 / #320 それぞれに対し、実装可能な対応方針が文書化されている。
 5. 開発者が同じ手順で再現できるよう、README/環境ドキュメントが更新されている。
+6. Docker（DB）と Wrangler（アプリ実行）の併用手順が明文化されている。
 
 以上。
