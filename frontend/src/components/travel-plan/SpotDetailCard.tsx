@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Spot, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, placeTypeMap, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
+import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -269,43 +270,11 @@ export default function SpotDetailCard({
       {index !== -1 && (
         <div className="space-y-3 mb-4" data-testid="spot-transport">
           {spot?.nearestStation && nextSpot.nearestStation && spot.transports?.transportMethod == 4 && (
-            <div className="relative pl-4 border-l-2 border-blue-200 space-y-3" data-testid="spot-station-breakdown">
-              {/* 出発地から最寄駅へ（徒歩） */}
-              <div className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 bg-orange-400 rounded-full" />
-                <div className="flex items-center gap-2 text-sm">
-                  <FootprintsIcon className="w-4 h-4 text-yellow-500" />
-                  <span className="text-gray-600">徒歩 {spot.nearestStation.walkingTime}分</span>
-                  <span className="text-gray-400">→</span>
-                  <span className="font-medium text-orange-600">{spot.nearestStation.name}</span>
-                </div>
-              </div>
-
-              {/* 電車/バスでの移動 */}
-              <div className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 bg-green-400 rounded-full" />
-                <div className="flex items-center gap-2 text-sm">
-                  <Train className="w-4 h-4 text-green-600" />
-                  <span className="text-gray-600">電車/バス {spot.nearestStation.transitTime}分</span>
-                  {activeDepartureTime && (
-                    <p className="text-sm text-gray-400" data-testid="spot-selected-departure-time">
-                      (発車: {activeDepartureTime})
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* 到着駅から最初のスポットへ（徒歩） */}
-              <div className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 bg-blue-400 rounded-full" />
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-blue-600">{nextSpot.nearestStation.name}</span>
-                  <span className="text-gray-400">→</span>
-                  <FootprintsIcon className="w-4 h-4 text-yellow-500" />
-                  <span className="text-gray-600">徒歩 {nextSpot.nearestStation.walkingTime}分</span>
-                </div>
-              </div>
-            </div>
+            <RouteSummaryNearestStation
+              originNearestStation={spot.nearestStation}
+              destinationNearestStation={nextSpot.nearestStation}
+              activeDepartureTime={activeDepartureTime}
+            />
           )}
           {spot.transports && (
             <>

@@ -134,7 +134,7 @@ export const updateTrip = async (c: Context) => {
           stationType: pn.departure.nearestStation?.stationType,
           transitTime: pn.departure.nearestStation?.transitTime,
           scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
-          memo: pn.departure.nearestStation?.transitMemo,
+          memo: pn.departure.nearestStation?.memo,
         })
         .onConflictDoUpdate({
           target: [planLocationNearestStation.planLocationId],
@@ -143,7 +143,7 @@ export const updateTrip = async (c: Context) => {
             stationType: pn.departure.nearestStation?.stationType,
             transitTime: pn.departure.nearestStation?.transitTime,
             scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
-            memo: pn.departure.nearestStation?.transitMemo,
+            memo: pn.departure.nearestStation?.memo,
           },
         });
     }
@@ -183,7 +183,7 @@ export const updateTrip = async (c: Context) => {
           stationType: pn.destination.nearestStation?.stationType,
           transitTime: pn.destination.nearestStation?.transitTime,
           scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
-          memo: pn.destination.nearestStation?.transitMemo,
+          memo: pn.destination.nearestStation?.memo,
         })
         .onConflictDoUpdate({
           target: [planLocationNearestStation.planLocationId],
@@ -192,7 +192,7 @@ export const updateTrip = async (c: Context) => {
             stationType: pn.destination.nearestStation?.stationType,
             transitTime: pn.destination.nearestStation?.transitTime,
             scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
-            memo: pn.destination.nearestStation?.transitMemo,
+            memo: pn.destination.nearestStation?.memo,
           },
         });
     }

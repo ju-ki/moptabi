@@ -12,7 +12,7 @@ type NearestStationDisplay = {
   walkingTime?: number;
   transitTime?: number;
   scheduledDepartureTime?: string;
-  transitMemo?: string;
+  memo?: string;
 };
 
 interface NearestStationDetailProps {
@@ -74,59 +74,65 @@ export function NearestStationDetail({
   }, [resolvedStationName]);
 
   const departureTime = nearestStation.scheduledDepartureTime?.trim() || '--:--';
-  const hasTransitMemo = Boolean(nearestStation.transitMemo?.trim());
+  const hasTransitMemo = Boolean(nearestStation.memo?.trim());
   const containerClassName = className ? `space-y-1 ${className}` : 'space-y-1';
 
   return (
     <div className={containerClassName} data-testid="nearest-station-detail">
       <p className="text-[11px] font-semibold tracking-wide text-gray-500">最寄り駅情報</p>
 
-      <div className="flex items-start gap-2 rounded-md border border-gray-100 bg-white px-2 py-1.5 text-sm text-gray-700">
-        <span
-          className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gray-100"
-          data-testid="nearest-station-type-icon"
-        >
-          {getStationTypeIcon(nearestStation.stationType)}
-        </span>
-        <div className="min-w-0">
-          <p className="text-[11px] text-gray-500">駅名</p>
-          <p className="break-words font-medium leading-5">{stationName}</p>
+      <div className="flex flex-col gap-1.5 rounded-md border border-gray-100 bg-white px-2 py-1.5 text-sm text-gray-700">
+        {/* 駅名情報 */}
+        <div className="flex items-start gap-2">
+          <span
+            className="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-gray-100"
+            data-testid="nearest-station-type-icon"
+          >
+            {getStationTypeIcon(nearestStation.stationType)}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] text-gray-500">駅名</p>
+            <p className="break-words font-medium leading-5">{stationName}</p>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-1 text-xs text-gray-600 sm:grid-cols-2">
-        <span
-          className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
-          data-testid="nearest-station-walking-time"
-        >
-          <span className="font-medium text-gray-700">徒歩{nearestStation.walkingTime ?? '-'}分</span>
-        </span>
-        {showDepartureTime && (
+        {/* 時間情報 - フレックスラップで効率的に表示 */}
+        <div className="flex flex-wrap gap-1 text-xs text-gray-600">
           <span
             className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
-            data-testid="nearest-station-departure-time"
+            data-testid="nearest-station-walking-time"
           >
-            <span className="font-medium text-gray-700">発車 {departureTime}</span>
+            <span className="font-medium text-gray-700">徒歩{nearestStation.walkingTime ?? '-'}分</span>
           </span>
-        )}
-        {showDepartureTime && (
-          <span
-            className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
-            data-testid="nearest-station-transit-time"
-          >
-            <span className="font-medium text-gray-700">乗車 {nearestStation.transitTime ?? '-'}分</span>
-          </span>
+          {showDepartureTime && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
+              data-testid="nearest-station-departure-time"
+            >
+              <span className="font-medium text-gray-700">発車 {departureTime}</span>
+            </span>
+          )}
+          {showDepartureTime && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
+              data-testid="nearest-station-transit-time"
+            >
+              <span className="font-medium text-gray-700">乗車 {nearestStation.transitTime ?? '-'}分</span>
+            </span>
+          )}
+        </div>
+
+        {/* メモ */}
+        {showTransitMemo && hasTransitMemo && (
+          <div className="rounded-md bg-gray-50 px-2 py-1.5">
+            <p className="text-[11px] text-gray-500 mb-1">メモ</p>
+            <p className="line-clamp-2 whitespace-pre-wrap text-xs text-gray-600" data-testid="nearest-station-memo">
+              {nearestStation.memo}
+            </p>
+          </div>
         )}
       </div>
 
-      {showTransitMemo && hasTransitMemo && (
-        <div className="rounded-md bg-gray-50 px-2 py-1.5">
-          <p className="text-[11px] text-gray-500">メモ</p>
-          <p className="line-clamp-2 whitespace-pre-wrap text-xs text-gray-600" data-testid="nearest-station-memo">
-            {nearestStation.transitMemo}
-          </p>
-        </div>
-      )}
       {hasFetchError && (
         <p className="text-xs text-amber-600" data-testid="nearest-station-fetch-error">
           最寄駅情報を取得できませんでした

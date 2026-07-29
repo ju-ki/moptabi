@@ -99,7 +99,7 @@ export default function PlanSpotSettingCard({
     spot.nearestStation?.scheduledDepartureTime || '',
   );
   const [scheduledDepartureTimes, setScheduledDepartureTimes] = useState<string[]>(buildInitialDepartureCandidates());
-  const [transitMemo, setTransitMemo] = useState<string>(spot.nearestStation?.transitMemo || '');
+  const [transitMemo, setTransitMemo] = useState<string>(spot.nearestStation?.memo || '');
 
   const [isStationSectionExpanded, setIsStationSectionExpanded] = useState<boolean>(
     !!spot.nearestStation && !!spot.nearestStation.name,
@@ -232,7 +232,7 @@ export default function PlanSpotSettingCard({
         ...spot,
         nearestStation: {
           ...spot.nearestStation,
-          transitMemo: memo,
+          memo: memo,
         },
       });
     }

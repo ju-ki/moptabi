@@ -640,7 +640,7 @@ describe('SpotDetailCard', () => {
       // SpotDetailCardの現仕様に合わせて文言を検証
       expect(breakdown).toHaveTextContent('徒歩 7分');
       expect(breakdown).toHaveTextContent('神谷町駅');
-      expect(breakdown).toHaveTextContent('電車/バス 12分');
+      expect(breakdown).toHaveTextContent('電車/バス 8分');
       expect(breakdown).toHaveTextContent('発車: 11:00');
       expect(breakdown).toHaveTextContent('浅草駅');
       expect(breakdown).toHaveTextContent('徒歩 5分');
@@ -667,7 +667,7 @@ describe('SpotDetailCard', () => {
       fireEvent.click(screen.getByRole('button', { name: '11:12' }));
 
       expect(onDepartureTimeChange).toHaveBeenCalledWith('11:12');
-      expect(screen.getByTestId('spot-selected-departure-time')).toHaveTextContent('11:12');
+      expect(screen.getByTestId('departure-selected-time')).toHaveTextContent('11:12');
     });
   });
 

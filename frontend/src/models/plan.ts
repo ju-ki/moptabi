@@ -52,6 +52,7 @@ export const PlanSchema = z.object({
           transitTime: z.number().int().min(0).optional(),
           scheduledDepartureTime: z.string().optional(),
           transitMemo: z.string().max(1000, { message: 'メモは1000文 字以内で記載をお願いします' }).optional(),
+          memo: z.string().max(1000, { message: 'メモは1000文 字以内で記載をお願いします' }).optional(),
         })
         .optional(),
     }),

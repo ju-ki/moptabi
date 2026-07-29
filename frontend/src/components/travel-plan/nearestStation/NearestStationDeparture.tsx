@@ -51,7 +51,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
     departureData?.nearestStation?.scheduledDepartureTime || '',
   );
   const [scheduledDepartureTimes, setScheduledDepartureTimes] = useState<string[]>(buildInitialDepartureCandidates());
-  const [transitMemo, setTransitMemo] = useState<string>(departureData?.nearestStation?.transitMemo || '');
+  const [transitMemo, setTransitMemo] = useState<string>(departureData?.nearestStation?.memo || '');
   const [isDepartureSectionExpanded, setIsDepartureSectionExpanded] = useState<boolean>(
     !!departureData?.nearestStation && !!departureData?.nearestStation.name,
   );
@@ -202,7 +202,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
         ...departureData,
         nearestStation: {
           ...departureData.nearestStation,
-          transitMemo: memo,
+          memo: memo,
         },
       });
     }

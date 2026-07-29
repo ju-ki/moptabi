@@ -330,7 +330,7 @@ describe('NearestStationDestination', () => {
       '2026-04-25',
       TransportNodeType.DESTINATION,
       expect.objectContaining({
-        nearestStation: expect.objectContaining({ transitMemo: 'モノレール 羽田空港行き' }),
+        nearestStation: expect.objectContaining({ memo: 'モノレール 羽田空港行き' }),
       }),
     );
   });
