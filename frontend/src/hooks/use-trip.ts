@@ -126,10 +126,10 @@ async function mapPlanLocationToFrontend(
     nearestStation: nearestStation
       ? {
           ...nearestStation,
-          name: defaultLocation.name, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
+          name: nearestStation.name, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
           placeId: nearestStation.placeId ?? '',
-          latitude: defaultLocation.lat, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
-          longitude: defaultLocation.lng, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
+          latitude: nearestStation.latitude ?? 0, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
+          longitude: nearestStation.longitude ?? 0, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
           stationType: nearestStation.stationType ?? 'OTHER',
         }
       : undefined,
