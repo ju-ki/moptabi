@@ -51,7 +51,8 @@ export const PlanSchema = z.object({
           longitude: z.number().min(-180).max(180, { message: '経度は -180 から 180 の範囲で指定してください' }),
           transitTime: z.number().int().min(0).optional(),
           scheduledDepartureTime: z.string().optional(),
-          transitMemo: z.string().max(1000, { message: 'メモは1000文 字以内で記載をお願いします' }).optional(),
+          transitMemo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
+          memo: z.string().max(1000, { message: 'メモは1000文字以内で記載をお願いします' }).optional(),
         })
         .optional(),
     }),

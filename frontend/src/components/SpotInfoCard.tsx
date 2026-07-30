@@ -17,7 +17,7 @@ interface SpotCardProps {
   nextNearestStation?: {
     scheduledDepartureTime?: string;
     transitTime?: number;
-    transitMemo?: string;
+    memo?: string;
   };
   isLastSpot?: boolean;
 }
@@ -30,7 +30,7 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
         scheduledDepartureTime:
           nextNearestStation?.scheduledDepartureTime ?? spot.nearestStation.scheduledDepartureTime,
         transitTime: nextNearestStation?.transitTime ?? spot.nearestStation.transitTime,
-        transitMemo: nextNearestStation?.transitMemo ?? spot.nearestStation.transitMemo,
+        memo: nextNearestStation?.memo ?? spot.nearestStation.memo,
       }
     : undefined;
   const shouldShowTransportTime = Boolean(spot.transports?.travelTime) && !isLastSpot;

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
 
+import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
@@ -90,43 +91,11 @@ export default function DestinationDetailCard({
       {/* 移動手段 */}
       <div className="space-y-3 my-4" data-testid="spot-transport">
         {previousSpot?.nearestStation && destination.nearestStation && destination.transports?.transportMethod == 4 && (
-          <div className="relative pl-4 border-l-2 border-blue-200 space-y-3">
-            {/* 出発地から最寄駅へ（徒歩） */}
-            <div className="relative">
-              <div className="absolute -left-[21px] w-3 h-3 bg-orange-400 rounded-full" />
-              <div className="flex items-center gap-2 text-sm">
-                <FootprintsIcon className="w-4 h-4 text-yellow-500" />
-                <span className="text-gray-600">徒歩 {previousSpot.nearestStation.walkingTime}分</span>
-                <span className="text-gray-400">→</span>
-                <span className="font-medium text-orange-600">{destination.nearestStation.name}</span>
-              </div>
-            </div>
-
-            {/* 電車/バスでの移動 */}
-            <div className="relative">
-              <div className="absolute -left-[21px] w-3 h-3 bg-green-400 rounded-full" />
-              <div className="flex items-center gap-2 text-sm">
-                <Train className="w-4 h-4 text-green-600" />
-                <span className="text-gray-600">電車/バス {previousSpot.nearestStation.transitTime}分</span>
-                {activeDepartureTime && (
-                  <p className="text-sm text-gray-400" data-testid="destination-selected-time">
-                    (発車: {activeDepartureTime})
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* 到着駅から最初のスポットへ（徒歩） */}
-            <div className="relative">
-              <div className="absolute -left-[21px] w-3 h-3 bg-blue-400 rounded-full" />
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-blue-600">{destination.nearestStation.name}</span>
-                <span className="text-gray-400">→</span>
-                <FootprintsIcon className="w-4 h-4 text-yellow-500" />
-                <span className="text-gray-600">徒歩 {destination.nearestStation.walkingTime}分</span>
-              </div>
-            </div>
-          </div>
+          <RouteSummaryNearestStation
+            originNearestStation={previousSpot.nearestStation}
+            destinationNearestStation={destination.nearestStation}
+            activeDepartureTime={activeDepartureTime}
+          />
         )}
         {destination.transports && (
           <>

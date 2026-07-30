@@ -39,21 +39,23 @@ export function DepartureInfoCard({ departure }: DepartureAndDestinationCardProp
 
       <div className="flex-1 min-w-0 pt-2 pb-8">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
               <Home className="w-5 h-5 text-gray-600" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-base font-bold text-gray-900 truncate">{departure.name}</h3>
               {departure.time && <p className="text-sm text-gray-600">出発時刻: {departure.time}</p>}
-              {departure.nearestStation && (
-                <NearestStationDetail
-                  nearestStation={departure.nearestStation}
-                  className="mt-2 w-fit max-w-full rounded-md bg-gray-50 p-2"
-                />
-              )}
             </div>
           </div>
+          {departure.nearestStation && (
+            <div className="text-sm text-gray-600" data-testid="departure-nearest-station">
+              <NearestStationDetail
+                nearestStation={departure.nearestStation}
+                className="w-fit max-w-full rounded-md bg-gray-50 p-2"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

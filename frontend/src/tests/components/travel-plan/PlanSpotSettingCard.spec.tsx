@@ -254,7 +254,7 @@ describe('PlanSpotSettingCard', () => {
     const memoCall = onSettingChange.mock.calls.at(-1)?.[0];
     // nearestStation.scheduledDepartureTime は元の prop 値から変わらない（独立した更新）
     expect(memoCall.nearestStation).toMatchObject({ scheduledDepartureTime: '09:00' });
-    expect(memoCall.nearestStation).toMatchObject({ transitMemo: '山手線 渋谷行き' });
+    expect(memoCall.nearestStation).toMatchObject({ memo: '山手線 渋谷行き' });
   });
 
   // SPEC: PC-PSC-002

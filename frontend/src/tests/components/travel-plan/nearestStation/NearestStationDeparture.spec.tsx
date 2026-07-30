@@ -331,7 +331,7 @@ describe('NearestStationDeparture', () => {
       '2026-04-25',
       TransportNodeType.DEPARTURE,
       expect.objectContaining({
-        nearestStation: expect.objectContaining({ transitMemo: '山手線 渋谷行き' }),
+        nearestStation: expect.objectContaining({ memo: '山手線 渋谷行き' }),
       }),
     );
   });
