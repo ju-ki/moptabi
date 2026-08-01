@@ -3,6 +3,7 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { sql } from 'drizzle-orm';
+import { Context } from 'hono';
 
 import {
   getTripsRoute,
@@ -53,6 +54,7 @@ import {
   createPlanLocationRoute,
   deletePlanLocationRoute,
 } from './routes/planLocation';
+import { getDbFromContext } from './db';
 
 // Cloudflare Workers用のBindings型
 type Bindings = {
@@ -127,14 +129,6 @@ app.use('*', async (c, next) => {
   return corsMiddleware(c, next);
 });
 
-// app.use('*', async (c, next) => {
-//   try {
-//     await next();
-//   } finally {
-//     clearRequestScopeDb();
-//   }
-// });
-
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {
   return c.text('', 204);
@@ -144,9 +138,9 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' }, 200);
 });
 
-app.get('/health/db', async (c) => {
-  // const db = c.get('db');
-  // await db.execute(sql`select 1`);
+app.get('/health/db', async (c: Context) => {
+  const db = getDbFromContext(c);
+  await db.execute(sql`select 1`);
   return c.json({ status: 'ok', db: 'ok' }, 200);
 });
 
