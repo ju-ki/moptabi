@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Spot, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, placeTypeMap, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
+import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -88,9 +89,6 @@ export default function SpotDetailCard({
   const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
     planningResult?.updatedSpots[index]?.routeToNext?.scheduledDepartureTime ?? '',
   );
-  const routeInfo = planningResult?.routes?.find(
-    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
-  );
 
   const selectableDepartureCandidates = useMemo(
     () => departureTimeCandidates.filter((time) => time !== activeDepartureTime),
@@ -101,6 +99,18 @@ export default function SpotDetailCard({
     setActiveDepartureTime(time);
     onDepartureTimeChange?.(time);
   };
+
+  if (!spot) {
+    return (
+      <div className="mb-10 border-b border-gray-300 pb-6 relative" data-testid={`spot-detail-card-${index}`}>
+        <p className="text-gray-500">スポット情報が取得できませんでした。</p>
+      </div>
+    );
+  }
+
+  const routeInfo = planningResult?.routes?.find(
+    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
+  );
 
   return (
     <div
@@ -260,54 +270,22 @@ export default function SpotDetailCard({
       {index !== -1 && (
         <div className="space-y-3 mb-4" data-testid="spot-transport">
           {spot?.nearestStation && nextSpot.nearestStation && spot.transports?.transportMethod == 4 && (
-            <div className="relative pl-4 border-l-2 border-blue-200 space-y-3" data-testid="spot-station-breakdown">
-              {/* 出発地から最寄駅へ（徒歩） */}
-              <div className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 bg-orange-400 rounded-full" />
-                <div className="flex items-center gap-2 text-sm">
-                  <FootprintsIcon className="w-4 h-4 text-yellow-500" />
-                  <span className="text-gray-600">徒歩 {spot.nearestStation.walkingTime}分</span>
-                  <span className="text-gray-400">→</span>
-                  <span className="font-medium text-orange-600">{spot.nearestStation.name}</span>
-                </div>
-              </div>
-
-              {/* 電車/バスでの移動 */}
-              <div className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 bg-green-400 rounded-full" />
-                <div className="flex items-center gap-2 text-sm">
-                  <Train className="w-4 h-4 text-green-600" />
-                  <span className="text-gray-600">電車/バス {spot.nearestStation.transitTime}分</span>
-                  {activeDepartureTime && (
-                    <p className="text-sm text-gray-400" data-testid="spot-selected-departure-time">
-                      (発車: {activeDepartureTime})
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* 到着駅から最初のスポットへ（徒歩） */}
-              <div className="relative">
-                <div className="absolute -left-[21px] w-3 h-3 bg-blue-400 rounded-full" />
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-blue-600">{nextSpot.nearestStation.name}</span>
-                  <span className="text-gray-400">→</span>
-                  <FootprintsIcon className="w-4 h-4 text-yellow-500" />
-                  <span className="text-gray-600">徒歩 {nextSpot.nearestStation.walkingTime}分</span>
-                </div>
-              </div>
-            </div>
+            <RouteSummaryNearestStation
+              originNearestStation={spot.nearestStation}
+              destinationNearestStation={nextSpot.nearestStation}
+              activeDepartureTime={activeDepartureTime}
+            />
           )}
-          {routeInfo && (
+          {spot.transports && (
             <>
               <div className="flex items-center space-x-2 text-gray-600">
-                {transportIcons[routeInfo.transportMethod]?.icon || transportIcons.DEFAULT.icon}
+                {transportIcons[spot.transports.name as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
                 <span>
-                  {transportIcons[routeInfo.transportMethod]?.label || transportIcons.DEFAULT.label} (
+                  {transportIcons[spot.transports.name as TravelModeType]?.label || transportIcons.DEFAULT.label} (
                   {spot.transports.travelTime})
                 </span>
                 <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-                {transportCandidates.length > 0 && (
+                {routeInfo && transportCandidates.length > 0 && (
                   <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
                     {transportCandidates
                       .filter((candidate) => candidate.transportMethodId !== spot.transports.transportMethod)

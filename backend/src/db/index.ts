@@ -11,7 +11,7 @@ import * as relations from './relations';
 const fullSchema = { ...schema, ...relations };
 
 // 環境判定
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
 
 // DB型定義
 type DbType = ReturnType<typeof drizzlePg<typeof fullSchema>>;
@@ -31,15 +31,21 @@ const globalForDb = globalThis as unknown as {
  * Neon Serverless Driverを使用
  */
 export const createDbForWorkers = (databaseUrl: string): DbHttpType => {
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is required');
+  }
   const sql = neon(databaseUrl);
+
+  if (!globalForDb.currentRequestDb) {
+    globalForDb.currentRequestDb = drizzleHttp(sql, { schema: fullSchema });
+  }
   return drizzleHttp(sql, { schema: fullSchema });
 };
 
 /**
- * 開発/テスト環境用のDB作成（node-postgres使用）
+ * ローカル環境やトランザクションが発生する際はこちらを使用（node-postgres使用）
  */
-const createDevDb = (): DbType => {
-  const databaseUrl = process.env.DATABASE_URL;
+export const createDevDb = (databaseUrl: string): DbType => {
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is required');
   }
@@ -52,39 +58,17 @@ const createDevDb = (): DbType => {
 };
 
 /**
- * DBインスタンスを取得
+ * 意図的にPostgreSqlを使いたい場合に使用(対話型等)
+ * 基本はgetDbFromContext
  */
-export const getDb = (): DbType => {
-  if (isProduction) {
-    throw new Error('Use createDbForWorkers in production');
+export const getPostgresDb = (c: Context): AnyDbType => {
+  if (c && c.env && c.env.DATABASE_URL) {
+    return createDevDb(c.env.DATABASE_URL);
   }
 
-  if (!globalForDb.db) {
-    globalForDb.db = createDevDb();
-  }
-  return globalForDb.db;
-};
+  const databaseUrl = process.env.DATABASE_URL || '';
 
-/**
- * 環境に応じてDBインスタンスを取得
- * 本番環境: Cloudflare Workers環境変数からDATABASE_URLを取得してNeon HTTP接続
- * 開発/テスト環境: node-postgres接続
- */
-export const getDbFromEnv = (env?: { DATABASE_URL?: string }): AnyDbType => {
-  if (isProduction) {
-    const databaseUrl = env?.DATABASE_URL;
-    if (!databaseUrl) {
-      // デバッグ用: envの内容を確認
-      const envKeys = env ? Object.keys(env) : [];
-      throw new Error(
-        `DATABASE_URL is required in production. ` +
-          `Available env keys: [${envKeys.join(', ')}]. ` +
-          `Make sure DATABASE_URL is set as a secret in Cloudflare Workers.`,
-      );
-    }
-    return createDbForWorkers(databaseUrl);
-  }
-  return getDb();
+  return createDevDb(databaseUrl);
 };
 
 /**
@@ -93,64 +77,26 @@ export const getDbFromEnv = (env?: { DATABASE_URL?: string }): AnyDbType => {
  * 開発/テスト環境: グローバルな node-postgres 接続を使用
  */
 export const getDbFromContext = (c: Context): AnyDbType => {
-  // コンテキストに既にDBが設定されている場合はそれを返す
-  const existingDb = c.get('db');
-  if (existingDb) {
-    return existingDb as AnyDbType;
-  }
-
-  // 本番環境の場合はenv から取得
-  if (isProduction) {
-    const env = c.env as { DATABASE_URL?: string };
-    return getDbFromEnv(env);
-  }
-
-  // 開発/テスト環境
-  return getDb();
-};
-
-/**
- * リクエストスコープのDBを設定（ミドルウェアから呼び出される）
- */
-export const setRequestScopeDb = (database: AnyDbType): void => {
-  globalForDb.currentRequestDb = database;
-};
-
-/**
- * リクエストスコープのDBをクリア（リクエスト終了時に呼び出される）
- */
-export const clearRequestScopeDb = (): void => {
-  globalForDb.currentRequestDb = undefined;
-};
-
-/**
- * 現在のリクエストスコープのDBを取得
- * サービス層からの後方互換性のあるアクセス用
- */
-export const getCurrentDb = (): AnyDbType => {
-  // 本番環境の場合、リクエストスコープのDBを返す
-  if (isProduction) {
-    if (!globalForDb.currentRequestDb) {
-      throw new Error('Database not initialized. Make sure the request passes through the DB middleware.');
-    }
+  if (globalForDb.currentRequestDb) {
     return globalForDb.currentRequestDb;
   }
-  // 開発/テスト環境の場合、通常のDBを返す
-  return getDb();
-};
 
-// 開発/テスト環境用のデフォルトエクスポート（後方互換性のため）
-// 本番環境ではProxyを使用してリクエストスコープのDBにアクセス
-const createDbProxy = (): DbType => {
-  return new Proxy({} as DbType, {
-    get(_target, prop) {
-      const currentDb = getCurrentDb();
-      return (currentDb as unknown as Record<string | symbol, unknown>)[prop];
-    },
-  });
-};
+  if (c && c.env && c.env.DATABASE_URL) {
+    return createDbForWorkers(c.env.DATABASE_URL);
+  }
 
-export const db: DbType = isProduction ? createDbProxy() : getDb();
+  const databaseUrl = process.env.DATABASE_URL || '';
+
+  if (globalForDb.db) {
+    return globalForDb.db;
+  }
+  // 基本的に本番環境は Cloudflare Workers で動作する想定なので、リクエストスコープのDB接続を返す
+  if (isProduction) {
+    return createDbForWorkers(databaseUrl);
+  }
+
+  return createDevDb(databaseUrl);
+};
 
 // スキーマとリレーションを再エクスポート
 export * from './schema';

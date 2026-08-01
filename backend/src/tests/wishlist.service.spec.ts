@@ -1,12 +1,11 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
+import { createDevDb } from '@db';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 
 import app from '..';
 import {
-  db,
-  eq,
   wishlist,
   connectDb as connectPrisma,
   disconnectDb as disconnectPrisma,
@@ -21,6 +20,7 @@ import {
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_wishlist';
+const db = createDevDb(process.env.DATABASE_URL!);
 
 // 現在の認証ユーザーIDを保持する変数
 let currentUserId: string | null = TEST_USER_ID;
@@ -705,7 +705,7 @@ describe('🧾 行きたいリストサービス', () => {
 
       // カウント実行
       const { countWishListByUserId } = await import('@/services/wishlist');
-      const result = await countWishListByUserId([user1, user2, user3]);
+      const result = await countWishListByUserId(db, [user1, user2, user3]);
 
       // 検証
       expect(result[user1]).toBe(2);
@@ -718,7 +718,7 @@ describe('🧾 行きたいリストサービス', () => {
       await createTestUser(userWithoutWishlist);
 
       const { countWishListByUserId } = await import('@/services/wishlist');
-      const result = await countWishListByUserId([userWithoutWishlist]);
+      const result = await countWishListByUserId(db, [userWithoutWishlist]);
 
       // wishlistが0件の場合は結果オブジェクトに含まれない
       expect(result[userWithoutWishlist]).toBeUndefined();
@@ -727,7 +727,7 @@ describe('🧾 行きたいリストサービス', () => {
 
     it('空の配列を渡した場合、空のオブジェクトを返すこと', async () => {
       const { countWishListByUserId } = await import('@/services/wishlist');
-      const result = await countWishListByUserId([]);
+      const result = await countWishListByUserId(db, []);
 
       expect(result).toEqual({});
       expect(Object.keys(result).length).toBe(0);
@@ -767,7 +767,7 @@ describe('🧾 行きたいリストサービス', () => {
 
       // targetUserのみを指定してカウント
       const { countWishListByUserId } = await import('@/services/wishlist');
-      const result = await countWishListByUserId([targetUser]);
+      const result = await countWishListByUserId(db, [targetUser]);
 
       // 検証: targetUserのみが含まれ、otherUserは含まれない
       expect(result[targetUser]).toBe(1);
@@ -798,7 +798,7 @@ describe('🧾 行きたいリストサービス', () => {
       }
 
       const { countWishListByUserId } = await import('@/services/wishlist');
-      const result = await countWishListByUserId([userWithMany]);
+      const result = await countWishListByUserId(db, [userWithMany]);
 
       expect(result[userWithMany]).toBe(5);
     });
@@ -875,7 +875,7 @@ describe('🧾 行きたいリストサービス', () => {
 
       // (5月:2件, 4月:1件)
       //行きたいリストの総数の期待値は合計で3件、増減数としては5月は合計+2件
-      const stats = await getTotalWishlistAndIncreaseAndDecrease();
+      const stats = await getTotalWishlistAndIncreaseAndDecrease(db);
 
       expect(stats.totalWishlist).toBe(3);
       expect(stats.wishlistIncreaseFromLastMonth).toBe(2);
@@ -919,8 +919,8 @@ describe('🧾 行きたいリストサービス', () => {
       const placeId = 'wishlist_response_check_001';
 
       // 直接DBにspot+wishlistを作成（SpotMetaなし）
-      const { db: testDb, wishlist: wishlistTable } = await import('@db');
-      await testDb.insert(wishlistTable).values({
+      const { wishlist: wishlistTable } = await import('@db');
+      await db.insert(wishlistTable).values({
         spotId: placeId,
         userId: TEST_USER_ID,
         memo: 'テスト',

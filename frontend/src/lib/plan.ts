@@ -126,6 +126,12 @@ function copyLinkedLocationPreservingTime(
   };
 }
 
+type SpotCoordinationResult = {
+  departureCoordination: Spot | undefined;
+  destinationCoordination: Spot | undefined;
+  spotCoordination: Spot[];
+};
+
 interface FormState {
   id?: number;
   title: string;
@@ -172,6 +178,7 @@ interface FormState {
   setIsLocationLinked: (isLinked: boolean) => void;
   getPlanInfo: (date: string) => TravelPlanType | undefined;
   setPlanInfo: (date: string, info: TravelPlanType) => void;
+  deletePlanInfo: (date: string[]) => void;
   getSpotInfo: (date: string, type: TransportNodeType | null) => Spot[];
   simulationStatus: { date: string; status: number }[] | null;
   setSimulationStatus: (status: { date: string; status: number }) => void;
@@ -179,7 +186,6 @@ interface FormState {
   setDepartureAndDestination: (date: string, type: TransportNodeType, value: DepartureAndDestinationType) => void;
   setSpots: (date: string, spot: Spot, isDeleted: boolean) => void;
   editSpots: (date: string, spotId: string, updatedSpot: Partial<Spot>) => void;
-  getSortedSpots: (date: string) => Spot[];
   getFields: <K extends keyof FormState>(field: K) => FormState[K];
   setFields: <K extends keyof FormState>(field: K, value: FormState[K]) => void;
   setErrors: (errors: Partial<Record<keyof FormData, string>>) => void;
@@ -187,7 +193,7 @@ interface FormState {
   getPlanErrors: (date: string) => Partial<Record<PlanErrorType, string>> | undefined;
   setPlanErrors: (date: string, errors: Partial<Record<PlanErrorType, string>>) => void;
   setRangeDate: (date: { from: string | undefined; to: string | undefined } | undefined) => void;
-  getSpotCoordination: (date: string) => Record<string, Spot>;
+  getSpotCoordination: (date: string) => SpotCoordinationResult | undefined;
   /** 新規日付を追加。既存の日付は変更せず、新規日付にのみデフォルト値を設定 */
   addDateWithDefaultLocation: (
     date: string,
@@ -336,6 +342,24 @@ export const useStoreForPlanning = create<FormState>()(
           state.plans[existingPlansIndex] = info;
         });
       },
+      deletePlanInfo: (date) => {
+        set((state) => {
+          state.plans = state.plans.filter((plan) => !date.includes(plan.date));
+          // プラン削除に伴い、日付に紐づく関連データも削除
+          date.forEach((d) => {
+            delete state.planningInfo[d];
+            delete state.planningResults[d];
+            delete state.planningSpotSnapshots[d];
+            delete state.dirtyPlanningDates[d];
+            delete state.planErrors[d];
+            delete state.spotErrors[d];
+          });
+          if (state.simulationStatus) {
+            state.simulationStatus = state.simulationStatus.filter((s) => !date.includes(s.date));
+            if (state.simulationStatus.length === 0) state.simulationStatus = null;
+          }
+        });
+      },
       setDepartureAndDestination: (date, type, value) => {
         set((state) => {
           // 日数を計算
@@ -429,6 +453,8 @@ export const useStoreForPlanning = create<FormState>()(
             ? get().plans.filter((val) => val.date == date)[0].destination
             : DEFAULT_DEPARTURE_AND_DESTINATION;
         }
+
+        return DEFAULT_DEPARTURE_AND_DESTINATION;
       },
       setSpots: (date, spot, isDeleted = false) => {
         set((state) => {

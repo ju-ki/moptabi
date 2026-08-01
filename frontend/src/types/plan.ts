@@ -47,7 +47,7 @@ export type NearestStation = {
   waitingTime?: number;
   distance?: number; // メートル
   /** 路線名や行き先などのメモ */
-  transitMemo?: string;
+  memo?: string;
   /** 移動手段 */
   transportMethodId?: number;
 };

@@ -26,6 +26,7 @@ const config = [
       '**/generated/',
       '**/dist/',
       '**/node_modules/',
+      '**/.wrangler/',
     ],
   },
   {

@@ -1,6 +1,5 @@
 import { eq, lt, count, sql, inArray, and, not } from 'drizzle-orm';
 import {
-  db,
   trip,
   plan,
   planLocation,
@@ -9,6 +8,7 @@ import {
   planSpotNearestStation,
   transport,
   userLocation,
+  AnyDbType,
 } from '@db';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
@@ -27,7 +27,7 @@ const DEFAULT_DESTINATION_TIME = '18:00';
  * @param userIds clerkに登録されているuserIdの配列
  * @returns ユーザーIDをキー、旅行プランの数を値とするオブジェクト
  */
-export const countPlanByUserId = async (userIds: string[]) => {
+export const countPlanByUserId = async (db: AnyDbType, userIds: string[]) => {
   if (userIds.length === 0) {
     return {};
   }
@@ -49,7 +49,7 @@ export const countPlanByUserId = async (userIds: string[]) => {
   return countMap;
 };
 
-export const updateTrip = async (c: Context) => {
+export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
   const userId = getUserId(c);
   const tripId = parseInt(c.req.param('id'));
   if (!userId) {
@@ -71,7 +71,11 @@ export const updateTrip = async (c: Context) => {
   }
 
   // tripIdに紐づく旅行プランの更新者が現在のユーザーであることを確認
-  const existingTrip = await db.select({ userId: trip.userId }).from(trip).where(eq(trip.id, tripId)).limit(1);
+  const existingTrip = await transactionDb
+    .select({ userId: trip.userId })
+    .from(trip)
+    .where(eq(trip.id, tripId))
+    .limit(1);
   if (existingTrip.length === 0) {
     throw new HTTPException(404, { message: 'Trip not found' });
   }
@@ -82,9 +86,9 @@ export const updateTrip = async (c: Context) => {
   const tripData = result.data;
 
   // 上限チェック
-  await validateLimit(userId, tripData);
+  await validateLimit(transactionDb, userId, tripData);
 
-  await db.transaction(async (tx) => {
+  await transactionDb.transaction(async (tx) => {
     await tx
       .update(trip)
       .set({ ...tripData })
@@ -129,7 +133,7 @@ export const updateTrip = async (c: Context) => {
             stationType: pn.departure.nearestStation?.stationType,
             transitTime: pn.departure.nearestStation?.transitTime,
             scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
-            memo: pn.departure.nearestStation?.transitMemo,
+            memo: pn.departure.nearestStation?.memo,
           })
           .onConflictDoUpdate({
             target: [planLocationNearestStation.planLocationId],
@@ -138,7 +142,7 @@ export const updateTrip = async (c: Context) => {
               stationType: pn.departure.nearestStation?.stationType,
               transitTime: pn.departure.nearestStation?.transitTime,
               scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
-              memo: pn.departure.nearestStation?.transitMemo,
+              memo: pn.departure.nearestStation?.memo,
             },
           });
       }
@@ -178,7 +182,7 @@ export const updateTrip = async (c: Context) => {
             stationType: pn.destination.nearestStation?.stationType,
             transitTime: pn.destination.nearestStation?.transitTime,
             scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
-            memo: pn.destination.nearestStation?.transitMemo,
+            memo: pn.destination.nearestStation?.memo,
           })
           .onConflictDoUpdate({
             target: [planLocationNearestStation.planLocationId],
@@ -187,7 +191,7 @@ export const updateTrip = async (c: Context) => {
               stationType: pn.destination.nearestStation?.stationType,
               transitTime: pn.destination.nearestStation?.transitTime,
               scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
-              memo: pn.destination.nearestStation?.transitMemo,
+              memo: pn.destination.nearestStation?.memo,
             },
           });
       }
@@ -479,7 +483,6 @@ export const updateTrip = async (c: Context) => {
       }
     }
   });
-
   return { id: tripId };
 };
 
@@ -487,7 +490,7 @@ export const updateTrip = async (c: Context) => {
  * 総プラン数と前月からの増減数、平均旅程数を取得
  * @returns プラン統計情報
  */
-export const getTripStatistics = async () => {
+export const getTripStatistics = async (db: AnyDbType) => {
   // プランの総数を取得
   const [totalResult] = await db.select({ count: count() }).from(trip);
   const totalPlans = totalResult?.count ?? 0;

@@ -416,7 +416,7 @@ describe('SpotInfoCard', () => {
           longitude: 139.7485,
           transitTime: 3,
           scheduledDepartureTime: '08:00',
-          transitMemo: '現在スポット側メモ',
+          memo: '現在スポット側メモ',
         },
       });
 
@@ -430,7 +430,7 @@ describe('SpotInfoCard', () => {
             walkingTime: 7,
             transitTime: 21,
             scheduledDepartureTime: '11:45',
-            transitMemo: '次スポット側メモ',
+            memo: '次スポット側メモ',
           }}
         />,
       );
@@ -450,7 +450,7 @@ describe('SpotInfoCard', () => {
           latitude: 35.6565,
           longitude: 139.7485,
           transitTime: 10,
-          transitMemo: '',
+          memo: '',
         },
       });
 
@@ -469,7 +469,7 @@ describe('SpotInfoCard', () => {
           latitude: 35.6565,
           longitude: 139.7485,
           transitTime: 10,
-          transitMemo: '1番線\n後方車両が近い',
+          memo: '1番線\n後方車両が近い',
         },
       });
 

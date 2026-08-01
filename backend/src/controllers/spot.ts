@@ -29,7 +29,7 @@ export const getUnvisitedSpots = async (c: Context) => {
     sortOrder: (c.req.query('sortOrder') as 'asc' | 'desc') || 'desc',
   };
 
-  const spots = await fetchUnvisitedWishlistSpots(userId, query);
+  const spots = await fetchUnvisitedWishlistSpots(db, userId, query);
   return c.json(spots, 200);
 };
 
@@ -56,7 +56,7 @@ export const getVisitedSpots = async (c: Context) => {
     sortOrder: (c.req.query('sortOrder') as 'asc' | 'desc') || 'desc',
   };
 
-  const spots = await fetchVisitedSpots(userId, query);
+  const spots = await fetchVisitedSpots(db, userId, query);
   return c.json(spots, 200);
 };
 

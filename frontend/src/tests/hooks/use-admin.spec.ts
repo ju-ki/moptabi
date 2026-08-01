@@ -70,7 +70,8 @@ describe('useAdminData', () => {
 
       const { result } = renderHook(() => useAdminData());
 
-      expect(result.current.isLoading).toBe(true);
+      // 課題301:セッションが読み込まれていない場合はそもそも通信が行われないため、isLoading は false になる
+      expect(result.current.isLoading).toBe(false);
     });
 
     it('SWR ロード中は isLoading が true になること', () => {

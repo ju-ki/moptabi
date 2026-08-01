@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import MyPage from '@/app/mypage/page';
 import { ProfileSection } from '@/components/mypage/ProfileSection';
@@ -9,11 +9,15 @@ import { UsageStatus } from '@/components/mypage/UsageStatus';
 import { RecentTrips } from '@/components/mypage/RecentTrips';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
+const mockSignOut = vi.fn();
+const mockToast = vi.fn();
+
 // NextAuthのモック
 vi.mock('next-auth/react', async () => {
   const actual = await vi.importActual('next-auth/react');
   return {
     ...actual,
+    signOut: (...args: unknown[]) => mockSignOut(...args),
     useSession: () => ({
       data: {
         user: {
@@ -29,6 +33,12 @@ vi.mock('next-auth/react', async () => {
     SessionProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });
+
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: mockToast,
+  }),
+}));
 
 function renderWithProviders(ui: React.ReactElement) {
   return render(<TooltipProvider>{ui}</TooltipProvider>);
@@ -83,6 +93,8 @@ vi.mock('swr', () => ({
 describe('マイページ', () => {
   beforeEach(() => {
     mockUseMypageData.mockReset();
+    mockSignOut.mockReset();
+    mockToast.mockReset();
   });
 
   describe('MyPage ページコンポーネント', () => {
@@ -150,6 +162,61 @@ describe('マイページ', () => {
       renderWithProviders(<MyPage />);
       expect(screen.getByText('マイページ')).toBeInTheDocument();
       expect(screen.getByText('京都日帰り旅行')).toBeInTheDocument();
+    });
+
+    it('ログアウト押下でトップへ遷移するredirectTo付きsignOutが呼ばれる', async () => {
+      mockUseMypageData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        nextTrip: null,
+        visitedCount: 0,
+        wishlistCount: 0,
+        totalTripDays: 0,
+        planCount: 0,
+        planLimit: 20,
+        wishlistLimit: 100,
+        wishlistTotalCount: 0,
+        userLocations: [],
+        recentTrips: [],
+      });
+      mockSignOut.mockResolvedValue(undefined);
+
+      renderWithProviders(<MyPage />);
+      fireEvent.click(screen.getByRole('button', { name: 'ログアウト' }));
+
+      await waitFor(() => {
+        expect(mockSignOut).toHaveBeenCalledWith({ redirectTo: '/' });
+      });
+    });
+
+    it('ログアウト失敗時はエラートーストを表示する', async () => {
+      mockUseMypageData.mockReturnValue({
+        isLoading: false,
+        error: null,
+        nextTrip: null,
+        visitedCount: 0,
+        wishlistCount: 0,
+        totalTripDays: 0,
+        planCount: 0,
+        planLimit: 20,
+        wishlistLimit: 100,
+        wishlistTotalCount: 0,
+        userLocations: [],
+        recentTrips: [],
+      });
+      mockSignOut.mockRejectedValue(new Error('signout failed'));
+
+      renderWithProviders(<MyPage />);
+      fireEvent.click(screen.getByRole('button', { name: 'ログアウト' }));
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'ログアウトに失敗しました',
+            variant: 'destructive',
+          }),
+        );
+      });
     });
   });
 

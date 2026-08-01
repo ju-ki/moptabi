@@ -41,7 +41,7 @@ export type UseNotificationReturn = {
  * - エラーハンドリング
  */
 export function useNotification(): UseNotificationReturn {
-  const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
+  const { getFetcher, isAuthenticated, isSessionLoading, getAuthHeaders } = useFetcher();
 
   // セッションが確立されている場合のみAPIリクエストを発行
   const shouldFetch = isAuthenticated && !isSessionLoading;
@@ -89,9 +89,8 @@ export function useNotification(): UseNotificationReturn {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/${id}/read`, {
           method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${'token'}`,
-          },
+          headers: getAuthHeaders(),
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -124,9 +123,8 @@ export function useNotification(): UseNotificationReturn {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/notification/read-all`, {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${'token'}`,
-        },
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
 
       if (!response.ok) {

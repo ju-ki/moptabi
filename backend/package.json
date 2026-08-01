@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --hot src/dev.ts",
-    "dev:wrangler": "wrangler dev src/index.ts",
+    "wrangler:dev": "wrangler dev src/index.ts --port 8787",
     "typecheck": "bunx tsc --noEmit",
     "lint": "eslint .",
     "fix": "eslint . --fix",

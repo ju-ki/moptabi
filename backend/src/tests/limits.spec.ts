@@ -5,7 +5,6 @@ import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 
 import app from '..';
 import {
-  connectDb as connectPrisma,
   disconnectDb as disconnectPrisma,
   clearUserTestData as clearTestDataForUser,
   createTestUser,
@@ -33,7 +32,6 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 beforeAll(async () => {
-  await connectPrisma();
   await clearTestDataForUser(TEST_USER_ID);
   await createTestUser(TEST_USER_ID);
 });
