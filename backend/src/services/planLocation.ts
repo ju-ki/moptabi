@@ -1,6 +1,6 @@
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 
-import { db, plan, planLocation, trip, userLocation } from '@/db';
+import { plan, planLocation, trip, userLocation } from '@/db';
 import type { AnyDbType } from '@/db';
 import { CreatePlanLocationType, LocationType } from '@/models/planLocation';
 
@@ -32,6 +32,7 @@ function defaultTimeByLocationType(locationType: LocationType): string {
  * @returns { favorites: UserLocation[], history: PlanLocation[] }
  */
 export async function getPlanLocationCandidates(
+  database: AnyDbType,
   databaseOrUserId: AnyDbType | string,
   userIdOrOptions?:
     | string
@@ -46,7 +47,7 @@ export async function getPlanLocationCandidates(
     limit?: number;
   },
 ) {
-  const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
+  // const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
   const userId = hasSelect(databaseOrUserId) ? (userIdOrOptions as string) : (databaseOrUserId as string);
   const options = hasSelect(databaseOrUserId)
     ? maybeOptions
@@ -114,11 +115,11 @@ export async function getPlanLocationCandidates(
  * @param data 作成/更新データ
  */
 export async function createOrUpdatePlanLocation(
+  database: AnyDbType,
   databaseOrUserId: AnyDbType | string,
   userIdOrData: string | CreatePlanLocationType,
   maybeData?: CreatePlanLocationType,
 ) {
-  const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
   const userId = hasSelect(databaseOrUserId) ? (userIdOrData as string) : (databaseOrUserId as string);
   const data = hasSelect(databaseOrUserId)
     ? (maybeData as CreatePlanLocationType)
@@ -160,14 +161,9 @@ export async function createOrUpdatePlanLocation(
  * PlanLocationを削除
  * @returns 削除された地点、または存在しない/権限がない場合はnull
  */
-export async function deletePlanLocation(
-  databaseOrUserId: AnyDbType | string,
-  userIdOrId: string | number,
-  maybeId?: number,
-) {
-  const database = hasSelect(databaseOrUserId) ? databaseOrUserId : db;
-  const userId = hasSelect(databaseOrUserId) ? (userIdOrId as string) : (databaseOrUserId as string);
-  const id = hasSelect(databaseOrUserId) ? (maybeId as number) : (userIdOrId as number);
+export async function deletePlanLocation(database: AnyDbType, userIdOrId: string | number, maybeId?: number) {
+  const userId = userIdOrId as string;
+  const id = maybeId as number;
 
   // 自分の地点かどうか確認
   const existing = await database

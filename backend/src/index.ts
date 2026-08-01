@@ -3,7 +3,7 @@ import { OpenAPIHono } from '@hono/zod-openapi';
 import { cors } from 'hono/cors';
 import { HTTPException } from 'hono/http-exception';
 import { sql } from 'drizzle-orm';
-import { getDbFromEnv, setRequestScopeDb, clearRequestScopeDb } from '@db/index';
+import { Context } from 'hono';
 
 import {
   getTripsRoute,
@@ -54,6 +54,7 @@ import {
   createPlanLocationRoute,
   deletePlanLocationRoute,
 } from './routes/planLocation';
+import { getDbFromContext } from './db';
 
 // Cloudflare Workers用のBindings型
 type Bindings = {
@@ -63,12 +64,7 @@ type Bindings = {
   ALLOWED_ORIGIN_SUFFIXES?: string;
 };
 
-// DBをContextに追加する型
-type Variables = {
-  db: ReturnType<typeof getDbFromEnv>;
-};
-
-const app = new OpenAPIHono<{ Bindings: Bindings; Variables: Variables }>().basePath('/api');
+const app = new OpenAPIHono<{ Bindings: Bindings }>().basePath('/api');
 
 const defaultAllowedOrigins = [
   'https://moptabi.moptabi.workers.dev', // 本番用
@@ -133,20 +129,6 @@ app.use('*', async (c, next) => {
   return corsMiddleware(c, next);
 });
 
-// DBミドルウェア：リクエストごとにDB接続を設定
-app.use('*', async (c, next) => {
-  const db = getDbFromEnv(c.env);
-  c.set('db', db);
-  // リクエストスコープのDBを設定（サービス層からのアクセス用）
-  setRequestScopeDb(db);
-  try {
-    await next();
-  } finally {
-    // リクエスト終了時にDBをクリア
-    clearRequestScopeDb();
-  }
-});
-
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {
   return c.text('', 204);
@@ -156,8 +138,8 @@ app.get('/health', (c) => {
   return c.json({ status: 'ok' }, 200);
 });
 
-app.get('/health/db', async (c) => {
-  const db = c.get('db');
+app.get('/health/db', async (c: Context) => {
+  const db = getDbFromContext(c);
   await db.execute(sql`select 1`);
   return c.json({ status: 'ok', db: 'ok' }, 200);
 });
@@ -248,7 +230,6 @@ app
   .get('/doc', swaggerUI({ url: '/api/specification' }));
 
 app.onError((error: Error, c) => {
-  console.log(error.message);
   const resolvedOrigin = resolveAllowedOrigin(c.req.header('Origin'), c.env);
 
   const withCorsHeaders = (response: Response): Response => {
@@ -266,6 +247,7 @@ app.onError((error: Error, c) => {
   const runtimeNodeEnv = c.env?.NODE_ENV ?? process.env.NODE_ENV;
   const isDevelopment = runtimeNodeEnv === 'development';
   const message = error.message;
+  console.error(`Error occurred: ${message}`);
   return withCorsHeaders(c.text(message, 500));
 });
 

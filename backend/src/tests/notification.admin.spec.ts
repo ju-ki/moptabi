@@ -3,7 +3,6 @@ import { testClient } from 'hono/testing';
 
 import app from '..';
 import {
-  db,
   notification,
   userNotification,
   connectDb as connectPrisma,

@@ -2,10 +2,10 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } 
 import { testClient } from 'hono/testing';
 
 import { TripSchema } from '@/models/trip';
+import { createDevDb } from '@/db';
 
 import app from '..';
 import {
-  db,
   eq,
   plan,
   planLocation,
@@ -21,6 +21,7 @@ import { createAuthHeaders, createSpotData, TEST_USER_ID } from './test-client';
 import { mockPlanData, mockPlanDataWithNearestStation, mockTripData, spotId } from './libs/data';
 
 let currentUserId: string | null = TEST_USER_ID;
+const db = createDevDb(process.env.DATABASE_URL!);
 
 beforeAll(async () => {
   await clearAllTestData();
@@ -1074,7 +1075,7 @@ describe('旅行計画サービス', () => {
 
       // カウント実行
       const { countPlanByUserId } = await import('@/services/trip');
-      const result = await countPlanByUserId([user1, user2, user3]);
+      const result = await countPlanByUserId(db, [user1, user2, user3]);
 
       // 検証
       expect(result[user1]).toBe(2);
@@ -1087,7 +1088,7 @@ describe('旅行計画サービス', () => {
       await createTestUser(userWithoutTrip);
 
       const { countPlanByUserId } = await import('@/services/trip');
-      const result = await countPlanByUserId([userWithoutTrip]);
+      const result = await countPlanByUserId(db, [userWithoutTrip]);
 
       // 旅行プランが0件の場合は結果オブジェクトに含まれない
       expect(result[userWithoutTrip]).toBeUndefined();
@@ -1096,7 +1097,7 @@ describe('旅行計画サービス', () => {
 
     it('空の配列を渡した場合、空のオブジェクトを返すこと', async () => {
       const { countPlanByUserId } = await import('@/services/trip');
-      const result = await countPlanByUserId([]);
+      const result = await countPlanByUserId(db, []);
 
       expect(result).toEqual({});
       expect(Object.keys(result).length).toBe(0);
@@ -1136,7 +1137,7 @@ describe('旅行計画サービス', () => {
 
       // targetUserのみを指定してカウント
       const { countPlanByUserId } = await import('@/services/trip');
-      const result = await countPlanByUserId([targetUser]);
+      const result = await countPlanByUserId(db, [targetUser]);
 
       // 検証: targetUserのみが含まれ、otherUserは含まれない
       expect(result[targetUser]).toBe(1);
@@ -1165,7 +1166,7 @@ describe('旅行計画サービス', () => {
       }
 
       const { countPlanByUserId } = await import('@/services/trip');
-      const result = await countPlanByUserId([userWithMany]);
+      const result = await countPlanByUserId(db, [userWithMany]);
 
       expect(result[userWithMany]).toBe(5);
     });
@@ -1223,7 +1224,7 @@ describe('旅行計画サービス', () => {
       // 1件 + 3件 = 合計4件の旅程
       // 期待値としては、総プラン数4、前月比増減数2、平均旅程数の割合8/4=2となるはず
       const { getTripStatistics } = await import('@/services/trip');
-      const stats = await getTripStatistics();
+      const stats = await getTripStatistics(db);
 
       expect(stats.totalPlans).toBe(2);
       expect(stats.planIncreaseFromLastMonth).toBe(2);
@@ -1277,7 +1278,7 @@ describe('旅行計画サービス', () => {
       // 1件 + 3件 = 合計4件の旅程
       // 期待値としては、総プラン数4、前月比増減数4、平均旅程数の割合8/4=2となるはず
       const { getTripStatistics } = await import('@/services/trip');
-      const stats = await getTripStatistics();
+      const stats = await getTripStatistics(db);
 
       expect(stats.totalPlans).toBe(4);
       expect(stats.planIncreaseFromLastMonth).toBe(4);

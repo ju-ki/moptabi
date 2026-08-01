@@ -1,5 +1,5 @@
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { db, wishlist } from '@db';
+import { wishlist, AnyDbType } from '@db';
 
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
 
@@ -13,6 +13,7 @@ import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
  * @param query フィルター・ソートパラメータ
  */
 export async function getUnvisitedWishlistSpots(
+  db: AnyDbType,
   userId: string,
   query: UnvisitedSpotsQuery = { sortBy: 'priority', sortOrder: 'desc' },
 ) {
@@ -62,6 +63,7 @@ export async function getUnvisitedWishlistSpots(
  * @param query フィルター・ソートパラメータ
  */
 export async function getVisitedSpots(
+  db: AnyDbType,
   userId: string,
   query: VisitedSpotsQuery = { sortBy: 'visitedAt', sortOrder: 'desc' },
 ) {

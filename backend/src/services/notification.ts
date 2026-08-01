@@ -1,7 +1,7 @@
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 import { eq, and, lte, count, desc, asc } from 'drizzle-orm';
-import { notification, userNotification, user, getDbFromContext } from '@db';
+import { notification, userNotification, user, AnyDbType } from '@db';
 
 import { NotificationCreate, NotificationUpdate } from '@/models/notification';
 import { getUserId } from '@/middleware/auth';
@@ -25,8 +25,7 @@ const toISOWithZ = (timestamp: string | null | undefined): string | null => {
 /**
  * お知らせ一覧を取得
  */
-export async function getNotifications(c: Context) {
-  const db = getDbFromContext(c);
+export async function getNotifications(db: AnyDbType, c: Context) {
   const userId = getUserId(c);
   const now = new Date().toISOString();
 
@@ -62,8 +61,7 @@ export async function getNotifications(c: Context) {
 /**
  * 未読件数を取得
  */
-export async function getUnreadCount(c: Context) {
-  const db = getDbFromContext(c);
+export async function getUnreadCount(db: AnyDbType, c: Context) {
   const userId = getUserId(c);
   const now = new Date();
 
@@ -86,8 +84,7 @@ export async function getUnreadCount(c: Context) {
 /**
  * 指定したお知らせを既読にする
  */
-export async function markAsRead(c: Context, notificationId: number) {
-  const db = getDbFromContext(c);
+export async function markAsRead(db: AnyDbType, c: Context, notificationId: number) {
   const userId = getUserId(c);
 
   const [existing] = await db
@@ -114,8 +111,7 @@ export async function markAsRead(c: Context, notificationId: number) {
 /**
  * 全ての未読お知らせを既読にする
  */
-export async function markAllAsRead(c: Context) {
-  const db = getDbFromContext(c);
+export async function markAllAsRead(db: AnyDbType, c: Context) {
   const userId = getUserId(c);
 
   const result = await db
@@ -136,9 +132,8 @@ export async function markAllAsRead(c: Context) {
 /**
  * お知らせを作成する（管理者向け）
  */
-export async function createNotification(c: Context, data: NotificationCreate) {
+export async function createNotification(db: AnyDbType, c: Context, data: NotificationCreate) {
   getUserId(c);
-  const db = getDbFromContext(c);
 
   // 全ユーザーのIDを取得
   const users = await db.select({ id: user.id }).from(user);
@@ -182,8 +177,7 @@ export async function createNotification(c: Context, data: NotificationCreate) {
 /**
  * お知らせを更新する（管理者向け）
  */
-export async function updateNotification(c: Context, notificationId: number, data: NotificationUpdate) {
-  const db = getDbFromContext(c);
+export async function updateNotification(db: AnyDbType, c: Context, notificationId: number, data: NotificationUpdate) {
   getUserId(c);
 
   // 存在確認
@@ -245,9 +239,8 @@ export async function updateNotification(c: Context, notificationId: number, dat
 /**
  * お知らせを削除する（管理者向け）
  */
-export async function deleteNotification(c: Context, notificationId: number) {
+export async function deleteNotification(db: AnyDbType, c: Context, notificationId: number) {
   getUserId(c);
-  const db = getDbFromContext(c);
 
   const [existing] = await db.select().from(notification).where(eq(notification.id, notificationId)).limit(1);
 
@@ -266,9 +259,8 @@ export async function deleteNotification(c: Context, notificationId: number) {
 /**
  * 管理者向けお知らせ一覧を取得
  */
-export async function getAdminNotifications(c: Context) {
+export async function getAdminNotifications(db: AnyDbType, c: Context) {
   const userId = getUserId(c);
-  const db = getDbFromContext(c);
 
   // 管理者権限チェック
   const [targetUser] = await db.select().from(user).where(eq(user.id, userId)).limit(1);

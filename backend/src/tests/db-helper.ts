@@ -4,7 +4,6 @@
  */
 import { eq, inArray, like, not, and } from 'drizzle-orm';
 import {
-  db,
   user,
   trip,
   plan,
@@ -17,10 +16,8 @@ import {
   planLocation,
   planLocationNearestStation,
   planSpotNearestStation,
+  createDevDb,
 } from '@db';
-
-// DBインスタンスを再エクスポート
-export { db };
 
 // スキーマを再エクスポート
 export {
@@ -59,6 +56,7 @@ export async function disconnectDb(): Promise<void> {
  * 全テストデータを削除（外部キー制約を考慮した順序）
  */
 export async function clearAllTestData(): Promise<void> {
+  const db = createDevDb(process.env.DATABASE_URL!); // 開発用DBインスタンスを取得
   try {
     await db.delete(transport);
     await db.delete(planSpotNearestStation);
@@ -83,6 +81,7 @@ export async function clearAllTestData(): Promise<void> {
 export async function clearUserTestData(userId: string, deleteSpots: boolean | string = false): Promise<void> {
   try {
     // Trip関連のIDを取得
+    const db = createDevDb(process.env.DATABASE_URL!);
     const trips = await db.select({ id: trip.id }).from(trip).where(eq(trip.userId, userId));
     const tripIds = trips.map((t) => t.id);
 
@@ -137,6 +136,7 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
  * テストユーザーを作成または取得
  */
 export async function createTestUser(userId: string, role: 'ADMIN' | 'USER' | 'GUEST' = 'USER') {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const existing = await db.select().from(user).where(eq(user.id, userId)).limit(1);
   if (existing.length > 0) {
     return existing[0];
@@ -156,6 +156,7 @@ export async function createUserWithDetails(data: {
   lastLoginAt?: Date;
   image?: string;
 }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(user)
     .values({
@@ -174,6 +175,7 @@ export async function createUserWithDetails(data: {
  * テスト用ユーザーを除外IDリスト以外削除
  */
 export async function deleteUsersExcept(excludeIds: string[]) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(user).where(not(inArray(user.id, excludeIds)));
 }
 
@@ -241,6 +243,7 @@ export async function createWishlistEntry(params: {
   visitedAt?: Date | null;
 }) {
   const { spotId, userId, memo = null, priority = 1, visited = 0, visitedAt = null } = params;
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(wishlist)
     .values({
@@ -259,6 +262,7 @@ export async function createWishlistEntry(params: {
  * Tripを作成
  */
 export async function createTrip(data: { title: string; userId: string; startDate?: string; endDate?: string }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(trip)
     .values({
@@ -275,6 +279,7 @@ export async function createTrip(data: { title: string; userId: string; startDat
  * Planを作成
  */
 export async function createPlan(data: { tripId: number; date: string }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(plan)
     .values({
@@ -297,6 +302,7 @@ export async function createPlanSpot(data: {
   stayDuration?: number;
   memo?: string | null;
 }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(planSpot)
     .values({
@@ -329,6 +335,7 @@ export async function createNotification(data: {
   } else {
     publishedAtStr = new Date().toISOString();
   }
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(notification)
     .values({
@@ -345,6 +352,7 @@ export async function createNotification(data: {
  * UserNotificationを作成
  */
 export async function createUserNotification(data: { userId: string; notificationId: number; isRead?: boolean }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(userNotification)
     .values({
@@ -361,6 +369,7 @@ export async function createUserNotification(data: { userId: string; notificatio
  * 全Notificationを削除
  */
 export async function deleteAllNotifications() {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(userNotification);
   await db.delete(notification);
 }
@@ -369,6 +378,7 @@ export async function deleteAllNotifications() {
  * 全Wishlistを削除
  */
 export async function deleteAllWishlists() {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(wishlist);
 }
 
@@ -376,6 +386,7 @@ export async function deleteAllWishlists() {
  * 全Tripを削除
  */
 export async function deleteAllTrips() {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(transport);
   await db.delete(planSpot);
   await db.delete(plan);
@@ -397,6 +408,7 @@ export async function countSpots(): Promise<number> {
  * 特定ユーザーのWishlist削除
  */
 export async function deleteWishlistByUser(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(wishlist).where(eq(wishlist.userId, userId));
 }
 
@@ -404,6 +416,7 @@ export async function deleteWishlistByUser(userId: string) {
  * 特定ユーザーのTrip削除（関連テーブル含む）
  */
 export async function deleteTripsByUser(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const trips = await db.select({ id: trip.id }).from(trip).where(eq(trip.userId, userId));
   const tripIds = trips.map((t) => t.id);
 
@@ -424,6 +437,7 @@ export async function deleteTripsByUser(userId: string) {
  * Notificationを取得（IDで検索）
  */
 export async function findNotificationById(id: number) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [found] = await db.select().from(notification).where(eq(notification.id, id)).limit(1);
   return found ?? null;
 }
@@ -432,6 +446,7 @@ export async function findNotificationById(id: number) {
  * UserNotificationを取得（条件検索）
  */
 export async function findUserNotification(userId: string, notificationId: number) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [found] = await db
     .select()
     .from(userNotification)
@@ -444,6 +459,7 @@ export async function findUserNotification(userId: string, notificationId: numbe
  * UserNotificationのカウント（条件付き）
  */
 export async function countUserNotifications(params: { userId?: string; isRead?: boolean }): Promise<number> {
+  const db = createDevDb(process.env.DATABASE_URL!);
   let query = db.select().from(userNotification).$dynamic();
   const conditions = [];
   if (params.userId !== undefined) {
@@ -470,6 +486,7 @@ export async function upsertUser(data: {
   lastLoginAt?: Date | string;
   image?: string;
 }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const existing = await db.select().from(user).where(eq(user.id, data.id)).limit(1);
 
   const lastLoginAtStr = data.lastLoginAt instanceof Date ? data.lastLoginAt.toISOString() : (data.lastLoginAt ?? null);
@@ -507,6 +524,7 @@ export async function upsertUser(data: {
  * 特定ユーザーを削除
  */
 export async function deleteUser(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(user).where(eq(user.id, userId));
 }
 
@@ -515,6 +533,7 @@ export async function deleteUser(userId: string) {
  */
 export async function deleteUsersByIds(userIds: string[]) {
   if (userIds.length > 0) {
+    const db = createDevDb(process.env.DATABASE_URL!);
     await db.delete(user).where(inArray(user.id, userIds));
   }
 }
@@ -523,6 +542,7 @@ export async function deleteUsersByIds(userIds: string[]) {
  * LIKEパターンでユーザー削除
  */
 export async function deleteUsersByIdPattern(pattern: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(user).where(like(user.id, `${pattern}%`));
 }
 
@@ -530,6 +550,7 @@ export async function deleteUsersByIdPattern(pattern: string) {
  * Userを検索（ID）
  */
 export async function findUserById(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [found] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
   return found ?? null;
 }
@@ -558,6 +579,7 @@ export async function createUserLocation(data: {
   usageCount?: number;
   isDefault?: boolean;
 }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(userLocation)
     .values({
@@ -577,6 +599,7 @@ export async function createUserLocation(data: {
  * UserLocationを取得（IDで検索）
  */
 export async function findUserLocationById(id: number) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [found] = await db.select().from(userLocation).where(eq(userLocation.id, id)).limit(1);
   return found ?? null;
 }
@@ -585,6 +608,7 @@ export async function findUserLocationById(id: number) {
  * UserLocationを取得（ユーザーIDで検索）
  */
 export async function findUserLocationsByUserId(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   return await db.select().from(userLocation).where(eq(userLocation.userId, userId));
 }
 
@@ -592,6 +616,7 @@ export async function findUserLocationsByUserId(userId: string) {
  * 特定ユーザーのUserLocation削除
  */
 export async function deleteUserLocationByUser(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(userLocation).where(eq(userLocation.userId, userId));
 }
 
@@ -599,6 +624,7 @@ export async function deleteUserLocationByUser(userId: string) {
  * 特定ユーザーのUserLocationカウント
  */
 export async function countUserLocations(userId: string): Promise<number> {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const result = await db.select().from(userLocation).where(eq(userLocation.userId, userId));
   return result.length;
 }
@@ -620,6 +646,7 @@ export async function createPlanLocation(data: {
   usageCount?: number;
   planId: number;
 }) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(planLocation)
     .values({
@@ -639,6 +666,7 @@ export async function createPlanLocation(data: {
  * PlanLocationを取得（IDで検索）
  */
 export async function findPlanLocationById(id: number) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const [found] = await db.select().from(planLocation).where(eq(planLocation.id, id)).limit(1);
   return found ?? null;
 }
@@ -647,6 +675,7 @@ export async function findPlanLocationById(id: number) {
  * PlanLocationを取得（ユーザーIDで検索）
  */
 export async function findPlanLocationsByUserId(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   return await db.select().from(planLocation).where(eq(planLocation.userId, userId));
 }
 
@@ -654,6 +683,7 @@ export async function findPlanLocationsByUserId(userId: string) {
  * 特定ユーザーのPlanLocation削除
  */
 export async function deletePlanLocationByUser(userId: string) {
+  const db = createDevDb(process.env.DATABASE_URL!);
   await db.delete(planLocation).where(eq(planLocation.userId, userId));
 }
 
@@ -661,6 +691,7 @@ export async function deletePlanLocationByUser(userId: string) {
  * 特定ユーザーのPlanLocationカウント
  */
 export async function countPlanLocations(userId: string): Promise<number> {
+  const db = createDevDb(process.env.DATABASE_URL!);
   const result = await db.select().from(planLocation).where(eq(planLocation.userId, userId));
   return result.length;
 }
@@ -673,7 +704,6 @@ export const clearTestDataForUser = clearUserTestData;
 
 // デフォルトエクスポート
 export default {
-  db,
   connectDb,
   disconnectDb,
   clearAllTestData,

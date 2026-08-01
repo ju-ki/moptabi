@@ -11,6 +11,7 @@ import {
   planLocationNearestStation,
   userLocation,
   planSpotNearestStation,
+  getPostgresDb,
 } from '@db';
 
 import { getUserId } from '@/middleware/auth';
@@ -282,7 +283,7 @@ export const getTripHandler = {
 
   // 新しい旅行計画を登録
   createTrip: async (c: Context) => {
-    const db = getDbFromContext(c);
+    const db = getPostgresDb(c);
     const userId = getUserId(c);
     if (!userId) {
       throw new HTTPException(401, { message: 'Unauthorized error' });
@@ -301,7 +302,7 @@ export const getTripHandler = {
     const tripData = result.data;
 
     // 上限チェック
-    await validateLimit(userId, tripData);
+    await validateLimit(db, userId, tripData);
 
     type TripWriteExecutor = Pick<typeof db, 'insert' | 'update' | 'query'>;
 
@@ -566,7 +567,8 @@ export const getTripHandler = {
 
   // 旅行計画の更新
   updateTrip: async (c: Context) => {
-    const response = await updateTrip(c);
+    const db = getPostgresDb(c);
+    const response = await updateTrip(db, c);
     return c.json(response, 200);
   },
 
