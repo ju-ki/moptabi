@@ -728,7 +728,10 @@ export async function getOptimalRouteWithAlternatives(
   // 失敗した移動手段を記録
   const failedRoutes: RouteFailureInfo[] = [];
 
-  for (const methodId of transportMethodIds) {
+  // preferredと現在プランニングで選んでいる交通手段が被っている場合、重複するので除去する
+  const uniqueTransportMethodIds = Array.from(new Set(transportMethodIds));
+
+  for (const methodId of uniqueTransportMethodIds) {
     const mode = getTravelModeFromId(methodId);
     // TRANSITは除外
     if (mode === 'TRANSIT') continue;
@@ -964,7 +967,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   const routeResult = await getOptimalRouteWithAlternatives(
     departureCoord,
     firstSpot.location,
-    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 0],
+    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 1],
     1.5,
     getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
   );
@@ -1174,7 +1177,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const routeResult = await getOptimalRouteWithAlternatives(
         currentSpot.location,
         nextSpot.location,
-        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 0],
+        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 1],
         1.5,
         getPreferredDirectTransportMethodId(preferredSpotToSpotMethodId),
       );
@@ -1369,7 +1372,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const routeResult = await getOptimalRouteWithAlternatives(
       lastSpot.location,
       destinationCoord,
-      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 0],
+      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 1],
       1.5,
       getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
     );

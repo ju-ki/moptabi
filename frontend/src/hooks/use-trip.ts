@@ -40,7 +40,7 @@ async function enrichNearestStation(
     transitTime: nearestStation.transitTime,
     scheduledDepartureTime: nearestStation.scheduledDepartureTime,
     scheduledDepartureTimes: [],
-    transitMemo: nearestStation.transitMemo,
+    memo: nearestStation.memo,
   };
 }
 
@@ -74,6 +74,7 @@ async function enrichSpot(spot: TripDetailApiSpot): Promise<Spot> {
         walkingTime: normalizedNearestStationRaw.walkingTime ?? 0,
         latitude: normalizedNearestStationRaw.latitude ?? defaultLocation.lat,
         longitude: normalizedNearestStationRaw.longitude ?? defaultLocation.lng,
+        memo: normalizedNearestStationRaw.memo || '',
       }
     : undefined;
 
@@ -126,11 +127,12 @@ async function mapPlanLocationToFrontend(
     nearestStation: nearestStation
       ? {
           ...nearestStation,
-          name: defaultLocation.name, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
+          name: nearestStation.name, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
           placeId: nearestStation.placeId ?? '',
-          latitude: defaultLocation.lat, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
-          longitude: defaultLocation.lng, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
+          latitude: nearestStation.latitude ?? 0, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
+          longitude: nearestStation.longitude ?? 0, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
           stationType: nearestStation.stationType ?? 'OTHER',
+          memo: nearestStation.memo ?? '',
         }
       : undefined,
   };

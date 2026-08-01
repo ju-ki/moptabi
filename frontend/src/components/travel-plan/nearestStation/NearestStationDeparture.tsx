@@ -1,5 +1,5 @@
 import { AlertTriangle, Bus, Calendar, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,12 +51,16 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
     departureData?.nearestStation?.scheduledDepartureTime || '',
   );
   const [scheduledDepartureTimes, setScheduledDepartureTimes] = useState<string[]>(buildInitialDepartureCandidates());
-  const [transitMemo, setTransitMemo] = useState<string>(departureData?.nearestStation?.transitMemo || '');
+  const [transitMemo, setTransitMemo] = useState<string>(departureData?.nearestStation?.memo || '');
   const [isDepartureSectionExpanded, setIsDepartureSectionExpanded] = useState<boolean>(
     !!departureData?.nearestStation && !!departureData?.nearestStation.name,
   );
   const [useDepartureNearestStation, setUseDepartureNearestStation] = useState<boolean>(
     !!departureData?.nearestStation,
+  );
+  const lastSearchBusStop = useRef<boolean>(excludeBusStop);
+  const lastSearchCoord = useRef<{ lat: number; lng: number } | null>(
+    departureData ? { lat: departureData.latitude, lng: departureData.longitude } : null,
   );
 
   // スポット間の距離を計算
@@ -91,6 +95,8 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
         excludeBusStop,
       });
       setDepartureNearestStations(stations);
+      lastSearchBusStop.current = excludeBusStop;
+      lastSearchCoord.current = { lat: departureData.latitude, lng: departureData.longitude };
     } catch (error) {
       console.error('出発地の最寄駅の取得に失敗しました:', error);
     } finally {
@@ -102,7 +108,13 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   const handleUseDepartureNearestStationChange = (checked: boolean) => {
     setUseDepartureNearestStation(checked);
     setIsDepartureSectionExpanded(checked);
-    if (checked && departureNearestStations.length === 0) {
+    if (
+      checked &&
+      (lastSearchBusStop.current !== excludeBusStop ||
+        lastSearchCoord.current?.lat !== departureData.latitude ||
+        lastSearchCoord.current?.lng !== departureData.longitude ||
+        departureNearestStations.length === 0)
+    ) {
       fetchDepartureNearestStations();
     }
     if (!checked && departureData) {
@@ -190,7 +202,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
         ...departureData,
         nearestStation: {
           ...departureData.nearestStation,
-          transitMemo: memo,
+          memo: memo,
         },
       });
     }

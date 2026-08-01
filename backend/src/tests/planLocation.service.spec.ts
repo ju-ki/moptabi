@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'vitest';
 
 import { getPlanLocationCandidates, createOrUpdatePlanLocation, deletePlanLocation } from '@/services/planLocation';
+import { createDevDb } from '@/db';
 
 import {
   connectDb,
@@ -24,6 +25,8 @@ import {
 const TEST_USER_ID = 'planLocation_service_test_user';
 const OTHER_USER_ID = 'planLocation_service_other_user';
 const SPOT_PREFIX = 'spot_api_';
+
+const db = createDevDb(process.env.DATABASE_URL!);
 
 // Spot IDを生成するヘルパー関数
 function spotId(id: string): string {
@@ -96,7 +99,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan1.id,
       });
 
-      const result = await getPlanLocationCandidates(TEST_USER_ID);
+      const result = await getPlanLocationCandidates(db, TEST_USER_ID);
       expect(result.favorites.length).toBe(1);
       expect(result.favorites[0].name).toBe('自宅');
       expect(result.history.length).toBe(1);
@@ -126,7 +129,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         usageCount: 5,
       });
 
-      const result = await getPlanLocationCandidates(TEST_USER_ID);
+      const result = await getPlanLocationCandidates(db, TEST_USER_ID);
       expect(result.favorites[0].name).toBe('地点B'); // usageCount: 10
       // 同じusageCountの場合はID昇順（作成順）
       expect(result.favorites[1].name).toBe('地点A'); // usageCount: 5, 先に作成
@@ -166,7 +169,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan1.id,
       });
 
-      const result = await getPlanLocationCandidates(TEST_USER_ID, {
+      const result = await getPlanLocationCandidates(db, TEST_USER_ID, {
         locationType: 'DEPARTURE',
       });
       expect(result.history.length).toBe(1);
@@ -210,7 +213,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         });
       }
 
-      const result = await getPlanLocationCandidates(TEST_USER_ID, { limit: 3 });
+      const result = await getPlanLocationCandidates(db, TEST_USER_ID, { limit: 3 });
       expect(result.favorites.length).toBe(3);
       expect(result.history.length).toBe(3);
     });
@@ -240,7 +243,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan.id,
       });
 
-      const result = await getPlanLocationCandidates(TEST_USER_ID);
+      const result = await getPlanLocationCandidates(db, TEST_USER_ID);
       expect(result.favorites.length).toBe(0);
       expect(result.history.length).toBe(0);
     });
@@ -266,7 +269,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan1.id,
       };
 
-      const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
+      const result = await createOrUpdatePlanLocation(db, TEST_USER_ID, data);
       expect(result.name).toBe('新しい出発地');
 
       const count = await countPlanLocations(TEST_USER_ID);
@@ -288,7 +291,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan1.id,
       };
 
-      const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
+      const result = await createOrUpdatePlanLocation(db, TEST_USER_ID, data);
       // デフォルト名は「YYYY-MM-DD_出発地」の形式
       expect(result.name).toMatch(/^\d{4}-\d{2}-\d{2}_出発地$/);
     });
@@ -308,7 +311,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         locationType: 'DESTINATION' as const,
         planId: plan1.id,
       };
-      const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
+      const result = await createOrUpdatePlanLocation(db, TEST_USER_ID, data);
       expect(result.name).toMatch(/^\d{4}-\d{2}-\d{2}_目的地$/);
     });
 
@@ -333,7 +336,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan.id,
       };
 
-      const result = await createOrUpdatePlanLocation(TEST_USER_ID, data);
+      const result = await createOrUpdatePlanLocation(db, TEST_USER_ID, data);
       expect(result.planId).toBe(plan.id);
     });
   });
@@ -359,7 +362,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan1.id,
       });
 
-      const result = await deletePlanLocation(TEST_USER_ID, created.id);
+      const result = await deletePlanLocation(db, TEST_USER_ID, created.id);
       expect(result).not.toBeNull();
       expect(result!.id).toBe(created.id);
 
@@ -368,7 +371,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
     });
 
     it('存在しないIDを削除しようとするとnullを返す', async () => {
-      const result = await deletePlanLocation(TEST_USER_ID, 99999);
+      const result = await deletePlanLocation(db, TEST_USER_ID, 99999);
       expect(result).toBeNull();
     });
 
@@ -389,7 +392,7 @@ describe('🧪 PlanLocationサービス層テスト', () => {
         planId: plan1.id,
       });
 
-      const result = await deletePlanLocation(TEST_USER_ID, created.id);
+      const result = await deletePlanLocation(db, TEST_USER_ID, created.id);
       expect(result).toBeNull();
 
       // 削除されていないことを確認

@@ -5,3 +5,10 @@ compatibility_flags = [ "nodejs_compat" ]
 
 [vars]
 NODE_ENV = "production"
+
+# ローカル開発環境用の設定
+[env.dev]
+vars = { NODE_ENV = "development" }
+
+# .dev.varsファイルから環境変数を読み込む（ローカル開発時）
+# DATABASE_URL などの機密情報は .dev.vars に記載してください

@@ -89,7 +89,10 @@ export async function getUserList(c: Context) {
   const userIds = registeredUsers.map((u) => u.id);
 
   // clerkから取得したユーザーIDを元に行きたいリストと旅行計画の総数を取得する
-  const [wishlistCounts, planCounts] = await Promise.all([countWishListByUserId(userIds), countPlanByUserId(userIds)]);
+  const [wishlistCounts, planCounts] = await Promise.all([
+    countWishListByUserId(db, userIds),
+    countPlanByUserId(db, userIds),
+  ]);
 
   let userList = registeredUsers.map((u) => ({
     id: u.id,
@@ -163,6 +166,7 @@ export async function getUserList(c: Context) {
 }
 
 export async function getStats(c: Context) {
-  const stats = await getDashboardStats(c);
+  const db = getDbFromContext(c);
+  const stats = await getDashboardStats(db, c);
   return c.json(stats, 200);
 }

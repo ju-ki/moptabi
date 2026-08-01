@@ -31,7 +31,7 @@ export type DepartureDestinationNearestStation = {
   scheduledDepartureTime?: string;
   scheduledDepartureTimes?: string[];
   waitingTime?: number;
-  transitMemo?: string;
+  memo?: string;
 };
 
 export type DepartureAndDestinationType = PlanLocationCandidateItemType & {

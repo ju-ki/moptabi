@@ -1,15 +1,14 @@
 import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 import { eq, and, count, lt, inArray } from 'drizzle-orm';
-import { db, wishlist } from '@db';
+import { AnyDbType, wishlist } from '@db';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 import { getUserId } from '@/middleware/auth';
 
-export const getWishList = async (c: Context) => {
+export const getWishList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
-
   const rows = await db.query.wishlist.findMany({
     where: eq(wishlist.userId, userId),
     orderBy: (wishlist, { desc }) => [desc(wishlist.priority)],
@@ -27,7 +26,7 @@ export const getWishList = async (c: Context) => {
 /**
  * 行きたいリストの登録数と上限を取得
  */
-export const getWishListCount = async (c: Context) => {
+export const getWishListCount = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   const [result] = await db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId));
@@ -38,7 +37,7 @@ export const getWishListCount = async (c: Context) => {
   };
 };
 
-export const createWishList = async (c: Context) => {
+export const createWishList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   // 上限チェック
@@ -84,7 +83,7 @@ export const createWishList = async (c: Context) => {
   return newWishlist;
 };
 
-export const updateWishList = async (c: Context) => {
+export const updateWishList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   const body = await c.req.json();
@@ -119,7 +118,7 @@ export const updateWishList = async (c: Context) => {
   return updated;
 };
 
-export const deleteWishList = async (c: Context) => {
+export const deleteWishList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   const wishlistId = parseInt(c.req.param('id'));
@@ -142,7 +141,7 @@ export const deleteWishList = async (c: Context) => {
  * @param userIds clerkに登録されているuserIdの配列
  * @returns ユーザーIDをキー、行きたいリストの数を値とするオブジェクト
  */
-export const countWishListByUserId = async (userIds: string[]) => {
+export const countWishListByUserId = async (db: AnyDbType, userIds: string[]) => {
   if (userIds.length === 0) {
     return {};
   }
@@ -168,7 +167,7 @@ export const countWishListByUserId = async (userIds: string[]) => {
  * 総行きたいリストと前月からの増減数を取得
  * @returns 行きたいリストの統計情報
  */
-export const getTotalWishlistAndIncreaseAndDecrease = async () => {
+export const getTotalWishlistAndIncreaseAndDecrease = async (db: AnyDbType) => {
   const [totalResult] = await db.select({ count: count() }).from(wishlist);
   const totalWishlist = totalResult?.count ?? 0;
 

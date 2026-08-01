@@ -1,20 +1,20 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { eq, desc } from 'drizzle-orm';
-import { getDbFromContext, user } from '@db';
+import { AnyDbType, user } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 
 import { getTotalWishlistAndIncreaseAndDecrease } from './wishlist';
 import { getTripStatistics } from './trip';
 
-export const getDashboardStats = async (c: Context) => {
+export const getDashboardStats = async (db: AnyDbType, c: Context) => {
   // ダッシュボード用の統計情報を取得するロジックをここに実装
 
   const userId = getUserId(c);
 
   // 管理者権限以外は401を返す
-  const db = getDbFromContext(c);
+
   const [targetUser] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
 
   if (targetUser?.role !== 'ADMIN') {
@@ -44,8 +44,8 @@ export const getDashboardStats = async (c: Context) => {
     return new Date(u.lastLoginAt) >= oneMonthAgo;
   }).length;
 
-  const wishlistStats = await getTotalWishlistAndIncreaseAndDecrease();
-  const tripStats = await getTripStatistics();
+  const wishlistStats = await getTotalWishlistAndIncreaseAndDecrease(db);
+  const tripStats = await getTripStatistics(db);
 
   return {
     totalUsers,

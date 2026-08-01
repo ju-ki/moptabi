@@ -94,8 +94,6 @@ export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot =>
  * @returns km換算された文字列
  */
 export const calcDistance = (baseCoordinate: Coordination, targetCoordination: Coordination): string => {
-  let distance = '';
-
   const R = 6371; // km
   const dLat = ((targetCoordination.lat - baseCoordinate.lat) * Math.PI) / 180;
   const dLng = ((targetCoordination.lng - baseCoordinate.lng) * Math.PI) / 180;
@@ -106,7 +104,7 @@ export const calcDistance = (baseCoordinate: Coordination, targetCoordination: C
       Math.sin(dLng / 2) *
       Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  distance = (R * c).toFixed(2) + 'km'; // km
+  const distance = (R * c).toFixed(2) + 'km'; // km
 
   return distance;
 };
