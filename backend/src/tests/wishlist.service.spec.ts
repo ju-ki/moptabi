@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
+import { createDevDb } from '@db';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
 
@@ -16,7 +17,6 @@ import {
   countSpots,
   findSpotById,
 } from './db-helper';
-import { createDevDb } from '@db';
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_wishlist';

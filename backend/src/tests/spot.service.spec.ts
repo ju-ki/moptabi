@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
 
+import { createDevDb } from '@/db';
+
 import app from '..';
 import {
   clearAllTestData as clearTestData,
@@ -18,7 +20,6 @@ import {
 import { getUnvisitedWishlistSpots, getVisitedSpots } from '../services/spot';
 import { createTripViaTripService } from './test-client';
 import { SPOT_PREFIX, spotId } from './libs/data';
-import { createDevDb } from '@/db';
 
 // testClientのインスタンスを取得（型アサーション）
 const client = testClient(app) as any;

@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } 
 import { testClient } from 'hono/testing';
 
 import { TripSchema } from '@/models/trip';
+import { createDevDb } from '@/db';
 
 import app from '..';
 import {
@@ -18,7 +19,6 @@ import {
 } from './db-helper';
 import { createAuthHeaders, createSpotData, TEST_USER_ID } from './test-client';
 import { mockPlanData, mockPlanDataWithNearestStation, mockTripData, spotId } from './libs/data';
-import { createDevDb } from '@/db';
 
 let currentUserId: string | null = TEST_USER_ID;
 const db = createDevDb(process.env.DATABASE_URL!);

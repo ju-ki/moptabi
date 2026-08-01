@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'vitest';
+
 import { getPlanLocationCandidates, createOrUpdatePlanLocation, deletePlanLocation } from '@/services/planLocation';
 import { createDevDb } from '@/db';
 
