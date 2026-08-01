@@ -253,6 +253,12 @@ importers:
         specifier: ^4.59.2
         version: 4.110.0
 
+  ../packages/shared-types:
+    dependencies:
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+
 packages:
 
   '@acemir/cssom@0.9.31':
