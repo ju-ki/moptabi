@@ -63,7 +63,7 @@ export const createDevDb = (databaseUrl: string): DbType => {
  */
 export const getPostgresDb = (c: Context): AnyDbType => {
   if (c && c.env && c.env.DATABASE_URL) {
-    return createDbForWorkers(c.env.DATABASE_URL);
+    return createDevDb(c.env.DATABASE_URL);
   }
 
   const databaseUrl = process.env.DATABASE_URL || '';
