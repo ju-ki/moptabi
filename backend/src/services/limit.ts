@@ -3,10 +3,10 @@ import { count } from 'drizzle-orm/sql/functions/aggregate';
 import { HTTPException } from 'hono/http-exception';
 
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
-import { db, trip } from '@/db';
+import { AnyDbType, trip } from '@/db';
 import { TripType } from '@/models/trip';
 
-export const validateLimit = async (userId: string, tripData: TripType): Promise<boolean> => {
+export const validateLimit = async (db: AnyDbType, userId: string, tripData: TripType): Promise<boolean> => {
   // 上限チェック: プラン作成数
   const [countResult] = await db.select({ count: count() }).from(trip).where(eq(trip.userId, userId));
 

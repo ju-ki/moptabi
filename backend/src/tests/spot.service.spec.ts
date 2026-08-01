@@ -13,18 +13,19 @@ import {
   createTrip,
   createPlan,
   createPlanSpot,
-  db,
   transport,
 } from './db-helper';
 import { getUnvisitedWishlistSpots, getVisitedSpots } from '../services/spot';
 import { createTripViaTripService } from './test-client';
 import { SPOT_PREFIX, spotId } from './libs/data';
+import { createDevDb } from '@/db';
 
 // testClientのインスタンスを取得（型アサーション）
 const client = testClient(app) as any;
 
 // 認証用のモックユーザーID
 const TEST_USER_ID = 'test_user_spot_service';
+const db = createDevDb(process.env.DATABASE_URL!);
 
 // 現在の認証ユーザーIDを保持する変数
 let currentUserId: string | null = TEST_USER_ID;
@@ -63,7 +64,7 @@ describe('🧾 スポットサービス', () => {
       await clearTestData();
       await createTestUser(TEST_USER_ID, 'ADMIN');
 
-      const results = await getUnvisitedWishlistSpots(TEST_USER_ID);
+      const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID);
 
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBe(0);
@@ -99,7 +100,7 @@ describe('🧾 スポットサービス', () => {
         visitedAt: new Date(),
       });
 
-      const results = await getUnvisitedWishlistSpots(TEST_USER_ID);
+      const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(1);
       expect(results[0].spot.id).toBe(spotId('1'));
@@ -140,7 +141,7 @@ describe('🧾 スポットサービス', () => {
       });
       await createWishlistEntry({ spotId: spotId('5'), userId: TEST_USER_ID, priority: 3, visited: 0 });
 
-      const results = await getUnvisitedWishlistSpots(TEST_USER_ID);
+      const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(3);
       // 優先度が高い順: 3 > 2 > 1
@@ -156,7 +157,7 @@ describe('🧾 スポットサービス', () => {
       await clearTestData();
       await createTestUser(TEST_USER_ID, 'ADMIN');
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       expect(Array.isArray(results)).toBe(true);
       expect(results.length).toBe(0);
@@ -175,7 +176,7 @@ describe('🧾 スポットサービス', () => {
         visitedAt: new Date('2024-01-01'),
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(1);
       expect(results[0].spot.id).toBe(spotId('1'));
@@ -212,7 +213,7 @@ describe('🧾 スポットサービス', () => {
         visitedAt: new Date('2024-02-01'),
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(3);
       // 新しい順: スポットB(3月) > スポットC(2月) > スポットA(1月)
@@ -259,7 +260,7 @@ describe('🧾 スポットサービス', () => {
         order: 1,
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(2);
       // 新しい順: スポットB(3月) > スポットA(1月)
@@ -297,7 +298,7 @@ describe('🧾 スポットサービス', () => {
         order: 1,
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(2);
       // 訪問済み→計画の順: スポットA → スポットB
@@ -336,7 +337,7 @@ describe('🧾 スポットサービス', () => {
         order: 1,
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       expect(results.length).toBe(1);
       expect(results[0].spot.id).toBe(spotId('1'));
@@ -381,7 +382,7 @@ describe('🧾 スポットサービス', () => {
         order: 1,
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       // 重複が除去されて1件のみ
       expect(results.length).toBe(1);
@@ -458,7 +459,7 @@ describe('🧾 スポットサービス', () => {
         transportMethod: 1,
       });
 
-      const results = await getVisitedSpots(TEST_USER_ID);
+      const results = await getVisitedSpots(db, TEST_USER_ID);
 
       // 通常のスポットのみが取得される（出発地・目的地は除外）
       expect(results.length).toBe(1);
@@ -501,7 +502,7 @@ describe('🧾 スポットサービス', () => {
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 1, visited: 0 });
 
         // prefectureパラメータはバックエンドでは無視され、全件返却される
-        const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID, {
           prefecture: '東京都',
           sortBy: 'priority',
           sortOrder: 'desc',
@@ -526,7 +527,7 @@ describe('🧾 スポットサービス', () => {
         await createSpotWithMeta(spotId('3'), { name: 'スポットC' });
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 3, visited: 0 });
 
-        const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID, {
           priority: 3,
           sortBy: 'priority',
           sortOrder: 'desc',
@@ -553,7 +554,7 @@ describe('🧾 スポットサービス', () => {
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 3, visited: 0 });
 
         // 両方の条件を指定: priority=3が有効、prefectureはバックエンドでは無視される
-        const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID, {
           prefecture: '東京都',
           priority: 3,
           sortBy: 'priority',
@@ -599,7 +600,7 @@ describe('🧾 スポットサービス', () => {
         });
 
         // prefectureパラメータはバックエンドでは無視され、全件返却される
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           prefecture: '東京都',
           sortBy: 'visitedAt',
           sortOrder: 'desc',
@@ -638,7 +639,7 @@ describe('🧾 スポットサービス', () => {
           visitedAt: new Date('2024-08-01'),
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           dateFrom: '2024-05-01',
           dateTo: '2024-09-01',
           sortBy: 'visitedAt',
@@ -695,7 +696,7 @@ describe('🧾 スポットサービス', () => {
           ],
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           dateFrom: '2024-05-01',
           dateTo: '2024-09-01',
           sortBy: 'visitedAt',
@@ -769,7 +770,7 @@ describe('🧾 スポットサービス', () => {
           ],
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           dateFrom: '2024-05-01',
           dateTo: '2024-09-01',
           sortBy: 'visitedAt',
@@ -823,7 +824,7 @@ describe('🧾 スポットサービス', () => {
           visitedAt: new Date('2024-07-01'),
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           prefecture: '東京都',
           dateFrom: '2024-05-01',
           dateTo: '2024-09-01',
@@ -879,7 +880,7 @@ describe('🧾 スポットサービス', () => {
         });
 
         // minVisitCount=2で検索（2回以上登録されたスポットのみ）
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           minVisitCount: 2,
           sortBy: 'visitedAt',
           sortOrder: 'desc',
@@ -915,7 +916,7 @@ describe('🧾 スポットサービス', () => {
         await createSpotWithMeta(spotId('3'), { name: 'スポットC' });
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 3, visited: 0 });
 
-        const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID, {
           sortBy: 'createdAt',
           sortOrder: 'asc',
         });
@@ -927,7 +928,7 @@ describe('🧾 スポットサービス', () => {
         expect(results[1].spot.id).toBe(spotId('2'));
         expect(results[2].spot.id).toBe(spotId('3'));
 
-        const results2 = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results2 = await getUnvisitedWishlistSpots(db, TEST_USER_ID, {
           sortBy: 'createdAt',
           sortOrder: 'desc',
         });
@@ -952,7 +953,7 @@ describe('🧾 スポットサービス', () => {
         await createSpotWithMeta(spotId('3'), { name: 'スポットC' });
         await createWishlistEntry({ spotId: spotId('3'), userId: TEST_USER_ID, priority: 2, visited: 0 });
 
-        const results = await getUnvisitedWishlistSpots(TEST_USER_ID, {
+        const results = await getUnvisitedWishlistSpots(db, TEST_USER_ID, {
           sortBy: 'priority',
           sortOrder: 'asc',
         });
@@ -994,7 +995,7 @@ describe('🧾 スポットサービス', () => {
           visitedAt: new Date('2024-02-01'),
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           sortBy: 'visitedAt',
           sortOrder: 'asc',
         });
@@ -1041,7 +1042,7 @@ describe('🧾 スポットサービス', () => {
           visitedAt: new Date('2024-02-01'),
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           sortBy: 'createdAt',
           sortOrder: 'desc',
         });
@@ -1108,7 +1109,7 @@ describe('🧾 スポットサービス', () => {
           order: 1,
         });
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           sortBy: 'planDate',
           sortOrder: 'desc',
         });
@@ -1150,7 +1151,7 @@ describe('🧾 スポットサービス', () => {
         });
 
         // 訪問日が古い順（昇順）
-        const resultsAsc = await getVisitedSpots(TEST_USER_ID, {
+        const resultsAsc = await getVisitedSpots(db, TEST_USER_ID, {
           sortBy: 'visitedAt',
           sortOrder: 'asc',
         });
@@ -1201,7 +1202,7 @@ describe('🧾 スポットサービス', () => {
         });
 
         // 訪問日/計画日が新しい順（訪問済みが先に来る従来の動作を維持）
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           sortBy: 'visitedAt',
           sortOrder: 'desc',
         });
@@ -1273,7 +1274,7 @@ describe('🧾 スポットサービス', () => {
           });
         }
 
-        const results = await getVisitedSpots(TEST_USER_ID, {
+        const results = await getVisitedSpots(db, TEST_USER_ID, {
           sortBy: 'visitCount',
           sortOrder: 'desc',
         });

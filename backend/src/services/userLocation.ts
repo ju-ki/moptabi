@@ -2,12 +2,11 @@ import { Context } from 'hono';
 import { eq, and, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
-import { userLocation, getDbFromContext } from '@/db';
+import { userLocation, AnyDbType } from '@/db';
 import { getUserId } from '@/middleware/auth';
 import { CreateUserLocationSchema, MAX_USER_LOCATIONS, UpdateUserLocationSchema } from '@/models/userLocation';
 
-export const getUserLocationList = async (c: Context) => {
-  const db = getDbFromContext(c);
+export const getUserLocationList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   const userLocationList = await db.query.userLocation.findMany({
@@ -18,8 +17,7 @@ export const getUserLocationList = async (c: Context) => {
   return userLocationList;
 };
 
-export const createUserLocation = async (c: Context) => {
-  const db = getDbFromContext(c);
+export const createUserLocation = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   const body = await c.req.json();
@@ -34,7 +32,7 @@ export const createUserLocation = async (c: Context) => {
     throw new HTTPException(400, { message: 'Invalid request body' });
   }
 
-  const existingUserLocation = await getUserLocationList(c);
+  const existingUserLocation = await getUserLocationList(db, c);
 
   if (existingUserLocation.length >= MAX_USER_LOCATIONS) {
     throw new HTTPException(400, { message: 'ユーザーのお気に入り地点は最大5件まで登録可能です' });
@@ -66,8 +64,7 @@ export const createUserLocation = async (c: Context) => {
   return newUserLocation;
 };
 
-export const updateUserLocation = async (c: Context) => {
-  const db = getDbFromContext(c);
+export const updateUserLocation = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   // パスパラメータからIDを取得
@@ -121,8 +118,7 @@ export const updateUserLocation = async (c: Context) => {
   return updated;
 };
 
-export const deleteUserLocation = async (c: Context) => {
-  const db = getDbFromContext(c);
+export const deleteUserLocation = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   if (isNaN(Number(c.req.param('id')))) {
