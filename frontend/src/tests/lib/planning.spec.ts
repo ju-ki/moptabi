@@ -15,9 +15,11 @@ import {
   sortPlanningMessages,
   timeToMinutes,
   type PlanningParams,
+  hasDirtySpotChange,
 } from '@/lib/planning';
 import { getRoute } from '@/lib/plan';
 import { PLANNING_MESSAGE_SEGMENT } from '@/data/constants';
+import { Spot } from '@/types/plan';
 
 const mockGetRoute = getRoute as unknown as ReturnType<typeof vi.fn>;
 
@@ -1193,6 +1195,81 @@ describe('planning.ts', () => {
       expect(result.alternativeRoutes).toHaveLength(3);
       expect(result.isFallbackToWalking).toBe(false);
       expect(result.failedRoutes).toBeUndefined();
+    });
+  });
+
+  describe('dirty対象項目の変更テスト', () => {
+    const targetSpot: Spot = {
+      id: 'spot-1',
+      clientRef: 'spot-1',
+      location: { id: 'spot-1', name: 'スポット1', lat: 35.6895, lng: 139.6917 },
+      stayStart: '10:00',
+      stayEnd: '11:00',
+      stayDuration: 60,
+      memo: '',
+      transports: {
+        transportMethod: 1,
+        name: 'WALKING',
+        travelTime: '15分',
+        fromType: 'SPOT',
+        toType: 'DESTINATION',
+      },
+      nearestStation: {
+        name: '新宿駅',
+        stationType: 'TRAIN',
+        transitTime: 10,
+        walkingTime: 10,
+        latitude: 35.6895,
+        longitude: 139.7004,
+        placeId: 'spot-station',
+        memo: '',
+      },
+      order: 1,
+    };
+    it('スポットの変更対象の項目が変わっている場合はフラグがon', () => {
+      const changedSpot: Spot = { ...targetSpot, stayStart: '10:30' };
+      expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(true); // 期待値に応じて変更
+    });
+
+    it('スポットの変更対象外の項目が変わっている場合はフラグがoff', () => {
+      const changedSpot: Spot = { ...targetSpot, memo: '新しいメモ' };
+      expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(false); // 期待値に応じて変更
+    });
+
+    it('スポットの変更対象(最寄駅)の項目が変わっている場合はフラグがon', () => {
+      const changedSpot: Spot = {
+        ...targetSpot,
+        nearestStation: {
+          ...targetSpot.nearestStation,
+          name: '新宿駅',
+          stationType: 'TRAIN',
+          transitTime: 12, // 変更
+          walkingTime: 10,
+          latitude: 35.6895,
+          longitude: 139.7004,
+          placeId: 'spot-station',
+          memo: '',
+        },
+      };
+      expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(true); // 期待値に応じて変更
+    });
+
+    it('スポットの変更対象外(最寄駅)の項目が変わっている場合はフラグがoff', () => {
+      const changedSpot: Spot = {
+        ...targetSpot,
+        nearestStation: {
+          ...targetSpot.nearestStation,
+          name: '新宿駅',
+          stationType: 'TRAIN',
+          transitTime: 10,
+          walkingTime: 10,
+          latitude: 35.6895,
+          longitude: 139.7004,
+          placeId: 'spot-station',
+          memo: 'new memo', // 変更
+        },
+      };
+      expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(false); // 期待値に応じて変更
     });
   });
 });

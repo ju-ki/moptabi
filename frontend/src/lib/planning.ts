@@ -5,6 +5,8 @@ import {
   DEFAULT_DEPARTURE_TIME,
   DEPARTURE_NAME,
   DESTINATION_NAME,
+  PLANNING_DIRTY_NEAREST_STATION_FIELDS,
+  PLANNING_DIRTY_SPOT_FIELDS,
   PLANNING_MESSAGE_PRIORITY,
   PLANNING_MESSAGE_SEGMENT,
   THRESHOLD_FOR_DISTANCE,
@@ -673,6 +675,29 @@ function isStationTransportMethod(methodId?: number): boolean {
 function getPreferredDirectTransportMethodId(methodId?: number): number | undefined {
   if (!methodId || isStationTransportMethod(methodId)) return undefined;
   return methodId;
+}
+
+/**
+ * 変更前後のスポットを比較し、dirty対象項目に差分があるかを判定する。
+ * @param previousSpot 変更前のスポット
+ * @param nextSpot 変更後のスポット
+ * @returns dirty対象項目に差分がある場合はtrue
+ */
+export function hasDirtySpotChange(previousSpot: Spot, nextSpot: Spot): boolean {
+  return PLANNING_DIRTY_SPOT_FIELDS.some((field) => {
+    return (
+      JSON.stringify(previousSpot[field]) !== JSON.stringify(nextSpot[field]) ||
+      PLANNING_DIRTY_NEAREST_STATION_FIELDS.some((nearestStationField) => {
+        if (!previousSpot.nearestStation || !nextSpot.nearestStation) {
+          return previousSpot.nearestStation !== nextSpot.nearestStation;
+        }
+        return (
+          JSON.stringify(previousSpot.nearestStation[nearestStationField]) !==
+          JSON.stringify(nextSpot.nearestStation[nearestStationField])
+        );
+      })
+    );
+  });
 }
 
 /**

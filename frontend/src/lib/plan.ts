@@ -13,17 +13,12 @@ import {
 } from '@/types/plan';
 import { TripSchema } from '@/models/trip';
 import { DepartureAndDestinationType, PlanLocationCandidatesResponse } from '@/models/planLocation';
-import {
-  DEFAULT_ARRIVAL_TIME,
-  DEFAULT_DEPARTURE_AND_DESTINATION,
-  DEFAULT_DEPARTURE_TIME,
-  PLANNING_DIRTY_SPOT_FIELDS,
-} from '@/data/constants';
+import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 import { getPrefectures } from './algorithm';
 import { formatOpeningHours } from './google-maps';
 import { getDatesBetween } from './utils';
-import { PlanningInfo, PlanningResult } from './planning';
+import { hasDirtySpotChange, PlanningInfo, PlanningResult } from './planning';
 
 export type FormData = z.infer<typeof TripSchema>;
 
@@ -34,27 +29,6 @@ export type FormData = z.infer<typeof TripSchema>;
  */
 function cloneSpots(spots: Spot[]): Spot[] {
   return JSON.parse(JSON.stringify(spots)) as Spot[];
-}
-
-/**
- * 更新差分にdirty対象項目が含まれているかを判定する。
- * @param updatedSpot 更新差分として渡されたスポットの部分データ
- * @returns dirty対象項目が含まれている場合はtrue
- */
-function isDirtySpotFieldUpdated(updatedSpot: Partial<Spot>): boolean {
-  return PLANNING_DIRTY_SPOT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(updatedSpot, field));
-}
-
-/**
- * 変更前後のスポットを比較し、dirty対象項目に差分があるかを判定する。
- * @param previousSpot 変更前のスポット
- * @param nextSpot 変更後のスポット
- * @returns dirty対象項目に差分がある場合はtrue
- */
-function hasDirtySpotChange(previousSpot: Spot, nextSpot: Spot): boolean {
-  return PLANNING_DIRTY_SPOT_FIELDS.some((field) => {
-    return JSON.stringify(previousSpot[field]) !== JSON.stringify(nextSpot[field]);
-  });
 }
 
 type PlanningInitialState = Pick<
@@ -557,11 +531,13 @@ export const useStoreForPlanning = create<FormState>()(
           if (plansForDateIndex >= 0) {
             const spotIndex = state.plans[plansForDateIndex].spots.findIndex((spot) => spot.id === spotId);
             if (spotIndex >= 0) {
+              const currentSpot = state.plans[plansForDateIndex].spots[spotIndex];
               state.plans[plansForDateIndex].spots[spotIndex] = {
                 ...state.plans[plansForDateIndex].spots[spotIndex],
                 ...updatedSpot,
               };
-              if (hasPlanningSnapshot && isDirtySpotFieldUpdated(updatedSpot)) {
+              // スポットのdirty判定を行い、必要に応じてdirtyPlanningDatesに追加
+              if (hasPlanningSnapshot && hasDirtySpotChange(currentSpot, { ...currentSpot, ...updatedSpot })) {
                 state.dirtyPlanningDates[date] = true;
               }
             } else {
