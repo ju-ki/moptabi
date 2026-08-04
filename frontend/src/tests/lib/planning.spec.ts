@@ -16,10 +16,12 @@ import {
   timeToMinutes,
   type PlanningParams,
   hasDirtySpotChange,
+  hasDirtyDepartureAndDestinationChange,
 } from '@/lib/planning';
 import { getRoute } from '@/lib/plan';
-import { PLANNING_MESSAGE_SEGMENT } from '@/data/constants';
+import { DEFAULT_DEPARTURE_AND_DESTINATION, PLANNING_MESSAGE_SEGMENT } from '@/data/constants';
 import { Spot } from '@/types/plan';
+import { DepartureAndDestinationType } from '@/models/planLocation';
 
 const mockGetRoute = getRoute as unknown as ReturnType<typeof vi.fn>;
 
@@ -1226,6 +1228,19 @@ describe('planning.ts', () => {
       },
       order: 1,
     };
+
+    const targetDeparture: DepartureAndDestinationType = {
+      ...DEFAULT_DEPARTURE_AND_DESTINATION,
+      nearestStation: {
+        stationType: 'TRAIN',
+        transitTime: 12,
+        latitude: 35.681236,
+        longitude: 139.767125,
+        placeId: 'dep-station',
+        memo: '',
+      },
+    };
+
     it('スポットの変更対象の項目が変わっている場合はフラグがon', () => {
       const changedSpot: Spot = { ...targetSpot, stayStart: '10:30' };
       expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(true); // 期待値に応じて変更
@@ -1270,6 +1285,59 @@ describe('planning.ts', () => {
         },
       };
       expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(false); // 期待値に応じて変更
+    });
+
+    it('スポットの(最寄駅)の有無が変わっている場合はフラグがon(あり→なし)', () => {
+      const changedSpot: Spot = {
+        ...targetSpot,
+        nearestStation: undefined, // 変更
+      };
+      expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(true); // 期待値に応じて変更
+    });
+
+    it('スポットの(最寄駅)の有無が変わっている場合はフラグがon(なし→あり)', () => {
+      const changedSpot: Spot = {
+        ...targetSpot,
+        nearestStation: undefined, // 変更
+      };
+      expect(hasDirtySpotChange(changedSpot, targetSpot)).toBe(true); // 期待値に応じて変更
+    });
+
+    it('出発地/目的地の変更対象の項目が変わっている場合はフラグがon', () => {
+      const changedDeparture: DepartureAndDestinationType = { ...targetDeparture, latitude: 35.682 };
+      expect(hasDirtyDepartureAndDestinationChange(targetDeparture, changedDeparture)).toBe(true); // 期待値に応じて変更
+    });
+
+    it('出発地/目的地の変更対象外の項目が変わっている場合はフラグがoff', () => {
+      const changedDeparture: DepartureAndDestinationType = {
+        ...targetDeparture,
+        nearestStation: {
+          ...targetDeparture.nearestStation,
+          placeId: targetDeparture.nearestStation?.placeId ?? 'dep-station',
+          stationType: targetDeparture.nearestStation?.stationType ?? 'TRAIN',
+          transitTime: targetDeparture.nearestStation?.transitTime ?? 12,
+          latitude: targetDeparture.nearestStation?.latitude ?? 35.681236,
+          longitude: targetDeparture.nearestStation?.longitude ?? 139.767125,
+          memo: 'new memo', //変更
+        },
+      };
+      expect(hasDirtyDepartureAndDestinationChange(targetDeparture, changedDeparture)).toBe(false); // 期待値に応じて変更
+    });
+
+    it('出発地/目的地の最寄駅の有無が変わっている場合はフラグがon(あり→なし)', () => {
+      const changedDeparture: DepartureAndDestinationType = {
+        ...targetDeparture,
+        nearestStation: undefined, // 変更
+      };
+      expect(hasDirtyDepartureAndDestinationChange(targetDeparture, changedDeparture)).toBe(true); // 期待値に応じて変更
+    });
+
+    it('出発地/目的地の最寄駅の有無が変わっている場合はフラグがon(なし→あり)', () => {
+      const changedDeparture: DepartureAndDestinationType = {
+        ...targetDeparture,
+        nearestStation: undefined, // 変更
+      };
+      expect(hasDirtyDepartureAndDestinationChange(changedDeparture, targetDeparture)).toBe(true); // 期待値に応じて変更
     });
   });
 });

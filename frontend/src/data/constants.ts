@@ -35,6 +35,7 @@ export const THRESHOLD_FOR_DISTANCE = 1500; //1.5km以上離れている場合�
  * プランニング結果に影響し、再プランニング判定の対象とするスポット項目。
  */
 export const PLANNING_DIRTY_SPOT_FIELDS = ['order', 'stayDuration', 'stayStart', 'stayEnd', 'routeToNext'] as const;
+export const PLANNING_DIRTY_DEPARTURE_AND_DESTINATION_FIELDS = ['latitude', 'longitude'] as const;
 
 /** プランニング結果に対して、再プランニングの判定を行う最寄駅項目 */
 export const PLANNING_DIRTY_NEAREST_STATION_FIELDS = [
