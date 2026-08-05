@@ -300,7 +300,6 @@ export const useStoreForPlanning = create<FormState>()(
           state.plans[plansForDateIndex].departure = cloneDepartureAndDestination(plannedDepartureSnapshot);
           state.plans[plansForDateIndex].destination = cloneDepartureAndDestination(plannedDestinationSnapshot);
 
-          console.log(state.plans[plansForDateIndex].destination);
           delete state.dirtyPlanningDates[date];
         });
       },
@@ -449,6 +448,15 @@ export const useStoreForPlanning = create<FormState>()(
                 value.name === '' ? '出発地_' + nextDate : value.name,
                 TransportNodeType.DEPARTURE,
               );
+            }
+
+            const hasPlanningNextDateSnapshot = !!state.planningSpotSnapshots[nextDate];
+
+            if (
+              hasPlanningNextDateSnapshot &&
+              hasDirtyDepartureAndDestinationChange(currentDepartureAndDestination, value)
+            ) {
+              state.dirtyPlanningDates[nextDate] = true;
             }
           }
         });
