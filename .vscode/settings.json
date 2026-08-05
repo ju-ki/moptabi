@@ -20,5 +20,6 @@
   "editor.renderWhitespace": "none",
   "editor.minimap.enabled": false,
   "files.autoSave": "onWindowChange",
-  "explorer.compactFolders": false
+  "explorer.compactFolders": false,
+  "editor.suggestOnTriggerCharacters": true,
 }
