@@ -6,7 +6,6 @@ import {
   planLocationNearestStation,
   planSpot,
   planSpotNearestStation,
-  transport,
   userLocation,
   AnyDbType,
 } from '@db';
@@ -418,19 +417,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
 
       // 最初のスポットへの交通手段（出発地から）- スポットがある場合のみ
       if (planData.departure.transports && createdPlanSpots.length > 0) {
-        const departureTransport = planData.departure.transports;
-        const firstSpot = createdPlanSpots[0];
-        await tx.insert(transport).values({
-          planId: newPlan.id,
-          fromType: departureTransport.fromType,
-          toType: departureTransport.toType,
-          fromSpotId: newDeparturePlanLocation.id,
-          toSpotId: firstSpot.id,
-          cost: 0,
-          travelTime: departureTransport.travelTime ?? '不明',
-          transportMethod: departureTransport.transportMethod ?? 1,
-        });
-
         // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
         if (planData.departure.userLocationId) {
           await tx
@@ -441,19 +427,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
       }
       // 最後のスポットからの目的地への交通手段（目的地へ）- スポットがある場合のみ
       if (planData.destination.transports && createdPlanSpots.length > 0) {
-        const destinationTransport = planData.destination.transports;
-        const lastSpot = createdPlanSpots[createdPlanSpots.length - 1];
-        await tx.insert(transport).values({
-          planId: newPlan.id,
-          fromType: destinationTransport.fromType,
-          toType: destinationTransport.toType,
-          fromSpotId: lastSpot.id,
-          toSpotId: newDestinationPlanLocation.id,
-          cost: 0,
-          travelTime: destinationTransport.travelTime ?? '不明',
-          transportMethod: destinationTransport.transportMethod ?? 1,
-        });
-
         // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
         if (planData.destination.userLocationId) {
           await tx
@@ -461,25 +434,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
             .set({ usageCount: (planData.destination.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
             .where(and(eq(userLocation.id, planData.destination.userLocationId), eq(userLocation.userId, userId)));
         }
-      }
-
-      // スポット間の交通手段を作成
-      for (let i = 0; i < createdPlanSpots.length - 1; i++) {
-        const fromSpotId = createdPlanSpots[i].id;
-        const toSpotId = createdPlanSpots[i + 1].id;
-
-        const transportData = planData.spots[i].transports;
-
-        await tx.insert(transport).values({
-          planId: newPlan.id,
-          fromType: transportData.fromType,
-          toType: transportData.toType,
-          fromSpotId: fromSpotId,
-          toSpotId: toSpotId,
-          cost: transportData.cost ?? 0,
-          travelTime: transportData.travelTime ?? '不明',
-          transportMethod: transportData.transportMethod,
-        });
       }
     }
   });

@@ -15,7 +15,6 @@ import {
   createTrip,
   createPlan,
   createPlanSpot,
-  transport,
 } from './db-helper';
 import { getUnvisitedWishlistSpots, getVisitedSpots } from '../services/spot';
 import { createTripViaTripService } from './test-client';
@@ -437,27 +436,6 @@ describe('🧾 スポットサービス', () => {
         stayStart: '10:00',
         stayEnd: '11:00',
         order: 1,
-      });
-
-      // Transportで出発地・目的地を設定
-      // 出発地 → 通常スポット
-      await db.insert(transport).values({
-        planId: plan.id,
-        fromType: 'DEPARTURE',
-        toType: 'SPOT',
-        fromSpotId: departurePlanSpot.id,
-        toSpotId: normalPlanSpot.id,
-        transportMethod: 1,
-      });
-
-      // 通常スポット → 目的地
-      await db.insert(transport).values({
-        planId: plan.id,
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-        fromSpotId: normalPlanSpot.id,
-        toSpotId: destinationPlanSpot.id,
-        transportMethod: 1,
       });
 
       const results = await getVisitedSpots(db, TEST_USER_ID);

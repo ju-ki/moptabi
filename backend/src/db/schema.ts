@@ -20,30 +20,6 @@ export const transportNodeType = pgEnum('TransportNodeType', ['DEPARTURE', 'DEST
 export const locationType = pgEnum('LocationType', ['DEPARTURE', 'DESTINATION', 'SPOT']);
 export const stationType = pgEnum('StationType', ['BUS', 'TRAIN', 'OTHER']);
 
-export const transport = pgTable(
-  'Transport',
-  {
-    id: serial().primaryKey().notNull(),
-    fromType: transportNodeType().notNull(),
-    toType: transportNodeType().notNull(),
-    travelTime: text(),
-    cost: integer(),
-    fromSpotId: integer(),
-    planId: integer().notNull(),
-    toSpotId: integer(),
-    transportMethod: integer().notNull(),
-  },
-  (table) => [
-    foreignKey({
-      columns: [table.planId],
-      foreignColumns: [plan.id],
-      name: 'Transport_planId_fkey',
-    })
-      .onUpdate('cascade')
-      .onDelete('cascade'),
-  ],
-);
-
 export const userNotification = pgTable(
   'UserNotification',
   {
@@ -150,6 +126,8 @@ export const planSpot = pgTable(
     stayStart: varchar({ length: 5 }).notNull(),
     stayEnd: varchar({ length: 5 }).notNull(),
     stayDuration: integer().notNull(),
+    transportMethodId: integer().notNull().default(0), // 目的地は0になる
+    travelTime: integer().notNull().default(0), // 目的地は0になる
   },
   (table) => [
     uniqueIndex('PlanSpot_idx1').on(table.planId, table.spotId),
@@ -307,6 +285,9 @@ export const planLocation = pgTable(
     locationType: locationType().notNull(),
     // 関連するPlanのID
     planId: integer().notNull(),
+    // 次の地点への移動情報
+    transportMethodId: integer().notNull().default(0), // 目的地は0になる
+    travelTime: integer().notNull().default(0), // 目的地は0になる
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
