@@ -99,7 +99,6 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         {
           placeId: "spot_1",
           stationType: 'TRAIN',
-          waitingTime: 5,
           transitTime: 10,
           scheduledDepartureTime: '10:00',
           memo: 'スポット1からの移動メモ',
@@ -117,7 +116,6 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         {
           placeId: "spot_2",
           stationType: 'TRAIN',
-          waitingTime: 0,
           transitTime: 15,
           scheduledDepartureTime: '11:00',
           memo: 'スポット2からの移動メモ',
@@ -136,7 +134,6 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
       nearestStation: {
         placeId: "departure_station_place_id",
         stationType: 'TRAIN',
-        waitingTime: 5,
         transitTime: 10,
         scheduledDepartureTime: '10:00',
         memo: '出発地駅からの移動メモ',
@@ -156,7 +153,6 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         placeId: "destination_station_place_id",
         stationType: 'TRAIN',
         transitTime: 10,
-        waitingTime: 5,
         scheduledDepartureTime: '10:00',
         memo: '目的地駅からの移動メモ',
       },

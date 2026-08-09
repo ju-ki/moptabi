@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { PlanSchema } from '../plan/schema';
 
 export const TripSchema = z.object({
-  id: z.number().int().optional(),
   title: z
     .string()
     .min(1, { message: 'タイトルは必須です' })

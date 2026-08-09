@@ -783,7 +783,6 @@ describe('旅行計画サービス', () => {
         placeId: 'departure_station_place_id',
         stationType: 'TRAIN',
         transitTime: 10,
-        waitingTime:0,
         scheduledDepartureTime: '10:00',
         memo: '出発地駅からの移動メモ',
       });
@@ -791,7 +790,6 @@ describe('旅行計画サービス', () => {
         placeId: 'destination_station_place_id',
         stationType: 'TRAIN',
         transitTime: 10,
-        waitingTime: 0,
         scheduledDepartureTime: '10:00',
         memo: '目的地駅からの移動メモ',
       });

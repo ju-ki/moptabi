@@ -49,7 +49,6 @@ export function createSpotData(
     placeId: Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
     stationType: 'TRAIN',
     transitTime: 10,
-    waitingTime: 5,
     scheduledDepartureTime: '10:00',
     memo: '出発地駅からの移動メモ',
   },
