@@ -1,7 +1,47 @@
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { wishlist, AnyDbType } from '@db';
+import { wishlist, AnyDbType, planSpot, planSpotNearestStation } from '@db';
+import { TripSpotType } from '@shared/spot/types';
 
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
+
+type DbLike = Pick<
+  AnyDbType,
+  'select' | 'insert' | 'update' | 'delete' | 'query'
+>;
+
+
+export async function createPlanSpot(db: DbLike, planId:number, spotsData: TripSpotType[]) {
+  const createdPlanSpots = [];
+  for (const spotData of spotsData) {
+    const [newPlanSpot] = await db
+      .insert(planSpot)
+      .values({
+        planId: planId,
+        spotId: spotData.id,
+        stayStart: spotData.stayStart,
+        stayEnd: spotData.stayEnd,
+        stayDuration: spotData.stayDuration,
+        memo: spotData.memo ?? null,
+        order: spotData.order,
+        transportMethodId: spotData.transportMethodId,
+        travelTime: spotData.travelTime,
+      })
+      .returning();
+    const nearestStationData = spotData.nearestStation;
+    if (nearestStationData && nearestStationData.placeId) {
+      await db.insert(planSpotNearestStation).values({
+        planSpotId: newPlanSpot.id,
+        placeId: nearestStationData.placeId,
+        stationType: nearestStationData.stationType,
+        transitTime: nearestStationData.transitTime ?? null,
+        scheduledDepartureTime: nearestStationData.scheduledDepartureTime ?? null,
+        memo: nearestStationData.memo ?? null,
+      });
+    }
+    createdPlanSpots.push(newPlanSpot);
+  }
+  return createdPlanSpots;
+}
 
 /**
  * 未訪問の行きたいリストに登録しているスポットを取得

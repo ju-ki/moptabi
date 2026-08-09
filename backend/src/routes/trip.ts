@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi';
+import { TripSchema } from '@shared/trip/schema';
 
-import { TripDetailResponseSchema, TripSchema } from '../models/trip';
+import { TripDetailResponseSchema } from '../models/trip';
 
 export const requestParams = z
   .object({
@@ -88,7 +89,7 @@ export const getTripDetailRoute = createRoute({
       description: '特定の旅行計画詳細',
       content: {
         'application/json': {
-          schema: TripDetailResponseSchema,
+          schema: TripSchema,
         },
       },
     },
