@@ -534,7 +534,6 @@ export const getTripDetailById = async (db: AnyDbType, tripId: number, userId: s
 
 const convertTripData = (rawTripData: TripWithRelations): TripType => {
   return {
-    id: rawTripData.id,
     title: rawTripData.title,
     imageUrl: rawTripData.imageUrl ?? undefined,
     startDate: rawTripData.startDate,
@@ -563,7 +562,6 @@ const convertPlanSpotData = (rawPlanSpotData: PlanSpotWithNearestStations[]): Tr
             placeId: nearestStation.placeId,
             stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
             transitTime: nearestStation.transitTime ?? 0,
-            waitingTime: 0,
             scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
             memo: nearestStation.memo ?? '',
           }
@@ -592,7 +590,6 @@ const convertPlanLocationData = (rawPlanLocationData: PlanLocationWithNearestSta
             placeId: nearestStation.placeId,
             stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
             transitTime: nearestStation.transitTime ?? 0,
-            waitingTime: 0,
             scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
             memo: nearestStation.memo ?? '',
           }
