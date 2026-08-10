@@ -1,17 +1,17 @@
 FROM oven/bun:1.2
 
-# 作業ディレクトリを設定
-WORKDIR /app/backend
+WORKDIR /app
 
-# package.json と bun.lock をコピー（キャッシュ活用）
-COPY backend/package.json backend/bun.lock ./
+COPY backend ./backend
+COPY packages ./packages
 
-# 依存インストール
+WORKDIR /app/packages/shared-types
 RUN bun install
 
-# ソースコード全体をコピー
-COPY backend ./
+WORKDIR /app/backend
 
+RUN bun install
+RUN bun run prebuild
 # Prisma Client を生成
 RUN bun drizzle-kit generate
 # エントリポイント
