@@ -17,7 +17,6 @@ import { useStoreForPlanning } from '@/lib/plan';
 import { TransportNodeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
-
 /**
  * テスト用のお気に入り地点データ（デフォルトフラグあり）
  */

@@ -46,7 +46,7 @@ const createMockSpot = (overrides?: Partial<ExtendSpotType>): ExtendSpotType => 
   stayDuration: 120,
   travelTime: 30,
   transportMethodId: 1,
-  transportMethod: "WALKING",
+  transportMethod: 'WALKING',
   url: 'https://www.tokyotower.co.jp/',
   memo: 'テストメモ',
   image: '/test-image.jpg',
@@ -90,7 +90,7 @@ const createMockNextSpot = (overrides?: Partial<ExtendSpotType>): ExtendSpotType
   stayEnd: '14:00',
   stayDuration: 60,
   transportMethodId: 1,
-  transportMethod: "WALKING",
+  transportMethod: 'WALKING',
   travelTime: 15,
   rating: 4.7,
   nearestStation: {
@@ -664,12 +664,14 @@ describe('SpotDetailCard', () => {
       const spotA = createMockSpot({
         id: 'spot-a',
         name: '東京タワー',
-        latitude: 35.6895, longitude: 139.6917
+        latitude: 35.6895,
+        longitude: 139.6917,
       });
       const spotB = createMockSpot({
         id: 'spot-b',
         name: '浅草寺',
-        latitude: 35.7148, longitude: 139.7967,
+        latitude: 35.7148,
+        longitude: 139.7967,
       });
       const nextSpot = createMockNextSpot();
 

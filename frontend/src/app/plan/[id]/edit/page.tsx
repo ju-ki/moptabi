@@ -12,7 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS, DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
+import {
+  APP_LIMITS,
+  DEFAULT_ARRIVAL_TIME,
+  DEFAULT_DEPARTURE_AND_DESTINATION,
+  DEFAULT_DEPARTURE_TIME,
+} from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { ExtendPlanLocationType, ExtendSpotType, TransportNodeType, TravelPlanType } from '@/types/plan';
@@ -50,7 +55,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
     trip.plans.forEach((plan: TravelPlanType) => {
       plan.spots.map((spot) => {
-          fields.setSpots(plan.date, spot, false);
+        fields.setSpots(plan.date, spot, false);
       });
       fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);

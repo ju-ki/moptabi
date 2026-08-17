@@ -71,10 +71,7 @@ export const usePlanning = () => {
 
       preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transportMethodId;
 
-      if (
-        departureData.transportMethodId == 4 &&
-        departureData.nearestStation?.scheduledDepartureTime
-      ) {
+      if (departureData.transportMethodId == 4 && departureData.nearestStation?.scheduledDepartureTime) {
         preferredDepartureTimes.DEPARTURE_TO_FIRST_SPOT = departureData.nearestStation.scheduledDepartureTime;
       }
 
@@ -92,13 +89,9 @@ export const usePlanning = () => {
       });
 
       const lastSpot = spotsData[spotsData.length - 1];
-        preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transportMethodId;
+      preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transportMethodId;
 
-
-      if (
-        destinationData.transportMethodId == 4 &&
-        destinationData.nearestStation?.scheduledDepartureTime
-      ) {
+      if (destinationData.transportMethodId == 4 && destinationData.nearestStation?.scheduledDepartureTime) {
         const lastSpot = spotsData[spotsData.length - 1];
         preferredDepartureTimes[`SPOT_${lastSpot.id}_TO_DESTINATION`] =
           destinationData.nearestStation.scheduledDepartureTime;

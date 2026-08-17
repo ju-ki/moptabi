@@ -1,5 +1,4 @@
-import { OpeningHoursType } from "@shared/spot/types";
-
+import { OpeningHoursType } from '@shared/spot/types';
 
 /** Google Maps から取得したスポットのメタ情報（表示用） */
 export type SpotMetaType = {

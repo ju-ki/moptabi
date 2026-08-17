@@ -138,10 +138,7 @@ export default function SpotDetailCard({
 
         {/* スポット名 */}
         <div className="flex items-center space-x-2">
-          <MapPin
-            className="text-blue-500 w-6 h-6"
-            style={{ color: '#3b82f6' }}
-          />
+          <MapPin className="text-blue-500 w-6 h-6" style={{ color: '#3b82f6' }} />
           <h3 className="font-semibold text-lg">{spot.name}</h3>
         </div>
 
@@ -277,35 +274,34 @@ export default function SpotDetailCard({
               activeDepartureTime={activeDepartureTime}
             />
           )}
-            <div className="flex items-center space-x-2 text-gray-600">
-              {transportIcons[spot.transportMethod as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
-              <span>
-                {transportIcons[spot.transportMethod as TravelModeType]?.label || transportIcons.DEFAULT.label} (
-                {spot.travelTime})
-              </span>
-              <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-              {routeInfo && transportCandidates.length > 0 && (
-                <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
-                  {transportCandidates
-                    .filter((candidate) => candidate.transportMethodId !== spot.transportMethodId)
-                    .map((candidate) => (
-                      <button
-                        key={`${candidate.name}-${candidate.travelTime}`}
-                        type="button"
-                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
-                        aria-disabled={candidate.isDisabled ? 'true' : 'false'}
-                        onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
-                      >
-                        {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
-                        <span>
-                          {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
-                          {candidate.travelTime})
-                        </span>
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
+          <div className="flex items-center space-x-2 text-gray-600">
+            {transportIcons[spot.transportMethod as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
+            <span>
+              {transportIcons[spot.transportMethod as TravelModeType]?.label || transportIcons.DEFAULT.label} (
+              {spot.travelTime})
+            </span>
+            <div className="flex items-center flex-wrap gap-2 ml-2"></div>
+            {routeInfo && transportCandidates.length > 0 && (
+              <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
+                {transportCandidates
+                  .filter((candidate) => candidate.transportMethodId !== spot.transportMethodId)
+                  .map((candidate) => (
+                    <button
+                      key={`${candidate.name}-${candidate.travelTime}`}
+                      type="button"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
+                      aria-disabled={candidate.isDisabled ? 'true' : 'false'}
+                      onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
+                    >
+                      {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
+                      <span>
+                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime})
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
 
           {selectableDepartureCandidates.length > 0 && (
             <div className="text-sm text-gray-600" data-testid="spot-departure-candidates">

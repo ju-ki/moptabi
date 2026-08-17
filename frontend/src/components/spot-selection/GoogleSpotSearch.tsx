@@ -50,20 +50,20 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
   const { plans } = useStoreForPlanning();
 
   const convertToExtendSpotType = (spots: Spot[]): ExtendSpotType[] => {
-          return spots.map((spot) => ({
-            ...spot,
-            spotId: spot.id,
-            rating: spot.rating ?? 0,
-            name: spot.location.name,
-            latitude: spot.location.lat,
-            longitude: spot.location.lng,
-            transportMethod: "DEFAULT",
-            transportMethodId: 0,
-            travelTime: 0,
-            stayDuration: 60,
-            order: 0,
-          }));
-      };
+    return spots.map((spot) => ({
+      ...spot,
+      spotId: spot.id,
+      rating: spot.rating ?? 0,
+      name: spot.location.name,
+      latitude: spot.location.lat,
+      longitude: spot.location.lng,
+      transportMethod: 'DEFAULT',
+      transportMethodId: 0,
+      travelTime: 0,
+      stayDuration: 60,
+      order: 0,
+    }));
+  };
 
   const categories = [
     { id: 'tourist_attraction', label: '観光スポット' },
@@ -267,7 +267,11 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
       </Tabs>
 
       {/* 検索結果表示（wishlist の SearchResultsView を再利用） */}
-      <SearchResultsView spots={convertToExtendSpotType(searchResults)} selectedSpotIds={selectedSpotIds} onSpotClick={handleSpotClick} />
+      <SearchResultsView
+        spots={convertToExtendSpotType(searchResults)}
+        selectedSpotIds={selectedSpotIds}
+        onSpotClick={handleSpotClick}
+      />
       {searchResults.length === 0 && !isSearching && (
         <div className="text-center text-gray-500 py-8">検索結果がありません</div>
       )}

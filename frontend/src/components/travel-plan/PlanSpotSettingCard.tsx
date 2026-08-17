@@ -125,7 +125,11 @@ export default function PlanSpotSettingCard({
   const fetchNearestStations = async () => {
     setIsLoadingStations(true);
     try {
-      const stations = await searchNearestStation({ center: { id: "", name: "", lat: spot.latitude, lng: spot.longitude }, radius: 1, excludeBusStop });
+      const stations = await searchNearestStation({
+        center: { id: '', name: '', lat: spot.latitude, lng: spot.longitude },
+        radius: 1,
+        excludeBusStop,
+      });
       setNearestStations(stations);
       lastSearchBusStop.current = excludeBusStop;
       lastSearchCoord.current = spot.latitude && spot.longitude ? { lat: spot.latitude, lng: spot.longitude } : null;

@@ -2,7 +2,7 @@ import { OpeningHoursType } from '@shared/spot/types';
 
 import { defaultLocation } from '@/data/constants';
 import { estimateWalkingTime, calculateDistance } from '@/data/mockNearestStation';
-import {  Coordination, ExtendNearestStationType } from '@/types/plan';
+import { Coordination, ExtendNearestStationType } from '@/types/plan';
 import { SpotMetaType } from '@/types/spot';
 import { NearestStation } from '@/types/nearestStation';
 

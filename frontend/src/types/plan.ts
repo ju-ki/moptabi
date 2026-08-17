@@ -1,4 +1,4 @@
-import { OpeningHoursType, SpotMetaType, TripSpotType} from '@shared/spot/types';
+import { OpeningHoursType, SpotMetaType, TripSpotType } from '@shared/spot/types';
 import { NearestStationType } from '@shared/nearestStation/types';
 import { PlanLocationType } from '@shared/planlocation/types';
 import { TripType } from '@shared/trip/types';
@@ -18,8 +18,6 @@ export type Transport = {
   toType: SpotType;
 };
 
-
-
 export enum TransportNodeType {
   DEPARTURE = 'DEPARTURE',
   DESTINATION = 'DESTINATION',
@@ -27,7 +25,6 @@ export enum TransportNodeType {
 }
 
 export type SpotType = 'SPOT' | 'DEPARTURE' | 'DESTINATION';
-
 
 /**
  * 共通の型を画面上で扱うように拡張した型
@@ -94,19 +91,20 @@ export type Spot = {
   planTitle?: string; // 計画タイトル
 };
 
-export type ExtendSpotType = TripSpotType & SpotMetaType & {
-  routeToNext?: SpotRouteDraft;
-  nearestStation?: ExtendNearestStationType;
-  alternateRoutes?: AlternativeRouteInfo[];
-  // 行きたいリスト用のプロパティ
-  priority?: number; // 優先度（1-5）
-  createdAt?: string; // 登録日時
-  // 過去のスポット用のプロパティ
-  visitCount?: number; // 訪問回数
-  visitedAt?: string; // 前回訪問日時
-  planDate?: string; // 計画日
-  planTitle?: string; // 計画タイトル
-};
+export type ExtendSpotType = TripSpotType &
+  SpotMetaType & {
+    routeToNext?: SpotRouteDraft;
+    nearestStation?: ExtendNearestStationType;
+    alternateRoutes?: AlternativeRouteInfo[];
+    // 行きたいリスト用のプロパティ
+    priority?: number; // 優先度（1-5）
+    createdAt?: string; // 登録日時
+    // 過去のスポット用のプロパティ
+    visitCount?: number; // 訪問回数
+    visitedAt?: string; // 前回訪問日時
+    planDate?: string; // 計画日
+    planTitle?: string; // 計画タイトル
+  };
 
 export type ExtendPlanLocationType = PlanLocationType & {
   nearestStation?: ExtendNearestStationType;
@@ -124,12 +122,11 @@ export type TravelPlanType = {
 
 export type ExtendTripType = TripType & {
   plans: TravelPlanType[];
-}
+};
 
 export type PlanErrorType = 'spots' | 'departure' | 'destination' | 'transportationMethod' | 'genreId' | 'memo';
 
 export type PlaceTypeGroupKey = keyof typeof placeTypeMap;
-
 
 export type SortOption = 'popularity' | 'distance';
 

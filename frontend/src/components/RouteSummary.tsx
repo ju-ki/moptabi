@@ -27,17 +27,20 @@ const RouteSummary = ({ date }: RouteSummaryProps) => {
       let totalDistance = 0;
       allSpots.map((spot, idx) => {
         if (idx != allSpots.length - 1) {
-          const distance = calcDistance({
-            id: spot.id,
-            lat: spot.latitude,
-            lng: spot.longitude,
-            name: spot.name,
-          }, {
-            id: allSpots[idx + 1].id,
-            lat: allSpots[idx + 1].latitude,
-            lng: allSpots[idx + 1].longitude,
-            name: allSpots[idx + 1].name,
-          });
+          const distance = calcDistance(
+            {
+              id: spot.id,
+              lat: spot.latitude,
+              lng: spot.longitude,
+              name: spot.name,
+            },
+            {
+              id: allSpots[idx + 1].id,
+              lat: allSpots[idx + 1].latitude,
+              lng: allSpots[idx + 1].longitude,
+              name: allSpots[idx + 1].name,
+            },
+          );
           totalDistance += Number.parseFloat(distance.replace(/km/, ''));
         }
       });

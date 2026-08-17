@@ -18,4 +18,3 @@ export const CoordinationSchema = z.object({
 });
 
 export type CoordinationType = z.infer<typeof CoordinationSchema>;
-

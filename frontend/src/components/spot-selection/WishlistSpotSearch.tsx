@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { SearchResultsView } from '@/components/common/SearchResultsView';
 import { useWishlistSpots } from '@/hooks/spot-search/use-wishlist-spots';
 import { prefectures } from '@/data/constants';
-import {  ExtendSpotType, Spot } from '@/types/plan';
+import { ExtendSpotType, Spot } from '@/types/plan';
 import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
 
 // TODO: dateは営業時間のフィルターで使用予定
@@ -36,7 +36,7 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
       name: spot.location.name,
       latitude: spot.location.lat,
       longitude: spot.location.lng,
-      transportMethod: "DEFAULT",
+      transportMethod: 'DEFAULT',
       transportMethodId: 0,
       travelTime: 0,
       stayDuration: 60,

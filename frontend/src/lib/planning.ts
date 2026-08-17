@@ -1,6 +1,12 @@
 import { TransportMethodType } from '@shared/transports/types';
 
-import { TravelPlanType, TravelModeType,  ExtendSpotType, ExtendPlanLocationType, ExtendNearestStationType } from '@/types/plan';
+import {
+  TravelPlanType,
+  TravelModeType,
+  ExtendSpotType,
+  ExtendPlanLocationType,
+  ExtendNearestStationType,
+} from '@/types/plan';
 import {
   DEFAULT_ARRIVAL_TIME,
   DEFAULT_DEPARTURE_TIME,
@@ -1055,9 +1061,9 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       firstSpot.nearestStation,
       departureCoord,
       {
-      lat: firstSpot.latitude,
-      lng: firstSpot.longitude,
-      }
+        lat: firstSpot.latitude,
+        lng: firstSpot.longitude,
+      },
     );
   }
   // 最寄駅を介さないあるいは最寄駅情報がない場合のルートと時間を計算
@@ -1242,7 +1248,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           currentSpot.nearestStation,
           nextSpot.nearestStation,
           {
-            lat:currentSpot.latitude,
+            lat: currentSpot.latitude,
             lng: currentSpot.longitude,
           },
           {
@@ -1254,13 +1260,13 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
 
       const routeResult = await getOptimalRouteWithAlternatives(
         {
-            lat:currentSpot.latitude,
-            lng: currentSpot.longitude,
-          },
-          {
-            lat: nextSpot.latitude,
-            lng: nextSpot.longitude,
-          },
+          lat: currentSpot.latitude,
+          lng: currentSpot.longitude,
+        },
+        {
+          lat: nextSpot.latitude,
+          lng: nextSpot.longitude,
+        },
         [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 1],
         1.5,
         getPreferredDirectTransportMethodId(preferredSpotToSpotMethodId),
@@ -1315,14 +1321,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           distanceM = getRouteDistanceMeters(segment.routes[0]);
           // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
           if (segment.routes[0].transportMethodId === 1)
-            pushLongWalkMessage(
-              messages,
-              segmentKey,
-              durationSec,
-              distanceM,
-              currentSpot.name,
-              nextSpot.name,
-            );
+            pushLongWalkMessage(messages, segmentKey, durationSec, distanceM, currentSpot.name, nextSpot.name);
         }
 
         // 代替ルート情報を変換

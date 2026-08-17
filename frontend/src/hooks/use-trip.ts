@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { TripType} from "@shared/trip/types";
+import { TripType } from '@shared/trip/types';
 
 import { ExtendNearestStationType, ExtendPlanLocationType, ExtendSpotType, ExtendTripType, Spot } from '@/types/plan';
 import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
@@ -9,11 +9,8 @@ import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStatio
 import { useFetcher } from './use-fetcher';
 
 async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripType> {
-  
   return trip as ExtendTripType;
 }
-
-
 
 export const useFetchTripDetail = (tripId?: string) => {
   const { getFetcher, getAuthHeaders, isAuthenticated, isSessionLoading } = useFetcher();

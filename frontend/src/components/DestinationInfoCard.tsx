@@ -1,5 +1,5 @@
 'use client';
-import  { PlanLocationType } from '@shared/planlocation/types';
+import { PlanLocationType } from '@shared/planlocation/types';
 import { Flag } from 'lucide-react';
 
 import { convertHHmmToJpFormat } from '@/lib/utils';

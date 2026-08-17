@@ -2,7 +2,6 @@
 
 import { Home } from 'lucide-react';
 
-
 import { TravelModeType } from '@/types/plan';
 
 import { NearestStationDetail } from './NearestStationDetail';

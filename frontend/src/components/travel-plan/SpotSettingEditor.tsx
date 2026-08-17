@@ -49,12 +49,7 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
       const prevSpot = spots.find((s) => s.id === prevSetting.id);
       if (!prevSpot) return undefined;
 
-      return calculateDistance(
-        prevSpot.latitude,
-        prevSpot.longitude,
-        currentSpot.latitude,
-        currentSpot.longitude,
-      );
+      return calculateDistance(prevSpot.latitude, prevSpot.longitude, currentSpot.latitude, currentSpot.longitude);
     },
     [spots, departureData],
   );
@@ -199,7 +194,7 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
             distanceFromPrevious={getDistanceFromPrevious(spot.id, index)}
             previousLocation={
               index > 0
-                ? { id: "", name: "", lat: sortedSpots[index - 1].latitude, lng: sortedSpots[index - 1].longitude }
+                ? { id: '', name: '', lat: sortedSpots[index - 1].latitude, lng: sortedSpots[index - 1].longitude }
                 : {
                     id: 'departure',
                     name: departureData?.name || '出発地',

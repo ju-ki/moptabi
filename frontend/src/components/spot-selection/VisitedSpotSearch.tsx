@@ -30,20 +30,20 @@ export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: Visit
   });
 
   const convertToExtendSpotType = (spots: Spot[]): ExtendSpotType[] => {
-        return spots.map((spot) => ({
-          ...spot,
-          spotId: spot.id,
-          rating: spot.rating ?? 0,
-          name: spot.location.name,
-          latitude: spot.location.lat,
-          longitude: spot.location.lng,
-          transportMethod: "DEFAULT",
-          transportMethodId: 0,
-          travelTime: 0,
-          stayDuration: 60,
-          order: 0,
-        }));
-    };
+    return spots.map((spot) => ({
+      ...spot,
+      spotId: spot.id,
+      rating: spot.rating ?? 0,
+      name: spot.location.name,
+      latitude: spot.location.lat,
+      longitude: spot.location.lng,
+      transportMethod: 'DEFAULT',
+      transportMethodId: 0,
+      travelTime: 0,
+      stayDuration: 60,
+      order: 0,
+    }));
+  };
 
   const handleSpotClick = (spot: ExtendSpotType) => {
     const isSelected = selectedSpotIds.includes(spot.spotId);

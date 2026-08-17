@@ -5,7 +5,7 @@ import { PlanLocationCandidateItemSchema, PlanLocationCandidateResponseSchema } 
 
 import type { StationType } from '@/types/nearestStation';
 
-import type {  PlanLocationCandidateResponseType } from '@shared/user/types';
+import type { PlanLocationCandidateResponseType } from '@shared/user/types';
 
 // 地点タイプ
 export const LOCATION_TYPE = {
@@ -32,7 +32,6 @@ export type DepartureDestinationNearestStation = {
   waitingTime?: number;
   memo?: string;
 };
-
 
 export type { PlanLocationCandidateResponseType as PlanLocationCandidatesResponse };
 

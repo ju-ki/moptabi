@@ -63,12 +63,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
 
   // スポット間の距離を計算
   const getDistanceFromPrevious = useCallback((): number | undefined => {
-    return calculateDistance(
-      firstSpot.latitude,
-      firstSpot.longitude,
-      departureData.latitude,
-      departureData.longitude,
-    );
+    return calculateDistance(firstSpot.latitude, firstSpot.longitude, departureData.latitude, departureData.longitude);
   }, [firstSpot, departureData]);
 
   // 出発地の情報を更新（最寄駅など）

@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
 
-
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, SpotMakerColors } from '@/data/constants';
@@ -100,36 +99,35 @@ export default function DestinationDetailCard({
             activeDepartureTime={activeDepartureTime}
           />
         )}
-          <>
-            <div className="flex items-center space-x-2 text-gray-600">
-              {transportIcons[destination.transportMethod]?.icon || transportIcons.DEFAULT.icon}
-              <span>
-                {transportIcons[destination.transportMethod]?.label || transportIcons.DEFAULT.label} (
-                {destination?.travelTime})
-              </span>
-              <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-              {routeInfo && transportCandidates.length > 0 && (
-                <div className="flex flex-wrap gap-2" data-testid="destination-transport-candidates">
-                  {transportCandidates
-                    .filter((candidate) => candidate.transportMethodId !== destination.transportMethodId)
-                    .map((candidate) => (
-                      <button
-                        key={`${candidate.name}-${candidate.travelTime}`}
-                        type="button"
-                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
-                        onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
-                      >
-                        {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
-                        <span>
-                          {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
-                          {candidate.travelTime})
-                        </span>
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </>
+        <>
+          <div className="flex items-center space-x-2 text-gray-600">
+            {transportIcons[destination.transportMethod]?.icon || transportIcons.DEFAULT.icon}
+            <span>
+              {transportIcons[destination.transportMethod]?.label || transportIcons.DEFAULT.label} (
+              {destination?.travelTime})
+            </span>
+            <div className="flex items-center flex-wrap gap-2 ml-2"></div>
+            {routeInfo && transportCandidates.length > 0 && (
+              <div className="flex flex-wrap gap-2" data-testid="destination-transport-candidates">
+                {transportCandidates
+                  .filter((candidate) => candidate.transportMethodId !== destination.transportMethodId)
+                  .map((candidate) => (
+                    <button
+                      key={`${candidate.name}-${candidate.travelTime}`}
+                      type="button"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
+                      onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
+                    >
+                      {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
+                      <span>
+                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime})
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+          </div>
+        </>
 
         {selectableDepartureCandidates.length > 0 && (
           <div className="text-sm text-gray-600" data-testid="destination-time-candidates">

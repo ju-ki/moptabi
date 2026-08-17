@@ -14,7 +14,7 @@ import {
   TravelModeType,
   TravelPlanType,
 } from '@/types/plan';
-import {  PlanLocationCandidatesResponse } from '@/models/planLocation';
+import { PlanLocationCandidatesResponse } from '@/models/planLocation';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 import { getPrefectures } from './algorithm';
@@ -308,9 +308,9 @@ export const useStoreForPlanning = create<FormState>()(
       setIsLocationLinked: (isLinked) => set((state) => ({ ...state, isLocationLinked: isLinked })),
       getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
-        if (plansForDate.length > 0) { if (type === TransportNodeType.SPOT) {
-            return plansForDate[0].spots
-              .sort((a, b) => a.order - b.order);
+        if (plansForDate.length > 0) {
+          if (type === TransportNodeType.SPOT) {
+            return plansForDate[0].spots.sort((a, b) => a.order - b.order);
           } else {
             return [...plansForDate[0].spots].sort((a, b) => a.order - b.order);
           }

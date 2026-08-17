@@ -1,4 +1,10 @@
-import { Coordination, ExtendPlanLocationType, PlaceTypeGroupKey, TransportNodeType, TravelModeType } from '@/types/plan';
+import {
+  Coordination,
+  ExtendPlanLocationType,
+  PlaceTypeGroupKey,
+  TransportNodeType,
+  TravelModeType,
+} from '@/types/plan';
 
 /**
  * アプリケーション全体の上限設定
@@ -83,7 +89,7 @@ export const DEFAULT_DEPARTURE_AND_DESTINATION: ExtendPlanLocationType = {
   travelTime: 0,
   transportMethod: 'DEFAULT',
   transportMethodId: 0,
-  time:"09:00",
+  time: '09:00',
 };
 
 export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {
