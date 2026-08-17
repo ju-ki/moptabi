@@ -7,16 +7,16 @@ import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Spot } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 import { GoogleSpotCard, WishlistSpotCard, VisitedSpotCard } from '@/components/spot-selection/cards';
 
 export type ViewModeType = 'list' | 'map' | 'split';
 export type CardType = 'google' | 'wishlist' | 'visited';
 
 interface SearchResultsViewProps {
-  spots: Spot[];
+  spots: ExtendSpotType[];
   selectedSpotIds?: string[];
-  onSpotClick?: (spot: Spot) => void;
+  onSpotClick?: (spot: ExtendSpotType) => void;
   /** カードの種類（google: Google検索, wishlist: 行きたいリスト, visited: 過去のスポット） */
   cardType?: CardType;
 }
@@ -28,11 +28,11 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
   cardType = 'google',
 }) => {
   const defaultCenter = { lat: 35.681236, lng: 139.767125 };
-  const firstWithLocation = spots.find((s) => s.location?.lat != null && s.location?.lng != null);
+  const firstWithLocation = spots.find((s) => s.latitude != null && s.longitude != null);
   const mapCenter = firstWithLocation
-    ? { lat: firstWithLocation.location.lat, lng: firstWithLocation.location.lng }
+    ? { lat: firstWithLocation.latitude, lng: firstWithLocation.longitude }
     : defaultCenter;
-  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [selectedSpot, setSelectedSpot] = useState<ExtendSpotType | null>(null);
   const [viewMode, setViewMode] = useState<ViewModeType>('list');
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
 
   const isSpotSelected = (spotId: string) => selectedSpotIds.includes(spotId);
 
-  const getMarkerIcon = (place: Spot) => {
+  const getMarkerIcon = (place: ExtendSpotType) => {
     const isAdded = isSpotSelected(place.id);
     const isSelected = selectedSpot?.id === place.id;
     const isHovered = hoveredPlaceId === place.id;
@@ -196,14 +196,14 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
                 >
                   {spots &&
                     spots.map((place) => {
-                      if (!place.location) return null;
+                      if (place.latitude == null || place.longitude == null) return null;
 
                       return (
                         <Marker
                           key={place.id}
                           position={{
-                            lat: place.location.lat,
-                            lng: place.location.lng,
+                            lat: place.latitude,
+                            lng: place.longitude,
                           }}
                           icon={getMarkerIcon(place)}
                           onClick={() => handleMarkerClick(place.id)}
@@ -213,17 +213,17 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
                       );
                     })}
 
-                  {selectedSpot && selectedSpot.location && (
+                  {selectedSpot && (
                     <InfoWindow
                       position={{
-                        lat: selectedSpot.location.lat,
-                        lng: selectedSpot.location.lng,
+                        lat: selectedSpot.latitude,
+                        lng: selectedSpot.longitude,
                       }}
                       onCloseClick={() => setSelectedSpot(null)}
                     >
                       <div className="p-2 max-w-xs">
                         <h3 className="font-semibold text-sm mb-2" data-testid="info-window-spot-name">
-                          {selectedSpot.location.name}
+                          {selectedSpot.name}
                         </h3>
                         {selectedSpot.rating && (
                           <div className="flex items-center gap-2 mb-2">

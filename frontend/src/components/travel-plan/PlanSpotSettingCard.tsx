@@ -30,17 +30,16 @@ import {
 } from '@/data/mockNearestStation';
 import { searchNearestStation } from '@/lib/google-maps';
 import { cn } from '@/lib/utils';
-import { NearestStation } from '@/types/plan';
-import { Coordination, Spot } from '@/types/plan';
+import { Coordination, ExtendNearestStationType, ExtendSpotType } from '@/types/plan';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 export type PlanSpotSettingCardProps = {
-  spot: Spot;
+  spot: ExtendSpotType;
   previousLocation: Coordination;
-  previousSpot?: Spot;
+  previousSpot?: ExtendSpotType;
   totalSpots: number;
-  onSettingChange: (setting: Spot) => void;
+  onSettingChange: (setting: ExtendSpotType) => void;
   distanceFromPrevious?: number;
   onOrderChange: (spotId: string, newOrder: number) => void;
   isDragging?: boolean;
@@ -86,8 +85,8 @@ export default function PlanSpotSettingCard({
 
   const [useNearestStation, setUseNearestStation] = useState<boolean>(!!spot.nearestStation);
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
-  const [nearestStations, setNearestStations] = useState<NearestStation[]>(
-    [spot.nearestStation].filter((s): s is NearestStation => !!s),
+  const [nearestStations, setNearestStations] = useState<ExtendNearestStationType[]>(
+    [spot.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
   );
   const [isLoadingStations, setIsLoadingStations] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<string | null>(spot.nearestStation?.placeId || null);
@@ -107,7 +106,7 @@ export default function PlanSpotSettingCard({
 
   const lastSearchBusStop = useRef<boolean>(excludeBusStop);
   const lastSearchCoord = useRef<{ lat: number; lng: number } | null>(
-    spot.location ? { lat: spot.location.lat, lng: spot.location.lng } : null,
+    spot.latitude && spot.longitude ? { lat: spot.latitude, lng: spot.longitude } : null,
   );
 
   useEffect(() => {
@@ -126,10 +125,10 @@ export default function PlanSpotSettingCard({
   const fetchNearestStations = async () => {
     setIsLoadingStations(true);
     try {
-      const stations = await searchNearestStation({ center: spot.location, radius: 1, excludeBusStop });
+      const stations = await searchNearestStation({ center: { id: "", name: "", lat: spot.latitude, lng: spot.longitude }, radius: 1, excludeBusStop });
       setNearestStations(stations);
       lastSearchBusStop.current = excludeBusStop;
-      lastSearchCoord.current = spot.location ? { lat: spot.location.lat, lng: spot.location.lng } : null;
+      lastSearchCoord.current = spot.latitude && spot.longitude ? { lat: spot.latitude, lng: spot.longitude } : null;
     } catch (error) {
       console.error('最寄駅の取得に失敗しました:', error);
     } finally {
@@ -143,8 +142,8 @@ export default function PlanSpotSettingCard({
     if (
       checked &&
       (lastSearchBusStop.current !== excludeBusStop ||
-        lastSearchCoord.current?.lat !== spot.location?.lat ||
-        lastSearchCoord.current?.lng !== spot.location?.lng ||
+        lastSearchCoord.current?.lat !== spot.latitude ||
+        lastSearchCoord.current?.lng !== spot.longitude ||
         nearestStations.length === 0)
     ) {
       fetchNearestStations();
@@ -326,7 +325,7 @@ export default function PlanSpotSettingCard({
 
           <div className="w-full min-w-0 flex-1 sm:w-auto">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-medium truncate">{spot.location.name}</h4>
+              <h4 className="font-medium truncate">{spot.name}</h4>
               {distanceFromPrevious !== undefined && (
                 <p className="text-sm text-gray-500">前のスポットから{(distanceFromPrevious / 1000).toFixed(1)} km</p>
               )}
@@ -562,7 +561,7 @@ export default function PlanSpotSettingCard({
                       {spot.nearestStation && previousSpot && previousSpot?.nearestStation && (
                         <div className="rounded bg-gray-100 p-2 text-sm text-gray-600 break-words">
                           <span className="font-medium">ルート: </span>
-                          <span>{previousSpot.location.name}</span>
+                          <span>{previousSpot.name}</span>
                           {previousSpot.nearestStation && (
                             <>
                               <span className="mx-1">→</span>
@@ -589,7 +588,7 @@ export default function PlanSpotSettingCard({
                             </>
                           )}
                           <span className="mx-1">→</span>
-                          <span>{spot.location.name}</span>
+                          <span>{spot.name}</span>
                         </div>
                       )}
                     </>

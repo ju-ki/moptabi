@@ -3,10 +3,9 @@
  */
 import { PlanLocationCandidateItemSchema, PlanLocationCandidateResponseSchema } from '@shared/user/schema';
 
-import { AlternativeRouteInfo } from '@/lib/planning';
 import type { StationType } from '@/types/nearestStation';
 
-import type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType } from '@shared/user/types';
+import type {  PlanLocationCandidateResponseType } from '@shared/user/types';
 
 // 地点タイプ
 export const LOCATION_TYPE = {
@@ -34,11 +33,7 @@ export type DepartureDestinationNearestStation = {
   memo?: string;
 };
 
-export type DepartureAndDestinationType = PlanLocationCandidateItemType & {
-  time?: string;
-  nearestStation?: DepartureDestinationNearestStation;
-  alternativeTransports?: AlternativeRouteInfo[]; // 代替移動手段の候補
-};
+
 export type { PlanLocationCandidateResponseType as PlanLocationCandidatesResponse };
 
 export type LocationType = (typeof LOCATION_TYPE)[keyof typeof LOCATION_TYPE];

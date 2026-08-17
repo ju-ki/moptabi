@@ -1,5 +1,4 @@
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { TravelPlanType, TravelModeType, Spot, NearestStation } from '@/types/plan';
+import { TravelPlanType, TravelModeType,  ExtendSpotType, ExtendPlanLocationType, ExtendNearestStationType } from '@/types/plan';
 import {
   DEFAULT_ARRIVAL_TIME,
   DEFAULT_DEPARTURE_TIME,
@@ -14,6 +13,7 @@ import {
 } from '@/data/constants';
 
 import { getRoute } from './plan';
+import { TransportMethodType } from '@shared/transports/types';
 
 export type ArrivalWarning = {
   exceededMinutes: number;
@@ -30,9 +30,9 @@ export type PlanningInfo = {
  */
 export type PlanningParams = {
   date: string;
-  departure: DepartureAndDestinationType;
-  destination: DepartureAndDestinationType;
-  spots: Spot[];
+  departure: ExtendPlanLocationType;
+  destination: ExtendPlanLocationType;
+  spots: ExtendSpotType[];
   transportMethodIds: number[];
   /** 区間キーごとの優先移動手段ID（再プランニング時の優先採用用） */
   preferredTransportMethodIds?: Record<string, number>;
@@ -59,11 +59,11 @@ export type PlanningResult = {
   arrivalWarning?: ArrivalWarning | null;
   messages: PlanningMessage[];
   /** 更新されたスポットの情報 */
-  updatedSpots: Spot[];
+  updatedSpots: ExtendSpotType[];
   /** 更新された出発地情報 */
-  updatedDeparture: DepartureAndDestinationType;
+  updatedDeparture: ExtendPlanLocationType;
   /** 更新された目的地情報 */
-  updatedDestination: DepartureAndDestinationType;
+  updatedDestination: ExtendPlanLocationType;
 };
 
 export type PlanningMessageLevel = 'INFO' | 'WARNING';
@@ -132,7 +132,7 @@ export type RouteInfo = {
   fromType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   routeType: 'DEPARTURE_TO_SPOT' | 'SPOT_TO_SPOT' | 'SPOT_TO_DESTINATION' | 'TO_STATION' | 'STATION_TO_STATION';
   toType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
-  transportMethod: TravelModeType; // 移動手段
+  transportMethod: TransportMethodType; // 移動手段
   transportMethodId: number;
   distance: number; // メートル
   duration: number; // 秒
@@ -151,7 +151,7 @@ export type RouteInfo = {
  */
 export type AlternativeRouteInfo = {
   transportMethodId: number;
-  transportMethod: TravelModeType;
+  transportMethod: TransportMethodType;
   duration: number; // 秒
   distance: number; // メートル
   durationText: string; // 表示用（例: 「15分」）
@@ -163,7 +163,7 @@ export type AlternativeRouteInfo = {
 export type DistanceInfoInput = DirectDistanceInfoInput | StationDistanceInfoInput;
 
 export type CandidateSelectionState = {
-  selectedTransport?: TravelModeType;
+  selectedTransport?: TransportMethodType;
   selectedDepartureTime?: string;
   [key: string]: unknown;
 };
@@ -668,7 +668,7 @@ function getPreferredDirectTransportMethodId(methodId?: number): number | undefi
  * @param nextSpot 変更後のスポット
  * @returns dirty対象項目に差分がある場合はtrue
  */
-export function hasDirtySpotChange(previousSpot: Spot, nextSpot: Spot): boolean {
+export function hasDirtySpotChange(previousSpot: ExtendSpotType, nextSpot: ExtendSpotType): boolean {
   return PLANNING_DIRTY_SPOT_FIELDS.some((field) => {
     return (
       JSON.stringify(previousSpot[field]) !== JSON.stringify(nextSpot[field]) ||
@@ -692,8 +692,8 @@ export function hasDirtySpotChange(previousSpot: Spot, nextSpot: Spot): boolean 
  * @returns dirty対象項目に差分がある場合はtrue
  */
 export function hasDirtyDepartureAndDestinationChange(
-  previousSpot: DepartureAndDestinationType,
-  nextSpot: DepartureAndDestinationType,
+  previousSpot: ExtendPlanLocationType,
+  nextSpot: ExtendPlanLocationType,
 ): boolean {
   return PLANNING_DIRTY_DEPARTURE_AND_DESTINATION_FIELDS.some((field) => {
     return (
@@ -852,8 +852,8 @@ export async function getOptimalRouteWithAlternatives(
  * 最寄駅経由の移動時間を計算する
  */
 function calculateTotalNearestStationDuration(
-  originNearestStation: NearestStation,
-  destinationNearestStation: NearestStation,
+  originNearestStation: ExtendNearestStationType,
+  destinationNearestStation: ExtendNearestStationType,
 ): NearestStationDurationInfo {
   const walkToStation = Math.max(originNearestStation.walkingTime ?? 0, 0);
   const transitMinutes = Math.max(originNearestStation.transitTime ?? 0, 0);
@@ -873,8 +873,8 @@ function calculateTotalNearestStationDuration(
  * @returns
  */
 function buildNearestStationRouteInfo(
-  originNearestStation: NearestStation,
-  destinationNearestStation: NearestStation,
+  originNearestStation: ExtendNearestStationType,
+  destinationNearestStation: ExtendNearestStationType,
   originCoord: { lat: number; lng: number },
   destinationCoord: { lat: number; lng: number },
 ): Array<RouteResult & { transportMethodId: number }> {
@@ -953,11 +953,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   messages: PlanningMessage[];
   totalDuration: number;
   totalDistance: number;
-  updatedSpots: Spot[];
-  updatedDeparture: DepartureAndDestinationType;
-  updatedDestination: DepartureAndDestinationType;
+  updatedSpots: ExtendSpotType[];
+  updatedDeparture: ExtendPlanLocationType;
+  updatedDestination: ExtendPlanLocationType;
 }> {
-  const updatedDeparture: DepartureAndDestinationType = {
+  const updatedDeparture: ExtendPlanLocationType = {
     ...params.departure,
     nearestStation: params.departure.nearestStation
       ? {
@@ -965,7 +965,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         }
       : params.departure.nearestStation,
   };
-  const updatedDestination: DepartureAndDestinationType = {
+  const updatedDestination: ExtendPlanLocationType = {
     ...params.destination,
     nearestStation: params.destination.nearestStation
       ? {
@@ -1027,14 +1027,15 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       };
     }
 
-    updatedDeparture.transports = {
-      transportMethod: 4,
-      name: getTransportMethodLabel(4),
-      cost: 0,
-      fromType: 'DEPARTURE',
-      toType: 'SPOT',
-      travelTime: `${totalDuration}分`,
-    };
+    // TODO: 型変換をしたkら対応
+    // updatedDeparture.transports = {
+    //   transportMethod: 4,
+    //   name: getTransportMethodLabel(4),
+    //   cost: 0,
+    //   fromType: 'DEPARTURE',
+    //   toType: 'SPOT',
+    //   travelTime: `${totalDuration}分`,
+    // };
 
     // メッセージを格納
     if (candidatesResult.level && candidatesResult.message) {
@@ -1052,13 +1053,19 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       params.departure.nearestStation,
       firstSpot.nearestStation,
       departureCoord,
-      firstSpot.location,
+      {
+      lat: firstSpot.latitude,
+      lng: firstSpot.longitude,
+      }
     );
   }
   // 最寄駅を介さないあるいは最寄駅情報がない場合のルートと時間を計算
   const routeResult = await getOptimalRouteWithAlternatives(
     departureCoord,
-    firstSpot.location,
+    {
+      lat: firstSpot.latitude,
+      lng: firstSpot.longitude,
+    },
     [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 1],
     1.5,
     getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
@@ -1119,7 +1126,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           durationSec,
           distanceM,
           DEPARTURE_NAME,
-          firstSpot.location.name,
+          firstSpot.name,
         );
     }
 
@@ -1165,7 +1172,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const currentSpot = plannedSpots[i];
     const stayStart = minutesToTime(currentPlanningTime);
     const stayEnd = minutesToTime(currentPlanningTime + currentSpot.stayDuration);
-    let updatedCurrentSpot: Spot = {
+    let updatedCurrentSpot: ExtendSpotType = {
       ...currentSpot,
       stayStart,
       stayEnd,
@@ -1223,23 +1230,36 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
             scheduledDepartureTime: selectedCandidates.selectedTime,
             memo: updatedCurrentSpot.routeToNext?.memo ?? '',
           },
-          transports: {
-            ...updatedCurrentSpot.transports,
-            travelTime: `${totalDuration}分`,
-          },
+          // TODO: 型変換をしてから対応
+          // transports: {
+          //   ...updatedCurrentSpot.transports,
+          //   travelTime: `${totalDuration}分`,
+          // },
         };
 
         mainRoute = buildNearestStationRouteInfo(
           currentSpot.nearestStation,
           nextSpot.nearestStation,
-          currentSpot.location,
-          nextSpot.location,
+          {
+            lat:currentSpot.latitude,
+            lng: currentSpot.longitude,
+          },
+          {
+            lat: nextSpot.latitude,
+            lng: nextSpot.longitude,
+          },
         );
       }
 
       const routeResult = await getOptimalRouteWithAlternatives(
-        currentSpot.location,
-        nextSpot.location,
+        {
+            lat:currentSpot.latitude,
+            lng: currentSpot.longitude,
+          },
+          {
+            lat: nextSpot.latitude,
+            lng: nextSpot.longitude,
+          },
         [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 1],
         1.5,
         getPreferredDirectTransportMethodId(preferredSpotToSpotMethodId),
@@ -1299,8 +1319,8 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
               segmentKey,
               durationSec,
               distanceM,
-              currentSpot.location.name,
-              nextSpot.location.name,
+              currentSpot.name,
+              nextSpot.name,
             );
         }
 
@@ -1381,14 +1401,15 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         };
       }
 
-      updatedDestination.transports = {
-        transportMethod: 4,
-        name: getTransportMethodLabel(4),
-        cost: 0,
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-        travelTime: `${totalDuration}分`,
-      };
+      // TODO: 型変換してから対応
+      // updatedDestination.transports = {
+      //   transportMethod: 4,
+      //   name: getTransportMethodLabel(4),
+      //   cost: 0,
+      //   fromType: 'SPOT',
+      //   toType: 'DESTINATION',
+      //   travelTime: `${totalDuration}分`,
+      // };
 
       if (selectedCandidates.level && selectedCandidates.message) {
         messages.push({
@@ -1404,12 +1425,18 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       mainRoute = buildNearestStationRouteInfo(
         lastSpot.nearestStation,
         params.destination.nearestStation,
-        lastSpot.location,
+        {
+          lat: lastSpot.latitude,
+          lng: lastSpot.longitude,
+        },
         destinationCoord,
       );
     }
     const routeResult = await getOptimalRouteWithAlternatives(
-      lastSpot.location,
+      {
+        lat: lastSpot.latitude,
+        lng: lastSpot.longitude,
+      },
       destinationCoord,
       [...params.transportMethodIds, preferredLastSegmentMethodId ?? 1],
       1.5,
@@ -1470,7 +1497,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
             `SPOT_${lastSpot.id}_TO_DESTINATION`,
             durationSec,
             distanceM,
-            lastSpot.location.name,
+            lastSpot.name,
             DESTINATION_NAME,
           );
       }
@@ -1536,9 +1563,9 @@ async function runBackwardPlanning(params: PlanningParams): Promise<{
   messages: PlanningMessage[];
   totalDuration: number;
   totalDistance: number;
-  updatedSpots: Spot[];
-  updatedDeparture: DepartureAndDestinationType;
-  updatedDestination: DepartureAndDestinationType;
+  updatedSpots: ExtendSpotType[];
+  updatedDeparture: ExtendPlanLocationType;
+  updatedDestination: ExtendPlanLocationType;
 }> {
   /**
    * 到着時刻から逆算する際も、前進プランニングを反復実行して候補時刻を収束させる。

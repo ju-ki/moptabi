@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
+import type { TransportMethodType } from '@shared/transports/types';
 
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { TransportNodeType, TravelModeType } from '@/types/plan';
@@ -11,7 +12,7 @@ import { useStoreForPlanning } from '@/lib/plan';
 /**
  * 移動手段のアイコンと表示名のマッピング
  */
-const transportIcons: Record<TravelModeType | 'DEFAULT', { icon: JSX.Element; label: string }> = {
+const transportIcons: Record<TransportMethodType | 'DEFAULT', { icon: JSX.Element; label: string }> = {
   WALKING: { icon: <FootprintsIcon className="w-5 h-5 text-yellow-500" />, label: '徒歩' },
   TRANSIT: { icon: <Train className="w-5 h-5 text-blue-500" />, label: '最寄駅/バス停経由' },
   DRIVING: { icon: <Car className="w-5 h-5 text-gray-700" />, label: '車' },
@@ -57,7 +58,7 @@ export default function DestinationDetailCard({
   const previousSpot = fields.getSpotInfo(date, null).slice(-1)[0];
   const transportCandidates =
     destination?.alternativeTransports?.map((transport) => ({
-      name: transport.transportMethod as TravelModeType,
+      name: transport.transportMethod as TransportMethodType,
       travelTime: transport.durationText,
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
@@ -90,26 +91,25 @@ export default function DestinationDetailCard({
     <div className="my-10 border-t border-gray-300 py-8 relative" data-testid={`destination-detail-card-${index}`}>
       {/* 移動手段 */}
       <div className="space-y-3 my-4" data-testid="spot-transport">
-        {previousSpot?.nearestStation && destination.nearestStation && destination.transports?.transportMethod == 4 && (
+        {previousSpot?.nearestStation && destination.nearestStation && destination.transportMethodId == 4 && (
           <RouteSummaryNearestStation
             originNearestStation={previousSpot.nearestStation}
             destinationNearestStation={destination.nearestStation}
             activeDepartureTime={activeDepartureTime}
           />
         )}
-        {destination.transports && (
           <>
             <div className="flex items-center space-x-2 text-gray-600">
-              {transportIcons[destination.transports.name as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
+              {transportIcons[destination.transportMethod]?.icon || transportIcons.DEFAULT.icon}
               <span>
-                {transportIcons[destination.transports.name as TravelModeType]?.label || transportIcons.DEFAULT.label} (
-                {destination?.transports?.travelTime})
+                {transportIcons[destination.transportMethod]?.label || transportIcons.DEFAULT.label} (
+                {destination?.travelTime})
               </span>
               <div className="flex items-center flex-wrap gap-2 ml-2"></div>
               {routeInfo && transportCandidates.length > 0 && (
                 <div className="flex flex-wrap gap-2" data-testid="destination-transport-candidates">
                   {transportCandidates
-                    .filter((candidate) => candidate.transportMethodId !== destination?.transports?.transportMethod)
+                    .filter((candidate) => candidate.transportMethodId !== destination.transportMethodId)
                     .map((candidate) => (
                       <button
                         key={`${candidate.name}-${candidate.travelTime}`}
@@ -128,7 +128,6 @@ export default function DestinationDetailCard({
               )}
             </div>
           </>
-        )}
 
         {selectableDepartureCandidates.length > 0 && (
           <div className="text-sm text-gray-600" data-testid="destination-time-candidates">

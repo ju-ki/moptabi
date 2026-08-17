@@ -69,39 +69,34 @@ export const usePlanning = () => {
       // プランニング再実施時に既に発車時間が設定されている場合のその発車時間を取得する
       const preferredDepartureTimes: Record<string, string> = {};
 
-      if (departureData.transports?.transportMethod) {
-        preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transports.transportMethod;
-      }
+      preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transportMethodId;
 
       if (
-        departureData.transports?.transportMethod &&
-        departureData.transports?.transportMethod == 4 &&
+        departureData.transportMethodId == 4 &&
         departureData.nearestStation?.scheduledDepartureTime
       ) {
-        preferredDepartureTimes.DEPARTURE_TO_FIRST_SPOT = departureData.nearestStation?.scheduledDepartureTime;
+        preferredDepartureTimes.DEPARTURE_TO_FIRST_SPOT = departureData.nearestStation.scheduledDepartureTime;
       }
 
       spotsData.forEach((spot, index) => {
         const nextSpot = spotsData[index + 1];
         if (!nextSpot) return;
-        if (!spot.transports?.transportMethod) return;
+        if (!spot.transportMethodId) return;
 
-        preferredTransportMethodIds[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.transports.transportMethod;
+        preferredTransportMethodIds[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.transportMethodId;
 
         // 最寄駅の情報は次のスポットに格納されているため
-        if (spot.transports.transportMethod != 4) return;
+        if (spot.transportMethodId != 4) return;
         if (!nextSpot.nearestStation?.scheduledDepartureTime) return;
         preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = nextSpot.nearestStation.scheduledDepartureTime;
       });
 
-      if (spotsData.length > 0 && destinationData.transports?.transportMethod) {
-        const lastSpot = spotsData[spotsData.length - 1];
-        preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transports.transportMethod;
-      }
+      const lastSpot = spotsData[spotsData.length - 1];
+        preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transportMethodId;
+
 
       if (
-        destinationData.transports?.transportMethod &&
-        destinationData.transports?.transportMethod == 4 &&
+        destinationData.transportMethodId == 4 &&
         destinationData.nearestStation?.scheduledDepartureTime
       ) {
         const lastSpot = spotsData[spotsData.length - 1];

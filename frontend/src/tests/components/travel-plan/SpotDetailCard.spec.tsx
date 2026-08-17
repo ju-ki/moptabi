@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import SpotDetailCard from '@/components/travel-plan/SpotDetailCard';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { ExtendSpotType, Spot, TransportNodeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 const mockSwitchAlternativeRoute = vi.fn();
@@ -34,30 +34,23 @@ vi.mock('@/lib/plan', () => ({
  */
 
 // テスト用のスポットデータ
-const createMockSpot = (overrides?: Partial<Spot>): Spot => ({
+const createMockSpot = (overrides?: Partial<ExtendSpotType>): ExtendSpotType => ({
   id: 'spot-1',
-  location: {
-    id: 'loc-1',
-    name: '東京タワー',
-    lat: 35.6586,
-    lng: 139.7454,
-  },
+  spotId: 'spot-1',
+  name: '東京タワー',
+  latitude: 35.6586,
+  longitude: 139.7454,
   stayStart: '10:00',
   stayEnd: '12:00',
   stayDuration: 120,
-  transports: {
-    transportMethod: 4, // TRANSITのid
-    name: 'TRANSIT',
-    cost: 500,
-    travelTime: '30分',
-    fromType: TransportNodeType.SPOT,
-    toType: TransportNodeType.SPOT,
-  },
+  travelTime: 30,
+  transportMethodId: 1,
+  transportMethod: "WALKING",
   url: 'https://www.tokyotower.co.jp/',
   memo: 'テストメモ',
   image: '/test-image.jpg',
   rating: 4.5,
-  category: ['tourist_attraction', 'historical_place', 'landmark'],
+  categories: ['tourist_attraction', 'historical_place', 'landmark'],
   catchphrase: '東京のシンボル',
   description: '東京のランドマーク的存在のタワー',
   prefecture: '東京都',
@@ -86,25 +79,19 @@ const createMockSpot = (overrides?: Partial<Spot>): Spot => ({
   ...overrides,
 });
 
-const createMockNextSpot = (overrides?: Partial<Spot>): Spot => ({
+const createMockNextSpot = (overrides?: Partial<ExtendSpotType>): ExtendSpotType => ({
   id: 'spot-2',
-  location: {
-    id: 'loc-2',
-    name: '浅草寺',
-    lat: 35.7148,
-    lng: 139.7967,
-  },
+  spotId: 'spot-2',
+  name: '浅草寺',
+  latitude: 35.7148,
+  longitude: 139.7967,
   stayStart: '13:00',
   stayEnd: '14:00',
   stayDuration: 60,
-  transports: {
-    transportMethod: 1,
-    name: 'WALKING',
-    cost: 0,
-    travelTime: '15分',
-    fromType: TransportNodeType.SPOT,
-    toType: TransportNodeType.SPOT,
-  },
+  transportMethodId: 1,
+  transportMethod: "WALKING",
+  travelTime: 15,
+  rating: 4.7,
   nearestStation: {
     placeId: 'station-2',
     stationType: 'TRAIN',
@@ -284,7 +271,7 @@ describe('SpotDetailCard', () => {
   describe('カテゴリの表示', () => {
     it('カテゴリが3つまで表示される', () => {
       const spot = createMockSpot({
-        category: ['tourist_attraction', 'historical_place', 'landmark', 'extra_category'],
+        categories: ['tourist_attraction', 'historical_place', 'landmark', 'extra_category'],
       });
       const nextSpot = createMockNextSpot();
       render(
@@ -304,7 +291,7 @@ describe('SpotDetailCard', () => {
     });
 
     it('カテゴリがない場合は表示されない', () => {
-      const spot = createMockSpot({ category: undefined });
+      const spot = createMockSpot({ categories: undefined });
       const nextSpot = createMockNextSpot();
       render(
         <SpotDetailCard
@@ -675,11 +662,13 @@ describe('SpotDetailCard', () => {
     it('日付Aと日付Bで異なるスポット情報が表示される', () => {
       const spotA = createMockSpot({
         id: 'spot-a',
-        location: { id: 'spot-a', name: '東京タワー', lat: 35.6895, lng: 139.6917 },
+        name: '東京タワー',
+        latitude: 35.6895, longitude: 139.6917
       });
       const spotB = createMockSpot({
         id: 'spot-b',
-        location: { id: 'spot-b', name: '浅草寺', lat: 35.7148, lng: 139.7967 },
+        name: '浅草寺',
+        latitude: 35.7148, longitude: 139.7967,
       });
       const nextSpot = createMockNextSpot();
 
@@ -714,11 +703,15 @@ describe('SpotDetailCard', () => {
     it('複数日で異なるスポット個数が表示される場合に正しくレンダリングされる', () => {
       const spotDay1 = createMockSpot({
         id: 'spot-1',
-        location: { id: 'spot-1', name: '東京タワー', lat: 35.6895, lng: 139.6917 },
+        name: '東京タワー',
+        latitude: 35.6895,
+        longitude: 139.6917,
       });
       const spotDay2 = createMockSpot({
         id: 'spot-2',
-        location: { id: 'spot-2', name: '浅草寺', lat: 35.7148, lng: 139.7967 },
+        name: '浅草寺',
+        latitude: 35.7148,
+        longitude: 139.7967,
       });
 
       // 1日目
@@ -758,6 +751,7 @@ describe('SpotDetailCard', () => {
         nearestStation: {
           placeId: 'st-1',
           stationType: 'TRAIN',
+          transitTime: 10,
           name: '赤羽橋駅',
           walkingTime: 7,
           latitude: 35.655,

@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
 
-import { Spot, TransportNodeType, TravelModeType } from '@/types/plan';
+import { ExtendSpotType,  TransportNodeType, TravelModeType } from '@/types/plan';
 import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
 import { useStoreForPlanning } from '@/lib/plan';
-import { parseDurationTextToMinutes } from '@/lib/planning';
 
 import { transportIcons } from './TravelPlan';
 import { convertHHmmToJpFormat } from '../lib/utils';
 
 interface SpotProps {
   date: string;
-  spots: Spot[];
+  spots: ExtendSpotType[];
 }
 
 type SegmentNode = {
@@ -67,12 +66,12 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
     }
   }, [spots, departure, destination]);
 
-  const buildSegmentRows = (fromNode: SegmentNode, toNode: SegmentNode, fallbackMinutes?: string): string[] => {
+  const buildSegmentRows = (fromNode: SegmentNode, toNode: SegmentNode, fallbackMinutes?: number): string[] => {
     if (fromNode.nearestStation && toNode.nearestStation) {
       const stationTransitMinutes =
         fromNode.nearestStation.transitTime ??
         toNode.nearestStation.transitTime ??
-        parseDurationTextToMinutes(fallbackMinutes);
+        fallbackMinutes ?? 0;
 
       return buildDistanceInfoRows({
         kind: 'STATION',
@@ -90,7 +89,7 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
       kind: 'DIRECT',
       from: fromNode.name,
       to: toNode.name,
-      minutes: parseDurationTextToMinutes(fallbackMinutes),
+      minutes: fallbackMinutes ?? 0,
     });
   };
 
@@ -106,20 +105,17 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
           <div className="text-xs font-semibold text-indigo-600 mb-1">移動 1 / {spots.length + 1}</div>
           <div
             className="text-sm font-medium text-gray-800 truncate max-w-full mb-2"
-            title={`${departure.name} → ${spots[0].location.name}`}
+            title={`${departure.name} → ${spots[0].name}`}
           >
             <span className="text-gray-500 mr-1">📍</span>
-            {departure.name} <span className="mx-1 text-xs">→</span> {spots[0].location.name}
+            {departure.name} <span className="mx-1 text-xs">→</span> {spots[0].name}
           </div>
           <div className="flex items-center space-x-3">
-            <div className="text-xl flex-shrink-0" role="img" aria-label={departure?.transports?.name || '移動手段'}>
-              {transportIcons[departure?.transports?.name as TravelModeType]?.icon || 'ℹ️'}
+            <div className="text-xl flex-shrink-0" role="img" aria-label={departure.transportMethod || '移動手段'}>
+              {transportIcons[departure.transportMethod as TravelModeType]?.icon || 'ℹ️'}
             </div>
             <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-              {departure &&
-                departure.transports &&
-                departure.transports.travelTime &&
-                convertHHmmToJpFormat(departure.transports.travelTime)}
+              {departure.travelTime}
             </div>
             <div className="text-xs text-gray-500 flex-shrink-0">
               {calcDistance(
@@ -129,7 +125,12 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                   lng: departure.longitude,
                   name: departure.name,
                 },
-                spots[0].location,
+                {
+                  id: spots[0].id,
+                  lat: spots[0].latitude,
+                  lng: spots[0].longitude,
+                  name: spots[0].name,
+                }
               )}
             </div>
           </div>
@@ -148,9 +149,9 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                   : undefined,
               },
               {
-                name: spots[0].location.name,
-                lat: spots[0].location.lat,
-                lng: spots[0].location.lng,
+                name: spots[0].name,
+                lat: spots[0].latitude,
+                lng: spots[0].longitude,
                 nearestStation: spots[0].nearestStation
                   ? {
                       name: spots[0].nearestStation.name ?? '最寄駅',
@@ -159,7 +160,7 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                     }
                   : undefined,
               },
-              departure.transports?.travelTime,
+              departure.travelTime,
             ).map((row) => (
               <p key={row} className="text-xs text-gray-600">
                 {row}
@@ -177,32 +178,42 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
 
                 <div
                   className="text-sm font-medium text-gray-800 truncate max-w-full mb-2"
-                  title={`${spot.location.name} → ${spots[idx + 1].location.name}`}
+                  title={`${spot.name} → ${spots[idx + 1].name}`}
                 >
                   <span className="text-gray-500 mr-1">📍</span>
-                  {spot.location.name} <span className="mx-1 text-xs">→</span> {spots[idx + 1].location.name}
+                  {spot.name} <span className="mx-1 text-xs">→</span> {spots[idx + 1].name}
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  <div className="text-xl flex-shrink-0" role="img" aria-label={spot.transports.name || '移動手段'}>
-                    {transportIcons[spot.transports.name]?.icon || 'ℹ️'}
-                  </div>
-                  <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-                    {spot &&
-                      spot.transports &&
-                      spot.transports.travelTime &&
-                      convertHHmmToJpFormat(spot.transports.travelTime)}
-                  </div>
+                    <div className="text-xl flex-shrink-0" role="img" aria-label={spot.transportMethod || '移動手段'}>
+                      {transportIcons[spot.transportMethod as TravelModeType]?.icon || 'ℹ️'}
+                    </div>
+                    <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
+                      {spot.travelTime}
+                    </div>
                   <div className="text-xs text-gray-500 flex-shrink-0">
-                    {calcDistance(spot.location, spots[idx + 1].location)}
+                    {calcDistance(
+                      {
+                        id: spot.id,
+                        name: spot.name,
+                        lat: spot.latitude,
+                        lng: spot.longitude,
+                      },
+                      {
+                        id: spots[idx + 1].id,
+                        name: spots[idx + 1].name,
+                        lat: spots[idx + 1].latitude,
+                        lng: spots[idx + 1].longitude,
+                      }
+                    )}
                   </div>
                 </div>
                 <div className="mt-2 space-y-1" data-testid="distance-segment-rows">
                   {buildSegmentRows(
                     {
-                      name: spot.location.name,
-                      lat: spot.location.lat,
-                      lng: spot.location.lng,
+                      name: spot.name,
+                      lat: spot.latitude,
+                      lng: spot.longitude,
                       nearestStation: spot.nearestStation
                         ? {
                             name: spot.nearestStation.name ?? '最寄駅',
@@ -212,9 +223,9 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                         : undefined,
                     },
                     {
-                      name: spots[idx + 1].location.name,
-                      lat: spots[idx + 1].location.lat,
-                      lng: spots[idx + 1].location.lng,
+                      name: spots[idx + 1].name,
+                      lat: spots[idx + 1].latitude,
+                      lng: spots[idx + 1].longitude,
                       nearestStation: spots[idx + 1].nearestStation
                         ? {
                             name: spots[idx + 1].nearestStation?.name ?? '最寄駅',
@@ -223,7 +234,7 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                           }
                         : undefined,
                     },
-                    spot.transports?.travelTime,
+                    spot.travelTime,
                   ).map((row) => (
                     <p key={row} className="text-xs text-gray-600">
                       {row}
@@ -241,23 +252,26 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
         </div>
         <div
           className="text-sm font-medium text-gray-800 truncate max-w-full mb-2"
-          title={`${spots[spots.length - 1].location.name} → ${destination.name}`}
+          title={`${spots[spots.length - 1].name} → ${destination.name}`}
         >
           <span className="text-gray-500 mr-1">📍</span>
-          {spots[spots.length - 1].location.name} <span className="mx-1 text-xs">→</span> {destination.name}
+          {spots[spots.length - 1].name} <span className="mx-1 text-xs">→</span> {destination.name}
         </div>
         <div className="flex items-center space-x-3">
-          <div className="text-xl flex-shrink-0" role="img" aria-label={destination?.transports?.name || '移動手段'}>
-            {transportIcons[destination?.transports?.name as TravelModeType]?.icon || 'ℹ️'}
+          <div className="text-xl flex-shrink-0" role="img" aria-label={destination.transportMethod || '移動手段'}>
+            {transportIcons[destination.transportMethod as TravelModeType]?.icon || 'ℹ️'}
           </div>
           <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-            {destination &&
-              destination.transports &&
-              destination.transports.travelTime &&
-              convertHHmmToJpFormat(destination?.transports?.travelTime)}
+            {destination.travelTime }
           </div>
           <div className="text-xs text-gray-500 flex-shrink-0">
-            {calcDistance(spots[spots.length - 1].location, {
+            {calcDistance(
+              {
+                id: spots[spots.length - 1].name,
+                name: spots[spots.length - 1].name,
+                lat: spots[spots.length - 1].latitude,
+                lng: spots[spots.length - 1].longitude,
+              }, {
               id: destination.name,
               lat: destination.latitude,
               lng: destination.longitude,
@@ -268,9 +282,9 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
         <div className="mt-2 space-y-1" data-testid="distance-segment-rows">
           {buildSegmentRows(
             {
-              name: spots[spots.length - 1].location.name,
-              lat: spots[spots.length - 1].location.lat,
-              lng: spots[spots.length - 1].location.lng,
+              name: spots[spots.length - 1].name,
+              lat: spots[spots.length - 1].latitude,
+              lng: spots[spots.length - 1].longitude,
               nearestStation: spots[spots.length - 1].nearestStation
                 ? {
                     name: spots[spots.length - 1].nearestStation?.name ?? '最寄駅',
@@ -291,7 +305,7 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                   }
                 : undefined,
             },
-            destination.transports?.travelTime,
+            destination.travelTime,
           ).map((row) => (
             <p key={row} className="text-xs text-gray-600">
               {row}
@@ -311,17 +325,15 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
           <span className="text-xs text-gray-500 font-semibold">
             {isExpanded
               ? '全旅程の合計移動時間'
-              : `次の移動: ${departure.name || '出発地'} → ${spots[0].location.name || '最終目的地'}`}
+              : `次の移動: ${departure.name || '出発地'} → ${spots[0].name || '最終目的地'}`}
           </span>
           <span className="text-xl font-bold text-gray-900 mt-0.5">
             {isExpanded ? (
               convertHHmmToJpFormat(totalDuration)
             ) : (
               <span className="flex items-center gap-x-3">
-                {transportIcons[departure?.transports?.name as TravelModeType]?.icon || 'ℹ️'}
-                {departure.transports &&
-                  departure.transports.travelTime &&
-                  convertHHmmToJpFormat(departure?.transports?.travelTime)}
+                {transportIcons[departure.transportMethod as TravelModeType]?.icon || 'ℹ️'}
+                {departure.travelTime}
               </span>
             )}
           </span>

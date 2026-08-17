@@ -2,7 +2,7 @@ import React from 'react';
 import { FootprintsIcon, Train } from 'lucide-react';
 
 import { DepartureDestinationNearestStation } from '@/models/planLocation';
-import { NearestStation } from '@/types/plan';
+import { ExtendNearestStationType } from '@/types/plan';
 
 /**
  * 最寄駅経由のルート概要を表示するコンポーネント
@@ -18,9 +18,9 @@ import { NearestStation } from '@/types/plan';
  */
 
 interface RouteSummaryNearestStationProps {
-  originNearestStation: DepartureDestinationNearestStation | NearestStation;
+  originNearestStation: ExtendNearestStationType; // 出発地の最寄駅情報
   // 目的地と被るがあくまでoriginの対義語としての意味合い
-  destinationNearestStation: DepartureDestinationNearestStation | NearestStation;
+  destinationNearestStation: ExtendNearestStationType; // 目的地の最寄駅情報
   activeDepartureTime: string; // 発車時間
   isReverse?: boolean; // TODO:別課題で修正を行う
 }

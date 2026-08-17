@@ -1,5 +1,4 @@
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { Coordination, PlaceTypeGroupKey, TransportNodeType, TravelModeType } from '@/types/plan';
+import { Coordination, ExtendPlanLocationType, PlaceTypeGroupKey, TransportNodeType, TravelModeType } from '@/types/plan';
 
 /**
  * アプリケーション全体の上限設定
@@ -76,18 +75,15 @@ export const PLANNING_MESSAGE_PRIORITY: Record<string, number> = {
   [PLANNING_MESSAGE_SEGMENT.EXTRA_TIME]: 7,
 };
 
-export const DEFAULT_DEPARTURE_AND_DESTINATION: DepartureAndDestinationType = {
+export const DEFAULT_DEPARTURE_AND_DESTINATION: ExtendPlanLocationType = {
   name: '',
   latitude: 35.6813,
   longitude: 139.7671,
-  label: null,
   locationType: 'SPOT',
-  isDefault: false,
-  usageCount: 0,
-  userLocationId: null,
-  planId: null,
-  planName: null,
-  planLocationId: null,
+  travelTime: 0,
+  transportMethod: 'DEFAULT',
+  transportMethodId: 0,
+  time:"09:00",
 };
 
 export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {

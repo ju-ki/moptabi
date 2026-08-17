@@ -1,12 +1,12 @@
-import z from 'zod';
-
 import { placeTypeMap } from '@/data/constants';
 import type { CoordinationType } from '@/models/plan';
-import { OpeningHoursSchema } from '@/models/spot';
-import { DepartureAndDestinationType } from '@/models/planLocation';
+import { OpeningHoursType, SpotMetaType, TripSpotType} from '@shared/spot/types';
+import { NearestStationType } from '@shared/nearestStation/types';
 import { AlternativeRouteInfo } from '@/lib/planning';
 
-import { StationType } from './nearestStation';
+
+import { PlanLocationType } from '@shared/planlocation/types';
+import { TripType } from '@shared/trip/types';
 
 export type Coordination = CoordinationType;
 
@@ -19,6 +19,8 @@ export type Transport = {
   toType: SpotType;
 };
 
+
+
 export enum TransportNodeType {
   DEPARTURE = 'DEPARTURE',
   DESTINATION = 'DESTINATION',
@@ -27,27 +29,23 @@ export enum TransportNodeType {
 
 export type SpotType = 'SPOT' | 'DEPARTURE' | 'DESTINATION';
 
-export type NearestStation = {
+
+/**
+ * 共通の型を画面上で扱うように拡張した型
+ */
+export type ExtendNearestStationType = NearestStationType & {
   spotId?: string; //  スポットのID
-  placeId: string; //最寄駅のID
-  name?: string; // 最寄駅の名前
-  stationType: StationType; // 最寄駅の種別（例: "TRAIN", "BUS"）
+  name: string; // 最寄駅の名前
   walkingTime?: number; // 徒歩時間（分）
   latitude: number;
   longitude: number;
-  /** 公共交通機関での移動時間（分）- 次のスポットの最寄駅までの時間 */
-  transitTime?: number;
   /** 手入力フラグ - trueの場合はユーザーが入力した値 */
   isManualTransitTime?: boolean;
-  /** 電車/バスの発車時間（HH:mm形式） */
-  scheduledDepartureTime?: string;
   /** 電車/バスの発車時間候補（最大3件） */
   scheduledDepartureTimes?: string[];
   /** 駅での待機時間（分）- 自動計算または手入力 */
   waitingTime?: number;
   distance?: number; // メートル
-  /** 路線名や行き先などのメモ */
-  memo?: string;
   /** 移動手段 */
   transportMethodId?: number;
 };
@@ -71,7 +69,7 @@ export type Spot = {
   stayStart: string;
   stayEnd: string;
   stayDuration: number; //滞在時間
-  transports: Transport;
+  transports?: Transport;
   url?: string;
   memo?: string;
   image?: string; // 画像URL(省略可能)
@@ -83,7 +81,7 @@ export type Spot = {
   address?: string;
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;
-  nearestStation?: NearestStation; // 最寄駅
+  nearestStation?: ExtendNearestStationType; // 最寄駅
   routeToNext?: SpotRouteDraft;
   alternateRoutes?: AlternativeRouteInfo[]; // 代替ルートの候補
   order: number;
@@ -97,19 +95,42 @@ export type Spot = {
   planTitle?: string; // 計画タイトル
 };
 
+export type ExtendSpotType = TripSpotType & SpotMetaType & {
+  routeToNext?: SpotRouteDraft;
+  nearestStation?: ExtendNearestStationType;
+  alternateRoutes?: AlternativeRouteInfo[];
+  // 行きたいリスト用のプロパティ
+  priority?: number; // 優先度（1-5）
+  createdAt?: string; // 登録日時
+  // 過去のスポット用のプロパティ
+  visitCount?: number; // 訪問回数
+  visitedAt?: string; // 前回訪問日時
+  planDate?: string; // 計画日
+  planTitle?: string; // 計画タイトル
+};
+
+export type ExtendPlanLocationType = PlanLocationType & {
+  nearestStation?: ExtendNearestStationType;
+  alternativeTransports?: AlternativeRouteInfo[];
+  alternateRoutes?: AlternativeRouteInfo[];
+};
+
 export type TravelPlanType = {
   date: string;
   memo?: string;
-  spots: Spot[];
-  departure: DepartureAndDestinationType;
-  destination: DepartureAndDestinationType;
+  spots: ExtendSpotType[];
+  departure: ExtendPlanLocationType;
+  destination: ExtendPlanLocationType;
 };
+
+export type ExtendTripType = TripType & {
+  plans: TravelPlanType[];
+}
 
 export type PlanErrorType = 'spots' | 'departure' | 'destination' | 'transportationMethod' | 'genreId' | 'memo';
 
 export type PlaceTypeGroupKey = keyof typeof placeTypeMap;
 
-export type OpeningHoursType = z.infer<typeof OpeningHoursSchema>;
 
 export type SortOption = 'popularity' | 'distance';
 

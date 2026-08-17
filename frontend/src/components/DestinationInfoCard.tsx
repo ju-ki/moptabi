@@ -1,8 +1,7 @@
 'use client';
-
+import  { PlanLocationType } from '@shared/planlocation/types';
 import { Flag } from 'lucide-react';
 
-import { DepartureAndDestinationType } from '@/models/planLocation';
 import { convertHHmmToJpFormat } from '@/lib/utils';
 import { TravelModeType } from '@/types/plan';
 
@@ -10,14 +9,14 @@ import { transportIcons } from './TravelPlan';
 import { NearestStationDetail } from './NearestStationDetail';
 
 interface DestinationInfoCardProps {
-  destination: DepartureAndDestinationType;
+  destination: PlanLocationType;
   showTransportFromTop?: boolean;
 }
 
 export function DestinationInfoCard({ destination, showTransportFromTop = false }: DestinationInfoCardProps) {
   const transportIcon =
-    transportIcons[destination.transports?.name as TravelModeType]?.icon ?? transportIcons.DEFAULT?.icon;
-  const shouldShowTransportTime = Boolean(destination?.transports?.travelTime);
+    transportIcons[destination.transportMethod as TravelModeType]?.icon ?? transportIcons.DEFAULT?.icon;
+  const shouldShowTransportTime = Boolean(destination.travelTime);
 
   return (
     <div className="relative flex gap-10 items-center">
@@ -31,13 +30,13 @@ export function DestinationInfoCard({ destination, showTransportFromTop = false 
         {showTransportFromTop && shouldShowTransportTime && (
           <div className="absolute bottom-[calc(100%+30px)] left-1/2 -translate-x-1/2 translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
             <span data-testid="timeline-transport-icon">{transportIcon}</span>
-            <span className="font-semibold">{convertHHmmToJpFormat(destination.transports?.travelTime ?? '')}</span>
+            <span className="font-semibold">{destination.travelTime}</span>
           </div>
         )}
         {!showTransportFromTop && shouldShowTransportTime && (
           <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
             <span data-testid="timeline-transport-icon">{transportIcon}</span>
-            <span className="font-semibold">{convertHHmmToJpFormat(destination.transports?.travelTime ?? '')}</span>
+            <span className="font-semibold">{destination.travelTime}</span>
           </div>
         )}
       </div>

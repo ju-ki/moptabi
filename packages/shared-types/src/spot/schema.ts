@@ -22,10 +22,11 @@ export const SpotMetaSchema = z.object({
   prefecture: z.string().optional(),
   address: z.string().optional(),
   rating: z.number(),
+  ratingCount: z.number().optional(),
   categories: z.array(z.string()).optional(),
   catchphrase: z.string().optional(),
   description: z.string().optional(),
-  openingHours: OpeningHoursSchema.optional(),
+  regularOpeningHours: OpeningHoursSchema.optional(),
 });
 
 // プランとスポットの中間テーブルスキーマ

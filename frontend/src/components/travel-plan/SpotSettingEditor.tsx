@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { useStoreForPlanning } from '@/lib/plan';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { ExtendSpotType, TransportNodeType } from '@/types/plan';
 
 import PlanSpotSettingCard from './PlanSpotSettingCard';
 import NearestStationDestination from './nearestStation/NearestStationDestination';
@@ -40,8 +40,8 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
         return calculateDistance(
           departureData.latitude,
           departureData.longitude,
-          currentSpot.location.lat,
-          currentSpot.location.lng,
+          currentSpot.latitude,
+          currentSpot.longitude,
         );
       }
 
@@ -50,10 +50,10 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
       if (!prevSpot) return undefined;
 
       return calculateDistance(
-        prevSpot.location.lat,
-        prevSpot.location.lng,
-        currentSpot.location.lat,
-        currentSpot.location.lng,
+        prevSpot.latitude,
+        prevSpot.longitude,
+        currentSpot.latitude,
+        currentSpot.longitude,
       );
     },
     [spots, departureData],
@@ -117,7 +117,7 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
     [spots, fields, date],
   );
 
-  const handleSettingChange = (updatedSetting: Spot) => {
+  const handleSettingChange = (updatedSetting: ExtendSpotType) => {
     fields.editSpots(date, updatedSetting.id, updatedSetting);
   };
 
@@ -199,7 +199,7 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
             distanceFromPrevious={getDistanceFromPrevious(spot.id, index)}
             previousLocation={
               index > 0
-                ? sortedSpots[index - 1].location
+                ? { id: "", name: "", lat: sortedSpots[index - 1].latitude, lng: sortedSpots[index - 1].longitude }
                 : {
                     id: 'departure',
                     name: departureData?.name || '出発地',

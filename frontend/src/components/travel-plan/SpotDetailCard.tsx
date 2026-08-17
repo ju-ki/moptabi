@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { MapPin, Clock, Train, FootprintsIcon, X, Car, Bike, CircleHelp, ExternalLink, Calendar } from 'lucide-react';
 import Image from 'next/image';
 
-import { Spot, TravelModeType } from '@/types/plan';
+import { ExtendSpotType, Spot, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, placeTypeMap, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
@@ -13,11 +13,12 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { TransportMethodType } from '@shared/transports/types';
 
 /**
  * 移動手段のアイコンと表示名のマッピング
  */
-const transportIcons: Record<TravelModeType | 'DEFAULT', { icon: JSX.Element; label: string }> = {
+const transportIcons: Record<TransportMethodType | 'DEFAULT', { icon: JSX.Element; label: string }> = {
   WALKING: { icon: <FootprintsIcon className="w-5 h-5 text-yellow-500" />, label: '徒歩' },
   TRANSIT: { icon: <Train className="w-5 h-5 text-blue-500" />, label: '最寄駅/バス停経由' },
   DRIVING: { icon: <Car className="w-5 h-5 text-gray-700" />, label: '車' },
@@ -31,9 +32,9 @@ const transportIcons: Record<TravelModeType | 'DEFAULT', { icon: JSX.Element; la
 interface SpotDetailCardProps {
   date: string;
   /** スポット情報 */
-  spot: Spot;
+  spot: ExtendSpotType;
   /** 次のスポット（最寄駅分割表示に利用） */
-  nextSpot: Spot;
+  nextSpot: ExtendSpotType;
   /** 表示インデックス（0始まり） */
   index: number;
   /** 削除ボタン押下時のコールバック */
@@ -80,7 +81,7 @@ export default function SpotDetailCard({
   const fields = useStoreForPlanning();
   const transportCandidates =
     spot.alternateRoutes?.map((transport) => ({
-      name: transport.transportMethod as TravelModeType,
+      name: transport.transportMethod as TransportMethodType,
       travelTime: transport.durationText,
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
@@ -139,9 +140,9 @@ export default function SpotDetailCard({
         <div className="flex items-center space-x-2">
           <MapPin
             className="text-blue-500 w-6 h-6"
-            style={{ color: SpotMakerColors[spot.transports.fromType] || '#3b82f6' }}
+            style={{ color: '#3b82f6' }}
           />
-          <h3 className="font-semibold text-lg">{spot.location.name}</h3>
+          <h3 className="font-semibold text-lg">{spot.name}</h3>
         </div>
 
         {/* 滞在時間 */}
@@ -175,7 +176,7 @@ export default function SpotDetailCard({
           <div className="mt-4">
             <Image
               src={spot.image}
-              alt={spot.location.name || 'スポット画像'}
+              alt={spot.name || 'スポット画像'}
               width={300}
               height={200}
               className="rounded-lg shadow-md"
@@ -195,9 +196,9 @@ export default function SpotDetailCard({
         )}
 
         {/* カテゴリ */}
-        {spot.category && spot.category.length > 0 && (
+        {spot.categories && spot.categories.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2" data-testid="spot-categories">
-            {spot.category.slice(0, 3).map((cat, idx) => (
+            {spot.categories.slice(0, 3).map((cat, idx) => (
               <span key={idx} className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">
                 {placeTypeMap[cat] ?? 'その他'}
               </span>
@@ -269,46 +270,42 @@ export default function SpotDetailCard({
       {/* 移動手段 */}
       {index !== -1 && (
         <div className="space-y-3 mb-4" data-testid="spot-transport">
-          {spot?.nearestStation && nextSpot.nearestStation && spot.transports?.transportMethod == 4 && (
+          {spot?.nearestStation && nextSpot.nearestStation && spot.transportMethodId == 4 && (
             <RouteSummaryNearestStation
               originNearestStation={spot.nearestStation}
               destinationNearestStation={nextSpot.nearestStation}
               activeDepartureTime={activeDepartureTime}
             />
           )}
-          {spot.transports && (
-            <>
-              <div className="flex items-center space-x-2 text-gray-600">
-                {transportIcons[spot.transports.name as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
-                <span>
-                  {transportIcons[spot.transports.name as TravelModeType]?.label || transportIcons.DEFAULT.label} (
-                  {spot.transports.travelTime})
-                </span>
-                <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-                {routeInfo && transportCandidates.length > 0 && (
-                  <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
-                    {transportCandidates
-                      .filter((candidate) => candidate.transportMethodId !== spot.transports.transportMethod)
-                      .map((candidate) => (
-                        <button
-                          key={`${candidate.name}-${candidate.travelTime}`}
-                          type="button"
-                          className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
-                          aria-disabled={candidate.isDisabled ? 'true' : 'false'}
-                          onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
-                        >
-                          {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
-                          <span>
-                            {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
-                            {candidate.travelTime})
-                          </span>
-                        </button>
-                      ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+            <div className="flex items-center space-x-2 text-gray-600">
+              {transportIcons[spot.transportMethod as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
+              <span>
+                {transportIcons[spot.transportMethod as TravelModeType]?.label || transportIcons.DEFAULT.label} (
+                {spot.travelTime})
+              </span>
+              <div className="flex items-center flex-wrap gap-2 ml-2"></div>
+              {routeInfo && transportCandidates.length > 0 && (
+                <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
+                  {transportCandidates
+                    .filter((candidate) => candidate.transportMethodId !== spot.transportMethodId)
+                    .map((candidate) => (
+                      <button
+                        key={`${candidate.name}-${candidate.travelTime}`}
+                        type="button"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
+                        aria-disabled={candidate.isDisabled ? 'true' : 'false'}
+                        onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
+                      >
+                        {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
+                        <span>
+                          {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
+                          {candidate.travelTime})
+                        </span>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
 
           {selectableDepartureCandidates.length > 0 && (
             <div className="text-sm text-gray-600" data-testid="spot-departure-candidates">

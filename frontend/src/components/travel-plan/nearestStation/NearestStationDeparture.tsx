@@ -14,9 +14,7 @@ import { calculateDistance, estimateTransitTime } from '@/data/mockNearestStatio
 import { searchNearestStation } from '@/lib/google-maps';
 import { useStoreForPlanning } from '@/lib/plan';
 import { cn } from '@/lib/utils';
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { NearestStation } from '@/types/nearestStation';
-import { TransportNodeType } from '@/types/plan';
+import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } from '@/types/plan';
 
 const NearestStationDeparture = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
@@ -34,8 +32,8 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
   // 出発地の最寄駅関連の状態（最初のスポットの場合）
-  const [departureNearestStations, setDepartureNearestStations] = useState<NearestStation[]>(
-    [departureData?.nearestStation].filter((s): s is NearestStation => !!s),
+  const [departureNearestStations, setDepartureNearestStations] = useState<ExtendNearestStationType[]>(
+    [departureData?.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
   );
   const [selectedDepartureStationId, setSelectedDepartureStationId] = useState<string | null>(
     departureData?.nearestStation?.placeId || null,
@@ -66,15 +64,15 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   // スポット間の距離を計算
   const getDistanceFromPrevious = useCallback((): number | undefined => {
     return calculateDistance(
-      firstSpot.location.lat,
-      firstSpot.location.lng,
+      firstSpot.latitude,
+      firstSpot.longitude,
       departureData.latitude,
       departureData.longitude,
     );
   }, [firstSpot, departureData]);
 
   // 出発地の情報を更新（最寄駅など）
-  const handleDepartureChange = (updatedDeparture: DepartureAndDestinationType) => {
+  const handleDepartureChange = (updatedDeparture: ExtendPlanLocationType) => {
     fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, updatedDeparture);
   };
 
@@ -433,7 +431,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                           分)
                         </span>
                         <span className="mx-1">→</span>
-                        <span>{firstSpot.location.name}</span>
+                        <span>{firstSpot.name}</span>
                       </div>
                     )}
                   </>
