@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { MapPin, Search } from 'lucide-react';
-import { Spot, ExtendSpotType } from '@/types/plan';
 
+import { Spot, ExtendSpotType } from '@/types/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';

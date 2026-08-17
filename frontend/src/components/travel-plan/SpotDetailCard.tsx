@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { MapPin, Clock, Train, FootprintsIcon, X, Car, Bike, CircleHelp, ExternalLink, Calendar } from 'lucide-react';
 import Image from 'next/image';
+import { TransportMethodType } from '@shared/transports/types';
 
 import { ExtendSpotType, Spot, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, placeTypeMap, SpotMakerColors } from '@/data/constants';
@@ -13,7 +14,6 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
-import { TransportMethodType } from '@shared/transports/types';
 
 /**
  * 移動手段のアイコンと表示名のマッピング

@@ -1,12 +1,11 @@
-import { placeTypeMap } from '@/data/constants';
-import type { CoordinationType } from '@/models/plan';
 import { OpeningHoursType, SpotMetaType, TripSpotType} from '@shared/spot/types';
 import { NearestStationType } from '@shared/nearestStation/types';
-import { AlternativeRouteInfo } from '@/lib/planning';
-
-
 import { PlanLocationType } from '@shared/planlocation/types';
 import { TripType } from '@shared/trip/types';
+
+import { AlternativeRouteInfo } from '@/lib/planning';
+import type { CoordinationType } from '@/models/plan';
+import { placeTypeMap } from '@/data/constants';
 
 export type Coordination = CoordinationType;
 

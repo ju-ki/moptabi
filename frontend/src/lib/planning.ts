@@ -1,3 +1,5 @@
+import { TransportMethodType } from '@shared/transports/types';
+
 import { TravelPlanType, TravelModeType,  ExtendSpotType, ExtendPlanLocationType, ExtendNearestStationType } from '@/types/plan';
 import {
   DEFAULT_ARRIVAL_TIME,
@@ -13,7 +15,6 @@ import {
 } from '@/data/constants';
 
 import { getRoute } from './plan';
-import { TransportMethodType } from '@shared/transports/types';
 
 export type ArrivalWarning = {
   exceededMinutes: number;

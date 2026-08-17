@@ -1,5 +1,4 @@
 import z from 'zod';
-
 import  { TripType } from '@shared/trip/types';
 
 

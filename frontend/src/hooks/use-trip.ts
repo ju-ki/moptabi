@@ -1,7 +1,7 @@
 import useSWR from 'swr';
+import { TripType} from "@shared/trip/types";
 
 import { ExtendNearestStationType, ExtendPlanLocationType, ExtendSpotType, ExtendTripType, Spot } from '@/types/plan';
-import { TripType} from "@shared/trip/types";
 import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
 import { defaultLocation, TransportMethodIdToLabel } from '@/data/constants';
 import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStation';

@@ -1,5 +1,6 @@
-import { formatOpeningHours } from '@/lib/google-maps';
 import { describe, it, expect } from 'vitest';
+
+import { formatOpeningHours } from '@/lib/google-maps';
 
 describe('営業時間取得ユーティリティ', () => {
   describe('extractOpeningHours', () => {

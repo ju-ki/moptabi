@@ -1,12 +1,14 @@
 'use client';
 
 import { Home } from 'lucide-react';
-import type { PlanLocationType } from '@shared/planlocation/types';
+
 
 import { TravelModeType } from '@/types/plan';
 
 import { NearestStationDetail } from './NearestStationDetail';
 import { transportIcons } from './TravelPlan';
+
+import type { PlanLocationType } from '@shared/planlocation/types';
 
 interface DepartureAndDestinationCardProps {
   departure: PlanLocationType;

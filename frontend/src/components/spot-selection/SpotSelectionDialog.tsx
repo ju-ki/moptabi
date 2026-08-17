@@ -8,6 +8,7 @@ import { APP_LIMITS } from '@/data/constants';
 import { isSpotsPerDayLimitReached, getLimitErrorMessage, getRemainingCount } from '@/lib/limits';
 import { getActualSpotCount } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { ExtendSpotType, Spot } from '@/types/plan';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -16,7 +17,6 @@ import { LimitDisplay } from '../common/LimitDisplay';
 import GoogleSpotSearch from './GoogleSpotSearch';
 import WishlistSpotSearch from './WishlistSpotSearch';
 import VisitedSpotSearch from './VisitedSpotSearch';
-import { ExtendSpotType, Spot } from '@/types/plan';
 
 type SpotSelectionDialogProps = {
   date: string;

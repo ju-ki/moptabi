@@ -5,6 +5,7 @@ import { PlanLocationCandidateItemType } from '@shared/user/types';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { TransportNodeType } from '@/types/plan';
+import { DEFAULT_ARRIVAL_TIME } from '@/data/constants';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -15,7 +16,6 @@ import { Input } from './ui/input';
 import AddressSearch from './AddressSearch';
 import SpotLocationSelector from './SpotLocationSelector';
 import TimeSetting from './travel-plan/TimeSetting';
-import { DEFAULT_ARRIVAL_TIME } from '@/data/constants';
 
 const containerStyle = {
   width: '100%',

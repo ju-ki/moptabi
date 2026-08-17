@@ -26,6 +26,7 @@ vi.mock('swr', () => ({
 }));
 
 import { useSession } from 'next-auth/react';
+
 import { ProfileSection } from '@/components/mypage/ProfileSection';
 
 describe('ProfileSection', () => {

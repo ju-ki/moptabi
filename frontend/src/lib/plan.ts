@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
+import { TripType } from '@shared/trip/types';
+import { PlanLocationType } from '@shared/planlocation/types';
 
 import {
   ExtendPlanLocationType,
@@ -19,8 +21,6 @@ import { getPrefectures } from './algorithm';
 import { formatOpeningHours } from './google-maps';
 import { getDatesBetween } from './utils';
 import { hasDirtyDepartureAndDestinationChange, hasDirtySpotChange, PlanningInfo, PlanningResult } from './planning';
-import { TripType } from '@shared/trip/types';
-import { PlanLocationType } from '@shared/planlocation/types';
 
 export type FormData = TripType;
 

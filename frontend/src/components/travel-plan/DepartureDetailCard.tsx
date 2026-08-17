@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
+import { TransportMethodType } from '@shared/transports/types';
 
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_DEPARTURE_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
-import { TransportMethodType } from '@shared/transports/types';
 
 /**
  * 移動手段のアイコンと表示名のマッピング

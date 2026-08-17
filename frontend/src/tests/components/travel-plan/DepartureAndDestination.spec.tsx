@@ -10,12 +10,13 @@
 
 import { describe, expect, it, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
+import { PlanLocationCandidateItemType } from '@shared/user/types';
+import { PlanLocationType } from '@shared/planlocation/types';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { TransportNodeType } from '@/types/plan';
-import { PlanLocationCandidateItemType } from '@shared/user/types';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
-import { PlanLocationType } from '@shared/planlocation/types';
+
 
 /**
  * テスト用のお気に入り地点データ（デフォルトフラグあり）

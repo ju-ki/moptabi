@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
+
 import SpotDetailCard from '@/components/travel-plan/SpotDetailCard';
 import { ExtendSpotType, Spot, TransportNodeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
