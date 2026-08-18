@@ -2,15 +2,20 @@ FROM oven/bun:1.2
 
 WORKDIR /app
 
-COPY backend ./backend
-COPY packages ./packages
+COPY backend/package.json backend/bun.lock ./backend/
+COPY packages/shared-types/package.json packages/shared-types/package-lock.json ./packages/shared-types/
 
 WORKDIR /app/packages/shared-types
 RUN bun install
 
 WORKDIR /app/backend
-
 RUN bun install
+
+WORKDIR /app
+COPY backend ./backend
+COPY packages ./packages
+
+WORKDIR /app/backend
 RUN bun run prebuild
 # Prisma Client を生成
 RUN bun drizzle-kit generate
