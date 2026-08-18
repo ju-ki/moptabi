@@ -2,6 +2,8 @@
  * テストデータ置き場(テストが膨らんできたため対応)
  */
 
+import { PlanType } from '@shared/plan/types';
+
 import { createSpotData } from '../test-client';
 
 // テストファイル固有のSpot IDプレフィックス（並列実行時の衝突を防ぐ）
@@ -26,185 +28,97 @@ export const mockTripData = {
   endDate: '2024-01-02',
 };
 
+const spot1 = createSpotData('1');
+const spot2 = createSpotData('2');
+
 /** 最寄駅なし旅行計画データ */
-export const mockPlanData = [
+export const mockPlanData: Array<PlanType> = [
   {
     date: '2024-01-01',
-    spots: [
-      createSpotData(
-        Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
-        '10:00',
-        '12:00',
-        120,
-        1,
-        {
-          transportMethod: 1,
-          travelTime: '30分',
-          cost: 500,
-          fromType: 'DEPARTURE',
-          toType: 'SPOT',
-        },
-        undefined,
-      ),
-      createSpotData(
-        Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
-        '14:00',
-        '16:00',
-        120,
-        2,
-        {
-          transportMethod: 2,
-          travelTime: '45分',
-          cost: 700,
-          fromType: 'SPOT',
-          toType: 'DESTINATION',
-        },
-        undefined,
-      ),
-    ],
+    spots: [spot1, spot2],
     departure: {
       name: '出発地',
       latitude: 35.6762,
       longitude: 139.6503,
       time: '09:00',
-      label: null,
-      isDefault: false,
       locationType: 'DEPARTURE',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'DEPARTURE',
-        toType: 'SPOT',
-      },
+      transportMethodId: 1,
+      transportMethod: 'WALKING',
+      travelTime: 15,
     },
     destination: {
       name: '目的地',
       latitude: 35.6762,
       longitude: 139.6503,
       time: '18:00',
-      label: null,
-      isDefault: false,
       locationType: 'DESTINATION',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-      },
+      transportMethodId: 1,
+      transportMethod: 'DEFAULT',
+      travelTime: 15,
     },
   },
   {
     date: '2024-01-02',
-    spots: [
-      createSpotData(
-        Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
-        '09:00',
-        '11:00',
-        120,
-        1,
-        {
-          transportMethod: 3,
-          travelTime: '60分',
-          cost: 1000,
-          fromType: 'DEPARTURE',
-          toType: 'SPOT',
-        },
-        undefined,
-      ),
-    ],
+    spots: [spot1],
     departure: {
       name: '出発地2',
       latitude: 35.6762,
       longitude: 139.6503,
       time: '09:00',
-      label: null,
-      isDefault: false,
       locationType: 'DEPARTURE',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'DEPARTURE',
-        toType: 'SPOT',
-      },
+      transportMethod: 'WALKING',
+      transportMethodId: 1,
+      travelTime: 15,
     },
     destination: {
       name: '目的地2',
       latitude: 35.6762,
       longitude: 139.6503,
       time: '18:00',
-      label: null,
-      isDefault: false,
       locationType: 'DESTINATION',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-      },
+      transportMethodId: 0,
+      transportMethod: 'DEFAULT',
+      travelTime: 15,
     },
   },
 ];
 
-export const mockPlanDataWithNearestStation = [
+export const mockPlanDataWithNearestStation: Array<PlanType> = [
   {
     date: '2024-01-01',
     spots: [
       createSpotData(
-        Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
+        "spot_1", // ランダムなIDを生成
         '10:00',
         '12:00',
         120,
         1,
+        1,
+        'WALKING',
+        15,
         {
-          transportMethod: 4,
-          travelTime: '30分',
-          cost: 500,
-          fromType: 'DEPARTURE',
-          toType: 'SPOT',
-        },
-        {
-          placeId: Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
+          placeId: "spot_1",
           stationType: 'TRAIN',
           transitTime: 10,
           scheduledDepartureTime: '10:00',
-          memo: '出発地駅からの移動メモ',
+          memo: 'スポット1からの移動メモ',
         },
       ),
       createSpotData(
-        Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
+        "spot_2", // ランダムなIDを生成
         '14:00',
         '16:00',
         120,
         2,
+        1,
+        'WALKING',
+        15,
         {
-          transportMethod: 4,
-          travelTime: '45分',
-          cost: 700,
-          fromType: 'SPOT',
-          toType: 'DESTINATION',
-        },
-        {
-          placeId: Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
+          placeId: "spot_2",
           stationType: 'TRAIN',
-          transitTime: 10,
+          transitTime: 15,
           scheduledDepartureTime: '11:00',
-          memo: '自動検出駅2からの移動メモ',
+          memo: 'スポット2からの移動メモ',
         },
       ),
     ],
@@ -213,51 +127,34 @@ export const mockPlanDataWithNearestStation = [
       latitude: 35.6762,
       longitude: 139.6503,
       time: '09:00',
-      label: null,
-      isDefault: false,
       locationType: 'DEPARTURE',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
+      transportMethod: "WALKING",
+      transportMethodId: 1,
+      travelTime: 15,
       nearestStation: {
-        placeId: Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
+        placeId: "departure_station_place_id",
         stationType: 'TRAIN',
         transitTime: 10,
         scheduledDepartureTime: '10:00',
         memo: '出発地駅からの移動メモ',
       },
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'DEPARTURE',
-        toType: 'SPOT',
-      },
+
     },
     destination: {
       name: '目的地',
       latitude: 35.6762,
       longitude: 139.6503,
       time: '18:00',
-      label: null,
-      isDefault: false,
       locationType: 'DESTINATION',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
+      transportMethod: "DEFAULT",
+      transportMethodId: 0,
+      travelTime: 0,
       nearestStation: {
-        placeId: Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
+        placeId: "destination_station_place_id",
         stationType: 'TRAIN',
         transitTime: 10,
         scheduledDepartureTime: '10:00',
         memo: '目的地駅からの移動メモ',
-      },
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
       },
     },
   },
@@ -266,40 +163,14 @@ export const mockPlanDataWithNearestStation = [
     spots: [
       {
         id: spotId(Math.random().toString(36).substring(2, 15)),
-        location: {
-          name: 'モック観光地3',
-          lat: 43.0618,
-          lng: 141.3545,
-        },
-        spotId: spotId('15'),
-        image: 'https://example.com/spot3.jpg',
-        url: 'https://example.com/cafe',
-        prefecture: '東京都',
-        address: '東京都渋谷区神南1-19-11',
-        rating: 4.8,
-        categories: ['aquarium'],
-        catchphrase: '海の生き物たちと触れ合える場所です',
-        description: '多様な海洋生物を観察できます。',
-        regularOpeningHours: [
-          { day: '月', hours: '9:00-18:00' },
-          { day: '火', hours: '9:00-18:00' },
-          { day: '水', hours: '9:00-18:00' },
-          { day: '木', hours: '9:00-18:00' },
-          { day: '金', hours: '9:00-18:00' },
-          { day: '土', hours: '9:00-20:00' },
-          { day: '日', hours: '9:00-20:00' },
-        ],
-        transports: {
-          transportMethod: 3,
-          travelTime: '60分',
-          cost: 1000,
-          fromType: 'SPOT',
-          toType: 'SPOT',
-        },
         stayStart: '09:00',
         stayEnd: '11:00',
+        stayDuration: 120,
         memo: 'モックスポット3のメモ',
         order: 1,
+        transportMethod: "WALKING",
+        transportMethodId: 1,
+        travelTime: 15,
       },
     ],
     departure: {
@@ -307,38 +178,20 @@ export const mockPlanDataWithNearestStation = [
       latitude: 35.6762,
       longitude: 139.6503,
       time: '09:00',
-      label: null,
-      isDefault: false,
       locationType: 'DEPARTURE',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'DEPARTURE',
-        toType: 'SPOT',
-      },
+      transportMethod: "WALKING",
+      transportMethodId: 1,
+      travelTime: 15,
     },
     destination: {
       name: '目的地2',
       latitude: 35.6762,
       longitude: 139.6503,
       time: '18:00',
-      label: null,
-      isDefault: false,
       locationType: 'DESTINATION',
-      usageCount: null,
-      userLocationId: null,
-      planLocationId: null,
-      transports: {
-        transportMethod: 1,
-        travelTime: '15分',
-        cost: 300,
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-      },
+      transportMethod: "DEFAULT",
+      transportMethodId: 0,
+      travelTime: 15,
     },
   },
 ];
