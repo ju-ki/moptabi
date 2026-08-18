@@ -1,13 +1,5 @@
 import { eq, lt, count, sql, inArray, and, not, InferSelectModel } from 'drizzle-orm';
-import {
-  trip,
-  plan,
-  planLocation,
-  planLocationNearestStation,
-  planSpot,
-  planSpotNearestStation,
-  AnyDbType,
-} from '@db';
+import { trip, plan, planLocation, planLocationNearestStation, planSpot, planSpotNearestStation, AnyDbType } from '@db';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { TripSchema } from '@shared/trip/schema';
@@ -45,7 +37,6 @@ type TripWithRelations = InferSelectModel<typeof trip> & {
   plans: PlanWithRelations[];
 };
 
-
 export const createTrip = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
@@ -58,7 +49,6 @@ export const createTrip = async (db: AnyDbType, c: Context) => {
     throw new HTTPException(400, { message: 'Request body is required' });
   }
 
-
   const result = TripSchema.safeParse(body);
   if (!result.success) {
     throw new HTTPException(400, { message: 'Invalid request body' });
@@ -67,7 +57,6 @@ export const createTrip = async (db: AnyDbType, c: Context) => {
   const tripData = result.data;
   // 上限チェック
   await validateLimit(db, userId, tripData);
-
 
   const tripId = await db.transaction(async (tx) => {
     // Tripを作成
@@ -82,31 +71,30 @@ export const createTrip = async (db: AnyDbType, c: Context) => {
       })
       .returning();
 
-      // Plans と PlanSpots を作成
-      for (const planData of tripData.plans) {
-        const [newPlan] = await tx
-          .insert(plan)
-          .values({
-            tripId: newTrip.id,
-            date: planData.date,
-            memo: planData.memo ?? null,
-          })
-          .returning();
+    // Plans と PlanSpots を作成
+    for (const planData of tripData.plans) {
+      const [newPlan] = await tx
+        .insert(plan)
+        .values({
+          tripId: newTrip.id,
+          date: planData.date,
+          memo: planData.memo ?? null,
+        })
+        .returning();
 
-        // PlanSpotsを作成
-        await createPlanSpot(tx, newPlan.id, planData.spots);
+      // PlanSpotsを作成
+      await createPlanSpot(tx, newPlan.id, planData.spots);
 
-        // 出発地の情報を登録する
-        await createPlanLocation(tx, newPlan.id, userId, planData.departure);
-        // 目的地の情報を登録する
-        await createPlanLocation(tx, newPlan.id, userId, planData.destination);
-      }
-      return newTrip.id;
+      // 出発地の情報を登録する
+      await createPlanLocation(tx, newPlan.id, userId, planData.departure);
+      // 目的地の情報を登録する
+      await createPlanLocation(tx, newPlan.id, userId, planData.destination);
+    }
+    return newTrip.id;
   });
 
   return tripId;
-}
-
+};
 
 /**
  * ユーザーIDごとの旅行プランの数を取得
@@ -477,60 +465,58 @@ export const getTripStatistics = async (db: AnyDbType) => {
 
 export const getTripDetailById = async (db: AnyDbType, tripId: number, userId: string) => {
   const targetTrip = await db.query.trip.findFirst({
-      where: and(eq(trip.id, tripId), eq(trip.userId, userId)),
-      with: {
-        plans: {
-          with: {
-            planSpots: {
-              with: {
-                nearestStations: true,
-              },
+    where: and(eq(trip.id, tripId), eq(trip.userId, userId)),
+    with: {
+      plans: {
+        with: {
+          planSpots: {
+            with: {
+              nearestStations: true,
             },
-            planLocations: {
-              with: {
-                nearestStation: true,
-              },
+          },
+          planLocations: {
+            with: {
+              nearestStation: true,
             },
-        },
+          },
         },
       },
-    });
+    },
+  });
 
-    if (!targetTrip) {
-      throw new HTTPException(404, { message: 'No trip found' });
-    };
+  if (!targetTrip) {
+    throw new HTTPException(404, { message: 'No trip found' });
+  }
 
-    const response: TripType = {
-      ...convertTripData(targetTrip),
-    };
+  const response: TripType = {
+    ...convertTripData(targetTrip),
+  };
 
-    for (const plan of targetTrip.plans) {
-      const departureLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DEPARTURE);
-      if (!departureLocation) {
-        throw new HTTPException(500, { message: 'Departure planLocation not found' });
-      }
-      const destinationLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DESTINATION);
-      if (!destinationLocation) {
-        throw new HTTPException(500, { message: 'Destination planLocation not found' });
-      }
-
-      response.plans.push({
-        date: plan.date,
-        memo: plan.memo ?? '',
-        spots: convertPlanSpotData(plan.planSpots),
-        departure: {
-          ...convertPlanLocationData([departureLocation])[0],
-        },
-        destination: {
-          ...convertPlanLocationData([destinationLocation])[0],
-        },
-      });
+  for (const plan of targetTrip.plans) {
+    const departureLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DEPARTURE);
+    if (!departureLocation) {
+      throw new HTTPException(500, { message: 'Departure planLocation not found' });
+    }
+    const destinationLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DESTINATION);
+    if (!destinationLocation) {
+      throw new HTTPException(500, { message: 'Destination planLocation not found' });
     }
 
-    return response;
+    response.plans.push({
+      date: plan.date,
+      memo: plan.memo ?? '',
+      spots: convertPlanSpotData(plan.planSpots),
+      departure: {
+        ...convertPlanLocationData([departureLocation])[0],
+      },
+      destination: {
+        ...convertPlanLocationData([destinationLocation])[0],
+      },
+    });
+  }
+
+  return response;
 };
-
-
 
 const convertTripData = (rawTripData: TripWithRelations): TripType => {
   return {
@@ -538,8 +524,8 @@ const convertTripData = (rawTripData: TripWithRelations): TripType => {
     imageUrl: rawTripData.imageUrl ?? undefined,
     startDate: rawTripData.startDate,
     endDate: rawTripData.endDate,
-    plans: []
-  }
+    plans: [],
+  };
 };
 
 const convertPlanSpotData = (rawPlanSpotData: PlanSpotWithNearestStations[]): TripSpotType[] => {

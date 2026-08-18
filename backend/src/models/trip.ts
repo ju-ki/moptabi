@@ -78,6 +78,4 @@ export const TripDetailResponseSchema = z.object({
 
 export type TripDetailResponseType = z.infer<typeof TripDetailResponseSchema>;
 
-export type {
-  TripType as TripContractType,
-} from '@shared/trip/types';
+export type { TripType as TripContractType } from '@shared/trip/types';

@@ -24,18 +24,9 @@ function defaultTimeByLocationType(locationType: LocationType): string {
   return locationType === 'DESTINATION' ? '18:00' : '09:00';
 }
 
+type DbLike = Pick<AnyDbType, 'select' | 'insert' | 'update' | 'delete' | 'query'>;
 
-type DbLike = Pick<
-  AnyDbType,
-  'select' | 'insert' | 'update' | 'delete' | 'query'
->;
-
-export async function createPlanLocation(
-  db: DbLike,
-  planId: number,
-  userId: string,
-  data: PlanLocationType,
-) {
+export async function createPlanLocation(db: DbLike, planId: number, userId: string, data: PlanLocationType) {
   const [newPlanLocation] = await db
     .insert(planLocation)
     .values({

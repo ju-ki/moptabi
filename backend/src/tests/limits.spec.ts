@@ -327,7 +327,7 @@ describe('🔒 上限チェック機能', () => {
             plans: [
               {
                 ...mockPlanData[0],
-                spots
+                spots,
               },
             ],
           },
