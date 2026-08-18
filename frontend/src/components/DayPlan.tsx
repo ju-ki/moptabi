@@ -2,11 +2,11 @@
 
 import { format } from 'date-fns';
 import { MapPin } from 'lucide-react';
+import { PlanType } from '@shared/plan/types';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TransportNodeType } from '@/types/plan';
 import { useStoreForPlanning } from '@/lib/plan';
-import { PlanType } from '@/models/plan';
 
 import { SpotInfoCard } from './SpotInfoCard';
 import RouteSummary from './RouteSummary';

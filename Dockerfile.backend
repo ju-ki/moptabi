@@ -17,7 +17,7 @@ COPY packages ./packages
 
 WORKDIR /app/backend
 RUN bun run prebuild
-# Prisma Client を生成
+
 RUN bun drizzle-kit generate
 # エントリポイント
 CMD ["bun", "run", "dev"]

@@ -1,6 +1,8 @@
+import { OpeningHoursType } from '@shared/spot/types';
+
 import { defaultLocation } from '@/data/constants';
 import { estimateWalkingTime, calculateDistance } from '@/data/mockNearestStation';
-import { OpeningHoursType, Coordination } from '@/types/plan';
+import { Coordination, ExtendNearestStationType } from '@/types/plan';
 import { SpotMetaType } from '@/types/spot';
 import { NearestStation } from '@/types/nearestStation';
 
@@ -112,12 +114,12 @@ export type SearchNearestStationType = {
 /**
  * Google Maps Places APIを使用して最寄駅を検索する
  */
-export async function searchNearestStation(params: SearchNearestStationType): Promise<NearestStation[]> {
+export async function searchNearestStation(params: SearchNearestStationType): Promise<ExtendNearestStationType[]> {
   const { Place, SearchNearbyRankPreference } = (await google.maps.importLibrary(
     'places',
   )) as google.maps.PlacesLibrary;
 
-  const placeToSpot = (place: google.maps.places.Place): NearestStation => ({
+  const placeToSpot = (place: google.maps.places.Place): ExtendNearestStationType => ({
     spotId: params.center?.id ?? '',
     placeId: place.id,
     stationType: place.primaryTypeDisplayName === 'バス停' ? 'BUS' : 'TRAIN',
@@ -136,6 +138,7 @@ export async function searchNearestStation(params: SearchNearestStationType): Pr
         place.location?.lng() ?? 0,
       ),
     ),
+    transitTime: 0, // 初期値として0を設定。後で計算する場合は別途処理が必要。
     latitude: place.location?.lat() ?? 0,
     longitude: place.location?.lng() ?? 0,
   });

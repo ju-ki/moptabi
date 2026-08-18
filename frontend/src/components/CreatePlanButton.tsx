@@ -1,5 +1,6 @@
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { TripType } from '@shared/trip/types';
 
 import { useToast } from '@/hooks/use-toast';
 import { useStoreForPlanning } from '@/lib/plan';
@@ -7,7 +8,6 @@ import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
 import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
 import { useFetchTripDetail } from '@/hooks/use-trip';
-import { TripType } from '@/models/trip';
 import { PLANNING_DIRTY_BLOCK_MESSAGE } from '@/data/constants';
 
 import { Button } from './ui/button';
@@ -19,6 +19,8 @@ import { Button } from './ui/button';
  */
 const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
   const fields = useStoreForPlanning();
+  const searchParams = useSearchParams();
+  const tripId = searchParams.get('id');
   const router = useRouter();
   const { toast } = useToast();
   const { postTrip, patchTrip } = useFetchTripDetail();
@@ -137,7 +139,6 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
       });
 
       const newData: TripType = {
-        id: fields.id,
         title: fields.title,
         imageUrl: fields.imageUrl,
         startDate: fields.startDate,
@@ -146,8 +147,8 @@ const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
       };
 
       let resultId;
-      if (newData.id && isEdit) {
-        resultId = await patchTrip(newData);
+      if (isEdit) {
+        resultId = await patchTrip(Number(tripId), newData);
         toast({ title: '旅行計画が更新されました', description: '旅行計画の更新に成功しました。', variant: 'success' });
       } else {
         resultId = await postTrip(newData);

@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
 import WishlistSpotCard from '@/components/spot-selection/cards/WishlistSpotCard';
 import { Spot, TransportNodeType } from '@/types/plan';
 

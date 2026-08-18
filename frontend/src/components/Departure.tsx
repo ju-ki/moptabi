@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Check, Info, MapPinIcon, Star, History } from 'lucide-react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
+import { PlanLocationCandidateItemType } from '@shared/user/types';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { TransportNodeType } from '@/types/plan';
-import { DepartureAndDestinationType } from '@/models/planLocation';
+import { DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -27,6 +28,7 @@ const Departure = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const candidates = fields.departureList;
   const [isCheckCurrentLocation, setIsCheckCurrentLocation] = useState<boolean>(false);
+  const [selectedPlanLocationId, setSelectedPlanLocationId] = useState<number | null>(null);
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const [open, setOpen] = useState<boolean>(false);
 
@@ -53,7 +55,7 @@ const Departure = ({ date }: { date: string }) => {
               <>
                 <MapPinIcon className="mr-2 h-4 w-4" />
                 <span>
-                  {departureData.userLocationId || departureData.planLocationId
+                  {departureData.userLocationId || selectedPlanLocationId
                     ? departureData.name
                     : '候補以外の地点を選択中'}
                 </span>
@@ -81,13 +83,20 @@ const Departure = ({ date }: { date: string }) => {
                     </span>
                   }
                 >
-                  {candidates.favorites.map((candidate: DepartureAndDestinationType) => (
+                  {candidates.favorites.map((candidate: PlanLocationCandidateItemType) => (
                     <CommandItem
                       key={`favorite-${candidate.userLocationId}`}
                       onSelect={() => {
                         fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                          ...candidate,
+                          name: candidate.name,
+                          latitude: candidate.latitude,
+                          longitude: candidate.longitude,
                           locationType: TransportNodeType.DEPARTURE,
+                          time: DEFAULT_DEPARTURE_TIME,
+                          travelTime: 0,
+                          userLocationId: candidate.userLocationId ?? undefined,
+                          transportMethod: 'DEFAULT',
+                          transportMethodId: 0,
                         });
                         setOpen(false);
                       }}
@@ -115,19 +124,26 @@ const Departure = ({ date }: { date: string }) => {
                     </span>
                   }
                 >
-                  {candidates.history.map((candidate: DepartureAndDestinationType) => (
+                  {candidates.history.map((candidate: PlanLocationCandidateItemType) => (
                     <CommandItem
                       key={`history-${candidate.planLocationId}`}
                       onSelect={() => {
                         fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                          ...candidate,
+                          name: candidate.name,
+                          latitude: candidate.latitude,
+                          longitude: candidate.longitude,
                           locationType: TransportNodeType.DEPARTURE,
+                          time: DEFAULT_DEPARTURE_TIME,
+                          travelTime: 0,
+                          transportMethod: 'DEFAULT',
+                          transportMethodId: 0,
                         });
+                        setSelectedPlanLocationId(candidate.planLocationId || null);
                         setOpen(false);
                       }}
                       className="flex items-center"
                     >
-                      {departureData && departureData.planLocationId === candidate.planLocationId && (
+                      {selectedPlanLocationId && selectedPlanLocationId === candidate.planLocationId && (
                         <Check className="mr-2 h-4 w-4" />
                       )}
                       <div className="flex flex-col">
@@ -162,8 +178,6 @@ const Departure = ({ date }: { date: string }) => {
               const departureName = e.currentTarget.value;
               fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
                 ...departureData,
-                planLocationId: null,
-                userLocationId: null,
                 name: departureName,
                 locationType: TransportNodeType.DEPARTURE,
               });
@@ -181,8 +195,6 @@ const Departure = ({ date }: { date: string }) => {
           onCoordinateFound={(coord) => {
             fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
               ...departureData,
-              planLocationId: null,
-              userLocationId: null,
               name: '',
               latitude: coord.lat,
               longitude: coord.lng,
@@ -199,11 +211,9 @@ const Departure = ({ date }: { date: string }) => {
           onSelect={(spot) => {
             fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
               ...departureData,
-              planLocationId: null,
-              userLocationId: null,
-              name: spot.location.name,
-              latitude: spot.location.lat,
-              longitude: spot.location.lng,
+              name: spot.name,
+              latitude: spot.latitude,
+              longitude: spot.longitude,
               locationType: TransportNodeType.DEPARTURE,
             });
           }}
@@ -227,8 +237,6 @@ const Departure = ({ date }: { date: string }) => {
                   fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
                     ...departureData,
                     ...newCoordinate,
-                    planLocationId: null,
-                    userLocationId: null,
                     locationType: TransportNodeType.DEPARTURE,
                   });
                 });
@@ -259,8 +267,6 @@ const Departure = ({ date }: { date: string }) => {
                 name: clickedCoord.name,
                 latitude: clickedCoord.lat,
                 longitude: clickedCoord.lng,
-                planLocationId: null,
-                userLocationId: null,
                 locationType: TransportNodeType.DEPARTURE,
               });
             }}

@@ -1,9 +1,10 @@
+import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { DepartureDestinationNearestStation } from '@/models/planLocation';
 import { StationType } from '@/types/nearestStation';
 import { NearestStation } from '@/types/plan';
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('RouteSummaryNearestStation', () => {
   beforeEach(() => {

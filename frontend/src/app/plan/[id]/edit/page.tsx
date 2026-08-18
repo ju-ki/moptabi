@@ -12,10 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS, DEFAULT_DEPARTURE_AND_DESTINATION } from '@/data/constants';
+import {
+  APP_LIMITS,
+  DEFAULT_ARRIVAL_TIME,
+  DEFAULT_DEPARTURE_AND_DESTINATION,
+  DEFAULT_DEPARTURE_TIME,
+} from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
-import { TransportNodeType } from '@/types/plan';
+import { ExtendPlanLocationType, ExtendSpotType, TransportNodeType, TravelPlanType } from '@/types/plan';
 import { Button } from '@/components/ui/button';
 import { usePlanning } from '@/hooks/use-planning';
 import { useFetchTripDetail } from '@/hooks/use-trip';
@@ -48,11 +53,11 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
     fields.setFields('title', trip.title);
 
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
-    trip.plans.forEach((plan) => {
+    trip.plans.forEach((plan: TravelPlanType) => {
       plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
       });
-      fields.setPlanInfo(plan.date, { ...plan, memo: plan.memo ?? '' });
+      fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
     });
@@ -76,12 +81,26 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
         fields.addDateWithDefaultLocation(
           date,
           {
-            ...(defaultDeparture ?? DEFAULT_DEPARTURE_AND_DESTINATION),
+            name: defaultDeparture?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
+            latitude: defaultDeparture?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
+            longitude: defaultDeparture?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
+            planId: defaultDeparture?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
             locationType: TransportNodeType.DEPARTURE,
+            transportMethodId: 0, // デフォルトの移動手段IDを設定（例: 0はDEFAULT）
+            transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
+            travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
+            time: DEFAULT_DEPARTURE_TIME,
           },
           {
-            ...(defaultDestination ?? DEFAULT_DEPARTURE_AND_DESTINATION),
+            name: defaultDestination?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
+            latitude: defaultDestination?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
+            longitude: defaultDestination?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
+            planId: defaultDestination?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
             locationType: TransportNodeType.DESTINATION,
+            transportMethodId: 0, // デフォルトの移動手段IDを設定（例: 0はDEFAULT）
+            transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
+            travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
+            time: DEFAULT_ARRIVAL_TIME,
           },
         );
       });
@@ -140,34 +159,6 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
               />
               {fields.errors.title && <span className="text-red-500">{fields.errors.title.toString()}</span>}
             </div>
-            {/* イメージ画像 */}
-            {/*  TODO: 対応できていない機能のためコメントアウト */}
-            {/* <div className="space-y-2">
-              <Label>イメージ画像</Label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                {fields.imageUrl ? (
-                  <div className="mb-4">
-                    <Image
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/images/${fields.imageUrl}`}
-                      alt="アップロードされた画像"
-                      width={300}
-                      height={200}
-                      unoptimized
-                      onError={(e) => {
-                        console.error('Image load error:', e);
-                        console.log(
-                          'Failed to load image:',
-                          `${process.env.NEXT_PUBLIC_API_BASE_URL}/uploads/${fields.imageUrl?.split('/').pop()}`,
-                        );
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-500">ここに画像をアップロードまたはドラッグ＆ドロップ</p>
-                )}
-                <Input type="file" multiple accept="image/*" onChange={onUploadImage} />
-              </div>
-            </div> */}
             {/* 予定日 */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">

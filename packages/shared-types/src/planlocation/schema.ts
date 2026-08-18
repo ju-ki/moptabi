@@ -10,6 +10,8 @@ export const PlanLocationSchema = z.object({
   longitude: z.number().min(-180).max(180),
   locationType: LocationTypeSchema,
   planId: z.number().int().optional(),
+  // 履歴の使用回数用
+  userLocationId: z.number().int().optional(),
   time: z.string(),
   nearestStation: NearestStationSchema.optional(),
   ...NextTransportSchema.shape,

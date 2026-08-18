@@ -1,5 +1,4 @@
-import { Coordination, Spot, TransportNodeType, TravelModeType } from '@/types/plan';
-import { DepartureAndDestinationType } from '@/models/planLocation';
+import { Coordination, ExtendPlanLocationType, ExtendSpotType, Spot, TravelModeType } from '@/types/plan';
 
 import { getRoute, RouteResult } from './plan';
 
@@ -18,11 +17,6 @@ export const sortSpotByStartTime = (spots: Spot[]): SortedSpot[] => {
     return [];
   }
 
-  // 出発地と目的地は除外する
-  spots = spots.filter(
-    (spot) =>
-      spot.transports?.fromType === TransportNodeType.SPOT && spot.transports?.toType === TransportNodeType.SPOT,
-  );
   //
   spots.sort((a, b) => {
     const startA = a.stayStart ?? '00:00';
@@ -48,13 +42,8 @@ export const sortSpotByStartTime = (spots: Spot[]): SortedSpot[] => {
  * @param spots 既に選択済みの観光スポット
  * @return 開始時間と終了時間が更新された観光スポット
  */
-export const setStartTimeAutomatically = (newSpot: Spot, spots: Spot[]): Spot => {
+export const setStartTimeAutomatically = (newSpot: ExtendSpotType, spots: ExtendSpotType[]): ExtendSpotType => {
   const clonedNewSpot = { ...newSpot };
-  // 出発地と目的地は除外する
-  spots = spots.filter(
-    (spot) =>
-      spot.transports?.fromType === TransportNodeType.SPOT && spot.transports?.toType === TransportNodeType.SPOT,
-  );
 
   if (spots.length == 0) {
     // 最初のスポットの場合は09:00で設定
@@ -170,30 +159,29 @@ export const timeToTotalMinutes = (time: { days: number; hours: number; minutes:
  * @returns 文字列化した合計値
  */
 export const calcTotalTransportTime = (
-  departure: DepartureAndDestinationType,
-  destination: DepartureAndDestinationType,
-  spots: Spot[],
+  departure: ExtendPlanLocationType,
+  destination: ExtendPlanLocationType,
+  spots: ExtendSpotType[],
 ): string => {
   let totalMinutes = 0;
-
   // 出発地から最初のスポットへの移動時間を加算
-  if (departure.transports?.travelTime) {
-    const parsedTime = parseTimeString(departure.transports.travelTime);
+  if (departure.travelTime) {
+    const parsedTime = parseTimeString(departure.travelTime.toString());
     totalMinutes += timeToTotalMinutes(parsedTime);
   }
 
   // 観光地間の移動時間を合算する
   spots.forEach((spot) => {
-    if (!spot.transports?.travelTime) {
+    if (!spot.travelTime) {
       return;
     }
-    const parsedTime = parseTimeString(spot.transports.travelTime);
+    const parsedTime = parseTimeString(spot.travelTime.toString());
     totalMinutes += timeToTotalMinutes(parsedTime);
   });
 
   // 最後のスポットから目的地への移動時間を加算
-  if (destination.transports?.travelTime) {
-    const parsedTime = parseTimeString(destination.transports.travelTime);
+  if (destination.travelTime) {
+    const parsedTime = parseTimeString(destination.travelTime.toString());
     totalMinutes += timeToTotalMinutes(parsedTime);
   }
 

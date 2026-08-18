@@ -15,7 +15,7 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import { useToast } from '@/hooks/use-toast';
 import { useFetchTripDetail } from '@/hooks/use-trip';
 import { useStoreForPlanning } from '@/lib/plan';
-import { TransportNodeType } from '@/types/plan';
+import { TransportNodeType, TravelPlanType } from '@/types/plan';
 
 const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
@@ -35,11 +35,12 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
-    trip.plans.forEach((plan) => {
+    trip.plans.forEach((plan: TravelPlanType) => {
       plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
       });
-      fields.setPlanInfo(plan.date, { ...plan, memo: plan.memo ?? '' });
+
+      fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
     });

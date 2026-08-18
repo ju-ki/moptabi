@@ -14,9 +14,7 @@ import { calculateDistance, estimateTransitTime } from '@/data/mockNearestStatio
 import { searchNearestStation } from '@/lib/google-maps';
 import { useStoreForPlanning } from '@/lib/plan';
 import { cn } from '@/lib/utils';
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { NearestStation } from '@/types/nearestStation';
-import { TransportNodeType } from '@/types/plan';
+import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } from '@/types/plan';
 
 const NearestStationDestination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
@@ -34,8 +32,8 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
   // 目的地の最寄駅関連の状態（最後のスポットの場合）
-  const [destinationNearestStations, setDestinationNearestStations] = useState<NearestStation[]>(
-    [destinationData?.nearestStation].filter((s): s is NearestStation => !!s),
+  const [destinationNearestStations, setDestinationNearestStations] = useState<ExtendNearestStationType[]>(
+    [destinationData?.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
   );
   const [selectedDestinationStationId, setSelectedDestinationStationId] = useState<string | null>(
     destinationData?.nearestStation?.placeId || null,
@@ -67,15 +65,15 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   // スポット間の距離を計算
   const getDistanceFromPrevious = useCallback((): number | undefined => {
     return calculateDistance(
-      lastSpot.location.lat,
-      lastSpot.location.lng,
+      lastSpot.latitude,
+      lastSpot.longitude,
       destinationData.latitude,
       destinationData.longitude,
     );
   }, [lastSpot, destinationData]);
 
   // 目的地の情報を更新（最寄駅など）
-  const handleDestinationChange = (updatedDestination: DepartureAndDestinationType) => {
+  const handleDestinationChange = (updatedDestination: ExtendPlanLocationType) => {
     fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, updatedDestination);
   };
 
@@ -421,7 +419,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                     {lastSpot.nearestStation && destinationData.nearestStation && (
                       <div className="break-words rounded bg-gray-100 p-2 text-sm text-gray-600">
                         <span className="font-medium">ルート: </span>
-                        <span>{lastSpot.location.name}</span>
+                        <span>{lastSpot.name}</span>
                         <span className="mx-1">→</span>
                         <span className="text-purple-600">
                           {lastSpot.nearestStation?.name}

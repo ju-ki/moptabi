@@ -1,9 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 
 import DateRangePicker from '@/components/DateRangePicker';
-import userEvent from '@testing-library/user-event';
 
 /**
  * DateRangePicker テスト
