@@ -1,5 +1,5 @@
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
-import { PlanLocationType } from '@shared/planLocation/types';
+import { PlanLocationType } from '@shared/planlocation/types';
 
 import { plan, planLocation, planLocationNearestStation, trip, userLocation } from '@/db';
 import type { AnyDbType } from '@/db';
