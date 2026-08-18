@@ -1,13 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { eq, and, count, sql, inArray } from 'drizzle-orm';
-import {
-  getDbFromContext,
-  trip,
-  planLocation,
-  userLocation,
-  getPostgresDb,
-} from '@db';
+import { getDbFromContext, trip, planLocation, userLocation, getPostgresDb } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 import { createTrip, getTripDetailById, updateTrip } from '@/services/trip';
@@ -94,10 +88,10 @@ export const getTripHandler = {
     try {
       const createdTripId = await createTrip(db, c);
       // 作成した旅行計画のidを渡してリダイレクト用に使用させる
-    if (!createdTripId) {
-      throw new HTTPException(500, { message: 'Failed to create trip' });
-    }
-    return c.json({ id: createdTripId }, 201);
+      if (!createdTripId) {
+        throw new HTTPException(500, { message: 'Failed to create trip' });
+      }
+      return c.json({ id: createdTripId }, 201);
     } catch (error) {
       if (error instanceof Error && error.message.includes('No transactions support in neon-http driver')) {
         console.error('Transaction is not supported by the neon-http driver.');

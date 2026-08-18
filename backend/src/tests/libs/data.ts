@@ -88,7 +88,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
     date: '2024-01-01',
     spots: [
       createSpotData(
-        "spot_1", // ランダムなIDを生成
+        'spot_1', // ランダムなIDを生成
         '10:00',
         '12:00',
         120,
@@ -97,7 +97,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         'WALKING',
         15,
         {
-          placeId: "spot_1",
+          placeId: 'spot_1',
           stationType: 'TRAIN',
           transitTime: 10,
           scheduledDepartureTime: '10:00',
@@ -105,7 +105,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         },
       ),
       createSpotData(
-        "spot_2", // ランダムなIDを生成
+        'spot_2', // ランダムなIDを生成
         '14:00',
         '16:00',
         120,
@@ -114,7 +114,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         'WALKING',
         15,
         {
-          placeId: "spot_2",
+          placeId: 'spot_2',
           stationType: 'TRAIN',
           transitTime: 15,
           scheduledDepartureTime: '11:00',
@@ -128,17 +128,16 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
       longitude: 139.6503,
       time: '09:00',
       locationType: 'DEPARTURE',
-      transportMethod: "WALKING",
+      transportMethod: 'WALKING',
       transportMethodId: 1,
       travelTime: 15,
       nearestStation: {
-        placeId: "departure_station_place_id",
+        placeId: 'departure_station_place_id',
         stationType: 'TRAIN',
         transitTime: 10,
         scheduledDepartureTime: '10:00',
         memo: '出発地駅からの移動メモ',
       },
-
     },
     destination: {
       name: '目的地',
@@ -146,11 +145,11 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
       longitude: 139.6503,
       time: '18:00',
       locationType: 'DESTINATION',
-      transportMethod: "DEFAULT",
+      transportMethod: 'DEFAULT',
       transportMethodId: 0,
       travelTime: 0,
       nearestStation: {
-        placeId: "destination_station_place_id",
+        placeId: 'destination_station_place_id',
         stationType: 'TRAIN',
         transitTime: 10,
         scheduledDepartureTime: '10:00',
@@ -168,7 +167,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
         stayDuration: 120,
         memo: 'モックスポット3のメモ',
         order: 1,
-        transportMethod: "WALKING",
+        transportMethod: 'WALKING',
         transportMethodId: 1,
         travelTime: 15,
       },
@@ -179,7 +178,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
       longitude: 139.6503,
       time: '09:00',
       locationType: 'DEPARTURE',
-      transportMethod: "WALKING",
+      transportMethod: 'WALKING',
       transportMethodId: 1,
       travelTime: 15,
     },
@@ -189,7 +188,7 @@ export const mockPlanDataWithNearestStation: Array<PlanType> = [
       longitude: 139.6503,
       time: '18:00',
       locationType: 'DESTINATION',
-      transportMethod: "DEFAULT",
+      transportMethod: 'DEFAULT',
       transportMethodId: 0,
       travelTime: 15,
     },

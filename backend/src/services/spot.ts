@@ -4,13 +4,9 @@ import { TripSpotType } from '@shared/spot/types';
 
 import type { UnvisitedSpotsQuery, VisitedSpotsQuery } from '@/models/spot';
 
-type DbLike = Pick<
-  AnyDbType,
-  'select' | 'insert' | 'update' | 'delete' | 'query'
->;
+type DbLike = Pick<AnyDbType, 'select' | 'insert' | 'update' | 'delete' | 'query'>;
 
-
-export async function createPlanSpot(db: DbLike, planId:number, spotsData: TripSpotType[]) {
+export async function createPlanSpot(db: DbLike, planId: number, spotsData: TripSpotType[]) {
   const createdPlanSpots = [];
   for (const spotData of spotsData) {
     const [newPlanSpot] = await db
