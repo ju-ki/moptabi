@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it, setSystemTime } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { TripSchema } from '@shared/trip/schema';
 
+import { TripSchema } from '@/models/trip';
 import { createDevDb } from '@/db';
 
 import app from '..';
@@ -70,12 +70,35 @@ describe('旅行計画サービス', () => {
       }
     });
 
-    it('nearestStationや元transportの情報が保存されること', async () => {
+    it('No.229: departure/destination の nearestStation が保存されること', async () => {
       const payloadWithLocationStations = {
         ...mockTripData,
-        plans: mockPlanDataWithNearestStation,
+        plans: [
+          {
+            ...mockPlanData[0],
+            departure: {
+              ...mockPlanData[0].departure,
+              nearestStation: {
+                placeId: 'departure_station_place_id',
+                stationType: 'TRAIN',
+                transitTime: 18,
+                scheduledDepartureTime: '08:40',
+                memo: '出発地メモ',
+              },
+            },
+            destination: {
+              ...mockPlanData[0].destination,
+              nearestStation: {
+                placeId: 'destination_station_place_id',
+                stationType: 'BUS',
+                transitTime: 14,
+                scheduledDepartureTime: '17:30',
+                memo: '目的地メモ',
+              },
+            },
+          },
+        ],
       };
-
 
       const res = await client.api.trips.create.$post(
         { json: payloadWithLocationStations as any },
@@ -85,7 +108,7 @@ describe('旅行計画サービス', () => {
 
       const created = await res.json();
       const createdPlans = await db.select().from(plan).where(eq(plan.tripId, created.id));
-      expect(createdPlans.length).toBe(2);
+      expect(createdPlans.length).toBe(1);
 
       const createdPlanLocations = await db
         .select()
@@ -93,20 +116,9 @@ describe('旅行計画サービス', () => {
         .where(eq(planLocation.planId, createdPlans[0].id));
       const departure = createdPlanLocations.find((l) => l.locationType === 'DEPARTURE');
       const destination = createdPlanLocations.find((l) => l.locationType === 'DESTINATION');
-      const createdPlanSpots = await db.select().from(planSpot).where(eq(planSpot.planId, createdPlans[0].id));
+
       expect(departure).toBeDefined();
       expect(destination).toBeDefined();
-      // 出発地の移動情報
-      expect(departure?.transportMethodId).toBe(mockPlanDataWithNearestStation[0].departure.transportMethodId);
-      expect(departure?.travelTime).toBe(mockPlanDataWithNearestStation[0].departure.travelTime);
-
-      // スポット1の移動情報
-      expect(createdPlanSpots[0].transportMethodId).toBe(mockPlanDataWithNearestStation[0].spots[0].transportMethodId);
-      expect(createdPlanSpots[0].travelTime).toBe(mockPlanDataWithNearestStation[0].spots[0].travelTime);
-
-      // 目的地の移動情報
-      expect(destination?.transportMethodId).toBe(mockPlanDataWithNearestStation[0].destination.transportMethodId);
-      expect(destination?.travelTime).toBe(mockPlanDataWithNearestStation[0].destination.travelTime);
 
       const createdLocationStations = await db
         .select()
@@ -125,33 +137,20 @@ describe('旅行計画サービス', () => {
             ? eq(planLocationNearestStation.planLocationId, destination.id)
             : eq(planLocationNearestStation.planLocationId, -1),
         );
-      const createdPlanSpotNearestStations = await db.select().from(planSpotNearestStation).where(eq(planSpotNearestStation.planSpotId, createdPlanSpots[0].id));
-      if(!mockPlanDataWithNearestStation[0].departure.nearestStation || !mockPlanDataWithNearestStation[0].spots[0].nearestStation || !mockPlanDataWithNearestStation[0].destination.nearestStation) {
-        throw new Error('nearestStationが設定されていることを前提としているため、テストデータを確認してください。');
-      }
 
-      // 出発地の最寄駅情報
-      expect(createdLocationStations[0]?.placeId).toBe(mockPlanDataWithNearestStation[0].departure.nearestStation.placeId);
-      expect(createdLocationStations[0]?.stationType).toBe(mockPlanDataWithNearestStation[0].departure.nearestStation.stationType);
-      expect(createdLocationStations[0]?.transitTime).toBe(mockPlanDataWithNearestStation[0].departure.nearestStation.transitTime);
-      expect(createdLocationStations[0]?.scheduledDepartureTime).toBe(mockPlanDataWithNearestStation[0].departure.nearestStation.scheduledDepartureTime ?? null);
-      expect(createdLocationStations[0]?.memo).toBe(mockPlanDataWithNearestStation[0].departure.nearestStation.memo ?? null);
+      expect(createdLocationStations.length).toBe(1);
+      expect(createdLocationStations[0]?.placeId).toBe('departure_station_place_id');
+      expect(createdLocationStations[0]?.stationType).toBe('TRAIN');
+      expect(createdLocationStations[0]?.transitTime).toBe(18);
+      expect(createdLocationStations[0]?.scheduledDepartureTime).toBe('08:40');
+      expect(createdLocationStations[0]?.memo).toBe('出発地メモ');
 
-      // スポットの最寄駅情報
-      expect(createdPlanSpotNearestStations.length).toBe(1);
-      expect(createdPlanSpotNearestStations[0]?.placeId).toBe(mockPlanDataWithNearestStation[0].spots[0].nearestStation.placeId);
-      expect(createdPlanSpotNearestStations[0]?.stationType).toBe(mockPlanDataWithNearestStation[0].spots[0].nearestStation.stationType);
-      expect(createdPlanSpotNearestStations[0]?.transitTime).toBe(mockPlanDataWithNearestStation[0].spots[0].nearestStation.transitTime);
-      expect(createdPlanSpotNearestStations[0]?.scheduledDepartureTime).toBe(mockPlanDataWithNearestStation[0].spots[0].nearestStation.scheduledDepartureTime ?? null);
-      expect(createdPlanSpotNearestStations[0]?.memo).toBe(mockPlanDataWithNearestStation[0].spots[0].nearestStation.memo ?? null);
-
-      // 目的地の最寄駅情報
       expect(createdDestinationStations.length).toBe(1);
-      expect(createdDestinationStations[0]?.placeId).toBe(mockPlanDataWithNearestStation[0].destination.nearestStation.placeId);
-      expect(createdDestinationStations[0]?.stationType).toBe(mockPlanDataWithNearestStation[0].destination.nearestStation.stationType);
-      expect(createdDestinationStations[0]?.transitTime).toBe(mockPlanDataWithNearestStation[0].destination.nearestStation.transitTime);
-      expect(createdDestinationStations[0]?.scheduledDepartureTime).toBe(mockPlanDataWithNearestStation[0].destination.nearestStation.scheduledDepartureTime ?? null);
-      expect(createdDestinationStations[0]?.memo).toBe(mockPlanDataWithNearestStation[0].destination.nearestStation.memo ?? null);
+      expect(createdDestinationStations[0]?.placeId).toBe('destination_station_place_id');
+      expect(createdDestinationStations[0]?.stationType).toBe('BUS');
+      expect(createdDestinationStations[0]?.transitTime).toBe(14);
+      expect(createdDestinationStations[0]?.scheduledDepartureTime).toBe('17:30');
+      expect(createdDestinationStations[0]?.memo).toBe('目的地メモ');
     });
   });
 
@@ -694,10 +693,6 @@ describe('旅行計画サービス', () => {
       expect(firstSpot).toHaveProperty('stayStart');
       expect(firstSpot).toHaveProperty('stayEnd');
       expect(firstSpot).toHaveProperty('order');
-      expect(firstSpot).toHaveProperty('stayDuration');
-      expect(firstSpot).toHaveProperty('transportMethodId');
-      expect(firstSpot).toHaveProperty('transportMethod');
-      expect(firstSpot).toHaveProperty('travelTime');
 
       // SpotMetaの情報が返らないこと
       expect(firstSpot.location).toBeUndefined();
@@ -716,7 +711,43 @@ describe('旅行計画サービス', () => {
       // 最寄駅情報付きのプランデータを作成
       const tripWithNearestStation = {
         ...mockTripData,
-        plans: mockPlanDataWithNearestStation,
+        plans: [
+          {
+            date: '2024-01-01',
+            spots: [
+              {
+                id: spotId('nearest_1'),
+                clientRef: 'nearest-spot-1',
+                location: {
+                  name: 'スポット1',
+                  lat: 35.6895,
+                  lng: 139.6917,
+                },
+                stayStart: '10:00',
+                stayEnd: '12:00',
+                stayDuration: 120,
+                memo: 'スポット1',
+                order: 1,
+                transports: {
+                  transportMethod: 1,
+                  travelTime: '10分',
+                  cost: 200,
+                  fromType: 'SPOT',
+                  toType: 'SPOT',
+                },
+              },
+            ],
+            departure: mockPlanData[0].departure,
+            destination: mockPlanData[0].destination,
+            planSpotNearestStations: [
+              {
+                planSpotRef: 'nearest-spot-1',
+                placeId: 'place_id_shinjuku_station',
+                stationType: 'TRAIN',
+              },
+            ],
+          },
+        ],
       };
 
       // 旅行計画を作成
@@ -743,8 +774,7 @@ describe('旅行計画サービス', () => {
 
       // 最寄駅情報が返されること
       expect(spotWithStation.nearestStation).not.toBeNull();
-      expect(spotWithStation.nearestStation).not.toBeUndefined();
-      expect(spotWithStation.nearestStation).toHaveProperty('placeId', 'spot_1');
+      expect(spotWithStation.nearestStation).toHaveProperty('placeId', 'place_id_shinjuku_station');
       expect(spotWithStation.nearestStation).toHaveProperty('stationType', 'TRAIN');
 
       // 駅の詳細情報（name, walkingTimeなど）は返されないこと（Google Maps Platform利用規約準拠）
@@ -754,11 +784,110 @@ describe('旅行計画サービス', () => {
       expect(spotWithStation.nearestStation.longitude).toBeUndefined();
     });
 
+    it('spots[].nearestStation から planSpotNearestStation に自動で登録されること', async () => {
+      // nearestStation情報付きでtrip作成
+      const tripWithAutoGeneratedStation = {
+        ...mockTripData,
+        plans: [
+          {
+            date: '2024-01-01',
+            spots: [
+              {
+                id: spotId('auto_station_1'),
+                clientRef: 'auto-spot-1',
+                location: {
+                  name: 'スポット1',
+                  lat: 35.6895,
+                  lng: 139.6917,
+                },
+                stayStart: '10:00',
+                stayEnd: '12:00',
+                stayDuration: 120,
+                memo: 'スポット1',
+                order: 1,
+                transports: {
+                  transportMethod: 1,
+                  travelTime: '10分',
+                  cost: 200,
+                  fromType: 'SPOT',
+                  toType: 'SPOT',
+                },
+                // spots[].nearestStation に placeId を含める
+                nearestStation: {
+                  placeId: 'place_id_auto_generated',
+                  stationType: 'TRAIN',
+                  name: '自動検出駅',
+                  walkingTime: 5,
+                  latitude: 35.69,
+                  longitude: 139.692,
+                },
+              },
+            ],
+            departure: mockPlanData[0].departure,
+            destination: mockPlanData[0].destination,
+            // planSpotNearestStations は明示的に送信しない
+          },
+        ],
+      };
+
+      // Trip 作成
+      const createRes = await client.api.trips.create.$post(
+        {
+          json: tripWithAutoGeneratedStation,
+        },
+        { headers: createAuthHeaders('trip_service') },
+      );
+
+      expect(createRes.status).toBe(201);
+      const createdTripResult = await createRes.json();
+
+      // データベースから直接確認
+      const createdPlans = await db.select().from(plan).where(eq(plan.tripId, createdTripResult.id));
+      expect(createdPlans.length).toBe(1);
+
+      const createdPlanSpots = await db.select().from(planSpot).where(eq(planSpot.planId, createdPlans[0].id));
+      expect(createdPlanSpots.length).toBe(1);
+
+      // planSpotNearestStation に保存されているか確認
+      const createdAutoStations = await db
+        .select()
+        .from(planSpotNearestStation)
+        .where(eq(planSpotNearestStation.planSpotId, createdPlanSpots[0].id));
+
+      // spots[].nearestStation から自動生成されたため、1つ保存されているはず
+      expect(createdAutoStations.length).toBe(1);
+      expect(createdAutoStations[0]?.placeId).toBe('place_id_auto_generated');
+      expect(createdAutoStations[0]?.stationType).toBe('TRAIN');
+    });
 
     it('出発地・目的地の最寄駅情報が placeId と stationType を含むこと', async () => {
       const payloadWithLocationStations = {
         ...mockTripData,
-        plans: mockPlanDataWithNearestStation,
+        plans: [
+          {
+            ...mockPlanData[0],
+            departure: {
+              ...mockPlanData[0].departure,
+              nearestStation: {
+                placeId: 'departure_station_get_place_id',
+                stationType: 'TRAIN',
+                transitTime: 9,
+                scheduledDepartureTime: '08:50',
+                memo: '出発地取得メモ',
+              },
+            },
+            destination: {
+              ...mockPlanData[0].destination,
+              nearestStation: {
+                placeId: 'destination_station_get_place_id',
+                stationType: 'OTHER',
+                transitTime: 11,
+                scheduledDepartureTime: '17:10',
+                memo: '目的地取得メモ',
+              },
+            },
+          },
+        ],
       };
 
       const createdTrip = await client.api.trips.create.$post(
@@ -780,18 +909,18 @@ describe('旅行計画サービス', () => {
       const trip = await getRes.json();
 
       expect(trip.plans[0]?.departure?.nearestStation).toEqual({
-        placeId: 'departure_station_place_id',
+        placeId: 'departure_station_get_place_id',
         stationType: 'TRAIN',
-        transitTime: 10,
-        scheduledDepartureTime: '10:00',
-        memo: '出発地駅からの移動メモ',
+        transitTime: 9,
+        scheduledDepartureTime: '08:50',
+        memo: '出発地取得メモ',
       });
       expect(trip.plans[0]?.destination?.nearestStation).toEqual({
-        placeId: 'destination_station_place_id',
-        stationType: 'TRAIN',
-        transitTime: 10,
-        scheduledDepartureTime: '10:00',
-        memo: '目的地駅からの移動メモ',
+        placeId: 'destination_station_get_place_id',
+        stationType: 'OTHER',
+        transitTime: 11,
+        scheduledDepartureTime: '17:10',
+        memo: '目的地取得メモ',
       });
     });
   });

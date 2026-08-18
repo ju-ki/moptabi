@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { LocationTypeSchema } from '../planlocation/schema';
+
+import { LocationTypeSchema, TransportSchema } from '../trip/schema';
 
 // ユーザーお気に入り地点スキーマ（レスポンス用）
 export const UserLocationSchema = z.object({
@@ -67,6 +68,7 @@ export const PlanLocationCandidateItemSchema = z.object({
   planName: z.string().nullable(),
   userLocationId: z.number().nullable(),
   planLocationId: z.number().nullable(),
+  transports: TransportSchema.optional(),
 });
 
 // 候補取得APIレスポンススキーマ

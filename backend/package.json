@@ -25,7 +25,7 @@
     "db:push:staging": "drizzle-kit push --config=./drizzle-staging.config.ts",
     "db:reset:test": "bun run src/tests/reset-test-db.ts",
     "prepare": "husky",
-    "prebuild": "bunx tsc -p ../packages/shared-types/tsconfig.json",
+    "prebuild": "npm --prefix ../packages/shared-types run build",
     "build": "bunx tsc -p tsconfig.json"
 
   },

@@ -92,13 +92,6 @@
       "when": 1783513811552,
       "tag": "0013_drop_other_table",
       "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1786145330193,
-      "tag": "0014_drop_transport_and_change_plan",
-      "breakpoints": true
     }
   ]
 }

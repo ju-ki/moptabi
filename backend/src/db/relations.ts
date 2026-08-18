@@ -2,6 +2,7 @@ import { relations } from 'drizzle-orm/relations';
 
 import {
   plan,
+  transport,
   planSpot,
   trip,
   user,
@@ -14,7 +15,15 @@ import {
   planLocationNearestStation,
 } from './schema';
 
+export const transportRelations = relations(transport, ({ one }) => ({
+  plan: one(plan, {
+    fields: [transport.planId],
+    references: [plan.id],
+  }),
+}));
+
 export const planRelations = relations(plan, ({ one, many }) => ({
+  transports: many(transport),
   trip: one(trip, {
     fields: [plan.tripId],
     references: [trip.id],

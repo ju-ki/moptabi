@@ -1,6 +1,4 @@
 import { testClient } from 'hono/testing';
-import { NearestStationType } from '@shared/nearestStation/types';
-import { TransportMethodType } from '@shared/transports/types';
 
 import { TripDetailResponseType, TripDetailSpotType } from '@/models/trip';
 
@@ -33,6 +31,7 @@ export function getTestClient() {
  * @param string stayEnd 滞在終了時間
  * @param number stayDuration 滞在時間（分）
  * @param number order スポットの順序
+ * @param any transports 移動手段
  * @param any nearestStation 最寄り駅情報
  * @returns テスト用のスポットデータオブジェクト
  */
@@ -42,13 +41,19 @@ export function createSpotData(
   stayEnd: string = '12:00',
   stayDuration: number = 60,
   order: number = 1,
-  transportMethodId: number = 1,
-  transportMethod: TransportMethodType = 'WALKING',
-  travelTime: number = 15,
-  nearestStation: NearestStationType | undefined = {
+  transports: any = {
+    transportMethod: 1,
+    travelTime: '30分',
+    cost: 500,
+    fromType: 'SPOT',
+    toType: 'SPOT',
+  },
+  nearestStation: any = {
     placeId: Math.random().toString(36).substring(2, 15), // ランダムなIDを生成
     stationType: 'TRAIN',
     transitTime: 10,
+    latitude: 35.6895,
+    longitude: 139.6917,
     scheduledDepartureTime: '10:00',
     memo: '出発地駅からの移動メモ',
   },
@@ -77,15 +82,13 @@ export function createSpotData(
     image: 'https://example.com/image.jpg',
     prefecture: '東京都',
     address: '東京都千代田区',
+    transports,
     nearestStation,
     stayStart,
     stayEnd,
     stayDuration,
     memo: `モックスポット${id}のメモ`,
     order,
-    transportMethodId,
-    transportMethod,
-    travelTime,
   };
 }
 
@@ -108,6 +111,7 @@ export async function createTripViaTripService(params: {
     stayEnd: string;
     stayDuration: number;
     order: number;
+    transports: any;
     nearestStation: any;
   }>;
 }) {
@@ -122,6 +126,7 @@ export async function createTripViaTripService(params: {
       spot.stayEnd,
       spot.stayDuration,
       spot.order,
+      spot.transports,
       spot.nearestStation,
     );
   });
