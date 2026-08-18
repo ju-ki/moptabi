@@ -3,7 +3,7 @@ import { trip, plan, planLocation, planLocationNearestStation, planSpot, planSpo
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import { TripSchema } from '@shared/trip/schema';
-import { PlanLocationType } from '@shared/planLocation/types';
+import { PlanLocationType } from '@shared/planlocation/types';
 import { TransportMethodIdMapping } from '@shared/transports/types';
 import { TripType } from '@shared/trip/types';
 import { TripSpotType } from '@shared/spot/types';
