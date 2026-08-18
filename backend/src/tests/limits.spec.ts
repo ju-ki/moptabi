@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
-import { PlanLocationType } from '@shared/planLocation/types';
+import { PlanLocationType } from '@shared/planlocation/types';
 
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 
