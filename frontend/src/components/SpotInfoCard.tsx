@@ -3,8 +3,7 @@
 import { Calendar, Clock, ExternalLink, MapPin, Star } from 'lucide-react';
 import Image from 'next/image';
 
-import { ExtendSpotType, TravelModeType } from '@/types/plan';
-import { convertHHmmToJpFormat } from '@/lib/utils';
+import { ExtendNearestStationType, ExtendSpotType } from '@/types/plan';
 import { calculateDuration } from '@/lib/algorithm';
 
 import { placeTypeMap } from '../data/constants';
@@ -14,11 +13,7 @@ import { NearestStationDetail } from './NearestStationDetail';
 
 interface SpotCardProps {
   spot: ExtendSpotType;
-  nextNearestStation?: {
-    scheduledDepartureTime?: string;
-    transitTime?: number;
-    memo?: string;
-  };
+  nextNearestStation?: ExtendNearestStationType;
   isLastSpot?: boolean;
 }
 
@@ -54,7 +49,9 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
         {shouldShowTransportTime && (
           <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
             <span data-testid="timeline-transport-icon">{transportIcon}</span>
-            <span className="font-semibold">{spot.travelTime}</span>
+            <span aria-label="travel-time" className="font-semibold">
+              {spot.travelTime} 分
+            </span>
           </div>
         )}
       </div>

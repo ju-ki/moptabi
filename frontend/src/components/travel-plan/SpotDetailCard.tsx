@@ -5,8 +5,8 @@ import { MapPin, Clock, Train, FootprintsIcon, X, Car, Bike, CircleHelp, Externa
 import Image from 'next/image';
 import { TransportMethodType } from '@shared/transports/types';
 
-import { ExtendSpotType, Spot, TravelModeType } from '@/types/plan';
-import { DEFAULT_ARRIVAL_TIME, placeTypeMap, SpotMakerColors } from '@/data/constants';
+import { ExtendSpotType, TravelModeType } from '@/types/plan';
+import { placeTypeMap } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 
@@ -267,7 +267,7 @@ export default function SpotDetailCard({
       {/* 移動手段 */}
       {index !== -1 && (
         <div className="space-y-3 mb-4" data-testid="spot-transport">
-          {spot?.nearestStation && nextSpot.nearestStation && spot.transportMethodId == 4 && (
+          {spot.nearestStation && nextSpot.nearestStation && spot.transportMethodId == 4 && (
             <RouteSummaryNearestStation
               originNearestStation={spot.nearestStation}
               destinationNearestStation={nextSpot.nearestStation}
@@ -286,10 +286,11 @@ export default function SpotDetailCard({
                 {transportCandidates
                   .filter((candidate) => candidate.transportMethodId !== spot.transportMethodId)
                   .map((candidate) => (
-                    <button
+                    <Button
                       key={`${candidate.name}-${candidate.travelTime}`}
                       type="button"
                       className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
+                      aria-label={`Change to ${candidate.name}`}
                       aria-disabled={candidate.isDisabled ? 'true' : 'false'}
                       onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
                     >
@@ -297,7 +298,7 @@ export default function SpotDetailCard({
                       <span>
                         {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime})
                       </span>
-                    </button>
+                    </Button>
                   ))}
               </div>
             )}

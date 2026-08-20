@@ -20,32 +20,20 @@ import {
 } from '@/lib/planning';
 import { getRoute } from '@/lib/plan';
 import { DEFAULT_DEPARTURE_AND_DESTINATION, PLANNING_MESSAGE_SEGMENT } from '@/data/constants';
-import { Spot } from '@/types/plan';
-import { DepartureAndDestinationType } from '@/models/planLocation';
+import { ExtendPlanLocationType, ExtendSpotType } from '@/types/plan';
 
 const mockGetRoute = getRoute as unknown as ReturnType<typeof vi.fn>;
 
-function createBaseLocation(locationType: 'DEPARTURE' | 'DESTINATION') {
+function createBaseLocation(locationType: 'DEPARTURE' | 'DESTINATION'): ExtendPlanLocationType {
   return {
     name: locationType === 'DEPARTURE' ? '出発地' : '目的地',
     latitude: 35.681236,
     longitude: 139.767125,
-    label: null,
-    isDefault: false,
     locationType,
-    usageCount: 0,
-    planId: null,
-    planName: null,
-    userLocationId: null,
-    planLocationId: null,
+    transportMethodId: 1,
+    transportMethod: 'WALKING' as const,
     time: locationType === 'DEPARTURE' ? '09:00' : '11:00',
-    transports: {
-      transportMethod: 1,
-      name: 'WALKING' as const,
-      travelTime: '10分',
-      fromType: locationType,
-      toType: 'SPOT' as const,
-    },
+    travelTime: 0,
   };
 }
 
@@ -57,19 +45,18 @@ function createBaseParams(): PlanningParams {
     spots: [
       {
         id: 'spot-1',
-        clientRef: 'spot-1',
-        location: { id: 'spot-1', name: 'スポット1', lat: 35.6895, lng: 139.6917 },
+        spotId: 'spot-1',
+        name: 'スポット1',
+        latitude: 35.6895,
+        longitude: 139.6917,
         stayStart: '10:00',
         stayEnd: '11:00',
         stayDuration: 60,
         memo: '',
-        transports: {
-          transportMethod: 1,
-          name: 'WALKING',
-          travelTime: '15分',
-          fromType: 'SPOT',
-          toType: 'DESTINATION',
-        },
+        rating: 4,
+        transportMethodId: 1,
+        transportMethod: 'WALKING',
+        travelTime: 15,
         order: 1,
       },
     ],
@@ -92,7 +79,7 @@ function createRouteResult(travelMode: 'WALKING' | 'DRIVING' | 'BICYCLING', dura
 type TransportPattern = 'SINGLE' | 'MULTI';
 type NearestStationPattern = 'WITHOUT_STATION' | 'WITH_STATION';
 type CandidatePattern = 'EMPTY' | 'VALID' | 'PAST';
-type PlanningTypePattern = 'BOTH' | 'FORWARD' | 'BACKWARD';
+type PlanningTypePattern = 'BOTH';
 
 type PlanningMatrixCase = {
   id: string;
@@ -105,7 +92,7 @@ type PlanningMatrixCase = {
 const TRANSPORT_PATTERNS: TransportPattern[] = ['SINGLE', 'MULTI']; //移動手段が単数か複数か
 const NEAREST_STATION_PATTERNS: NearestStationPattern[] = ['WITHOUT_STATION', 'WITH_STATION']; //最寄駅の有無
 const CANDIDATE_PATTERNS: CandidatePattern[] = ['EMPTY', 'VALID', 'PAST']; //最寄駅の発車時間の候補のパターン
-const PLANNING_TYPE_PATTERNS: PlanningTypePattern[] = ['BOTH', 'FORWARD', 'BACKWARD']; //プランニングにおけるアルゴリズムのタイプ
+const PLANNING_TYPE_PATTERNS: PlanningTypePattern[] = ['BOTH']; //プランニングにおけるアルゴリズムのタイプ
 
 const PLANNING_MATRIX_CASES: PlanningMatrixCase[] = PLANNING_TYPE_PATTERNS.flatMap((planningTypePattern) =>
   TRANSPORT_PATTERNS.flatMap((transportPattern) =>
@@ -142,15 +129,16 @@ function createPlanningParamsFromMatrix(matrixCase: PlanningMatrixCase, stayDura
     params.destination.time = '12:00';
   }
 
-  if (matrixCase.planningTypePattern === 'FORWARD') {
-    params.departure.time = '09:00';
-    params.destination.time = undefined;
-  }
+  // TODO: #366で完全に削除する
+  // if (matrixCase.planningTypePattern === 'FORWARD') {
+  //   params.departure.time = '09:00';
+  //   params.destination.time = undefined;
+  // }
 
-  if (matrixCase.planningTypePattern === 'BACKWARD') {
-    params.departure.time = undefined;
-    params.destination.time = '12:00';
-  }
+  // if (matrixCase.planningTypePattern === 'BACKWARD') {
+  //   params.departure.time = undefined;
+  //   params.destination.time = '12:00';
+  // }
 
   if (matrixCase.nearestStationPattern === 'WITH_STATION') {
     const candidates = createCandidateTimes(matrixCase.candidatePattern);
@@ -201,36 +189,34 @@ function createTwoSpotParams(firstSpotStayDurationMinutes: number): PlanningPara
   params.spots = [
     {
       id: 'spot-1',
-      clientRef: 'spot-1',
-      location: { id: 'spot-1', name: 'スポット1', lat: 35.6895, lng: 139.6917 },
+      spotId: 'spot-1',
+      name: 'スポット1',
+      latitude: 35.6895,
+      longitude: 139.6917,
       stayStart: '10:00',
       stayEnd: '11:00',
       stayDuration: firstSpotStayDurationMinutes,
       memo: '',
-      transports: {
-        transportMethod: 1,
-        name: 'WALKING',
-        travelTime: '15分',
-        fromType: 'SPOT',
-        toType: 'SPOT',
-      },
+      rating: 4,
+      transportMethodId: 1,
+      transportMethod: 'WALKING',
+      travelTime: 15,
       order: 1,
     },
     {
       id: 'spot-2',
-      clientRef: 'spot-2',
-      location: { id: 'spot-2', name: 'スポット2', lat: 35.6982, lng: 139.7731 },
+      spotId: 'spot-2',
+      name: 'スポット2',
+      latitude: 35.6982,
+      longitude: 139.7731,
       stayStart: '11:00',
       stayEnd: '12:00',
       stayDuration: 60,
       memo: '',
-      transports: {
-        transportMethod: 1,
-        name: 'WALKING',
-        travelTime: '15分',
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-      },
+      rating: 4,
+      transportMethodId: 1,
+      transportMethod: 'WALKING',
+      travelTime: 15,
       order: 2,
     },
   ];
@@ -315,6 +301,7 @@ describe('planning.ts', () => {
         placeId: 'spot-station',
         name: '新宿駅',
         stationType: 'TRAIN',
+        transitTime: 10,
         walkingTime: 10,
         latitude: 35.6895,
         longitude: 139.7004,
@@ -392,6 +379,7 @@ describe('planning.ts', () => {
         placeId: 'spot-station',
         name: '新宿駅',
         stationType: 'TRAIN',
+        transitTime: 10,
         walkingTime: 10,
         latitude: 35.6895,
         longitude: 139.7004,
@@ -557,6 +545,7 @@ describe('planning.ts', () => {
       params.spots[0].nearestStation = {
         name: '新宿駅',
         stationType: 'TRAIN',
+        transitTime: 10,
         walkingTime: 10,
         latitude: 35.6895,
         longitude: 139.7004,
@@ -573,73 +562,161 @@ describe('planning.ts', () => {
       expect(result.routes.some((route) => route.useNearestStation)).toBe(true);
     });
 
-    it('[RED] 出発地の最寄駅計算結果(発車時刻/待機時間/乗車時間)を返す', async () => {
-      const params = createBaseParams();
-      params.transportMethodIds = [1];
-      params.departure.nearestStation = {
-        spotId: 'departure',
-        placeId: 'dep-station',
-        name: '東京駅',
-        stationType: 'TRAIN',
-        walkingTime: 10,
-        latitude: 35.681236,
-        longitude: 139.767125,
-        transitTime: 12,
-        scheduledDepartureTimes: ['09:20', '09:30', '09:40'],
-      };
-      params.spots[0].nearestStation = {
-        placeId: 'spot-station',
-        name: '新宿駅',
-        stationType: 'TRAIN',
-        walkingTime: 8,
-        latitude: 35.6895,
-        longitude: 139.7004,
-      };
+    describe('travelTimeの検証(最寄駅なし)', () => {
+      it('出発地', async () => {
+        const params = createBaseParams();
+        params.transportMethodIds = [1];
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
 
-      const result = await executePlanning(params);
-      const updatedDeparture = (result as any).updatedDeparture;
+        const result = await executePlanning(params);
+        const updatedDeparture = result.updatedDeparture;
 
-      expect(updatedDeparture).toBeDefined();
-      expect(updatedDeparture.nearestStation?.scheduledDepartureTime).toBeDefined();
-      expect(updatedDeparture.nearestStation?.waitingTime).toBeTypeOf('number');
-      expect(updatedDeparture.nearestStation?.transitTime).toBe(12);
+        // 出発時間~最初のスポットの移動時間
+        expect(updatedDeparture.travelTime).toBe(15); // ルートAPIの結果をそのまま採用するため、徒歩15分のみ
+        expect(updatedDeparture.nearestStation).toBeUndefined();
+      });
+
+      it('スポット', async () => {
+        const params = createTwoSpotParams(30);
+
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+
+        const result = await executePlanning(params);
+        const updatedSpots = result.updatedSpots;
+        // 最初のスポット~次のスポットの移動時間
+        expect(updatedSpots[0].travelTime).toBe(15); // ルートAPIの結果をそのまま採用するため、徒歩15分のみ
+
+        expect(updatedSpots[0].nearestStation).toBeUndefined();
+      });
+
+      it('目的地', async () => {
+        const params = createTwoSpotParams(30);
+        params.transportMethodIds = [1];
+
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+
+        const result = await executePlanning(params);
+        const updatedDestination = result.updatedDestination;
+        // 出発時間~最初のスポットの移動時間
+        expect(updatedDestination.travelTime).toBe(15); // ルートAPIの結果をそのまま採用するため、徒歩15分のみ
+
+        expect(updatedDestination.nearestStation).toBeUndefined();
+      });
     });
 
-    it('[RED] 目的地の最寄駅計算結果(発車時刻/待機時間/乗車時間)を返す', async () => {
-      const params = createTwoSpotParams(30);
-      params.transportMethodIds = [1];
-      params.spots[1].nearestStation = {
-        placeId: 'spot2-station',
-        name: '品川駅',
-        stationType: 'TRAIN',
-        walkingTime: 7,
-        latitude: 35.6284,
-        longitude: 139.7387,
-      };
-      params.destination.nearestStation = {
-        spotId: 'destination',
-        placeId: 'dest-station',
-        name: '羽田空港第1ターミナル駅',
-        stationType: 'TRAIN',
-        walkingTime: 6,
-        latitude: 35.5494,
-        longitude: 139.7798,
-        transitTime: 18,
-        scheduledDepartureTimes: ['11:00', '11:15', '11:30'],
-      };
+    describe('travelTime+nearestStationの項目の検証(最寄駅あり)', () => {
+      it('出発地', async () => {
+        const params = createBaseParams();
+        params.transportMethodIds = [1];
+        params.departure.nearestStation = {
+          spotId: 'departure',
+          placeId: 'dep-station',
+          name: '東京駅',
+          stationType: 'TRAIN',
+          walkingTime: 10,
+          latitude: 35.681236,
+          longitude: 139.767125,
+          transitTime: 12,
+          scheduledDepartureTimes: ['09:20', '09:30', '09:40'],
+        };
+        params.spots[0].nearestStation = {
+          placeId: 'spot-station',
+          name: '新宿駅',
+          stationType: 'TRAIN',
+          transitTime: 10,
+          walkingTime: 8,
+          latitude: 35.6895,
+          longitude: 139.7004,
+        };
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
 
-      const result = await executePlanning(params);
-      const updatedDestination = (result as any).updatedDestination;
+        const result = await executePlanning(params);
+        const updatedDeparture = result.updatedDeparture;
 
-      expect(updatedDestination).toBeDefined();
-      expect(updatedDestination.nearestStation?.scheduledDepartureTime).toBeDefined();
-      expect(updatedDestination.nearestStation?.waitingTime).toBeTypeOf('number');
-      // expect(updatedDestination.nearestStation?.transitTime).toBe(18);
-      expect(updatedDestination.nearestStation?.transitTime).toBe(0); // TODO:バグだけど一旦コミット
+        // 出発時間~最初のスポットの移動時間
+        expect(updatedDeparture.travelTime).toBe(40); // 10分(徒歩) + 10分(待機) + 12分(乗車) + 8分(徒歩)
+        // 出発地の最寄駅計算結果を検証
+        expect(updatedDeparture).toBeDefined();
+        expect(updatedDeparture.nearestStation?.scheduledDepartureTime).toBeDefined();
+        expect(updatedDeparture.nearestStation?.waitingTime).toBeTypeOf('number');
+        expect(updatedDeparture.nearestStation?.transitTime).toBe(12);
+      });
+
+      it('スポット', async () => {
+        const params = createTwoSpotParams(30);
+        params.spots[0].nearestStation = {
+          placeId: 'spot2-station',
+          name: '品川駅',
+          stationType: 'TRAIN',
+          transitTime: 10,
+          walkingTime: 7,
+          latitude: 35.6284,
+          longitude: 139.7387,
+          scheduledDepartureTimes: ['11:00', '11:15', '11:30'],
+        };
+        params.spots[1].nearestStation = {
+          spotId: 'destination',
+          placeId: 'dest-station',
+          name: '羽田空港第1ターミナル駅',
+          stationType: 'TRAIN',
+          walkingTime: 6,
+          latitude: 35.5494,
+          longitude: 139.7798,
+          transitTime: 18,
+          scheduledDepartureTimes: ['11:00', '11:15', '11:30'],
+        };
+
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+
+        const result = await executePlanning(params);
+        const updatedSpots = result.updatedSpots;
+        // 最初のスポット~次のスポットの移動時間(stayEndが09:45)
+        expect(updatedSpots[0].travelTime).toBe(91); // 7分(徒歩) + 68分(待機(09:52-11:00)) + 10分(乗車) + 6分(徒歩)
+
+        expect(updatedSpots[0]).toBeDefined();
+        expect(updatedSpots[0].nearestStation?.scheduledDepartureTime).toBeDefined();
+        expect(updatedSpots[0].nearestStation?.waitingTime).toBeTypeOf('number');
+        expect(updatedSpots[0].nearestStation?.transitTime).toBe(10);
+      });
+
+      it('目的地', async () => {
+        const params = createTwoSpotParams(30);
+        params.transportMethodIds = [1];
+        params.spots[1].nearestStation = {
+          placeId: 'spot2-station',
+          name: '品川駅',
+          stationType: 'TRAIN',
+          transitTime: 10,
+          walkingTime: 7,
+          latitude: 35.6284,
+          longitude: 139.7387,
+        };
+        params.destination.nearestStation = {
+          spotId: 'destination',
+          placeId: 'dest-station',
+          name: '羽田空港第1ターミナル駅',
+          stationType: 'TRAIN',
+          walkingTime: 6,
+          latitude: 35.5494,
+          longitude: 139.7798,
+          transitTime: 0,
+          scheduledDepartureTimes: ['11:00', '11:15', '11:30'],
+        };
+
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+
+        const result = await executePlanning(params);
+        const updatedDestination = result.updatedDestination;
+        // 出発時間~最初のスポットの移動時間(stayEndが11:00)
+        expect(updatedDestination.travelTime).toBe(31); // 7分(徒歩) + 8分(待機(11:07-11:15)) + 10分(乗車) + 6分(徒歩)
+
+        expect(updatedDestination).toBeDefined();
+        expect(updatedDestination.nearestStation?.scheduledDepartureTime).toBeDefined();
+        expect(updatedDestination.nearestStation?.waitingTime).toBeTypeOf('number');
+        expect(updatedDestination.nearestStation?.transitTime).toBe(0);
+      });
     });
 
     it('再プランニング時に区間優先移動手段が指定されている場合、最寄駅より指定手段を優先採用する', async () => {
@@ -662,6 +739,7 @@ describe('planning.ts', () => {
       params.spots[0].nearestStation = {
         placeId: 'spot-station',
         name: '新宿駅',
+        transitTime: 10,
         stationType: 'TRAIN',
         walkingTime: 10,
         latitude: 35.6895,
@@ -1202,21 +1280,20 @@ describe('planning.ts', () => {
   });
 
   describe('dirty対象項目の変更テスト', () => {
-    const targetSpot: Spot = {
+    const targetSpot: ExtendSpotType = {
       id: 'spot-1',
-      clientRef: 'spot-1',
-      location: { id: 'spot-1', name: 'スポット1', lat: 35.6895, lng: 139.6917 },
+      spotId: 'spot-1',
+      name: 'スポット1',
+      latitude: 35.6895,
+      longitude: 139.6917,
       stayStart: '10:00',
       stayEnd: '11:00',
       stayDuration: 60,
+      rating: 4.5,
       memo: '',
-      transports: {
-        transportMethod: 1,
-        name: 'WALKING',
-        travelTime: '15分',
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-      },
+      transportMethodId: 1,
+      transportMethod: 'WALKING',
+      travelTime: 15,
       nearestStation: {
         name: '新宿駅',
         stationType: 'TRAIN',
@@ -1230,11 +1307,13 @@ describe('planning.ts', () => {
       order: 1,
     };
 
-    const targetDeparture: DepartureAndDestinationType = {
+    const targetDeparture: ExtendPlanLocationType = {
       ...DEFAULT_DEPARTURE_AND_DESTINATION,
       nearestStation: {
+        name: '新宿駅',
         stationType: 'TRAIN',
         transitTime: 12,
+        walkingTime: 10,
         latitude: 35.681236,
         longitude: 139.767125,
         placeId: 'dep-station',
@@ -1243,17 +1322,17 @@ describe('planning.ts', () => {
     };
 
     it('スポットの変更対象の項目が変わっている場合はフラグがon', () => {
-      const changedSpot: Spot = { ...targetSpot, stayStart: '10:30' };
+      const changedSpot: ExtendSpotType = { ...targetSpot, stayStart: '10:30' };
       expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(true); // 期待値に応じて変更
     });
 
     it('スポットの変更対象外の項目が変わっている場合はフラグがoff', () => {
-      const changedSpot: Spot = { ...targetSpot, memo: '新しいメモ' };
+      const changedSpot: ExtendSpotType = { ...targetSpot, memo: '新しいメモ' };
       expect(hasDirtySpotChange(targetSpot, changedSpot)).toBe(false); // 期待値に応じて変更
     });
 
     it('スポットの変更対象(最寄駅)の項目が変わっている場合はフラグがon', () => {
-      const changedSpot: Spot = {
+      const changedSpot: ExtendSpotType = {
         ...targetSpot,
         nearestStation: {
           ...targetSpot.nearestStation,
@@ -1271,7 +1350,7 @@ describe('planning.ts', () => {
     });
 
     it('スポットの変更対象外(最寄駅)の項目が変わっている場合はフラグがoff', () => {
-      const changedSpot: Spot = {
+      const changedSpot: ExtendSpotType = {
         ...targetSpot,
         nearestStation: {
           ...targetSpot.nearestStation,
@@ -1289,7 +1368,7 @@ describe('planning.ts', () => {
     });
 
     it('スポットの(最寄駅)の有無が変わっている場合はフラグがon(あり→なし)', () => {
-      const changedSpot: Spot = {
+      const changedSpot: ExtendSpotType = {
         ...targetSpot,
         nearestStation: undefined, // 変更
       };
@@ -1297,7 +1376,7 @@ describe('planning.ts', () => {
     });
 
     it('スポットの(最寄駅)の有無が変わっている場合はフラグがon(なし→あり)', () => {
-      const changedSpot: Spot = {
+      const changedSpot: ExtendSpotType = {
         ...targetSpot,
         nearestStation: undefined, // 変更
       };
@@ -1305,15 +1384,17 @@ describe('planning.ts', () => {
     });
 
     it('出発地/目的地の変更対象の項目が変わっている場合はフラグがon', () => {
-      const changedDeparture: DepartureAndDestinationType = { ...targetDeparture, latitude: 35.682 };
+      const changedDeparture: ExtendPlanLocationType = { ...targetDeparture, latitude: 35.682 };
       expect(hasDirtyDepartureAndDestinationChange(targetDeparture, changedDeparture)).toBe(true); // 期待値に応じて変更
     });
 
     it('出発地/目的地の変更対象外の項目が変わっている場合はフラグがoff', () => {
-      const changedDeparture: DepartureAndDestinationType = {
+      const changedDeparture: ExtendPlanLocationType = {
         ...targetDeparture,
         nearestStation: {
           ...targetDeparture.nearestStation,
+          name: '新宿駅',
+          walkingTime: targetDeparture.nearestStation?.walkingTime ?? 10,
           placeId: targetDeparture.nearestStation?.placeId ?? 'dep-station',
           stationType: targetDeparture.nearestStation?.stationType ?? 'TRAIN',
           transitTime: targetDeparture.nearestStation?.transitTime ?? 12,
@@ -1326,7 +1407,7 @@ describe('planning.ts', () => {
     });
 
     it('出発地/目的地の最寄駅の有無が変わっている場合はフラグがon(あり→なし)', () => {
-      const changedDeparture: DepartureAndDestinationType = {
+      const changedDeparture: ExtendPlanLocationType = {
         ...targetDeparture,
         nearestStation: undefined, // 変更
       };
@@ -1334,7 +1415,7 @@ describe('planning.ts', () => {
     });
 
     it('出発地/目的地の最寄駅の有無が変わっている場合はフラグがon(なし→あり)', () => {
-      const changedDeparture: DepartureAndDestinationType = {
+      const changedDeparture: ExtendPlanLocationType = {
         ...targetDeparture,
         nearestStation: undefined, // 変更
       };

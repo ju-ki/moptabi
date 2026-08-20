@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { TripType } from '@shared/trip/types';
-import { PlanLocationType } from '@shared/planlocation/types';
 
 import {
   ExtendPlanLocationType,

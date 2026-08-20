@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 
 import SpotDetailCard from '@/components/travel-plan/SpotDetailCard';
-import { ExtendSpotType, Spot, TransportNodeType } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 const mockSwitchAlternativeRoute = vi.fn();
@@ -45,8 +45,8 @@ const createMockSpot = (overrides?: Partial<ExtendSpotType>): ExtendSpotType => 
   stayEnd: '12:00',
   stayDuration: 120,
   travelTime: 30,
-  transportMethodId: 1,
-  transportMethod: 'WALKING',
+  transportMethodId: 4,
+  transportMethod: 'TRANSIT',
   url: 'https://www.tokyotower.co.jp/',
   memo: 'テストメモ',
   image: '/test-image.jpg',
@@ -515,33 +515,10 @@ describe('SpotDetailCard', () => {
           onMemoChange={vi.fn()}
         />,
       );
-
-      expect(screen.getByText(/30分/)).toBeInTheDocument();
-      // transportIcons.TRANSIT.label = '最寄駅/バス停経由' で表示される
-      expect(screen.getByText(/最寄駅|バス停経由/)).toBeInTheDocument();
-    });
-
-    describe('削除機能', () => {
-      it('削除ボタンをクリックするとonDeleteが呼ばれる', () => {
-        const spot = createMockSpot();
-        const nextSpot = createMockNextSpot();
-        const onDelete = vi.fn();
-        render(
-          <SpotDetailCard
-            date={date}
-            spot={spot}
-            nextSpot={nextSpot}
-            index={0}
-            onDelete={onDelete}
-            onMemoChange={vi.fn()}
-          />,
-        );
-
-        const deleteButton = screen.getByRole('button', { name: /削除/i });
-        fireEvent.click(deleteButton);
-
-        expect(onDelete).toHaveBeenCalledWith('spot-1');
-      });
+      // 移動情報は表示されている
+      expect(screen.getByTestId('spot-transport')).toBeInTheDocument();
+      // 最寄駅の情報は表示されていない
+      expect(screen.queryByTestId('spot-station-breakdown')).not.toBeInTheDocument();
     });
 
     it('移動手段候補が表示される', () => {
@@ -577,7 +554,9 @@ describe('SpotDetailCard', () => {
         />,
       );
 
-      expect(screen.getByRole('button', { name: /自転車 \(40分\)/ })).toBeInTheDocument();
+      expect(screen.getByTestId('spot-transport-candidates')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /BICYCLING/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /DRIVING/i })).toBeInTheDocument();
     });
 
     it('活性の移動手段候補を押すとswitchAlternativeRouteが呼ばれる', () => {
@@ -604,8 +583,11 @@ describe('SpotDetailCard', () => {
           onMemoChange={vi.fn()}
         />,
       );
-
-      fireEvent.click(screen.getByRole('button', { name: /車 \(25分\)/ }));
+      expect(screen.getByTestId('spot-transport-candidates')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /DRIVING/i })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /DRIVING/i }));
+      // 一回のみの呼び出しであることを確認
+      expect(mockSwitchAlternativeRoute).toHaveBeenCalledTimes(1);
       expect(mockSwitchAlternativeRoute).toHaveBeenCalledWith(date, 'route-info-0', 3);
     });
 
@@ -623,7 +605,7 @@ describe('SpotDetailCard', () => {
           onMemoChange={vi.fn()}
         />,
       );
-
+      expect(screen.getByTestId('spot-station-breakdown')).toBeInTheDocument();
       const breakdown = screen.getByTestId('spot-station-breakdown');
       // SpotDetailCardの現仕様に合わせて文言を検証
       expect(breakdown).toHaveTextContent('徒歩 7分');
@@ -633,32 +615,31 @@ describe('SpotDetailCard', () => {
       expect(breakdown).toHaveTextContent('浅草駅');
       expect(breakdown).toHaveTextContent('徒歩 5分');
     });
+  });
 
-    it('発車時間候補を押すとストアの使用発車時間が更新される', () => {
-      const spot = createMockSpot({ routeToNext: { scheduledDepartureTime: '11:05' } as Spot['routeToNext'] });
+  describe('削除機能', () => {
+    it('削除ボタンをクリックするとonDeleteが呼ばれる', () => {
+      const spot = createMockSpot();
       const nextSpot = createMockNextSpot();
-      const onDepartureTimeChange = vi.fn();
+      const onDelete = vi.fn();
       render(
         <SpotDetailCard
           date={date}
           spot={spot}
           nextSpot={nextSpot}
           index={0}
-          onDelete={vi.fn()}
+          onDelete={onDelete}
           onMemoChange={vi.fn()}
-          departureTimeCandidates={['11:05', '11:12', '11:20']}
-          selectedDepartureTime="11:05"
-          onDepartureTimeChange={onDepartureTimeChange}
         />,
       );
 
-      fireEvent.click(screen.getByRole('button', { name: '11:12' }));
+      const deleteButton = screen.getByRole('button', { name: /削除/i });
+      fireEvent.click(deleteButton);
 
-      expect(onDepartureTimeChange).toHaveBeenCalledWith('11:12');
-      expect(screen.getByTestId('departure-selected-time')).toHaveTextContent('11:12');
+      expect(onDelete).toHaveBeenCalledTimes(1);
+      expect(onDelete).toHaveBeenCalledWith('spot-1');
     });
   });
-
   describe('複数日対応', () => {
     it('日付Aと日付Bで異なるスポット情報が表示される', () => {
       const spotA = createMockSpot({
@@ -760,10 +741,6 @@ describe('SpotDetailCard', () => {
           latitude: 35.655,
           longitude: 139.745,
         },
-      });
-
-      const spotWithoutStation = createMockSpot({
-        nearestStation: undefined,
       });
 
       // 1日目：最寄駅設定あり

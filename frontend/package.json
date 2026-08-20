@@ -16,7 +16,7 @@
     "fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,md}\"",
-    "test": "vitest run",
+    "test": "vitest run --silent",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage.enabled true",
     "test:ui": "vitest --ui",
