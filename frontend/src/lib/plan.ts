@@ -832,8 +832,8 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
 
 export type RouteResult = {
   path: google.maps.LatLngLiteral[];
-  distance: string;
-  duration: string;
+  distance: number;
+  duration: number;
   travelMode: TravelModeType;
 };
 
@@ -860,8 +860,8 @@ export const getRoute = async (
           lat: point.lat(),
           lng: point.lng(),
         })),
-        distance: result.routes[0].legs[0].distance?.text || '',
-        duration: result.routes[0].legs[0].duration?.text || '',
+        distance: result.routes[0].legs[0].distance?.value || 0,
+        duration: result.routes[0].legs[0].duration?.value || 0,
         travelMode: travelMode || 'DEFAULT',
       };
     }
@@ -872,8 +872,8 @@ export const getRoute = async (
   // フォールバック: 直線距離
   return {
     path: [origin, destination],
-    distance: '',
-    duration: '',
+    distance: 0,
+    duration: 0,
     travelMode: 'DEFAULT',
   };
 };

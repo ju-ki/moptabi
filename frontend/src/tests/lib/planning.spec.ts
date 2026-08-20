@@ -9,7 +9,6 @@ import {
   executePlanning,
   getPlanningMessagePriority,
   getOptimalRouteWithAlternatives,
-  parseDurationTextToMinutes,
   pushLongWalkMessage,
   selectDepartureCandidate,
   sortPlanningMessages,
@@ -64,7 +63,7 @@ function createBaseParams(): PlanningParams {
   };
 }
 
-function createRouteResult(travelMode: 'WALKING' | 'DRIVING' | 'BICYCLING', duration: string, distance: string) {
+function createRouteResult(travelMode: 'WALKING' | 'DRIVING' | 'BICYCLING', duration: number, distance: number) {
   return {
     path: [
       { lat: 35.681236, lng: 139.767125 },
@@ -226,9 +225,9 @@ function createTwoSpotParams(firstSpotStayDurationMinutes: number): PlanningPara
 
 function setupDeterministicRouteMock(): void {
   mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-    if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.5 km');
-    if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '10分', '1.5 km');
-    if (mode === 'DRIVING') return createRouteResult('DRIVING', '8分', '2.0 km');
+    if (mode === 'WALKING') return createRouteResult('WALKING', 15, 1500);
+    if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 10, 1500);
+    if (mode === 'DRIVING') return createRouteResult('DRIVING', 8, 2000);
     throw new Error(`unexpected mode: ${mode}`);
   });
 }
@@ -307,7 +306,7 @@ describe('planning.ts', () => {
         longitude: 139.7004,
       };
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
       const result = await executePlanning(params);
 
@@ -348,7 +347,7 @@ describe('planning.ts', () => {
         transitTime: 10,
       };
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
       const result = await executePlanning(params);
       const candidateMessage = result.messages.find((message) =>
@@ -385,7 +384,7 @@ describe('planning.ts', () => {
         longitude: 139.7004,
       };
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
       const result = await executePlanning(params);
       const candidateMessage = result.messages.find((message) =>
@@ -402,9 +401,9 @@ describe('planning.ts', () => {
   describe('移動手段の複数選択時のルール', () => {
     it('複数の移動手段が取得できる場合は優先度の高い手段を採用する', async () => {
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
         throw new Error('unexpected');
       });
 
@@ -420,7 +419,7 @@ describe('planning.ts', () => {
 
     it('優先手段が失敗した場合は取得できた次の手段を採用する', async () => {
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
         if (mode === 'BICYCLING') throw new Error('bicycle failed');
         if (mode === 'DRIVING') throw new Error('car failed');
         throw new Error('unexpected');
@@ -441,7 +440,7 @@ describe('planning.ts', () => {
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
         if (mode === 'DRIVING') throw new Error('car failed');
         if (mode === 'BICYCLING') throw new Error('bicycle failed');
-        if (mode === 'WALKING') return createRouteResult('WALKING', '20分', '1.4 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 20, 1400);
         throw new Error('unexpected');
       });
 
@@ -458,9 +457,9 @@ describe('planning.ts', () => {
 
     it('優先移動手段IDが指定されている場合は、取得可能なら優先IDを採用する', async () => {
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
         throw new Error('unexpected');
       });
 
@@ -477,9 +476,9 @@ describe('planning.ts', () => {
 
     it('【異常系】優先移動手段IDが指定されているが、transportMethodIdsに含まれていない場合は移動手段は採用されない', async () => {
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
         throw new Error('unexpected');
       });
 
@@ -502,7 +501,7 @@ describe('planning.ts', () => {
       params.transportMethodIds = [1];
       params.destination.time = '11:00';
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
       const result = await executePlanning(params);
 
@@ -520,7 +519,7 @@ describe('planning.ts', () => {
       params.transportMethodIds = [1];
       params.destination.time = '09:20';
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
       const result = await executePlanning(params);
 
@@ -552,7 +551,7 @@ describe('planning.ts', () => {
         placeId: 'spot-station',
       };
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
       const result = await executePlanning(params);
 
@@ -567,7 +566,7 @@ describe('planning.ts', () => {
         const params = createBaseParams();
         params.transportMethodIds = [1];
 
-        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
         const updatedDeparture = result.updatedDeparture;
@@ -582,7 +581,7 @@ describe('planning.ts', () => {
       it('スポット', async () => {
         const params = createTwoSpotParams(30);
 
-        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
         const updatedSpots = result.updatedSpots;
@@ -597,7 +596,7 @@ describe('planning.ts', () => {
         const params = createTwoSpotParams(30);
         params.transportMethodIds = [1];
 
-        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
         const updatedDestination = result.updatedDestination;
@@ -634,7 +633,7 @@ describe('planning.ts', () => {
           longitude: 139.7004,
         };
 
-        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
         const updatedDeparture = result.updatedDeparture;
@@ -674,7 +673,7 @@ describe('planning.ts', () => {
           scheduledDepartureTimes: ['11:00', '11:15', '11:30'],
         };
 
-        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
         const updatedSpots = result.updatedSpots;
@@ -713,7 +712,7 @@ describe('planning.ts', () => {
           scheduledDepartureTimes: ['11:00', '11:15', '11:30'],
         };
 
-        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '1.2 km'));
+        mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
         const updatedDestination = result.updatedDestination;
@@ -758,9 +757,9 @@ describe('planning.ts', () => {
         };
 
         mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-          if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-          if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+          if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+          if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
           throw new Error('unexpected');
         });
 
@@ -798,9 +797,9 @@ describe('planning.ts', () => {
         };
 
         mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-          if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-          if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+          if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+          if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
           throw new Error('unexpected');
         });
 
@@ -840,9 +839,9 @@ describe('planning.ts', () => {
         };
 
         mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-          if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-          if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+          if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+          if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
           throw new Error('unexpected');
         });
 
@@ -863,9 +862,9 @@ describe('planning.ts', () => {
         };
 
         mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-          if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-          if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+          if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+          if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
           throw new Error('unexpected');
         });
 
@@ -885,9 +884,9 @@ describe('planning.ts', () => {
         };
 
         mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-          if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-          if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+          if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+          if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
           throw new Error('unexpected');
         });
 
@@ -907,9 +906,9 @@ describe('planning.ts', () => {
         };
 
         mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-          if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-          if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+          if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+          if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+          if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
           throw new Error('unexpected');
         });
 
@@ -1055,7 +1054,7 @@ describe('planning.ts', () => {
       params.transportMethodIds = [1];
       params.destination.time = '09:20';
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '15分', '2.0 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 2000));
 
       const result = await executePlanning(params);
       const overTimeIndex = result.messages.findIndex(
@@ -1136,7 +1135,7 @@ describe('planning.ts', () => {
     it('徒歩長距離が発生した場合はLONG_WALK_RECOMMENDATIONメッセージが表示される', async () => {
       const params = createBaseParams();
       params.transportMethodIds = [1];
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '1時間40分', '2.0 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 100, 2000));
 
       const result = await executePlanning(params);
       expect(
@@ -1155,7 +1154,7 @@ describe('planning.ts', () => {
         // 1区間目(4回想定: WALKING/BICYCLING/DRIVING/fallback WALKING)は全失敗
         if (routeCallCount <= 4) throw new Error(`${mode} failed`);
         // 2区間目は徒歩のみ成功して長距離徒歩メッセージを発生させる
-        if (mode === 'WALKING') return createRouteResult('WALKING', '1時間40分', '2.0 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 100, 2000);
         throw new Error(`${mode} failed`);
       });
 
@@ -1197,7 +1196,7 @@ describe('planning.ts', () => {
       const params = createBaseParams();
       params.transportMethodIds = [1];
 
-      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', '1時間40分', '2.0 km'));
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 100, 2000));
 
       const result = await executePlanning(params);
       const longWalk = result.messages.find((message) => message.message.includes('最寄駅を推奨します'));
@@ -1362,7 +1361,7 @@ describe('planning.ts', () => {
     it('距離が1.5km未満の場合はメッセージを追加しない', () => {
       const messages: Array<{ level: 'INFO' | 'WARNING'; segmentKey: string; message: string }> = [];
 
-      pushLongWalkMessage(messages, 'A_TO_B', 40 * 60, 1499, '起点名', '目的地');
+      pushLongWalkMessage(messages, 'A_TO_B', 100, 1499, '起点名', '目的地');
 
       expect(messages).toHaveLength(0);
     });
@@ -1370,7 +1369,7 @@ describe('planning.ts', () => {
     it('距離が1.5kmちょうどかつ徒歩の場合はhh時間mm分形式でメッセージを追加する', () => {
       const messages: Array<{ level: 'INFO' | 'WARNING'; segmentKey: string; message: string }> = [];
 
-      pushLongWalkMessage(messages, 'A_TO_B', 100 * 60, 1500, '起点名', '目的地');
+      pushLongWalkMessage(messages, 'A_TO_B', 100, 1500, '起点名', '目的地');
 
       expect(messages).toHaveLength(1);
       expect(messages[0]).toEqual({
@@ -1383,29 +1382,11 @@ describe('planning.ts', () => {
     it('60分未満はhh時間を表示せずmm分のみを表示する', () => {
       const messages: Array<{ level: 'INFO' | 'WARNING'; segmentKey: string; message: string }> = [];
 
-      pushLongWalkMessage(messages, 'A_TO_B', 40 * 60, 2000, '起点名', '目的地');
+      pushLongWalkMessage(messages, 'A_TO_B', 59, 2000, '起点名', '目的地');
 
       expect(messages).toHaveLength(1);
-      expect(messages[0].message).toBe('起点名から目的地は徒歩で40分かかるため,最寄駅を推奨します');
+      expect(messages[0].message).toBe('起点名から目的地は徒歩で59分かかるため,最寄駅を推奨します');
       expect(messages[0].message.includes('0時間')).toBe(false);
-    });
-
-    it('秒数は分に四捨五入して表示する', () => {
-      const messages: Array<{ level: 'INFO' | 'WARNING'; segmentKey: string; message: string }> = [];
-
-      // 29分31秒 -> 30分
-      pushLongWalkMessage(messages, 'A_TO_B', 29 * 60 + 31, 2000, '起点名', '目的地');
-
-      expect(messages).toHaveLength(1);
-      expect(messages[0].message).toContain('徒歩で30分かかるため');
-    });
-  });
-
-  describe('補助関数', () => {
-    it('所要時間テキストを分へ変換できる', () => {
-      expect(parseDurationTextToMinutes('1時間20分')).toBe(80);
-      expect(parseDurationTextToMinutes('45分')).toBe(45);
-      expect(parseDurationTextToMinutes('不明')).toBe(0);
     });
   });
 
@@ -1418,9 +1399,9 @@ describe('planning.ts', () => {
       const preferredTransportMethodId = undefined;
 
       mockGetRoute.mockImplementation(async (_from, _to, mode: string) => {
-        if (mode === 'WALKING') return createRouteResult('WALKING', '15分', '1.2 km');
-        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', '8分', '1.2 km');
-        if (mode === 'DRIVING') return createRouteResult('DRIVING', '5分', '1.5 km');
+        if (mode === 'WALKING') return createRouteResult('WALKING', 15, 600);
+        if (mode === 'BICYCLING') return createRouteResult('BICYCLING', 8, 1200);
+        if (mode === 'DRIVING') return createRouteResult('DRIVING', 5, 1500);
         throw new Error('unexpected');
       });
       const result = await getOptimalRouteWithAlternatives(
