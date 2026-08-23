@@ -643,8 +643,6 @@ export const useStoreForPlanning = create<FormState>()(
             transportMethodId: selectedRouteInfo.transportMethodId,
             duration: selectedRouteInfo.duration,
             distance: selectedRouteInfo.distance,
-            durationText: selectedRouteInfo.durationText,
-            distanceText: selectedRouteInfo.distanceText,
           };
 
           // 総距離と総時間を再計算
@@ -834,20 +832,20 @@ export type RouteResult = {
   path: google.maps.LatLngLiteral[];
   distance: number;
   duration: number;
-  travelMode: TravelModeType;
+  transportMethod: TravelModeType;
 };
 
 export const getRoute = async (
   origin: { lat: number; lng: number },
   destination: { lat: number; lng: number },
-  travelMode: TravelModeType = 'WALKING',
+  transportMethod: TravelModeType = 'WALKING',
 ): Promise<RouteResult> => {
   try {
     const directionsService = new google.maps.DirectionsService();
-    if (travelMode === 'DEFAULT') {
-      travelMode = 'WALKING';
+    if (transportMethod === 'DEFAULT') {
+      transportMethod = 'WALKING';
     }
-    const searchForTravelMode: google.maps.TravelMode = google.maps.TravelMode[travelMode];
+    const searchForTravelMode: google.maps.TravelMode = google.maps.TravelMode[transportMethod];
     const result = await directionsService.route({
       origin,
       destination,
@@ -862,7 +860,7 @@ export const getRoute = async (
         })),
         distance: result.routes[0].legs[0].distance?.value || 0,
         duration: result.routes[0].legs[0].duration?.value || 0,
-        travelMode: travelMode || 'DEFAULT',
+        transportMethod: transportMethod || 'DEFAULT',
       };
     }
   } catch (error) {
@@ -874,6 +872,6 @@ export const getRoute = async (
     path: [origin, destination],
     distance: 0,
     duration: 0,
-    travelMode: 'DEFAULT',
+    transportMethod: 'DEFAULT',
   };
 };

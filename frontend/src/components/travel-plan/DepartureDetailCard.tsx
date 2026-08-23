@@ -57,7 +57,7 @@ export default function DepartureDetailCard({
   const transportCandidates =
     departure?.alternativeTransports?.map((transport) => ({
       name: transport.transportMethod as TravelModeType,
-      travelTime: transport.durationText,
+      travelTime: transport.duration,
       transportMethod: transport.transportMethod as TransportMethodType,
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
@@ -155,7 +155,7 @@ export default function DepartureDetailCard({
                         {transportIcons[candidate.transportMethod]?.icon || transportIcons.DEFAULT.icon}
                         <span>
                           {transportIcons[candidate.transportMethod]?.label || transportIcons.DEFAULT.label} (
-                          {candidate.travelTime})
+                          {candidate.travelTime}分)
                         </span>
                       </button>
                     ))}

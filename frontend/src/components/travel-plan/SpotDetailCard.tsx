@@ -82,7 +82,7 @@ export default function SpotDetailCard({
   const transportCandidates =
     spot.alternateRoutes?.map((transport) => ({
       name: transport.transportMethod as TransportMethodType,
-      travelTime: transport.durationText,
+      travelTime: transport.duration,
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
     })) ?? [];
@@ -296,7 +296,8 @@ export default function SpotDetailCard({
                     >
                       {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
                       <span>
-                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime})
+                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime}
+                        分)
                       </span>
                     </Button>
                   ))}

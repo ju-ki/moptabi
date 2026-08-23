@@ -77,6 +77,31 @@ export const setStartTimeAutomatically = (newSpot: ExtendSpotType, spots: Extend
 };
 
 /**
+ * 座標から距離を計算する処理(TODO: 後ほど下のものにする)
+ * @param baseCoordinate - 元となる座標
+ * @param targetCoordination - 対象となる座標
+ * @returns km換算された文字列
+ */
+export const calcDistance2 = (
+  baseCoordinate: Pick<Coordination, 'lat' | 'lng'>,
+  targetCoordination: Pick<Coordination, 'lat' | 'lng'>,
+): number => {
+  const R = 6371; // km
+  const dLat = ((targetCoordination.lat - baseCoordinate.lat) * Math.PI) / 180;
+  const dLng = ((targetCoordination.lng - baseCoordinate.lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((baseCoordinate.lat * Math.PI) / 180) *
+      Math.cos((targetCoordination.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c; // km
+
+  return distance;
+};
+
+/**
  * 座標から距離を計算する処理
  * @param baseCoordinate - 元となる座標
  * @param targetCoordination - 対象となる座標

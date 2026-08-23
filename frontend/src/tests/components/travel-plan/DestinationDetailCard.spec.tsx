@@ -22,7 +22,7 @@ vi.mock('@/lib/plan', () => ({
 type AlternativeTransport = {
   transportMethodId: number;
   transportMethod: 'WALKING' | 'BICYCLING' | 'TRANSIT' | 'DRIVING';
-  durationText: string;
+  duration: number;
 };
 
 function createDestination(overrides?: Partial<Record<string, unknown>>) {
@@ -38,8 +38,8 @@ function createDestination(overrides?: Partial<Record<string, unknown>>) {
       walkingTime: 6,
     },
     alternativeTransports: [
-      { transportMethodId: 1, transportMethod: 'WALKING', durationText: '30分' },
-      { transportMethodId: 2, transportMethod: 'BICYCLING', durationText: '20分' },
+      { transportMethodId: 1, transportMethod: 'WALKING', duration: 30 },
+      { transportMethodId: 2, transportMethod: 'BICYCLING', duration: 20 },
     ] as AlternativeTransport[],
     ...overrides,
   };
@@ -206,8 +206,8 @@ describe('DestinationDetailCard', () => {
     it('複数日で異なる移動手段候補が表示される', () => {
       const destination = createDestination({
         alternativeTransports: [
-          { transportMethodId: 1, transportMethod: 'WALKING', durationText: '30分' },
-          { transportMethodId: 2, transportMethod: 'BICYCLING', durationText: '20分' },
+          { transportMethodId: 1, transportMethod: 'WALKING', duration: 30 },
+          { transportMethodId: 2, transportMethod: 'BICYCLING', duration: 20 },
         ],
       });
 

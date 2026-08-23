@@ -63,7 +63,7 @@ function createBaseParams(): PlanningParams {
   };
 }
 
-function createRouteResult(travelMode: 'WALKING' | 'DRIVING' | 'BICYCLING', duration: number, distance: number) {
+function createRouteResult(transportMethod: 'WALKING' | 'DRIVING' | 'BICYCLING', duration: number, distance: number) {
   return {
     path: [
       { lat: 35.681236, lng: 139.767125 },
@@ -71,7 +71,7 @@ function createRouteResult(travelMode: 'WALKING' | 'DRIVING' | 'BICYCLING', dura
     ],
     distance,
     duration,
-    travelMode,
+    transportMethod,
   };
 }
 
@@ -921,32 +921,72 @@ describe('planning.ts', () => {
       });
     });
 
-    // it.each(PLANNING_MATRIX_CASES)(
-    //   '[RED][%s] 総移動時間は選択ルートduration合計（秒）と一致する',
-    //   async (matrixCase) => {
-    //     setupDeterministicRouteMock();
-    //     const params = createPlanningParamsFromMatrix(matrixCase, 60);
+    it.each(PLANNING_MATRIX_CASES)('[%s] 総移動時間は選択ルートduration合計（秒）と一致する', async (matrixCase) => {
+      setupDeterministicRouteMock();
+      const params = createPlanningParamsFromMatrix(matrixCase, 60);
 
-    //     const result = await executePlanning(params);
+      const result = await executePlanning(params);
 
-    //     const expectedDurationSeconds = result.routes.reduce((sum, route) => sum + route.duration, 0);
-    //     expect(result.totalDuration).toBe(expectedDurationSeconds);
-    //   },
-    // );
+      const expectedDurationSeconds = result.routes.reduce((sum, route) => sum + route.duration, 0);
+      expect(result.totalDuration).toBe(expectedDurationSeconds);
+    });
 
-    // it.each(PLANNING_MATRIX_CASES)(
-    //   '[RED][%s] 総移動距離は選択ルートdistance合計（m）と一致する',
-    //   async (matrixCase) => {
-    //     setupDeterministicRouteMock();
-    //     const params = createPlanningParamsFromMatrix(matrixCase, 60);
+    it.each(PLANNING_MATRIX_CASES)('[%s] 総移動距離は選択ルートdistance合計（m）と一致する', async (matrixCase) => {
+      setupDeterministicRouteMock();
+      const params = createPlanningParamsFromMatrix(matrixCase, 60);
 
-    //     const result = await executePlanning(params);
+      const result = await executePlanning(params);
 
-    //     const expectedDistanceMeters = result.routes.reduce((sum, route) => sum + route.distance, 0);
-    //     expect(result.totalDistance).toBe(expectedDistanceMeters);
-    //     expect(result.totalDistance).toBeGreaterThan(0);
-    //   },
-    // );
+      const expectedDistanceMeters = result.routes.reduce((sum, route) => sum + route.distance, 0);
+      expect(result.totalDistance).toBe(expectedDistanceMeters);
+      expect(result.totalDistance).toBeGreaterThan(0);
+    });
+
+    it.each(PLANNING_MATRIX_CASES)('[%s] アウトプット結果に正しいRouteInfo情報が含まれる', async (matrixCase) => {
+      setupDeterministicRouteMock();
+      const params = createPlanningParamsFromMatrix(matrixCase, 60);
+
+      const result = await executePlanning(params);
+
+      const routeInfos = result.routes;
+      routeInfos.forEach((routeInfo) => {
+        // 中身の確認
+        expect(routeInfo.fromSpotId).toBeDefined();
+        expect(routeInfo.toSpotId).toBeDefined();
+        expect(routeInfo.fromType).toBeDefined();
+        expect(routeInfo.toType).toBeDefined();
+        expect(routeInfo.routeType).toBeDefined();
+        expect(routeInfo.transportMethodId).toBeDefined();
+        expect(routeInfo.transportMethod).toBeDefined();
+        expect(routeInfo.duration).toBeGreaterThan(0);
+        expect(routeInfo.distance).toBeGreaterThan(0);
+        expect(routeInfo.polyline).toBeDefined();
+        expect(routeInfo.alternativeRoutes).toBeDefined();
+
+        // 移動手段が最寄駅の場合の確認
+        if (routeInfo.transportMethodId === 4) {
+          expect(routeInfo.useNearestStation).toBe(true);
+          expect(['TO_STATION', 'STATION_TO_STATION']).toContain(routeInfo.routeType);
+        }
+
+        // fromTypeとtoTypeの組み合わせからrouteTypeが正しいかを確認(最寄駅経由を除く)
+        if (routeInfo.transportMethodId != 4) {
+          if (routeInfo.fromType == 'DEPARTURE') {
+            expect(routeInfo.routeType).toBe('DEPARTURE_TO_SPOT');
+          }
+          if (routeInfo.fromType == 'SPOT' && routeInfo.toType == 'SPOT') {
+            expect(routeInfo.routeType).toBe('SPOT_TO_SPOT');
+          }
+          if (routeInfo.toType == 'DESTINATION') {
+            expect(routeInfo.routeType).toBe('SPOT_TO_DESTINATION');
+          }
+        }
+
+        if (routeInfo.transportMethodId == 4) {
+          expect(routeInfo.routeType).toBe('TO_STATION');
+        }
+      });
+    });
   });
 
   describe('余裕時間に応じた提案メッセージ', () => {
