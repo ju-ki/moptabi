@@ -154,7 +154,7 @@ export type RouteInfo = {
   transportMethod: TransportMethodType; // 移動手段
   transportMethodId: number;
   distance: number; // メートル
-  duration: number; // 秒
+  duration: number; // 分
   polyline?: string; // Google Maps Polyline
   useNearestStation?: boolean; // 最寄駅を経由するか
   nearestStationId?: number; // 経由する最寄駅のID
@@ -168,7 +168,7 @@ export type RouteInfo = {
 export type AlternativeRouteInfo = {
   transportMethodId: number;
   transportMethod: TransportMethodType;
-  duration: number; // 秒
+  duration: number; // 分
   distance: number; // メートル
   /** 最寄駅経由ルートの場合true（徒歩→電車→徒歩をまとめた1候補） */
   isStationRoute?: boolean;
@@ -437,7 +437,7 @@ function formatDurationAsHourMinute(minutes: number): string {
  * 長距離メッセージ作成
  * @param messages - メッセージ一覧
  * @param segmentKey - 識別用セグメントキー（例: "SPOT1_TO_SPOT2"）
- * @param durationSec - 移動時間（秒単位）
+ * @param durationMin - 移動時間（分単位）
  * @param distanceM - 移動距離（メートル単位）
  * @param originName - 出発地の名称（例: "スポットA"）
  * @param targetName - 到着地の名称（例: "スポットB"）
@@ -446,13 +446,13 @@ function formatDurationAsHourMinute(minutes: number): string {
 export function pushLongWalkMessage(
   messages: PlanningMessage[],
   segmentKey: string,
-  durationSec: number,
+  durationMin: number,
   distanceM: number,
   originName: string,
   targetName: string,
 ): void {
   if (distanceM < THRESHOLD_FOR_DISTANCE) return;
-  const minutes = Math.max(durationSec, 0);
+  const minutes = Math.max(durationMin, 0);
   messages.push({
     level: 'WARNING',
     segmentKey: buildSegmentKey(PLANNING_MESSAGE_SEGMENT.LONG_WALK_RECOMMENDATION, segmentKey),
@@ -917,7 +917,7 @@ function buildNearestStationRouteInfo(
 function buildRouteInfo(params: BuildRouteInfoParams): RouteInfo {
   const isNearestStationRoute = params.routeResult.selectedRoute.transportMethodId === 4;
   return {
-    id: `route-info-0`,
+    id: `route-${params.fromSpotId}-to-${params.toSpotId}`,
     fromSpotId: params.fromSpotId,
     toSpotId: params.toSpotId,
     fromType: params.fromType,

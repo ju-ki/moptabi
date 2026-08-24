@@ -859,7 +859,7 @@ export const getRoute = async (
           lng: point.lng(),
         })),
         distance: result.routes[0].legs[0].distance?.value || 0,
-        duration: result.routes[0].legs[0].duration?.value || 0,
+        duration: Math.ceil((result.routes[0].legs[0].duration?.value || 0) / 60),
         transportMethod: transportMethod || 'DEFAULT',
       };
     }
