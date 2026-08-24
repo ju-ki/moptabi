@@ -8,6 +8,7 @@ import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_DEPARTURE_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 /**
  * 移動手段のアイコンと表示名のマッピング
@@ -114,7 +115,8 @@ export default function DepartureDetailCard({
           <p className="text-gray-500 flex items-center space-x-1 mt-1" data-testid="departure-nearest-station">
             <Train className="w-4 h-4 text-gray-400" />
             <span>
-              最寄駅: {departure.nearestStation.name} (徒歩{departure.nearestStation.walkingTime}分)
+              最寄駅: {departure.nearestStation.name} (徒歩
+              {formatDurationAsHourMinute(departure.nearestStation.walkingTime ?? 0)})
             </span>
           </p>
         )}
@@ -136,7 +138,7 @@ export default function DepartureDetailCard({
             {transportIcons[departure.transportMethod]?.icon || transportIcons.DEFAULT.icon}
             <span>
               {transportIcons[departure.transportMethod]?.label || transportIcons.DEFAULT.label} (
-              {departure?.travelTime})
+              {formatDurationAsHourMinute(departure.travelTime)})
             </span>
             <div className="flex items-center flex-wrap gap-2 ml-2"></div>
             {transportCandidates.length > 0 && (
@@ -155,7 +157,7 @@ export default function DepartureDetailCard({
                         {transportIcons[candidate.transportMethod]?.icon || transportIcons.DEFAULT.icon}
                         <span>
                           {transportIcons[candidate.transportMethod]?.label || transportIcons.DEFAULT.label} (
-                          {candidate.travelTime}分)
+                          {formatDurationAsHourMinute(candidate.travelTime)})
                         </span>
                       </button>
                     ))}

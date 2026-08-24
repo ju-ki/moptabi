@@ -308,11 +308,7 @@ export const useStoreForPlanning = create<FormState>()(
       getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
         if (plansForDate.length > 0) {
-          if (type === TransportNodeType.SPOT) {
-            return plansForDate[0].spots.sort((a, b) => a.order - b.order);
-          } else {
-            return [...plansForDate[0].spots].sort((a, b) => a.order - b.order);
-          }
+          return [...plansForDate[0].spots].sort((a, b) => a.order - b.order);
         }
         return [];
       },

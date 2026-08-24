@@ -426,7 +426,7 @@ function buildSegmentKey(segmentType: string, segmentKey?: string): string {
   return `${segmentType}:${segmentKey}`;
 }
 
-function formatDurationAsHourMinute(minutes: number): string {
+export function formatDurationAsHourMinute(minutes: number): string {
   const safeMinutes = Math.max(Math.floor(minutes), 0);
   const hours = Math.floor(safeMinutes / 60);
   const remains = safeMinutes % 60;
@@ -724,6 +724,7 @@ export async function getOptimalRouteWithAlternatives(
   const uniqueTransportMethodIds = Array.from(new Set(transportMethodIds));
 
   for (const methodId of uniqueTransportMethodIds) {
+    if (methodId == 0) continue; // 無効な移動手段IDはスキップ
     const mode = getTravelModeFromId(methodId);
     // TRANSITは除外
     if (mode === 'TRANSIT') continue;
@@ -1039,7 +1040,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       lat: firstSpot.latitude,
       lng: firstSpot.longitude,
     },
-    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 1],
+    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 0],
     useNearestStation,
     getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
     params.departure.nearestStation,
@@ -1153,7 +1154,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           lat: nextSpot.latitude,
           lng: nextSpot.longitude,
         },
-        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 1],
+        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 0],
         useNearestStation,
         preferredDirectTransportMethodId,
         currentSpot.nearestStation,
@@ -1242,7 +1243,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         lng: lastSpot.longitude,
       },
       destinationCoord,
-      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 1],
+      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 0],
       useNearestStation,
       getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
       lastSpot.nearestStation,

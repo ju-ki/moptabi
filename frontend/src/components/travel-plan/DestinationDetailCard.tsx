@@ -7,6 +7,7 @@ import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 import type { TransportMethodType } from '@shared/transports/types';
 
@@ -104,7 +105,7 @@ export default function DestinationDetailCard({
             {transportIcons[destination.transportMethod]?.icon || transportIcons.DEFAULT.icon}
             <span>
               {transportIcons[destination.transportMethod]?.label || transportIcons.DEFAULT.label} (
-              {destination?.travelTime})
+              {formatDurationAsHourMinute(destination.travelTime)})
             </span>
             <div className="flex items-center flex-wrap gap-2 ml-2"></div>
             {routeInfo && transportCandidates.length > 0 && (
@@ -120,8 +121,8 @@ export default function DestinationDetailCard({
                     >
                       {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
                       <span>
-                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime}
-                        分)
+                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
+                        {formatDurationAsHourMinute(candidate.travelTime)})
                       </span>
                     </button>
                   ))}
@@ -171,7 +172,8 @@ export default function DestinationDetailCard({
           <p className="text-gray-500 flex items-center space-x-1 mt-1" data-testid="destination-nearest-station">
             <Train className="w-4 h-4 text-gray-400" />
             <span>
-              最寄駅: {destination.nearestStation.name} (徒歩{destination.nearestStation.walkingTime}分)
+              最寄駅: {destination.nearestStation.name} (徒歩
+              {formatDurationAsHourMinute(destination.nearestStation.walkingTime ?? 0)})
             </span>
           </p>
         )}

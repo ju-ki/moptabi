@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 import { ExtendSpotType, TransportNodeType, TravelModeType } from '@/types/plan';
-import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
+import { calcDistance } from '@/lib/algorithm';
 import { useStoreForPlanning } from '@/lib/plan';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 import { transportIcons } from './TravelPlan';
-import { convertHHmmToJpFormat } from '../lib/utils';
 
 interface SpotProps {
   date: string;
@@ -49,7 +49,7 @@ function buildDistanceInfoRows(input: DistanceInfoRowsInput): string[] {
       `${input.toStation} → ${input.to}（徒歩${input.walkFromStationMinutes}分）`,
     ];
   }
-  return [`${input.from} → ${input.to}（${input.minutes}分）`];
+  return [`${input.from} → ${input.to}（${formatDurationAsHourMinute(input.minutes)}）`];
 }
 
 const DistanceInfo = ({ date, spots }: SpotProps) => {
@@ -58,13 +58,7 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
   const departure = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const destination = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const [totalDuration, setTotalDuration] = useState<string>('不明');
-
-  useEffect(() => {
-    if (spots.length && departure && destination) {
-      setTotalDuration(calcTotalTransportTime(departure, destination, spots));
-    }
-  }, [spots, departure, destination]);
+  const totalDuration = fields.getPlanningResult(date)?.totalDuration ?? 0;
 
   const buildSegmentRows = (fromNode: SegmentNode, toNode: SegmentNode, fallbackMinutes?: number): string[] => {
     if (fromNode.nearestStation && toNode.nearestStation) {
@@ -112,7 +106,9 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
             <div className="text-xl flex-shrink-0" role="img" aria-label={departure.transportMethod || '移動手段'}>
               {transportIcons[departure.transportMethod as TravelModeType]?.icon || 'ℹ️'}
             </div>
-            <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">{departure.travelTime}</div>
+            <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
+              {formatDurationAsHourMinute(departure.travelTime)}
+            </div>
             <div className="text-xs text-gray-500 flex-shrink-0">
               {calcDistance(
                 {
@@ -184,7 +180,9 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                   <div className="text-xl flex-shrink-0" role="img" aria-label={spot.transportMethod || '移動手段'}>
                     {transportIcons[spot.transportMethod as TravelModeType]?.icon || 'ℹ️'}
                   </div>
-                  <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">{spot.travelTime}</div>
+                  <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
+                    {formatDurationAsHourMinute(spot.travelTime)}
+                  </div>
                   <div className="text-xs text-gray-500 flex-shrink-0">
                     {calcDistance(
                       {
@@ -255,7 +253,9 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
           <div className="text-xl flex-shrink-0" role="img" aria-label={destination.transportMethod || '移動手段'}>
             {transportIcons[destination.transportMethod as TravelModeType]?.icon || 'ℹ️'}
           </div>
-          <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">{destination.travelTime}</div>
+          <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
+            {formatDurationAsHourMinute(destination.travelTime)}
+          </div>
           <div className="text-xs text-gray-500 flex-shrink-0">
             {calcDistance(
               {
@@ -323,11 +323,11 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
           </span>
           <span className="text-xl font-bold text-gray-900 mt-0.5">
             {isExpanded ? (
-              convertHHmmToJpFormat(totalDuration)
+              <>{formatDurationAsHourMinute(totalDuration)}</>
             ) : (
               <span className="flex items-center gap-x-3">
                 {transportIcons[departure.transportMethod as TravelModeType]?.icon || 'ℹ️'}
-                {departure.travelTime}
+                {formatDurationAsHourMinute(departure.travelTime)}
               </span>
             )}
           </span>
