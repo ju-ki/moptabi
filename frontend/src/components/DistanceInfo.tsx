@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 
 import { ExtendSpotType, TransportNodeType, TravelModeType } from '@/types/plan';
-import { calcDistance } from '@/lib/algorithm';
+import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
 import { useStoreForPlanning } from '@/lib/plan';
-import { formatDurationAsHourMinute } from '@/lib/planning';
+import { formatDistanceAsKilometer, formatDurationAsHourMinute } from '@/lib/planning';
 
 import { transportIcons } from './TravelPlan';
 
@@ -58,8 +58,7 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
   const departure = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const destination = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const totalDuration = fields.getPlanningResult(date)?.totalDuration ?? 0;
-
+  const totalDuration = fields.getPlanningResult(date)?.totalDuration ?? calcTotalTransportTime(departure, spots);
   const buildSegmentRows = (fromNode: SegmentNode, toNode: SegmentNode, fallbackMinutes?: number): string[] => {
     if (fromNode.nearestStation && toNode.nearestStation) {
       const stationTransitMinutes =
@@ -110,19 +109,17 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
               {formatDurationAsHourMinute(departure.travelTime)}
             </div>
             <div className="text-xs text-gray-500 flex-shrink-0">
-              {calcDistance(
-                {
-                  id: departure.name,
-                  lat: departure.latitude,
-                  lng: departure.longitude,
-                  name: departure.name,
-                },
-                {
-                  id: spots[0].id,
-                  lat: spots[0].latitude,
-                  lng: spots[0].longitude,
-                  name: spots[0].name,
-                },
+              {formatDistanceAsKilometer(
+                calcDistance(
+                  {
+                    lat: departure.latitude,
+                    lng: departure.longitude,
+                  },
+                  {
+                    lat: spots[0].latitude,
+                    lng: spots[0].longitude,
+                  },
+                ),
               )}
             </div>
           </div>
@@ -184,19 +181,17 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
                     {formatDurationAsHourMinute(spot.travelTime)}
                   </div>
                   <div className="text-xs text-gray-500 flex-shrink-0">
-                    {calcDistance(
-                      {
-                        id: spot.id,
-                        name: spot.name,
-                        lat: spot.latitude,
-                        lng: spot.longitude,
-                      },
-                      {
-                        id: spots[idx + 1].id,
-                        name: spots[idx + 1].name,
-                        lat: spots[idx + 1].latitude,
-                        lng: spots[idx + 1].longitude,
-                      },
+                    {formatDistanceAsKilometer(
+                      calcDistance(
+                        {
+                          lat: spot.latitude,
+                          lng: spot.longitude,
+                        },
+                        {
+                          lat: spots[idx + 1].latitude,
+                          lng: spots[idx + 1].longitude,
+                        },
+                      ),
                     )}
                   </div>
                 </div>
@@ -257,19 +252,17 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
             {formatDurationAsHourMinute(destination.travelTime)}
           </div>
           <div className="text-xs text-gray-500 flex-shrink-0">
-            {calcDistance(
-              {
-                id: spots[spots.length - 1].name,
-                name: spots[spots.length - 1].name,
-                lat: spots[spots.length - 1].latitude,
-                lng: spots[spots.length - 1].longitude,
-              },
-              {
-                id: destination.name,
-                lat: destination.latitude,
-                lng: destination.longitude,
-                name: destination.name,
-              },
+            {formatDistanceAsKilometer(
+              calcDistance(
+                {
+                  lat: spots[spots.length - 1].latitude,
+                  lng: spots[spots.length - 1].longitude,
+                },
+                {
+                  lat: destination.latitude,
+                  lng: destination.longitude,
+                },
+              ),
             )}
           </div>
         </div>

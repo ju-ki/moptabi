@@ -5,6 +5,7 @@ import Image from 'next/image';
 
 import { ExtendNearestStationType, ExtendSpotType } from '@/types/plan';
 import { calculateDuration } from '@/lib/algorithm';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 import { placeTypeMap } from '../data/constants';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -14,10 +15,9 @@ import { NearestStationDetail } from './NearestStationDetail';
 interface SpotCardProps {
   spot: ExtendSpotType;
   nextNearestStation?: ExtendNearestStationType;
-  isLastSpot?: boolean;
 }
 
-export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: SpotCardProps) {
+export function SpotInfoCard({ spot, nextNearestStation }: SpotCardProps) {
   const transportIcon = transportIcons[spot.transportMethod]?.icon ?? transportIcons.DEFAULT?.icon;
   const displayNearestStation = spot.nearestStation
     ? {
@@ -28,7 +28,6 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
         memo: nextNearestStation?.memo ?? spot.nearestStation.memo,
       }
     : undefined;
-  const shouldShowTransportTime = Boolean(spot.travelTime) && !isLastSpot;
 
   // 通常のスポットの場合
   return (
@@ -46,14 +45,12 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
           aria-hidden="true"
         ></div>
 
-        {shouldShowTransportTime && (
-          <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
-            <span data-testid="timeline-transport-icon">{transportIcon}</span>
-            <span aria-label="travel-time" className="font-semibold">
-              {spot.travelTime} 分
-            </span>
-          </div>
-        )}
+        <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
+          <span data-testid="timeline-transport-icon">{transportIcon}</span>
+          <span aria-label="travel-time" className="font-semibold">
+            {formatDurationAsHourMinute(spot.travelTime)}
+          </span>
+        </div>
       </div>
 
       {/* カード部分 */}

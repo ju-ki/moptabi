@@ -433,6 +433,11 @@ export function formatDurationAsHourMinute(minutes: number): string {
   return minutes < 60 ? `${remains}分` : `${hours}時間${remains}分`;
 }
 
+export function formatDistanceAsKilometer(distance: number): string {
+  const safeDistance = Math.max(distance, 0);
+  return `${(safeDistance / 1000).toFixed(1)}km`;
+}
+
 /**
  * 長距離メッセージ作成
  * @param messages - メッセージ一覧

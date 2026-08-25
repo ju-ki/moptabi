@@ -3,6 +3,7 @@
 import { Home } from 'lucide-react';
 
 import { TravelModeType } from '@/types/plan';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 import { NearestStationDetail } from './NearestStationDetail';
 import { transportIcons } from './TravelPlan';
@@ -28,7 +29,7 @@ export function DepartureInfoCard({ departure }: DepartureAndDestinationCardProp
 
         <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
           <span data-testid="timeline-transport-icon">{transportIcon}</span>
-          <span className="font-semibold">{departure.travelTime}</span>
+          <span className="font-semibold">{formatDurationAsHourMinute(departure.travelTime)}</span>
         </div>
       </div>
 
