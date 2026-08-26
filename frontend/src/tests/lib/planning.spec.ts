@@ -921,14 +921,14 @@ describe('planning.ts', () => {
       });
     });
 
-    it.each(PLANNING_MATRIX_CASES)('[%s] 総移動時間は選択ルートduration合計（秒）と一致する', async (matrixCase) => {
+    it.each(PLANNING_MATRIX_CASES)('[%s] 総移動時間は選択ルートduration合計（分）と一致する', async (matrixCase) => {
       setupDeterministicRouteMock();
       const params = createPlanningParamsFromMatrix(matrixCase, 60);
 
       const result = await executePlanning(params);
 
-      const expectedDurationSeconds = result.routes.reduce((sum, route) => sum + route.duration, 0);
-      expect(result.totalDuration).toBe(expectedDurationSeconds);
+      const expectedDurationMinutes = result.routes.reduce((sum, route) => sum + route.duration, 0) / 60;
+      expect(result.totalDuration).toBe(expectedDurationMinutes);
     });
 
     it.each(PLANNING_MATRIX_CASES)('[%s] 総移動距離は選択ルートdistance合計（m）と一致する', async (matrixCase) => {

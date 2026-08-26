@@ -80,7 +80,7 @@ export const setStartTimeAutomatically = (newSpot: ExtendSpotType, spots: Extend
  * 座標から距離を計算する処理(TODO: 後ほど下のものにする)
  * @param baseCoordinate - 元となる座標
  * @param targetCoordination - 対象となる座標
- * @returns km換算された文字列
+ * @returns 距離メートル
  */
 export const calcDistance2 = (
   baseCoordinate: Pick<Coordination, 'lat' | 'lng'>,
@@ -96,7 +96,7 @@ export const calcDistance2 = (
       Math.sin(dLng / 2) *
       Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // km
+  const distance = R * c * 1000; // m
 
   return distance;
 };
