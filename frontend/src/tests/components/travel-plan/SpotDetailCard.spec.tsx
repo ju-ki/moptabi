@@ -529,16 +529,12 @@ describe('SpotDetailCard', () => {
             transportMethod: 'DRIVING',
             duration: 1500,
             distance: 4200,
-            durationText: '25分',
-            distanceText: '4.2km',
           },
           {
             transportMethodId: 2,
             transportMethod: 'BICYCLING',
             duration: 2400,
             distance: 4100,
-            durationText: '40分',
-            distanceText: '4.1km',
           },
         ],
       });
@@ -567,8 +563,6 @@ describe('SpotDetailCard', () => {
             transportMethod: 'DRIVING',
             duration: 1500,
             distance: 4200,
-            durationText: '25分',
-            distanceText: '4.2km',
           },
         ],
       });

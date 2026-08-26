@@ -9,6 +9,7 @@ import { ExtendSpotType, TravelModeType } from '@/types/plan';
 import { placeTypeMap } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -82,7 +83,7 @@ export default function SpotDetailCard({
   const transportCandidates =
     spot.alternateRoutes?.map((transport) => ({
       name: transport.transportMethod as TransportMethodType,
-      travelTime: transport.durationText,
+      travelTime: transport.duration,
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
     })) ?? [];
@@ -155,7 +156,8 @@ export default function SpotDetailCard({
           <p className="text-gray-500 flex items-center space-x-1 mt-1" data-testid="spot-nearest-station">
             <MapPin className="w-4 h-4 text-gray-400" />
             <span>
-              最寄駅: {spot.nearestStation.name}（徒歩: {spot.nearestStation.walkingTime}分）
+              最寄駅: {spot.nearestStation.name}（徒歩:{' '}
+              {formatDurationAsHourMinute(spot.nearestStation.walkingTime ?? 0)}）
             </span>
           </p>
         )}
@@ -278,7 +280,7 @@ export default function SpotDetailCard({
             {transportIcons[spot.transportMethod as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
             <span>
               {transportIcons[spot.transportMethod as TravelModeType]?.label || transportIcons.DEFAULT.label} (
-              {spot.travelTime})
+              {formatDurationAsHourMinute(spot.travelTime)})
             </span>
             <div className="flex items-center flex-wrap gap-2 ml-2"></div>
             {routeInfo && transportCandidates.length > 0 && (
@@ -296,7 +298,8 @@ export default function SpotDetailCard({
                     >
                       {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
                       <span>
-                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} ({candidate.travelTime})
+                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
+                        {formatDurationAsHourMinute(candidate.travelTime)})
                       </span>
                     </Button>
                   ))}

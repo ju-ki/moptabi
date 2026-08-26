@@ -21,6 +21,7 @@ import {
 } from '@/data/constants';
 
 import { getRoute } from './plan';
+import { calcDistance2 } from './algorithm';
 
 export type ArrivalWarning = {
   exceededMinutes: number;
@@ -83,7 +84,6 @@ export type PlanningMessage = {
 
 export type PlanningComputationResult = {
   isValid: boolean;
-  // mode: PlanningMode;
   departureTime?: string;
   destinationTime?: string;
   plannedSpots: TravelPlanType['spots'];
@@ -130,6 +130,18 @@ export type StationDistanceInfoInput = {
 };
 
 /**
+ * ルート情報を構築するための必要パラメータ
+ */
+export type BuildRouteInfoParams = {
+  fromSpotId: string;
+  toSpotId: string;
+  fromType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
+  routeType: 'DEPARTURE_TO_SPOT' | 'SPOT_TO_SPOT' | 'SPOT_TO_DESTINATION' | 'TO_STATION' | 'STATION_TO_STATION';
+  toType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
+  routeResult: RouteSelectionResult;
+};
+
+/**
  * ルート情報
  */
 export type RouteInfo = {
@@ -142,10 +154,7 @@ export type RouteInfo = {
   transportMethod: TransportMethodType; // 移動手段
   transportMethodId: number;
   distance: number; // メートル
-  duration: number; // 秒
-  durationText: string; // 表示用（例: "15分"）
-  distanceText: string; // 表示用（例: "1.2km"）
-  waitingMinutes?: number; // TRANSITの場合の待ち時間（分）
+  duration: number; // 分
   polyline?: string; // Google Maps Polyline
   useNearestStation?: boolean; // 最寄駅を経由するか
   nearestStationId?: number; // 経由する最寄駅のID
@@ -159,10 +168,8 @@ export type RouteInfo = {
 export type AlternativeRouteInfo = {
   transportMethodId: number;
   transportMethod: TransportMethodType;
-  duration: number; // 秒
+  duration: number; // 分
   distance: number; // メートル
-  durationText: string; // 表示用（例: 「15分」）
-  distanceText: string; // 表示用（例: 「1.2km」）
   /** 最寄駅経由ルートの場合true（徒歩→電車→徒歩をまとめた1候補） */
   isStationRoute?: boolean;
 };
@@ -419,7 +426,7 @@ function buildSegmentKey(segmentType: string, segmentKey?: string): string {
   return `${segmentType}:${segmentKey}`;
 }
 
-function formatDurationAsHourMinute(minutes: number): string {
+export function formatDurationAsHourMinute(minutes: number): string {
   const safeMinutes = Math.max(Math.floor(minutes), 0);
   const hours = Math.floor(safeMinutes / 60);
   const remains = safeMinutes % 60;
@@ -430,7 +437,7 @@ function formatDurationAsHourMinute(minutes: number): string {
  * 長距離メッセージ作成
  * @param messages - メッセージ一覧
  * @param segmentKey - 識別用セグメントキー（例: "SPOT1_TO_SPOT2"）
- * @param durationSec - 移動時間（秒単位）
+ * @param durationMin - 移動時間（分単位）
  * @param distanceM - 移動距離（メートル単位）
  * @param originName - 出発地の名称（例: "スポットA"）
  * @param targetName - 到着地の名称（例: "スポットB"）
@@ -439,13 +446,13 @@ function formatDurationAsHourMinute(minutes: number): string {
 export function pushLongWalkMessage(
   messages: PlanningMessage[],
   segmentKey: string,
-  durationSec: number,
+  durationMin: number,
   distanceM: number,
   originName: string,
   targetName: string,
 ): void {
   if (distanceM < THRESHOLD_FOR_DISTANCE) return;
-  const minutes = Math.max(durationSec, 0);
+  const minutes = Math.max(durationMin, 0);
   messages.push({
     level: 'WARNING',
     segmentKey: buildSegmentKey(PLANNING_MESSAGE_SEGMENT.LONG_WALK_RECOMMENDATION, segmentKey),
@@ -545,8 +552,6 @@ function getTravelMethodName(transportMethodId: number): RouteInfo['transportMet
       return 'DRIVING';
     case 4:
       return 'TRANSIT';
-    case 5:
-      return 'TRANSIT';
     default:
       return 'WALKING';
   }
@@ -564,7 +569,6 @@ export function getTransportMethodLabel(methodId: number): string {
     case 3:
       return '車';
     case 4:
-    case 5:
       return '電車/バス';
     default:
       return '不明';
@@ -595,7 +599,7 @@ function getTransportMethodPriority(methodId: number): number {
  * @returns 電車またはバス相当のIDならtrue
  */
 function isStationTransportMethod(methodId?: number): boolean {
-  return methodId === 4 || methodId === 5;
+  return methodId === 4;
 }
 
 /**
@@ -672,7 +676,7 @@ type RouteResult = {
   distance: number;
   duration: number;
   waitingMinutes?: number; // TRANSITの場合の待ち時間（分）
-  travelMode: TravelModeType;
+  transportMethod: TravelModeType;
 };
 
 /**
@@ -720,6 +724,7 @@ export async function getOptimalRouteWithAlternatives(
   const uniqueTransportMethodIds = Array.from(new Set(transportMethodIds));
 
   for (const methodId of uniqueTransportMethodIds) {
+    if (methodId == 0) continue; // 無効な移動手段IDはスキップ
     const mode = getTravelModeFromId(methodId);
     // TRANSITは除外
     if (mode === 'TRANSIT') continue;
@@ -770,7 +775,7 @@ export async function getOptimalRouteWithAlternatives(
           path: [from, to],
           distance: 0,
           duration: 0,
-          travelMode: 'WALKING',
+          transportMethod: 'WALKING',
           transportMethodId: 1,
         },
         alternativeRoutes: [],
@@ -795,11 +800,17 @@ export async function getOptimalRouteWithAlternatives(
     selectedRoute =
       sortedRoutes.find((route) => route.transportMethodId === preferredTransportMethodId) ?? sortedRoutes[0];
   } else if (useNearestStation && preferredTransportMethodId === undefined) {
+    const totalDistance = mainRoute.reduce((accum, current) => {
+      return accum + getRouteDistanceMeters(current);
+    }, 0);
+    const totalDuration = mainRoute.reduce((accum, current) => {
+      return accum + current.duration;
+    }, 0);
     selectedRoute = {
       path: [],
-      distance: 0,
-      duration: 0,
-      travelMode: 'TRANSIT',
+      distance: totalDistance,
+      duration: totalDuration,
+      transportMethod: 'TRANSIT',
       transportMethodId: 4,
     }; // 仮の最寄駅ルート
   } else if (!useNearestStation && preferredTransportMethodId !== undefined) {
@@ -872,9 +883,9 @@ function buildNearestStationRouteInfo(
       { lat: originCoord.lat, lng: originCoord.lng },
       { lat: originStationCoord.lat, lng: originStationCoord.lng },
     ],
-    distance: 0,
+    distance: calcDistance2(originCoord, originStationCoord),
     duration: walkToStation,
-    travelMode: 'WALKING',
+    transportMethod: 'WALKING',
     transportMethodId: 1,
   };
 
@@ -884,9 +895,9 @@ function buildNearestStationRouteInfo(
       { lat: originStationCoord.lat, lng: originStationCoord.lng },
       { lat: destinationStationCoord.lat, lng: destinationStationCoord.lng },
     ],
-    distance: 0,
+    distance: calcDistance2(originStationCoord, destinationStationCoord),
     duration: transitMinutes,
-    travelMode: 'TRANSIT',
+    transportMethod: 'TRANSIT',
     transportMethodId: 4,
   };
 
@@ -896,12 +907,31 @@ function buildNearestStationRouteInfo(
       { lat: destinationStationCoord.lat, lng: destinationStationCoord.lng },
       { lat: destinationCoord.lat, lng: destinationCoord.lng },
     ],
-    distance: 0,
+    distance: calcDistance2(destinationStationCoord, destinationCoord),
     duration: walkFromStation,
-    travelMode: 'WALKING',
+    transportMethod: 'WALKING',
     transportMethodId: 1,
   };
   return [routeToStation, transitRoute, routeFromStation];
+}
+
+function buildRouteInfo(params: BuildRouteInfoParams): RouteInfo {
+  const isNearestStationRoute = params.routeResult.selectedRoute.transportMethodId === 4;
+  return {
+    id: `route-${params.fromSpotId}-to-${params.toSpotId}`,
+    fromSpotId: params.fromSpotId,
+    toSpotId: params.toSpotId,
+    fromType: params.fromType,
+    toType: params.toType,
+    routeType: params.routeType,
+    transportMethod: params.routeResult.selectedRoute.transportMethod,
+    transportMethodId: params.routeResult.selectedRoute.transportMethodId,
+    distance: params.routeResult.selectedRoute.distance,
+    duration: params.routeResult.selectedRoute.duration,
+    polyline: encodePolyline(params.routeResult.selectedRoute.path),
+    useNearestStation: isNearestStationRoute,
+    alternativeRoutes: params.routeResult.alternativeRoutes,
+  };
 }
 
 /**
@@ -951,14 +981,6 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   const plannedSpots = [...params.spots].sort((a, b) => a.order - b.order);
   const messages: PlanningMessage[] = [];
   let currentPlanningTime = timeToMinutes(params.departure.time ?? DEFAULT_DEPARTURE_TIME);
-  let routeSegments: Array<{
-    routes: Array<RouteResult & { transportMethodId: number }>;
-    via?: 'station';
-    isTransit?: boolean;
-    alternativeRoutes?: Array<RouteResult & { transportMethodId: number }>;
-    failedRoutes?: RouteFailureInfo[];
-    isFallbackToWalking?: boolean;
-  }> = [];
   const firstSpot = plannedSpots[0];
   let totalDuration = 0;
   let useNearestStation = false;
@@ -1018,9 +1040,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       lat: firstSpot.latitude,
       lng: firstSpot.longitude,
     },
-    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 1],
+    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 0],
     useNearestStation,
     getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
+    params.departure.nearestStation,
+    firstSpot.nearestStation,
   );
   pushRouteFailureMessages(messages, firstSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
   // 出発地から最初のスポットまでの移動時間を更新
@@ -1029,88 +1053,24 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   updatedDeparture.transportMethod = getTravelMethodName(updatedDeparture.transportMethodId);
 
   currentPlanningTime += updatedDeparture.travelTime;
-  // 最寄駅のルートがある場合は、徒歩→乗車→徒歩のルートを優先して追加し、最寄駅を介さないルートは代替ルートとして保持する
-  routeSegments.push({
-    routes: [routeResult.selectedRoute],
-    via: useNearestStation ? 'station' : undefined,
-    alternativeRoutes: useNearestStation
-      ? [
-          ...routeResult.alternativeRoutes,
-          // 最寄駅経由ルートを1候補にまとめて追加（切り替え用）
-          {
-            path: [] as google.maps.LatLngLiteral[],
-            distance: 0,
-            duration: updatedDeparture.travelTime,
-            travelMode: 'TRANSIT' as const,
-            transportMethodId: 4,
-            waitingMinutes: routeResult.selectedRoute.waitingMinutes ?? 0,
-          },
-        ]
-      : routeResult.alternativeRoutes,
-    failedRoutes: routeResult.failedRoutes,
-    isFallbackToWalking: routeResult.isFallbackToWalking,
-  });
 
-  for (const segment of routeSegments) {
-    let durationSec: number = 0;
-    let distanceM: number = 0;
+  // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
+  if (routeResult.selectedRoute.transportMethodId === 1) {
+    const duration = routeResult.selectedRoute.duration;
+    const distance = routeResult.selectedRoute.distance;
+    pushLongWalkMessage(messages, firstSegmentKey, duration, distance, DEPARTURE_NAME, firstSpot.name);
+  }
 
-    if (segment.via === 'station') {
-      for (const route of segment.routes) {
-        durationSec += route.duration;
-        distanceM += getRouteDistanceMeters(route);
-      }
-    } else {
-      durationSec = segment.routes[0].duration;
-      distanceM = getRouteDistanceMeters(segment.routes[0]);
-      // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
-      if (segment.routes[0].transportMethodId === 1)
-        pushLongWalkMessage(
-          messages,
-          'DEPARTURE_TO_FIRST_SPOT',
-          durationSec,
-          distanceM,
-          DEPARTURE_NAME,
-          firstSpot.name,
-        );
-    }
-
-    // 代替ルート情報を変換
-    const alternativeRoutes = segment.alternativeRoutes?.map((alt) => ({
-      transportMethodId: alt.transportMethodId,
-      transportMethod: getTravelMethodName(alt.transportMethodId),
-      duration: alt.duration,
-      distance: getRouteDistanceMeters(alt),
-      durationText: `${alt.duration / 60}分`,
-      distanceText: `${alt.distance}m`,
-      waitingMinutes: alt.waitingMinutes,
-      // 最寄駅経由（transportMethodId=4）の場合はisStationRoute=trueで表示を分ける
-      isStationRoute: alt.transportMethodId === 4,
-    }));
-    routes.push({
-      id: `route-info-${routes.length}`,
+  routes.push(
+    buildRouteInfo({
       fromSpotId: 'departure',
       toSpotId: firstSpot.id,
       fromType: 'DEPARTURE',
       toType: 'SPOT',
       routeType: useNearestStation ? 'TO_STATION' : 'DEPARTURE_TO_SPOT',
-      // 最寄駅経由の場合はTRANSIT(id=4)として扱い、移動手段切り替え候補と一致させる
-      transportMethod: useNearestStation
-        ? 'TRANSIT'
-        : segment.isTransit
-          ? 'TRANSIT'
-          : getTravelMethodName(segment.routes[0].transportMethodId),
-      transportMethodId: useNearestStation ? 4 : segment.routes[0].transportMethodId,
-      distance: distanceM,
-      duration: durationSec,
-      durationText: `${durationSec / 60}分`,
-      distanceText: `${segment.routes[0].distance}m`,
-      waitingMinutes: segment.routes[0].waitingMinutes,
-      polyline: encodePolyline(segment.routes[0].path),
-      useNearestStation: useNearestStation,
-      alternativeRoutes,
-    });
-  }
+      routeResult,
+    }),
+  );
 
   // スポット間での時間調整
   for (let i = 0; i < plannedSpots.length; i++) {
@@ -1128,7 +1088,6 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
 
     // 滞在時間を現在時刻に加算
     currentPlanningTime += stayDuration;
-    routeSegments = [];
     if (i < plannedSpots.length - 1) {
       totalDuration = 0;
       const nextSpot = plannedSpots[i + 1];
@@ -1195,9 +1154,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           lat: nextSpot.latitude,
           lng: nextSpot.longitude,
         },
-        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 1],
+        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 0],
         useNearestStation,
         preferredDirectTransportMethodId,
+        currentSpot.nearestStation,
+        nextSpot.nearestStation,
       );
       pushRouteFailureMessages(messages, segmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
@@ -1206,79 +1167,22 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       updatedCurrentSpot.transportMethod = getTravelMethodName(updatedCurrentSpot.transportMethodId);
       currentPlanningTime += updatedCurrentSpot.travelTime;
 
-      routeSegments.push({
-        routes: [routeResult.selectedRoute],
-        via: useNearestStation ? 'station' : undefined,
-        alternativeRoutes: useNearestStation
-          ? [
-              ...routeResult.alternativeRoutes,
-              // 最寄駅経由ルートを1候補にまとめて追加（切り替え用）
-              {
-                path: [] as google.maps.LatLngLiteral[],
-                distance: 0,
-                duration: updatedCurrentSpot.travelTime,
-                travelMode: 'TRANSIT' as const,
-                waitingMinutes: routeResult.selectedRoute.waitingMinutes ?? 0,
-                transportMethodId: 4,
-              },
-            ]
-          : routeResult.alternativeRoutes, // 最寄駅を使わない場合は直接ルートの代替のみ
-        failedRoutes: routeResult.failedRoutes,
-        isFallbackToWalking: routeResult.isFallbackToWalking,
-      });
-
-      for (const segment of routeSegments) {
-        let durationSec: number = 0;
-        let distanceM: number = 0;
-
-        if (segment.via === 'station') {
-          for (const route of segment.routes) {
-            durationSec += route.duration;
-            distanceM += getRouteDistanceMeters(route);
-          }
-        } else {
-          durationSec = segment.routes[0].duration;
-          distanceM = getRouteDistanceMeters(segment.routes[0]);
-          // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
-          if (segment.routes[0].transportMethodId === 1)
-            pushLongWalkMessage(messages, segmentKey, durationSec, distanceM, currentSpot.name, nextSpot.name);
-        }
-
-        // 代替ルート情報を変換
-        const alternativeRoutes = segment.alternativeRoutes?.map((alt) => ({
-          transportMethodId: alt.transportMethodId,
-          transportMethod: getTravelMethodName(alt.transportMethodId),
-          duration: alt.duration,
-          distance: getRouteDistanceMeters(alt),
-          durationText: `${alt.duration / 60}分`,
-          distanceText: `${alt.distance}m`,
-          waitingMinutes: alt.waitingMinutes,
-          // 最寄駅経由（transportMethodId=4）の場合はisStationRoute=trueで表示を分ける
-          isStationRoute: alt.transportMethodId === 4,
-        }));
-        routes.push({
-          id: `route-info-${routes.length}`,
+      routes.push(
+        buildRouteInfo({
           fromSpotId: currentSpot.id,
           toSpotId: nextSpot.id,
           fromType: 'SPOT',
           toType: 'SPOT',
           routeType: useNearestStation ? 'TO_STATION' : 'SPOT_TO_SPOT',
-          // 最寄駅経由の場合はTRANSIT(id=4)として扱い、移動手段切り替え候補と一致させる
-          transportMethod: useNearestStation
-            ? 'TRANSIT'
-            : segment.isTransit
-              ? 'TRANSIT'
-              : getTravelMethodName(segment.routes[0].transportMethodId),
-          transportMethodId: useNearestStation ? 4 : segment.routes[0].transportMethodId,
-          distance: distanceM,
-          duration: durationSec,
-          durationText: `${durationSec / 60}分`,
-          distanceText: `${segment.routes[0].distance}m`,
-          waitingMinutes: segment.routes[0].waitingMinutes,
-          polyline: encodePolyline(segment.routes[0].path),
-          useNearestStation: useNearestStation,
-          alternativeRoutes,
-        });
+          routeResult,
+        }),
+      );
+
+      // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
+      if (routeResult.selectedRoute.transportMethodId === 1) {
+        const duration = routeResult.selectedRoute.duration;
+        const distance = routeResult.selectedRoute.distance;
+        pushLongWalkMessage(messages, segmentKey, duration, distance, currentSpot.name, nextSpot.name);
       }
     }
 
@@ -1288,7 +1192,6 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   // 最後のスポットから目的地へのルートと時間を計算
   if (plannedSpots.length > 0) {
     useNearestStation = false;
-    routeSegments = [];
     totalDuration = 0;
     const lastSpot = plannedSpots[plannedSpots.length - 1];
     const destinationCoord = { lat: params.destination.latitude, lng: params.destination.longitude };
@@ -1340,9 +1243,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
         lng: lastSpot.longitude,
       },
       destinationCoord,
-      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 1],
+      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 0],
       useNearestStation,
       getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
+      lastSpot.nearestStation,
+      params.destination.nearestStation,
     );
     pushRouteFailureMessages(messages, lastSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
@@ -1352,86 +1257,21 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
 
     currentPlanningTime += updatedDestination.travelTime;
 
-    routeSegments.push({
-      routes: [routeResult.selectedRoute],
-      via: useNearestStation ? 'station' : undefined,
-      alternativeRoutes: useNearestStation
-        ? [
-            ...routeResult.alternativeRoutes,
-            // 最寄駅経由ルートを1候補にまとめて追加（切り替え用）
-            {
-              path: [] as google.maps.LatLngLiteral[],
-              distance: 0,
-              duration: updatedDestination.travelTime,
-              travelMode: 'TRANSIT' as const,
-              waitingMinutes: routeResult.selectedRoute.waitingMinutes ?? 0,
-              transportMethodId: 4,
-            },
-          ]
-        : routeResult.alternativeRoutes, // 最寄駅を使わない場合は直接ルートの代替のみ
-      failedRoutes: routeResult.failedRoutes,
-      isFallbackToWalking: routeResult.isFallbackToWalking,
-    });
-
-    for (const segment of routeSegments) {
-      let durationSec: number = 0;
-      let distanceM: number = 0;
-
-      if (segment.via === 'station') {
-        for (const route of segment.routes) {
-          durationSec += route.duration;
-          distanceM += getRouteDistanceMeters(route);
-        }
-      } else {
-        durationSec = segment.routes[0].duration;
-        distanceM = getRouteDistanceMeters(segment.routes[0]);
-        // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
-        if (segment.routes[0].transportMethodId === 1)
-          pushLongWalkMessage(
-            messages,
-            `SPOT_${lastSpot.id}_TO_DESTINATION`,
-            durationSec,
-            distanceM,
-            lastSpot.name,
-            DESTINATION_NAME,
-          );
-      }
-
-      // 代替ルート情報を変換
-      const alternativeRoutes = segment.alternativeRoutes?.map((alt) => ({
-        transportMethodId: alt.transportMethodId,
-        transportMethod: getTravelMethodName(alt.transportMethodId),
-        duration: alt.duration,
-        distance: getRouteDistanceMeters(alt),
-        durationText: `${alt.duration / 60}分`,
-        distanceText: `${alt.distance}m`,
-        waitingMinutes: alt.waitingMinutes,
-        // 最寄駅経由（transportMethodId=4）の場合はisStationRoute=trueで表示を分ける
-        isStationRoute: alt.transportMethodId === 4,
-      }));
-      routes.push({
-        id: `route-info-${routes.length}`,
+    routes.push(
+      buildRouteInfo({
         fromSpotId: lastSpot.id,
         toSpotId: 'destination',
         fromType: 'SPOT',
         toType: 'DESTINATION',
         routeType: useNearestStation ? 'TO_STATION' : 'SPOT_TO_DESTINATION',
-        // 最寄駅経由の場合はTRANSIT(id=4)として扱い、移動手段切り替え候補と一致させる
-        transportMethod: useNearestStation
-          ? 'TRANSIT'
-          : segment.isTransit
-            ? 'TRANSIT'
-            : getTravelMethodName(segment.routes[0].transportMethodId),
-        transportMethodId: useNearestStation ? 4 : segment.routes[0].transportMethodId,
-        distance: distanceM,
-        duration: durationSec,
-        durationText: `${durationSec / 60}分`,
-        distanceText: `${segment.routes[0].distance}m`,
-        waitingMinutes: segment.routes[0].waitingMinutes,
-        polyline: encodePolyline(segment.routes[0].path),
-        useNearestStation: useNearestStation || segment.isTransit,
-        alternativeRoutes,
-      });
+        routeResult,
+      }),
+    );
+    // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
+    if (routeResult.selectedRoute.transportMethodId === 1) {
+      const duration = routeResult.selectedRoute.duration;
+      const distance = routeResult.selectedRoute.distance;
+      pushLongWalkMessage(messages, lastSegmentKey, duration, distance, lastSpot.name, DESTINATION_NAME);
     }
   }
   const destinationTime = minutesToTime(currentPlanningTime);
