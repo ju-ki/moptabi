@@ -927,8 +927,8 @@ describe('planning.ts', () => {
 
       const result = await executePlanning(params);
 
-      const expectedDurationMinutes = result.routes.reduce((sum, route) => sum + route.duration, 0) / 60;
-      expect(result.totalDuration).toBe(expectedDurationMinutes);
+      const expectedDurationSeconds = result.routes.reduce((sum, route) => sum + route.duration, 0);
+      expect(result.totalDuration).toBe(expectedDurationSeconds);
     });
 
     it.each(PLANNING_MATRIX_CASES)('[%s] 総移動距離は選択ルートdistance合計（m）と一致する', async (matrixCase) => {
