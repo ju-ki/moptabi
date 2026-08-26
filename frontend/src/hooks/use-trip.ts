@@ -1,89 +1,138 @@
 import useSWR from 'swr';
 import { TripType } from '@shared/trip/types';
 
-import { ExtendNearestStationType, ExtendPlanLocationType, ExtendSpotType, ExtendTripType, Spot } from '@/types/plan';
+import { ExtendNearestStationType, ExtendPlanLocationType, ExtendSpotType, ExtendTripType } from '@/types/plan';
 import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
 import { defaultLocation } from '@/data/constants';
 import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStation';
+import { SpotMetaType } from '@/types/spot';
 
 import { useFetcher } from './use-fetcher';
+
+async function fetchRequiredPlaceDetails(placeId: string): Promise<SpotMetaType> {
+  const placeResult = await fetchPlaceDetailsWithRetry(placeId);
+
+  if (placeResult.hasError) {
+    throw new Error(`Failed to fetch place details for placeId: ${placeId}. Error: ${placeResult.errorMessage}`);
+  }
+
+  if (placeResult.data == null) {
+    throw new Error(`Place details not found for placeId: ${placeId}`);
+  }
+
+  return placeResult.data;
+}
 
 async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripType> {
   const enrichedPlans = await Promise.all(
     trip.plans.map(async (plan) => {
-      const enrichedSpots: ExtendSpotType[] = await Promise.all(
-        plan.spots.map(async (spot) => {
-          const placeResult = await fetchPlaceDetailsWithRetry(spot.id);
+      // スポット本体の取得と処理
+      const spotPromises = plan.spots.map(async (spot): Promise<ExtendSpotType | null> => {
+        try {
+          const placeResult = await fetchRequiredPlaceDetails(spot.id);
+
           let nearestStation: ExtendNearestStationType | undefined = undefined;
           if (spot.nearestStation) {
-            const placeResultForStation = await fetchPlaceDetailsWithRetry(spot.nearestStation.placeId);
-            nearestStation = {
-              ...spot.nearestStation,
-              name: placeResultForStation.data?.name || '',
-              latitude: placeResultForStation.data?.latitude || defaultLocation.lat,
-              longitude: placeResultForStation.data?.longitude || defaultLocation.lng,
-              walkingTime: estimateWalkingTime(
-                calculateDistance(
-                  placeResult.data?.latitude || defaultLocation.lat,
-                  placeResult.data?.longitude || defaultLocation.lng,
-                  placeResultForStation.data?.latitude || defaultLocation.lat,
-                  placeResultForStation.data?.longitude || defaultLocation.lng,
+            try {
+              const placeResultForStation = await fetchRequiredPlaceDetails(spot.nearestStation.placeId);
+              nearestStation = {
+                ...spot.nearestStation,
+                name: placeResultForStation.name ?? '',
+                latitude: placeResultForStation.latitude ?? defaultLocation.lat,
+                longitude: placeResultForStation.longitude ?? defaultLocation.lng,
+                walkingTime: estimateWalkingTime(
+                  calculateDistance(
+                    placeResult.latitude ?? defaultLocation.lat,
+                    placeResult.longitude ?? defaultLocation.lng,
+                    placeResultForStation.latitude ?? defaultLocation.lat,
+                    placeResultForStation.longitude ?? defaultLocation.lng,
+                  ),
                 ),
-              ),
-              transportMethodId: spot.transportMethodId,
-            };
+                transportMethodId: spot.transportMethodId,
+              };
+            } catch (error) {
+              console.error(
+                `Failed to fetch nearest station for spot ${spot.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              );
+              // nearestStationはundefinedのままでスポット処理は継続
+            }
           }
+
           const enrichedSpot: ExtendSpotType = {
+            ...placeResult,
             ...spot,
             spotId: spot.id,
-            name: placeResult.data?.name || '',
-            latitude: placeResult.data?.latitude || defaultLocation.lat,
-            longitude: placeResult.data?.longitude || defaultLocation.lng,
-            rating: placeResult.data?.rating || 0,
+            rating: placeResult.rating ?? 0,
             nearestStation: nearestStation,
-            ...placeResult.data,
           };
           return enrichedSpot;
-        }),
+        } catch (error) {
+          console.error(
+            `Failed to fetch place details for spot ${spot.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+          // スポット本体の取得失敗時はスキップ
+          return null;
+        }
+      });
+
+      const enrichedSpots: ExtendSpotType[] = (await Promise.all(spotPromises)).filter(
+        (spot): spot is ExtendSpotType => spot !== null,
       );
-      // 出発地の取得
+
+      // 出発地の最寄り駅取得
       let nearestStationDeparture: ExtendNearestStationType | undefined = undefined;
       if (plan.departure.nearestStation) {
-        const placeResultForDeparture = await fetchPlaceDetailsWithRetry(plan.departure.nearestStation.placeId);
-        nearestStationDeparture = {
-          ...plan.departure.nearestStation,
-          name: placeResultForDeparture.data?.name || '',
-          latitude: placeResultForDeparture.data?.latitude || defaultLocation.lat,
-          longitude: placeResultForDeparture.data?.longitude || defaultLocation.lng,
-          walkingTime: estimateWalkingTime(
-            calculateDistance(
-              plan.departure.latitude || defaultLocation.lat,
-              plan.departure.longitude || defaultLocation.lng,
-              placeResultForDeparture.data?.latitude || defaultLocation.lat,
-              placeResultForDeparture.data?.longitude || defaultLocation.lng,
+        try {
+          const placeResultForDeparture = await fetchRequiredPlaceDetails(plan.departure.nearestStation.placeId);
+          nearestStationDeparture = {
+            ...plan.departure.nearestStation,
+            name: placeResultForDeparture.name ?? '',
+            latitude: placeResultForDeparture.latitude ?? defaultLocation.lat,
+            longitude: placeResultForDeparture.longitude ?? defaultLocation.lng,
+            walkingTime: estimateWalkingTime(
+              calculateDistance(
+                plan.departure.latitude ?? defaultLocation.lat,
+                plan.departure.longitude ?? defaultLocation.lng,
+                placeResultForDeparture.latitude ?? defaultLocation.lat,
+                placeResultForDeparture.longitude ?? defaultLocation.lng,
+              ),
             ),
-          ),
-        };
+          };
+        } catch (error) {
+          console.error(
+            `Failed to fetch departure nearest station: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+          // nearestStationDepartureはundefinedのまま
+        }
       }
-      // 目的地の取得
+
+      // 目的地の最寄り駅取得
       let nearestStationDestination: ExtendNearestStationType | undefined = undefined;
       if (plan.destination.nearestStation) {
-        const placeResultForDestination = await fetchPlaceDetailsWithRetry(plan.destination.nearestStation.placeId);
-        nearestStationDestination = {
-          ...plan.destination.nearestStation,
-          name: placeResultForDestination.data?.name || '',
-          latitude: placeResultForDestination.data?.latitude || defaultLocation.lat,
-          longitude: placeResultForDestination.data?.longitude || defaultLocation.lng,
-          walkingTime: estimateWalkingTime(
-            calculateDistance(
-              plan.destination.latitude || defaultLocation.lat,
-              plan.destination.longitude || defaultLocation.lng,
-              placeResultForDestination.data?.latitude || defaultLocation.lat,
-              placeResultForDestination.data?.longitude || defaultLocation.lng,
+        try {
+          const placeResultForDestination = await fetchRequiredPlaceDetails(plan.destination.nearestStation.placeId);
+          nearestStationDestination = {
+            ...plan.destination.nearestStation,
+            name: placeResultForDestination.name ?? '',
+            latitude: placeResultForDestination.latitude ?? defaultLocation.lat,
+            longitude: placeResultForDestination.longitude ?? defaultLocation.lng,
+            walkingTime: estimateWalkingTime(
+              calculateDistance(
+                plan.destination.latitude ?? defaultLocation.lat,
+                plan.destination.longitude ?? defaultLocation.lng,
+                placeResultForDestination.latitude ?? defaultLocation.lat,
+                placeResultForDestination.longitude ?? defaultLocation.lng,
+              ),
             ),
-          ),
-        };
+          };
+        } catch (error) {
+          console.error(
+            `Failed to fetch destination nearest station: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+          // nearestStationDestinationはundefinedのまま
+        }
       }
+
       const enrichedDeparture: ExtendPlanLocationType = {
         ...plan.departure,
         nearestStation: nearestStationDeparture,
@@ -92,6 +141,7 @@ async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripTyp
         ...plan.destination,
         nearestStation: nearestStationDestination,
       };
+
       return {
         ...plan,
         departure: enrichedDeparture,
