@@ -105,9 +105,12 @@ export const calcDistance2 = (
  * 座標から距離を計算する処理
  * @param baseCoordinate - 元となる座標
  * @param targetCoordination - 対象となる座標
- * @returns km換算された文字列
+ * @returns メートル換算された数値
  */
-export const calcDistance = (baseCoordinate: Coordination, targetCoordination: Coordination): string => {
+export const calcDistance = (
+  baseCoordinate: Pick<Coordination, 'lat' | 'lng'>,
+  targetCoordination: Pick<Coordination, 'lat' | 'lng'>,
+): number => {
   const R = 6371; // km
   const dLat = ((targetCoordination.lat - baseCoordinate.lat) * Math.PI) / 180;
   const dLng = ((targetCoordination.lng - baseCoordinate.lng) * Math.PI) / 180;
@@ -118,7 +121,7 @@ export const calcDistance = (baseCoordinate: Coordination, targetCoordination: C
       Math.sin(dLng / 2) *
       Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = (R * c).toFixed(2) + 'km'; // km
+  const distance = R * c * 1000; // m
 
   return distance;
 };
@@ -179,65 +182,53 @@ export const timeToTotalMinutes = (time: { days: number; hours: number; minutes:
 /**
  * 所要時間の合計値を計算する処理
  * @param departure - 出発地の情報
- * @param destination - 目的地の情報
  * @param spots - スポット一覧
- * @returns 文字列化した合計値
+ * @returns 合計値
  */
-export const calcTotalTransportTime = (
-  departure: ExtendPlanLocationType,
-  destination: ExtendPlanLocationType,
-  spots: ExtendSpotType[],
-): string => {
+export const calcTotalTransportTime = (departure: ExtendPlanLocationType, spots: ExtendSpotType[]): number => {
   let totalMinutes = 0;
   // 出発地から最初のスポットへの移動時間を加算
-  if (departure.travelTime) {
-    const parsedTime = parseTimeString(departure.travelTime.toString());
-    totalMinutes += timeToTotalMinutes(parsedTime);
-  }
+  totalMinutes += departure.travelTime;
 
   // 観光地間の移動時間を合算する
   spots.forEach((spot) => {
-    if (!spot.travelTime) {
-      return;
-    }
-    const parsedTime = parseTimeString(spot.travelTime.toString());
-    totalMinutes += timeToTotalMinutes(parsedTime);
+    totalMinutes += spot.travelTime;
   });
 
-  // 最後のスポットから目的地への移動時間を加算
-  if (destination.travelTime) {
-    const parsedTime = parseTimeString(destination.travelTime.toString());
-    totalMinutes += timeToTotalMinutes(parsedTime);
-  }
+  return totalMinutes;
+};
 
-  // 合計分を表示形式に変換
-  const totalDays = Math.floor(totalMinutes / (24 * 60));
-  const remainingAfterDays = totalMinutes % (24 * 60);
-  const finalHours = Math.floor(remainingAfterDays / 60);
-  const finalMinutes = remainingAfterDays % 60;
+/**
+ * 総距離の合計値を計算する処理
+ * @param departure - 出発地の情報
+ * @param destination - 目的地の情報
+ * @param spots - スポット一覧
+ * @returns 合計値
+ */
+export const calcTotalDistance = (
+  departure: ExtendPlanLocationType,
+  destination: ExtendPlanLocationType,
+  spots: ExtendSpotType[],
+): number => {
+  let totalDistance = 0;
+  // 出発地から最初のスポットへの移動距離を加算
+  totalDistance += calcDistance(
+    { lat: departure.latitude, lng: departure.longitude },
+    { lat: spots[0].latitude, lng: spots[0].longitude },
+  );
 
-  // 結果の整形
-  const resultParts: string[] = [];
+  // 観光地間の移動距離を合算する
+  spots.forEach((spot) => {
+    totalDistance += calcDistance(
+      { lat: spot.latitude, lng: spot.longitude },
+      {
+        lat: spots[spots.indexOf(spot) + 1]?.latitude ?? destination.latitude,
+        lng: spots[spots.indexOf(spot) + 1]?.longitude ?? destination.longitude,
+      },
+    );
+  });
 
-  if (totalDays > 0) {
-    resultParts.push(`${totalDays} day${totalDays > 1 ? 's' : ''}`);
-  }
-
-  if (finalHours > 0) {
-    resultParts.push(`${finalHours} hour${finalHours > 1 ? 's' : ''}`);
-  }
-
-  if (finalMinutes > 0 || totalMinutes === 0) {
-    const minuteLabel = finalMinutes === 1 ? 'min' : 'mins';
-    resultParts.push(`${finalMinutes} ${minuteLabel}`);
-  }
-
-  // 時間も分もなかった場合のフォールバック
-  if (resultParts.length === 0) {
-    return '0 mins';
-  }
-
-  return resultParts.join(' ');
+  return totalDistance;
 };
 
 interface DurationProps {

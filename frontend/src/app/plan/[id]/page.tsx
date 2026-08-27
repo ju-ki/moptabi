@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import React, { use, useEffect } from 'react';
-import { Calendar, Clock, Pencil, Printer, Share, Trash2 } from 'lucide-react';
+import { Calendar, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import useSWRMutation from 'swr/mutation';
@@ -73,18 +73,6 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
           </Button>
         </div>
         <div className="flex gap-2 py-3 px-3 justify-end">
-          {/*  TODO: 対応できていない機能のためコメントアウト */}
-          {/* <Button variant="ghost-subtle" size="sm" onClick={() => {}} className="flex items-center gap-1">
-            <Share className="w-4 h-4" />
-            シェアする
-          </Button> */}
-
-          {/*  TODO: 対応できていない機能のためコメントアウト */}
-          {/* <Button variant="ghost-subtle" size="sm" onClick={() => {}} className="flex items-center gap-1">
-            <Printer className="w-4 h-4" />
-            印刷
-          </Button> */}
-
           <Button variant="secondary-outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
             <Pencil className="w-4 h-4" />
             <Link href={`/plan/${id}/edit`}>編集</Link>

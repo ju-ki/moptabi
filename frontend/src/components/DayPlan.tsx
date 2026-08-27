@@ -24,7 +24,6 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
   const allSpots = fields.getSpotInfo(plan.date, TransportNodeType.SPOT);
   const departureData = fields.getDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE);
   const destinationData = fields.getDepartureAndDestination(plan.date, TransportNodeType.DESTINATION);
-  const hasSpots = allSpots.length > 0;
 
   return (
     <Card>
@@ -46,17 +45,9 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
           {allSpots.map((planSpot, index) => {
             const nextSpot = allSpots[index + 1];
             const nextNearestStation = nextSpot?.nearestStation ?? destinationData?.nearestStation;
-            const shouldShiftTransportToDestination = Boolean(destinationData) && index === allSpots.length - 1;
-            return (
-              <SpotInfoCard
-                key={planSpot.id}
-                spot={planSpot}
-                nextNearestStation={nextNearestStation}
-                isLastSpot={shouldShiftTransportToDestination}
-              />
-            );
+            return <SpotInfoCard key={planSpot.id} spot={planSpot} nextNearestStation={nextNearestStation} />;
           })}
-          {destinationData && <DestinationInfoCard destination={destinationData} showTransportFromTop={hasSpots} />}
+          {destinationData && <DestinationInfoCard destination={destinationData} />}
           <RouteSummary date={plan.date} />
 
           <SpotSummary date={plan.date} />
