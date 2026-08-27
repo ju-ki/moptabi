@@ -1,30 +1,25 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
 import GoogleSpotCard from '@/components/spot-selection/cards/GoogleSpotCard';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 
 // テスト用のSpotデータを生成するヘルパー関数
-const createMockSpot = (overrides?: Partial<Spot>): Spot => ({
+const createMockSpot = (overrides?: Partial<ExtendSpotType>): ExtendSpotType => ({
   id: 'spot-1',
-  location: {
-    id: 'spot-1',
-    name: 'テスト観光スポット',
-    lat: 35.6895,
-    lng: 139.6917,
-  },
-  stayStart: '09:00',
-  stayEnd: '10:00',
-  transports: {
-    transportMethodIds: [0],
-    name: 'DEFAULT',
-    travelTime: '不明',
-    fromType: TransportNodeType.SPOT,
-    toType: TransportNodeType.SPOT,
-  },
+  spotId: 'spot-1',
+  name: 'テスト観光スポット',
+  latitude: 35.6895,
+  longitude: 139.6917,
+  stayStart: '',
+  stayEnd: '',
+  stayDuration: 0,
+  transportMethodId: 0,
+  transportMethod: 'DEFAULT',
+  travelTime: 0,
   order: 0,
   image: 'https://example.com/image.jpg',
   rating: 4.5,
-  ratingCount: 1234,
   address: '東京都千代田区',
   url: 'https://example.com',
   ...overrides,

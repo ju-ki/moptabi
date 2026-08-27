@@ -123,4 +123,236 @@ describe('useFetchTripDetail', () => {
       });
     });
   });
+
+  describe('スポット・最寄り駅の取得と異常系処理', () => {
+    const mockTripWithSpot = {
+      title: 'テスト旅行',
+      imageUrl: 'test.jpg',
+      startDate: '2025-12-20',
+      endDate: '2025-12-23',
+      tripInfo: '旅行メモ',
+      plans: [
+        {
+          date: '2025-12-20',
+          memo: 'プランメモ',
+          departure: {
+            placeId: 'departure-1',
+            latitude: 35.6661,
+            longitude: 139.7706,
+            nearestStation: {
+              placeId: 'dep-station-1',
+              transportMethodId: 1,
+            },
+          },
+          destination: {
+            placeId: 'destination-1',
+            latitude: 35.6895,
+            longitude: 139.6917,
+            nearestStation: {
+              placeId: 'dest-station-1',
+              transportMethodId: 1,
+            },
+          },
+          spots: [
+            {
+              id: 'spot-1',
+              placeId: 'spot-1',
+              order: 0,
+              stayStart: '2025-12-20T10:00:00Z',
+              stayEnd: '2025-12-20T11:00:00Z',
+              stayDuration: 60,
+              nearestStation: {
+                placeId: 'spot-station-1',
+                transportMethodId: 1,
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    it('スポット本体取得失敗時は該当スポットが配列から除外されること', async () => {
+      const mockFetcher = vi.fn().mockResolvedValue(mockTripWithSpot);
+      (useFetcher as any).mockReturnValue(createMockFetcher({ getFetcher: mockFetcher }));
+
+      // スポット本体の取得失敗、その他は成功
+      (fetchPlaceDetailsWithRetry as any).mockImplementation(async (placeId: string) => {
+        if (placeId === 'spot-1') {
+          return { hasError: true, data: null, errorMessage: 'Spot fetch failed' };
+        }
+        return {
+          hasError: false,
+          data: {
+            spotId: placeId,
+            name: `名前_${placeId}`,
+            latitude: 35.6762,
+            longitude: 139.6503,
+            rating: 4.5,
+          },
+        };
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useFetchTripDetail('trip-123'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.trip?.plans[0].spots.length).toBe(0);
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch place details for spot spot-1'));
+
+      consoleSpy.mockRestore();
+    });
+
+    it('スポットの最寄り駅取得失敗時はスポットは残り、nearestStationが未定義になること', async () => {
+      const mockFetcher = vi.fn().mockResolvedValue(mockTripWithSpot);
+      (useFetcher as any).mockReturnValue(createMockFetcher({ getFetcher: mockFetcher }));
+
+      // スポット本体は成功、スポット用最寄り駅は失敗
+      (fetchPlaceDetailsWithRetry as any).mockImplementation(async (placeId: string) => {
+        if (placeId === 'spot-station-1') {
+          return { hasError: true, data: null, errorMessage: 'Station fetch failed' };
+        }
+        return {
+          hasError: false,
+          data: {
+            spotId: placeId,
+            name: `名前_${placeId}`,
+            latitude: 35.6762,
+            longitude: 139.6503,
+            rating: 4.5,
+          },
+        };
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useFetchTripDetail('trip-123'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.trip?.plans[0].spots.length).toBe(1);
+      });
+
+      expect(result.current.trip?.plans[0].spots[0].nearestStation).toBeUndefined();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to fetch nearest station for spot spot-1'),
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('出発地の最寄り駅取得失敗時は出発地は残り、nearestStationが未定義になること', async () => {
+      const mockFetcher = vi.fn().mockResolvedValue(mockTripWithSpot);
+      (useFetcher as any).mockReturnValue(createMockFetcher({ getFetcher: mockFetcher }));
+
+      // 出発地用最寄り駅は失敗、その他は成功
+      (fetchPlaceDetailsWithRetry as any).mockImplementation(async (placeId: string) => {
+        if (placeId === 'dep-station-1') {
+          return { hasError: true, data: null, errorMessage: 'Departure station fetch failed' };
+        }
+        return {
+          hasError: false,
+          data: {
+            spotId: placeId,
+            name: `名前_${placeId}`,
+            latitude: 35.6762,
+            longitude: 139.6503,
+            rating: 4.5,
+          },
+        };
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useFetchTripDetail('trip-123'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.trip?.plans[0].departure).toBeDefined();
+      });
+
+      expect(result.current.trip?.plans[0].departure.nearestStation).toBeUndefined();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch departure nearest station'));
+
+      consoleSpy.mockRestore();
+    });
+
+    it('目的地の最寄り駅取得失敗時は目的地は残り、nearestStationが未定義になること', async () => {
+      const mockFetcher = vi.fn().mockResolvedValue(mockTripWithSpot);
+      (useFetcher as any).mockReturnValue(createMockFetcher({ getFetcher: mockFetcher }));
+
+      // 目的地用最寄り駅は失敗、その他は成功
+      (fetchPlaceDetailsWithRetry as any).mockImplementation(async (placeId: string) => {
+        if (placeId === 'dest-station-1') {
+          return { hasError: true, data: null, errorMessage: 'Destination station fetch failed' };
+        }
+        return {
+          hasError: false,
+          data: {
+            spotId: placeId,
+            name: `名前_${placeId}`,
+            latitude: 35.6762,
+            longitude: 139.6503,
+            rating: 4.5,
+          },
+        };
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useFetchTripDetail('trip-123'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.trip?.plans[0].destination).toBeDefined();
+      });
+
+      expect(result.current.trip?.plans[0].destination.nearestStation).toBeUndefined();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to fetch destination nearest station'));
+
+      consoleSpy.mockRestore();
+    });
+
+    it('すべて成功する場合はスポット・最寄り駅情報が正しく合成されること', async () => {
+      const mockFetcher = vi.fn().mockResolvedValue(mockTripWithSpot);
+      (useFetcher as any).mockReturnValue(createMockFetcher({ getFetcher: mockFetcher }));
+
+      // すべての取得が成功 - placeIdごとに異なるメタデータを返す
+      (fetchPlaceDetailsWithRetry as any).mockImplementation(async (placeId: string) => {
+        return {
+          hasError: false,
+          data: {
+            spotId: placeId,
+            name: `名前_${placeId}`,
+            latitude: 35.6762 + Math.random() * 0.01,
+            longitude: 139.6503 + Math.random() * 0.01,
+            rating: 4.5,
+          },
+        };
+      });
+
+      const { result } = renderHook(() => useFetchTripDetail('trip-123'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.trip?.plans[0].spots.length).toBe(1);
+      });
+
+      const spot = result.current.trip?.plans[0].spots[0];
+      expect(spot?.spotId).toBe('spot-1');
+      expect(spot?.name).toBe('名前_spot-1');
+      expect(spot?.latitude).toBeDefined();
+      expect(spot?.longitude).toBeDefined();
+      expect(spot?.nearestStation).toBeDefined();
+      expect(spot?.nearestStation?.name).toMatch(/名前_spot-station-1/);
+    });
+  });
 });

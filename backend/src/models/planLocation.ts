@@ -121,4 +121,4 @@ export const PlanLocationCandidateResponseSchema = z.object({
 export type CreatePlanLocationType = z.infer<typeof CreatePlanLocationSchema>;
 
 // コントラクト型エイリアス（shared-types との契約）
-export type { PlanLocationCandidateItemType, PlanLocationCandidateResponseType };
+export type { PlanLocationCandidateResponseType };

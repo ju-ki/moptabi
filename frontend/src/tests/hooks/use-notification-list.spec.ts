@@ -42,6 +42,7 @@ vi.mock('next-auth/react', async () => {
 });
 
 import useSWR from 'swr';
+
 import { useNotificationList } from '@/hooks/use-notification-list';
 
 const mockUseSWR = vi.mocked(useSWR);

@@ -17,36 +17,29 @@
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { SpotInfoCard } from '@/components/SpotInfoCard';
-import { Spot, TransportNodeType } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 
 // テスト用のモックデータ
-const createMockSpot = (overrides: Partial<Spot> = {}): Spot => ({
+const createMockSpot = (overrides: Partial<ExtendSpotType> = {}): ExtendSpotType => ({
   id: 'spot-1',
-  location: {
-    id: 'loc-1',
-    lat: 35.6812,
-    lng: 139.7671,
-    name: '東京タワー',
-  },
+  spotId: 'spot-1',
+  latitude: 35.6812,
+  longitude: 139.7671,
+  name: '東京タワー',
   stayStart: '10:00',
   stayEnd: '12:00',
   stayDuration: 120,
-  transports: {
-    transportMethod: 1,
-    name: 'TRANSIT',
-    cost: 500,
-    travelTime: '00:30',
-    fromType: TransportNodeType.SPOT,
-    toType: TransportNodeType.SPOT,
-  },
+  transportMethodId: 5,
+  transportMethod: 'TRANSIT',
+  travelTime: 30,
   memo: 'テストメモ',
   image: '/test-image.jpg',
   rating: 4.5,
   ratingCount: 1234,
-  category: ['tourist_attraction', 'historical_place', 'landmark'],
+  categories: ['tourist_attraction', 'historical_place', 'landmark'],
   catchphrase: '東京のシンボル',
   description: '東京のランドマーク的存在のタワー',
   prefecture: '東京都',
@@ -65,99 +58,18 @@ const createMockSpot = (overrides: Partial<Spot> = {}): Spot => ({
     walkingTime: 5,
     latitude: 35.6565,
     longitude: 139.7485,
+    transitTime: 10,
+    scheduledDepartureTime: '09:15',
+    memo: '最寄駅のメモ',
+    stationType: 'TRAIN',
+    placeId: 'station-1',
   },
   url: 'https://www.tokyotower.co.jp/',
   order: 1,
   ...overrides,
 });
 
-const createDepartureSpot = (): Spot => ({
-  id: 'departure-1',
-  location: {
-    id: 'dep-loc-1',
-    lat: 35.6812,
-    lng: 139.7671,
-    name: '東京駅',
-  },
-  stayStart: '09:00',
-  stayEnd: '09:00',
-  stayDuration: 0,
-  transports: {
-    transportMethod: 1,
-    name: 'TRANSIT',
-    cost: 0,
-    travelTime: '00:30',
-    fromType: TransportNodeType.DEPARTURE,
-    toType: TransportNodeType.SPOT,
-  },
-  memo: '出発地のメモ',
-  order: 0,
-});
-
-const createDestinationSpot = (): Spot => ({
-  id: 'destination-1',
-  location: {
-    id: 'dest-loc-1',
-    lat: 35.6895,
-    lng: 139.6917,
-    name: '新宿駅',
-  },
-  stayStart: '18:00',
-  stayEnd: '18:00',
-  stayDuration: 0,
-  transports: {
-    transportMethod: 1,
-    name: 'TRANSIT',
-    cost: 0,
-    travelTime: '00:00',
-    fromType: TransportNodeType.SPOT,
-    toType: TransportNodeType.DESTINATION,
-  },
-  memo: '目的地のメモ',
-  order: 99,
-});
-
 describe('SpotInfoCard', () => {
-  describe('出発地の表示', () => {
-    it('出発地の名称が表示される', () => {
-      const spot = createDepartureSpot();
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('東京駅')).toBeInTheDocument();
-    });
-
-    it('出発地のメモが表示される', () => {
-      const spot = createDepartureSpot();
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('出発地のメモ')).toBeInTheDocument();
-    });
-
-    it('次のスポットへの移動時間が表示される', () => {
-      const spot = createDepartureSpot();
-      spot.transports.travelTime = '30 mins';
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('30分')).toBeInTheDocument();
-    });
-  });
-
-  describe('目的地の表示', () => {
-    it('目的地の名称が表示される', () => {
-      const spot = createDestinationSpot();
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('新宿駅')).toBeInTheDocument();
-    });
-
-    it('目的地のメモが表示される', () => {
-      const spot = createDestinationSpot();
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByText('目的地のメモ')).toBeInTheDocument();
-    });
-  });
-
   describe('通常スポットの基本情報表示', () => {
     it('スポット名が表示される', () => {
       const spot = createMockSpot();
@@ -218,7 +130,7 @@ describe('SpotInfoCard', () => {
   describe('カテゴリの表示', () => {
     it('カテゴリが最大3つまで表示される', () => {
       const spot = createMockSpot({
-        category: ['tourist_attraction', 'historical_place', 'landmark', 'park'],
+        categories: ['tourist_attraction', 'historical_place', 'landmark', 'park'],
       });
       render(<SpotInfoCard spot={spot} />);
 
@@ -229,7 +141,7 @@ describe('SpotInfoCard', () => {
     });
 
     it('カテゴリがない場合は表示されない', () => {
-      const spot = createMockSpot({ category: undefined });
+      const spot = createMockSpot({ categories: undefined });
       render(<SpotInfoCard spot={spot} />);
 
       expect(screen.queryByTestId('spot-categories')).not.toBeInTheDocument();
@@ -328,35 +240,14 @@ describe('SpotInfoCard', () => {
   describe('移動時間と交通手段の表示', () => {
     it('次のスポットへの移動時間が表示される', () => {
       const spot = createMockSpot({
-        transports: {
-          transportMethod: 1,
-          name: 'TRANSIT',
-          cost: 500,
-          travelTime: '30 mins',
-          fromType: TransportNodeType.SPOT,
-          toType: TransportNodeType.SPOT,
-        },
+        transportMethodId: 1,
+        transportMethod: 'WALKING',
+        travelTime: 30,
+        nearestStation: undefined,
       });
       render(<SpotInfoCard spot={spot} />);
 
-      expect(screen.getByText('30分')).toBeInTheDocument();
-    });
-
-    it('移動時間が0の場合も適切に表示される', () => {
-      const spot = createMockSpot({
-        transports: {
-          transportMethod: 1,
-          name: 'WALKING',
-          cost: 0,
-          travelTime: '0 mins',
-          fromType: TransportNodeType.SPOT,
-          toType: TransportNodeType.SPOT,
-        },
-      });
-      render(<SpotInfoCard spot={spot} />);
-
-      // 0分の表示を確認
-      expect(screen.getByText('0分')).toBeInTheDocument();
+      expect(screen.getByLabelText('travel-time')).toHaveTextContent(/30/i);
     });
   });
 
@@ -424,6 +315,8 @@ describe('SpotInfoCard', () => {
         <SpotInfoCard
           spot={spot}
           nextNearestStation={{
+            latitude: 35.6565,
+            longitude: 139.7485,
             placeId: 'station-next',
             stationType: 'TRAIN',
             name: '次スポット側の駅',

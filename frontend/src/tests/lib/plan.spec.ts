@@ -1,34 +1,33 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { TransportNodeType, type Spot } from '@/types/plan';
+import { ExtendPlanLocationType, ExtendSpotType, TransportNodeType } from '@/types/plan';
+import { PlanningInfo } from '@/lib/planning';
 
-function createSpot(id: string, overrides: Partial<Spot> = {}): Spot {
+function createSpot(id: string, overrides: Partial<ExtendSpotType> = {}): ExtendSpotType {
   return {
     id,
-    location: {
-      id,
-      name: `spot-${id}`,
-      lat: 35,
-      lng: 139,
-    },
+    spotId: `spot-${id}`,
+    name: `spot-${id}`,
+    latitude: 35,
+    longitude: 139,
     stayStart: '09:00',
     stayEnd: '10:00',
     stayDuration: 60,
-    transports: {
-      transportMethod: 1,
-      name: 'WALKING',
-      fromType: TransportNodeType.SPOT,
-      toType: TransportNodeType.SPOT,
-    },
+    rating: 4,
+    transportMethodId: 1,
+    transportMethod: 'WALKING',
+    travelTime: 10,
     order: 1,
     ...overrides,
   };
 }
 
-function setupPlannedDate(date: string, spots: Spot[]) {
+function setupPlannedDate(date: string, spots: ExtendSpotType[]) {
   const store = useStoreForPlanning.getState();
-  store.setFields('plans', [{ date, spots, departure: {} as any, destination: {} as any }]);
+  store.setFields('plans', [
+    { date, spots, departure: {} as ExtendPlanLocationType, destination: {} as ExtendPlanLocationType },
+  ]);
   store.setPlanningResult(date, { routes: [] } as any);
 }
 
@@ -43,12 +42,19 @@ describe('useStoreForPlanning', () => {
     store.setFields('title', 'テストタイトル');
     store.setFields('startDate', '2026-06-01');
     store.setFields('endDate', '2026-06-02');
-    store.setFields('plans', [{ date: '2026-06-01', spots: [], departure: {} as any, destination: {} as any }]);
+    store.setFields('plans', [
+      {
+        date: '2026-06-01',
+        spots: [],
+        departure: {} as ExtendPlanLocationType,
+        destination: {} as ExtendPlanLocationType,
+      },
+    ]);
     store.setIsLocationLinked(true);
     store.setErrors({ title: 'error' });
     store.setPlanErrors('2026-06-01', { spots: 'error' });
     store.setSpotErrors('2026-06-01', { memo: 'error' });
-    store.setPlanningInfo('2026-06-01', { transportationMethodId: [1] } as any);
+    store.setPlanningInfo('2026-06-01', { transportationMethodId: [1] } as PlanningInfo);
     store.setPlanningResult('2026-06-01', { routes: [] } as any);
     store.setSimulationStatus({ date: '2026-06-01', status: 2 });
 
@@ -146,17 +152,12 @@ describe('useStoreForPlanning', () => {
         date,
         spots: [
           createSpot('spot-1', {
-            transports: {
-              transportMethod: 1,
-              name: 'WALKING',
-              fromType: TransportNodeType.SPOT,
-              toType: TransportNodeType.SPOT,
-              travelTime: '10分',
-            },
+            transportMethodId: 2,
+            transportMethod: 'DRIVING',
           }),
         ],
-        departure: {} as any,
-        destination: {} as any,
+        departure: {} as ExtendPlanLocationType,
+        destination: {} as ExtendPlanLocationType,
       },
     ]);
 
@@ -204,17 +205,12 @@ describe('useStoreForPlanning', () => {
         date,
         spots: [
           createSpot('spot-1', {
-            transports: {
-              transportMethod: 1,
-              name: 'WALKING',
-              fromType: TransportNodeType.SPOT,
-              toType: TransportNodeType.SPOT,
-              travelTime: '不明',
-            },
+            transportMethodId: 1,
+            transportMethod: 'WALKING',
           }),
         ],
-        departure: {} as any,
-        destination: {} as any,
+        departure: {} as ExtendPlanLocationType,
+        destination: {} as ExtendPlanLocationType,
       },
     ]);
 
@@ -250,7 +246,8 @@ describe('useStoreForPlanning', () => {
     store.switchAlternativeRoute(date, 'route-1', 1);
 
     const updatedSpot = store.getSpotInfo(date, TransportNodeType.SPOT)[0];
-    expect(updatedSpot.transports?.travelTime).toBe('10分');
+    expect(updatedSpot.transportMethodId).toBe(1);
+    expect(updatedSpot.transportMethod).toBe('WALKING');
     expect(updatedSpot.alternateRoutes?.length).toBe(1);
     expect(store.isPlanningDirty(date)).toBe(false);
     expect(store.getDirtyPlanningDates()).toEqual([]);

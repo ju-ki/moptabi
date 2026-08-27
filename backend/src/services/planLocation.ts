@@ -1,6 +1,7 @@
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { PlanLocationType } from '@shared/planlocation/types';
 
-import { plan, planLocation, trip, userLocation } from '@/db';
+import { plan, planLocation, planLocationNearestStation, trip, userLocation } from '@/db';
 import type { AnyDbType } from '@/db';
 import { CreatePlanLocationType, LocationType } from '@/models/planLocation';
 
@@ -21,6 +22,36 @@ function generateDefaultName(locationType: LocationType): string {
 
 function defaultTimeByLocationType(locationType: LocationType): string {
   return locationType === 'DESTINATION' ? '18:00' : '09:00';
+}
+
+type DbLike = Pick<AnyDbType, 'select' | 'insert' | 'update' | 'delete' | 'query'>;
+
+export async function createPlanLocation(db: DbLike, planId: number, userId: string, data: PlanLocationType) {
+  const [newPlanLocation] = await db
+    .insert(planLocation)
+    .values({
+      planId: planId,
+      userId: userId,
+      name: data.name,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      time: data.time,
+      locationType: data.locationType,
+      transportMethodId: data.transportMethodId,
+      travelTime: data.travelTime,
+    })
+    .returning();
+
+  if (data.nearestStation?.placeId && data.nearestStation?.stationType) {
+    await db.insert(planLocationNearestStation).values({
+      planLocationId: newPlanLocation.id,
+      placeId: data.nearestStation.placeId,
+      stationType: data.nearestStation.stationType,
+      transitTime: data.nearestStation.transitTime ?? null,
+      scheduledDepartureTime: data.nearestStation.scheduledDepartureTime ?? null,
+      memo: data.nearestStation.memo ?? null,
+    });
+  }
 }
 
 /**

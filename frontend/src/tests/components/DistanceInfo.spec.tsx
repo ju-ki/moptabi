@@ -10,6 +10,9 @@ const mockGetDepartureAndDestination = vi.fn();
 vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
     getDepartureAndDestination: mockGetDepartureAndDestination,
+    getPlanningResult: vi.fn().mockReturnValue({
+      totalDuration: 120,
+    }),
   }),
 }));
 

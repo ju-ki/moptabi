@@ -7,14 +7,14 @@ import { Label } from '@/components/ui/label';
 import { SearchResultsView } from '@/components/common/SearchResultsView';
 import { useWishlistSpots } from '@/hooks/spot-search/use-wishlist-spots';
 import { prefectures } from '@/data/constants';
-import { Spot } from '@/types/plan';
+import { ExtendSpotType, Spot } from '@/types/plan';
 import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
 
 // TODO: dateは営業時間のフィルターで使用予定
 type WishlistSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
-  onSpotSelect: (spot: Spot, isDeleted: boolean) => void;
+  onSpotSelect: (spot: ExtendSpotType, isDeleted: boolean) => void;
 };
 
 export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: WishlistSpotSearchProps) {
@@ -28,7 +28,23 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
     sortOrder: spotSearchStore.wishlistSortOrder,
   });
 
-  const handleSpotClick = (spot: Spot) => {
+  const convertToExtendSpotType = (spots: Spot[]): ExtendSpotType[] => {
+    return spots.map((spot) => ({
+      ...spot,
+      spotId: spot.id,
+      rating: spot.rating ?? 0,
+      name: spot.location.name,
+      latitude: spot.location.lat,
+      longitude: spot.location.lng,
+      transportMethod: 'DEFAULT',
+      transportMethodId: 0,
+      travelTime: 0,
+      stayDuration: 60,
+      order: 0,
+    }));
+  };
+
+  const handleSpotClick = (spot: ExtendSpotType) => {
     const isSelected = selectedSpotIds.includes(spot.id);
     onSpotSelect(spot, isSelected);
   };
@@ -127,7 +143,7 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
 
       {/* 検索結果 */}
       <SearchResultsView
-        spots={spots}
+        spots={convertToExtendSpotType(spots)}
         selectedSpotIds={selectedSpotIds}
         onSpotClick={handleSpotClick}
         cardType="wishlist"

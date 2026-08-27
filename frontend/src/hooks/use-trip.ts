@@ -1,170 +1,159 @@
 import useSWR from 'swr';
+import { TripType } from '@shared/trip/types';
 
-import { Spot } from '@/types/plan';
-import { TripDetailApiNearestStation, TripDetailApiResponse, TripDetailApiSpot, TripType } from '@/models/trip';
+import { ExtendNearestStationType, ExtendPlanLocationType, ExtendSpotType, ExtendTripType } from '@/types/plan';
 import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
-import { defaultLocation, TransportMethodIdToLabel } from '@/data/constants';
-import { DepartureAndDestinationType } from '@/models/planLocation';
+import { defaultLocation } from '@/data/constants';
 import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStation';
+import { SpotMetaType } from '@/types/spot';
 
 import { useFetcher } from './use-fetcher';
 
-async function enrichNearestStation(
-  nearestStation: TripDetailApiNearestStation | null | undefined,
-  baseLocation: { lat: number; lng: number },
-) {
-  if (!nearestStation) return undefined;
+async function fetchRequiredPlaceDetails(placeId: string): Promise<SpotMetaType> {
+  const placeResult = await fetchPlaceDetailsWithRetry(placeId);
 
-  const result = nearestStation.placeId ? await fetchPlaceDetailsWithRetry(nearestStation.placeId) : null;
-  const fetchedMeta = result?.data;
+  if (placeResult.hasError) {
+    throw new Error(`Failed to fetch place details for placeId: ${placeId}. Error: ${placeResult.errorMessage}`);
+  }
 
-  // APIから取得した位置情報と名前を設定
-  const stationLat = fetchedMeta?.latitude;
-  const stationLng = fetchedMeta?.longitude;
-  const stationName = fetchedMeta?.name || '最寄駅';
+  if (placeResult.data == null) {
+    throw new Error(`Place details not found for placeId: ${placeId}`);
+  }
 
-  const calculatedWalkingTime =
-    stationLat !== undefined && stationLng !== undefined
-      ? estimateWalkingTime(calculateDistance(baseLocation.lat, baseLocation.lng, stationLat, stationLng))
-      : undefined;
-
-  const walkingTime = calculatedWalkingTime;
-
-  return {
-    placeId: nearestStation.placeId,
-    stationType: nearestStation.stationType,
-    name: stationName,
-    walkingTime,
-    latitude: stationLat,
-    longitude: stationLng,
-    transitTime: nearestStation.transitTime,
-    scheduledDepartureTime: nearestStation.scheduledDepartureTime,
-    scheduledDepartureTimes: [],
-    memo: nearestStation.memo,
-  };
+  return placeResult.data;
 }
 
-/**
- * バックエンドから取得した placeId のみのスポット情報を
- * Google Maps Places API で補完して Spot 型に変換する
- */
-async function enrichSpot(spot: TripDetailApiSpot): Promise<Spot> {
-  const result = await fetchPlaceDetailsWithRetry(spot.id);
-  const meta = result.data;
-  const normalizedTransport = {
-    transportMethod: spot.transports.transportMethod,
-    name: TransportMethodIdToLabel[spot.transports.transportMethod],
-    cost: spot.transports.cost,
-    travelTime: spot.transports.travelTime,
-    fromType: spot.transports.fromType,
-    toType: spot.transports.toType,
-  };
-
-  const normalizedNearestStationRaw = await enrichNearestStation(spot.nearestStation, {
-    lat: meta?.latitude ?? defaultLocation.lat,
-    lng: meta?.longitude ?? defaultLocation.lng,
-  });
-  const normalizedNearestStation = normalizedNearestStationRaw
-    ? {
-        ...normalizedNearestStationRaw,
-        placeId: normalizedNearestStationRaw.placeId ?? '',
-        spotId: spot.id,
-        stationType: normalizedNearestStationRaw.stationType || 'OTHER',
-        name: normalizedNearestStationRaw.name || '最寄駅',
-        walkingTime: normalizedNearestStationRaw.walkingTime ?? 0,
-        latitude: normalizedNearestStationRaw.latitude ?? defaultLocation.lat,
-        longitude: normalizedNearestStationRaw.longitude ?? defaultLocation.lng,
-        memo: normalizedNearestStationRaw.memo || '',
-      }
-    : undefined;
-
-  return {
-    id: spot.id,
-    location: {
-      id: spot.id,
-      name: meta?.name ?? '',
-      lat: meta?.latitude ?? defaultLocation.lat,
-      lng: meta?.longitude ?? defaultLocation.lng,
-    },
-    stayStart: spot.stayStart,
-    stayEnd: spot.stayEnd,
-    stayDuration: spot.stayDuration ?? 0,
-    memo: spot.memo,
-    image: meta?.image,
-    url: meta?.url,
-    prefecture: meta?.prefecture,
-    address: meta?.address,
-    rating: meta?.rating,
-    category: meta?.categories,
-    catchphrase: meta?.catchphrase,
-    description: meta?.description,
-    regularOpeningHours: meta?.openingHours,
-    transports: normalizedTransport,
-    order: spot.order,
-    nearestStation: normalizedNearestStation,
-  };
-}
-
-async function mapPlanLocationToFrontend(
-  location: TripDetailApiResponse['plans'][number]['departure'],
-): Promise<DepartureAndDestinationType> {
-  const nearestStation = await enrichNearestStation(location.nearestStation, {
-    lat: location.latitude,
-    lng: location.longitude,
-  });
-
-  return {
-    ...location,
-    planId: null,
-    planName: null,
-    transports: {
-      ...location.transports,
-      fromType: location.transports?.fromType ?? 'SPOT',
-      toType: location.transports?.toType ?? 'SPOT',
-      transportMethod: location.transports ? location.transports.transportMethod : 0,
-      name: TransportMethodIdToLabel[location.transports ? location.transports.transportMethod : 0],
-    },
-    nearestStation: nearestStation
-      ? {
-          ...nearestStation,
-          name: nearestStation.name, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
-          placeId: nearestStation.placeId ?? '',
-          latitude: nearestStation.latitude ?? 0, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
-          longitude: nearestStation.longitude ?? 0, // DBに登録されているplaceIdでGoogle MapのAPIにアクセスして補完
-          stationType: nearestStation.stationType ?? 'OTHER',
-          memo: nearestStation.memo ?? '',
-        }
-      : undefined,
-  };
-}
-
-/**
- * バックエンドから取得した TripDetailApiResponse を
- * Google Maps データで補完した TripType に変換する
- */
-async function enrichTripWithPlaceDetails(raw: TripDetailApiResponse): Promise<TripType> {
+async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripType> {
   const enrichedPlans = await Promise.all(
-    raw.plans.map(async (plan) => {
-      const departure = await mapPlanLocationToFrontend(plan.departure);
-      const destination = await mapPlanLocationToFrontend(plan.destination);
+    trip.plans.map(async (plan) => {
+      // スポット本体の取得と処理
+      const spotPromises = plan.spots.map(async (spot): Promise<ExtendSpotType | null> => {
+        try {
+          const placeResult = await fetchRequiredPlaceDetails(spot.id);
+
+          let nearestStation: ExtendNearestStationType | undefined = undefined;
+          if (spot.nearestStation) {
+            try {
+              const placeResultForStation = await fetchRequiredPlaceDetails(spot.nearestStation.placeId);
+              nearestStation = {
+                ...spot.nearestStation,
+                name: placeResultForStation.name ?? '',
+                latitude: placeResultForStation.latitude ?? defaultLocation.lat,
+                longitude: placeResultForStation.longitude ?? defaultLocation.lng,
+                walkingTime: estimateWalkingTime(
+                  calculateDistance(
+                    placeResult.latitude ?? defaultLocation.lat,
+                    placeResult.longitude ?? defaultLocation.lng,
+                    placeResultForStation.latitude ?? defaultLocation.lat,
+                    placeResultForStation.longitude ?? defaultLocation.lng,
+                  ),
+                ),
+                transportMethodId: spot.transportMethodId,
+              };
+            } catch (error) {
+              console.error(
+                `Failed to fetch nearest station for spot ${spot.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              );
+              // nearestStationはundefinedのままでスポット処理は継続
+            }
+          }
+
+          const enrichedSpot: ExtendSpotType = {
+            ...placeResult,
+            ...spot,
+            spotId: spot.id,
+            rating: placeResult.rating ?? 0,
+            nearestStation: nearestStation,
+          };
+          return enrichedSpot;
+        } catch (error) {
+          console.error(
+            `Failed to fetch place details for spot ${spot.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+          // スポット本体の取得失敗時はスキップ
+          return null;
+        }
+      });
+
+      const enrichedSpots: ExtendSpotType[] = (await Promise.all(spotPromises)).filter(
+        (spot): spot is ExtendSpotType => spot !== null,
+      );
+
+      // 出発地の最寄り駅取得
+      let nearestStationDeparture: ExtendNearestStationType | undefined = undefined;
+      if (plan.departure.nearestStation) {
+        try {
+          const placeResultForDeparture = await fetchRequiredPlaceDetails(plan.departure.nearestStation.placeId);
+          nearestStationDeparture = {
+            ...plan.departure.nearestStation,
+            name: placeResultForDeparture.name ?? '',
+            latitude: placeResultForDeparture.latitude ?? defaultLocation.lat,
+            longitude: placeResultForDeparture.longitude ?? defaultLocation.lng,
+            walkingTime: estimateWalkingTime(
+              calculateDistance(
+                plan.departure.latitude ?? defaultLocation.lat,
+                plan.departure.longitude ?? defaultLocation.lng,
+                placeResultForDeparture.latitude ?? defaultLocation.lat,
+                placeResultForDeparture.longitude ?? defaultLocation.lng,
+              ),
+            ),
+          };
+        } catch (error) {
+          console.error(
+            `Failed to fetch departure nearest station: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+          // nearestStationDepartureはundefinedのまま
+        }
+      }
+
+      // 目的地の最寄り駅取得
+      let nearestStationDestination: ExtendNearestStationType | undefined = undefined;
+      if (plan.destination.nearestStation) {
+        try {
+          const placeResultForDestination = await fetchRequiredPlaceDetails(plan.destination.nearestStation.placeId);
+          nearestStationDestination = {
+            ...plan.destination.nearestStation,
+            name: placeResultForDestination.name ?? '',
+            latitude: placeResultForDestination.latitude ?? defaultLocation.lat,
+            longitude: placeResultForDestination.longitude ?? defaultLocation.lng,
+            walkingTime: estimateWalkingTime(
+              calculateDistance(
+                plan.destination.latitude ?? defaultLocation.lat,
+                plan.destination.longitude ?? defaultLocation.lng,
+                placeResultForDestination.latitude ?? defaultLocation.lat,
+                placeResultForDestination.longitude ?? defaultLocation.lng,
+              ),
+            ),
+          };
+        } catch (error) {
+          console.error(
+            `Failed to fetch destination nearest station: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+          // nearestStationDestinationはundefinedのまま
+        }
+      }
+
+      const enrichedDeparture: ExtendPlanLocationType = {
+        ...plan.departure,
+        nearestStation: nearestStationDeparture,
+      };
+      const enrichedDestination: ExtendPlanLocationType = {
+        ...plan.destination,
+        nearestStation: nearestStationDestination,
+      };
 
       return {
-        date: plan.date,
-        memo: plan.memo,
-        spots: await Promise.all(plan.spots.map(enrichSpot)),
-        departure,
-        destination,
+        ...plan,
+        departure: enrichedDeparture,
+        destination: enrichedDestination,
+        spots: enrichedSpots,
       };
     }),
   );
-
   return {
-    title: raw.title,
-    imageUrl: raw.imageUrl,
-    startDate: raw.startDate,
-    endDate: raw.endDate,
+    ...trip,
     plans: enrichedPlans,
-  };
+  } as ExtendTripType;
 }
 
 export const useFetchTripDetail = (tripId?: string) => {
@@ -176,12 +165,12 @@ export const useFetchTripDetail = (tripId?: string) => {
   const url = shouldFetch && tripId ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${tripId}` : null;
 
   /** Google Maps Places API でスポット情報を補完するカスタムフェッチャー */
-  const tripFetcher = async (key: string): Promise<TripType> => {
-    const raw = (await getFetcher(key)) as TripDetailApiResponse;
+  const tripFetcher = async (key: string): Promise<ExtendTripType> => {
+    const raw = (await getFetcher(key)) as TripType;
     return enrichTripWithPlaceDetails(raw);
   };
 
-  const { data: trip, isLoading: isTripLoading, error: tripError } = useSWR<TripType>(url, tripFetcher);
+  const { data: trip, isLoading: isTripLoading, error: tripError } = useSWR<ExtendTripType>(url, tripFetcher);
 
   const postTrip = async (newTrip: TripType): Promise<number> => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/create`, {
@@ -202,8 +191,8 @@ export const useFetchTripDetail = (tripId?: string) => {
     return result.id; // 作成された旅行計画のIDを返す
   };
 
-  const patchTrip = async (newTrip: TripType): Promise<number> => {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${newTrip.id}`, {
+  const patchTrip = async (id: number, newTrip: TripType): Promise<number> => {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/trips/${id}`, {
       method: 'PATCH',
       headers: {
         ...getAuthHeaders(),

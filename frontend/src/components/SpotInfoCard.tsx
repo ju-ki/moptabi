@@ -3,9 +3,9 @@
 import { Calendar, Clock, ExternalLink, MapPin, Star } from 'lucide-react';
 import Image from 'next/image';
 
-import { Spot, TravelModeType } from '@/types/plan';
-import { convertHHmmToJpFormat } from '@/lib/utils';
+import { ExtendNearestStationType, ExtendSpotType } from '@/types/plan';
 import { calculateDuration } from '@/lib/algorithm';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
 import { placeTypeMap } from '../data/constants';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -13,17 +13,12 @@ import { transportIcons } from './TravelPlan';
 import { NearestStationDetail } from './NearestStationDetail';
 
 interface SpotCardProps {
-  spot: Spot;
-  nextNearestStation?: {
-    scheduledDepartureTime?: string;
-    transitTime?: number;
-    memo?: string;
-  };
-  isLastSpot?: boolean;
+  spot: ExtendSpotType;
+  nextNearestStation?: ExtendNearestStationType;
 }
 
-export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: SpotCardProps) {
-  const transportIcon = transportIcons[spot.transports.name as TravelModeType]?.icon ?? transportIcons.DEFAULT?.icon;
+export function SpotInfoCard({ spot, nextNearestStation }: SpotCardProps) {
+  const transportIcon = transportIcons[spot.transportMethod]?.icon ?? transportIcons.DEFAULT?.icon;
   const displayNearestStation = spot.nearestStation
     ? {
         ...spot.nearestStation,
@@ -33,7 +28,6 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
         memo: nextNearestStation?.memo ?? spot.nearestStation.memo,
       }
     : undefined;
-  const shouldShowTransportTime = Boolean(spot.transports?.travelTime) && !isLastSpot;
 
   // 通常のスポットの場合
   return (
@@ -51,12 +45,12 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
           aria-hidden="true"
         ></div>
 
-        {shouldShowTransportTime && (
-          <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
-            <span data-testid="timeline-transport-icon">{transportIcon}</span>
-            <span className="font-semibold">{convertHHmmToJpFormat(spot.transports.travelTime ?? '')}</span>
-          </div>
-        )}
+        <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
+          <span data-testid="timeline-transport-icon">{transportIcon}</span>
+          <span aria-label="travel-time" className="font-semibold">
+            {formatDurationAsHourMinute(spot.travelTime)}
+          </span>
+        </div>
       </div>
 
       {/* カード部分 */}
@@ -67,7 +61,7 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
             <div className="relative h-40 w-full flex-shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-28 sm:w-28">
               <Image
                 src={spot.image || '/scene.webp'}
-                alt={spot.location.name || ''}
+                alt={spot.name || ''}
                 width={112}
                 height={112}
                 className="w-full h-full object-cover"
@@ -83,13 +77,13 @@ export function SpotInfoCard({ spot, nextNearestStation, isLastSpot = false }: S
             <div className="flex-1 min-w-0">
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold text-gray-900 break-words sm:truncate">{spot.location.name}</h3>
+                  <h3 className="text-lg font-bold text-gray-900 break-words sm:truncate">{spot.name}</h3>
                   <p className="text-sm text-gray-600 line-clamp-1">{spot.catchphrase ?? ''}</p>
                 </div>
                 {/* カテゴリを3つまで表示 */}
-                {spot.category && spot.category.length > 0 && (
+                {spot.categories && spot.categories.length > 0 && (
                   <div className="flex gap-1 flex-shrink-0 flex-wrap" data-testid="spot-categories">
-                    {spot.category.slice(0, 3).map((cat) => (
+                    {spot.categories.slice(0, 3).map((cat) => (
                       <span
                         key={cat}
                         className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700"

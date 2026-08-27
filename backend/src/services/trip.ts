@@ -1,26 +1,100 @@
-import { eq, lt, count, sql, inArray, and, not } from 'drizzle-orm';
-import {
-  trip,
-  plan,
-  planLocation,
-  planLocationNearestStation,
-  planSpot,
-  planSpotNearestStation,
-  transport,
-  userLocation,
-  AnyDbType,
-} from '@db';
+import { eq, lt, count, sql, inArray, and, not, InferSelectModel } from 'drizzle-orm';
+import { trip, plan, planLocation, planLocationNearestStation, planSpot, planSpotNearestStation, AnyDbType } from '@db';
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
+import { TripSchema } from '@shared/trip/schema';
+import { PlanLocationType } from '@shared/planlocation/types';
+import { TransportMethodIdMapping } from '@shared/transports/types';
+import { TripType } from '@shared/trip/types';
+import { TripSpotType } from '@shared/spot/types';
+import { StationTypeSchema } from '@shared/transports/schema';
 
-import { getUserId } from '@/middleware/auth';
-import { TripSchema } from '@/models/trip';
 import { LOCATION_TYPE } from '@/models/planLocation';
+import { getUserId } from '@/middleware/auth';
 
+import { createPlanLocation } from './planLocation';
+import { createPlanSpot } from './spot';
 import { validateLimit } from './limit';
 
-const DEFAULT_DEPARTURE_TIME = '09:00';
-const DEFAULT_DESTINATION_TIME = '18:00';
+// PlanSpotとその最寄駅情報（drizzleのwith句で取得した結果の型）
+type PlanSpotWithNearestStations = InferSelectModel<typeof planSpot> & {
+  nearestStations: InferSelectModel<typeof planSpotNearestStation>[];
+};
+
+// PlanLocation（出発地・目的地）とその最寄駅情報（drizzleのwith句で取得した結果の型）
+type PlanLocationWithNearestStation = InferSelectModel<typeof planLocation> & {
+  nearestStation: InferSelectModel<typeof planLocationNearestStation>[];
+};
+
+// Planとその配下のPlanSpot・PlanLocation（drizzleのwith句で取得した結果の型）
+type PlanWithRelations = InferSelectModel<typeof plan> & {
+  planSpots: PlanSpotWithNearestStations[];
+  planLocations: PlanLocationWithNearestStation[];
+};
+
+// Tripとその配下のPlan（drizzleのwith句で取得した結果の型）
+type TripWithRelations = InferSelectModel<typeof trip> & {
+  plans: PlanWithRelations[];
+};
+
+export const createTrip = async (db: AnyDbType, c: Context) => {
+  const userId = getUserId(c);
+
+  if (!userId) {
+    throw new HTTPException(401, { message: 'Unauthorized error' });
+  }
+
+  const body = await c.req.json();
+  if (!body) {
+    throw new HTTPException(400, { message: 'Request body is required' });
+  }
+
+  const result = TripSchema.safeParse(body);
+  if (!result.success) {
+    throw new HTTPException(400, { message: 'Invalid request body' });
+  }
+
+  const tripData = result.data;
+  // 上限チェック
+  await validateLimit(db, userId, tripData);
+
+  const tripId = await db.transaction(async (tx) => {
+    // Tripを作成
+    const [newTrip] = await tx
+      .insert(trip)
+      .values({
+        title: tripData.title,
+        imageUrl: tripData.imageUrl,
+        startDate: tripData.startDate,
+        endDate: tripData.endDate,
+        userId,
+      })
+      .returning();
+
+    // Plans と PlanSpots を作成
+    for (const planData of tripData.plans) {
+      const [newPlan] = await tx
+        .insert(plan)
+        .values({
+          tripId: newTrip.id,
+          date: planData.date,
+          memo: planData.memo ?? null,
+        })
+        .returning();
+
+      // PlanSpotsを作成
+      await createPlanSpot(tx, newPlan.id, planData.spots);
+
+      // 出発地の情報を登録する
+      await createPlanLocation(tx, newPlan.id, userId, planData.departure);
+      // 目的地の情報を登録する
+      await createPlanLocation(tx, newPlan.id, userId, planData.destination);
+    }
+    return newTrip.id;
+  });
+
+  return tripId;
+};
 
 /**
  * ユーザーIDごとの旅行プランの数を取得
@@ -239,7 +313,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
               stationType: spot.nearestStation?.stationType,
               transitTime: spot.nearestStation?.transitTime ?? null,
               scheduledDepartureTime: spot.nearestStation?.scheduledDepartureTime ?? null,
-              memo: spot.nearestStation?.transitMemo ?? spot.nearestStation?.memo ?? null,
+              memo: spot.nearestStation?.memo ?? null,
             })
             .onConflictDoUpdate({
               target: [planSpotNearestStation.planSpotId],
@@ -248,7 +322,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
                 stationType: spot.nearestStation?.stationType,
                 transitTime: spot.nearestStation?.transitTime ?? null,
                 scheduledDepartureTime: spot.nearestStation?.scheduledDepartureTime ?? null,
-                memo: spot.nearestStation?.transitMemo ?? spot.nearestStation?.memo ?? null,
+                memo: spot.nearestStation?.memo ?? null,
               },
             });
         } else {
@@ -322,165 +396,26 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
         createdPlanSpots.push(newPlanSpot);
       }
 
-      // 出発地の情報をplanLocationに登録する
-      const [newDeparturePlanLocation] = await tx
-        .insert(planLocation)
-        .values({
-          planId: newPlan.id,
-          userId,
-          name: planData.departure.name,
-          latitude: planData.departure.latitude,
-          longitude: planData.departure.longitude,
-          time: planData.departure.time ?? DEFAULT_DEPARTURE_TIME,
-          locationType: 'DEPARTURE',
-        })
-        .returning();
-      // 目的地の情報をplanLocationに登録する
-      const [newDestinationPlanLocation] = await tx
-        .insert(planLocation)
-        .values({
-          planId: newPlan.id,
-          userId,
-          name: planData.destination.name,
-          latitude: planData.destination.latitude,
-          longitude: planData.destination.longitude,
-          time: planData.destination.time ?? DEFAULT_DESTINATION_TIME,
-          locationType: 'DESTINATION',
-        })
-        .returning();
+      // 出発地の情報を登録する
+      await createPlanLocation(tx, newPlan.id, userId, planData.departure);
+      // 目的地の情報を登録する
+      await createPlanLocation(tx, newPlan.id, userId, planData.destination);
 
-      if (planData.departure.nearestStation?.placeId && planData.departure.nearestStation?.stationType) {
-        await tx.insert(planLocationNearestStation).values({
-          planLocationId: newDeparturePlanLocation.id,
-          placeId: planData.departure.nearestStation.placeId,
-          stationType: planData.departure.nearestStation.stationType,
-          transitTime: planData.departure.nearestStation.transitTime ?? null,
-          scheduledDepartureTime: planData.departure.nearestStation.scheduledDepartureTime ?? null,
-          memo: planData.departure.nearestStation.memo ?? planData.departure.nearestStation.transitMemo ?? null,
-        });
-      }
-
-      if (planData.destination.nearestStation?.placeId && planData.destination.nearestStation?.stationType) {
-        await tx.insert(planLocationNearestStation).values({
-          planLocationId: newDestinationPlanLocation.id,
-          placeId: planData.destination.nearestStation.placeId,
-          stationType: planData.destination.nearestStation.stationType,
-          transitTime: planData.destination.nearestStation.transitTime ?? null,
-          scheduledDepartureTime: planData.destination.nearestStation.scheduledDepartureTime ?? null,
-          memo: planData.destination.nearestStation.memo ?? planData.destination.nearestStation.transitMemo ?? null,
-        });
-      }
-
-      const planSpotIdByRef = new Map<string, number>();
-      for (const [index, createdPlanSpot] of createdPlanSpots.entries()) {
-        const originalSpot = planData.spots[index];
-        const spotRef = originalSpot.clientRef ?? originalSpot.id;
-        planSpotIdByRef.set(spotRef, createdPlanSpot.id);
-      }
-
-      // spots[].nearestStation から planSpotNearestStations を自動生成
-      const autoGeneratedNearestStations: typeof planData.planSpotNearestStations = [];
-      for (const [index, spotData] of planData.spots.entries()) {
-        if (spotData.nearestStation && spotData.nearestStation.placeId && spotData.nearestStation.stationType) {
-          const spotRef = spotData.clientRef ?? spotData.id;
-          autoGeneratedNearestStations.push({
-            planSpotRef: spotRef,
-            placeId: spotData.nearestStation.placeId,
-            stationType: spotData.nearestStation.stationType,
-            transitTime: spotData.nearestStation.transitTime,
-            scheduledDepartureTime: spotData.nearestStation.scheduledDepartureTime,
-            memo: spotData.nearestStation.memo ?? spotData.nearestStation.transitMemo,
-            transitMemo: spotData.nearestStation.transitMemo,
-          });
-        }
-      }
-
-      // 既存の planSpotNearestStations と自動生成されたものをマージ
-      const allNearestStations = [...(autoGeneratedNearestStations || []), ...(planData.planSpotNearestStations || [])];
-
-      if (allNearestStations && allNearestStations.length > 0) {
-        for (const stationData of allNearestStations) {
-          const targetPlanSpotId = planSpotIdByRef.get(stationData.planSpotRef);
-          if (!targetPlanSpotId) {
-            throw new HTTPException(400, { message: `Unknown planSpotRef: ${stationData.planSpotRef}` });
-          }
-
-          await tx.insert(planSpotNearestStation).values({
-            planSpotId: targetPlanSpotId,
-            placeId: stationData.placeId,
-            stationType: stationData.stationType,
-            transitTime: stationData.transitTime ?? null,
-            scheduledDepartureTime: stationData.scheduledDepartureTime ?? null,
-            memo: stationData.memo ?? stationData.transitMemo ?? null,
-          });
-        }
-      }
-
-      // 最初のスポットへの交通手段（出発地から）- スポットがある場合のみ
-      if (planData.departure.transports && createdPlanSpots.length > 0) {
-        const departureTransport = planData.departure.transports;
-        const firstSpot = createdPlanSpots[0];
-        await tx.insert(transport).values({
-          planId: newPlan.id,
-          fromType: departureTransport.fromType,
-          toType: departureTransport.toType,
-          fromSpotId: newDeparturePlanLocation.id,
-          toSpotId: firstSpot.id,
-          cost: 0,
-          travelTime: departureTransport.travelTime ?? '不明',
-          transportMethod: departureTransport.transportMethod ?? 1,
-        });
-
-        // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
-        if (planData.departure.userLocationId) {
-          await tx
-            .update(userLocation)
-            .set({ usageCount: (planData.departure.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
-            .where(and(eq(userLocation.id, planData.departure.userLocationId), eq(userLocation.userId, userId)));
-        }
-      }
-      // 最後のスポットからの目的地への交通手段（目的地へ）- スポットがある場合のみ
-      if (planData.destination.transports && createdPlanSpots.length > 0) {
-        const destinationTransport = planData.destination.transports;
-        const lastSpot = createdPlanSpots[createdPlanSpots.length - 1];
-        await tx.insert(transport).values({
-          planId: newPlan.id,
-          fromType: destinationTransport.fromType,
-          toType: destinationTransport.toType,
-          fromSpotId: lastSpot.id,
-          toSpotId: newDestinationPlanLocation.id,
-          cost: 0,
-          travelTime: destinationTransport.travelTime ?? '不明',
-          transportMethod: destinationTransport.transportMethod ?? 1,
-        });
-
-        // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
-        if (planData.destination.userLocationId) {
-          await tx
-            .update(userLocation)
-            .set({ usageCount: (planData.destination.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
-            .where(and(eq(userLocation.id, planData.destination.userLocationId), eq(userLocation.userId, userId)));
-        }
-      }
-
-      // スポット間の交通手段を作成
-      for (let i = 0; i < createdPlanSpots.length - 1; i++) {
-        const fromSpotId = createdPlanSpots[i].id;
-        const toSpotId = createdPlanSpots[i + 1].id;
-
-        const transportData = planData.spots[i].transports;
-
-        await tx.insert(transport).values({
-          planId: newPlan.id,
-          fromType: transportData.fromType,
-          toType: transportData.toType,
-          fromSpotId: fromSpotId,
-          toSpotId: toSpotId,
-          cost: transportData.cost ?? 0,
-          travelTime: transportData.travelTime ?? '不明',
-          transportMethod: transportData.transportMethod,
-        });
-      }
+      // // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
+      // if (planData.departure.userLocationId) {
+      //   await tx
+      //     .update(userLocation)
+      //     .set({ usageCount: (planData.departure.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
+      //     .where(and(eq(userLocation.id, planData.departure.userLocationId), eq(userLocation.userId, userId)));
+      // }
+      // // 最後のスポットからの目的地への交通手段（目的地へ）- スポットがある場合のみ
+      // // ユーザーのお気に入り地点が登録された場合は、使用回数を更新する
+      // if (planData.destination.userLocationId) {
+      //   await tx
+      //     .update(userLocation)
+      //     .set({ usageCount: (planData.destination.usageCount ?? 0) + 1, updatedAt: new Date().toISOString() })
+      //     .where(and(eq(userLocation.id, planData.destination.userLocationId), eq(userLocation.userId, userId)));
+      // }
     }
   });
   return { id: tripId };
@@ -526,4 +461,125 @@ export const getTripStatistics = async (db: AnyDbType) => {
     planIncreaseFromLastMonth: totalPlans - lastMonthPlans,
     averageDatePerUserPlan,
   };
+};
+
+export const getTripDetailById = async (db: AnyDbType, tripId: number, userId: string) => {
+  const targetTrip = await db.query.trip.findFirst({
+    where: and(eq(trip.id, tripId), eq(trip.userId, userId)),
+    with: {
+      plans: {
+        with: {
+          planSpots: {
+            with: {
+              nearestStations: true,
+            },
+          },
+          planLocations: {
+            with: {
+              nearestStation: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!targetTrip) {
+    throw new HTTPException(404, { message: 'No trip found' });
+  }
+
+  const response: TripType = {
+    ...convertTripData(targetTrip),
+  };
+
+  for (const plan of targetTrip.plans) {
+    const departureLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DEPARTURE);
+    if (!departureLocation) {
+      throw new HTTPException(500, { message: 'Departure planLocation not found' });
+    }
+    const destinationLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DESTINATION);
+    if (!destinationLocation) {
+      throw new HTTPException(500, { message: 'Destination planLocation not found' });
+    }
+
+    response.plans.push({
+      date: plan.date,
+      memo: plan.memo ?? '',
+      spots: convertPlanSpotData(plan.planSpots),
+      departure: {
+        ...convertPlanLocationData([departureLocation])[0],
+      },
+      destination: {
+        ...convertPlanLocationData([destinationLocation])[0],
+      },
+    });
+  }
+
+  return response;
+};
+
+const convertTripData = (rawTripData: TripWithRelations): TripType => {
+  return {
+    title: rawTripData.title,
+    imageUrl: rawTripData.imageUrl ?? undefined,
+    startDate: rawTripData.startDate,
+    endDate: rawTripData.endDate,
+    plans: [],
+  };
+};
+
+const convertPlanSpotData = (rawPlanSpotData: PlanSpotWithNearestStations[]): TripSpotType[] => {
+  return rawPlanSpotData.map((planSpot) => {
+    const nearestStation = planSpot.nearestStations?.[0];
+
+    return {
+      id: planSpot.spotId,
+      stayStart: planSpot.stayStart,
+      stayEnd: planSpot.stayEnd,
+      stayDuration: planSpot.stayDuration,
+      order: planSpot.order,
+      memo: planSpot.memo ?? '',
+      travelTime: planSpot.travelTime ?? 0,
+      transportMethodId: planSpot.transportMethodId ?? 0,
+      transportMethod: TransportMethodIdMapping[planSpot.transportMethodId ?? 0],
+      nearestStation: nearestStation
+        ? {
+            planSpotId: nearestStation.planSpotId,
+            placeId: nearestStation.placeId,
+            stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
+            transitTime: nearestStation.transitTime ?? 0,
+            scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
+            memo: nearestStation.memo ?? '',
+          }
+        : undefined,
+    };
+  });
+};
+
+const convertPlanLocationData = (rawPlanLocationData: PlanLocationWithNearestStation[]): PlanLocationType[] => {
+  return rawPlanLocationData.map((planLocation) => {
+    const nearestStation = planLocation.nearestStation?.[0];
+
+    return {
+      name: planLocation.name,
+      latitude: planLocation.latitude,
+      longitude: planLocation.longitude,
+      planId: planLocation.planId,
+      time: planLocation.time,
+      locationType: planLocation.locationType,
+      travelTime: planLocation.travelTime,
+      transportMethodId: planLocation.transportMethodId,
+      transportMethod: TransportMethodIdMapping[planLocation.transportMethodId ?? 0],
+      nearestStation: nearestStation
+        ? {
+            planSpotId: undefined,
+            placeId: nearestStation.placeId,
+            stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
+            transitTime: nearestStation.transitTime ?? 0,
+            scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
+            memo: nearestStation.memo ?? '',
+          }
+        : undefined,
+    };
+  });
 };
