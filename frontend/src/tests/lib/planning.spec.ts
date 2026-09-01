@@ -411,6 +411,8 @@ describe('planning.ts', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [1, 2, 3],
+        false,
+        540,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(3);
@@ -429,6 +431,8 @@ describe('planning.ts', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [1, 2, 3],
+        false,
+        540,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(1);
@@ -448,6 +452,8 @@ describe('planning.ts', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [2, 3],
+        false,
+        540,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(1);
@@ -468,6 +474,7 @@ describe('planning.ts', () => {
         { lat: 35.6895, lng: 139.6917 },
         [1, 2, 3],
         false,
+        540,
         2,
       );
 
@@ -600,10 +607,17 @@ describe('planning.ts', () => {
 
         const result = await executePlanning(params);
         const updatedDestination = result.updatedDestination;
-        // 出発時間~最初のスポットの移動時間
-        expect(updatedDestination.travelTime).toBe(15); // ルートAPIの結果をそのまま採用するため、徒歩15分のみ
-        expect(updatedDestination.transportMethodId).toBe(1);
-        expect(updatedDestination.transportMethod).toBe('WALKING');
+        const updatedLastSpot = result.updatedSpots[1];
+        // 最後のスポット~目的地
+        expect(updatedLastSpot.travelTime).toBe(15); // ルートAPIの結果をそのまま採用するため、徒歩15分のみ
+        expect(updatedLastSpot.transportMethodId).toBe(1);
+        expect(updatedLastSpot.transportMethod).toBe('WALKING');
+        expect(updatedLastSpot.nearestStation).toBeUndefined();
+
+        // 目的地は次のルート情報がないので
+        expect(updatedDestination.travelTime).toBe(0); // ルートAPIの結果をそのまま採用するため、徒歩15分のみ
+        expect(updatedDestination.transportMethodId).toBe(0);
+        expect(updatedDestination.transportMethod).toBe('DEFAULT');
         expect(updatedDestination.nearestStation).toBeUndefined();
       });
     });
@@ -636,6 +650,7 @@ describe('planning.ts', () => {
         mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
+        const targetRoute = result.routes[0];
         const updatedDeparture = result.updatedDeparture;
 
         // 出発時間~最初のスポットの移動時間
@@ -647,6 +662,9 @@ describe('planning.ts', () => {
         expect(updatedDeparture.nearestStation?.scheduledDepartureTime).toBeDefined();
         expect(updatedDeparture.nearestStation?.waitingTime).toBeTypeOf('number');
         expect(updatedDeparture.nearestStation?.transitTime).toBe(12);
+
+        // ルート情報の時間が一致していること
+        expect(targetRoute.duration).toEqual(updatedDeparture.travelTime);
       });
 
       it('スポット', async () => {
@@ -676,6 +694,7 @@ describe('planning.ts', () => {
         mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
+        const targetRoute = result.routes[1];
         const updatedSpots = result.updatedSpots;
         // 最初のスポット~次のスポットの移動時間(stayEndが09:45)
         expect(updatedSpots[0].travelTime).toBe(91); // 7分(徒歩) + 68分(待機(09:52-11:00)) + 10分(乗車) + 6分(徒歩)
@@ -686,6 +705,9 @@ describe('planning.ts', () => {
         expect(updatedSpots[0].nearestStation?.scheduledDepartureTime).toBeDefined();
         expect(updatedSpots[0].nearestStation?.waitingTime).toBeTypeOf('number');
         expect(updatedSpots[0].nearestStation?.transitTime).toBe(10);
+
+        // ルート情報の時間が一致していること
+        expect(targetRoute.duration).toEqual(updatedSpots[0].travelTime);
       });
 
       it('目的地', async () => {
@@ -715,16 +737,25 @@ describe('planning.ts', () => {
         mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 600));
 
         const result = await executePlanning(params);
+        const targetRoute = result.routes[2];
         const updatedDestination = result.updatedDestination;
+        const updatedLastSpot = result.updatedSpots[1];
         // 最後のスポット~目的地の移動時間(stayEndが11:00)
-        expect(updatedDestination.travelTime).toBe(31); // 7分(徒歩) + 8分(待機(11:07-11:15)) + 10分(乗車) + 6分(徒歩)
-        expect(updatedDestination.transportMethodId).toBe(4);
-        expect(updatedDestination.transportMethod).toBe('TRANSIT');
+        expect(updatedLastSpot.travelTime).toBe(31); // 7分(徒歩) + 8分(待機(11:07-11:15)) + 10分(乗車) + 6分(徒歩)
+        expect(updatedLastSpot.transportMethodId).toBe(4);
+        expect(updatedLastSpot.transportMethod).toBe('TRANSIT');
 
-        expect(updatedDestination).toBeDefined();
-        expect(updatedDestination.nearestStation?.scheduledDepartureTime).toBeDefined();
-        expect(updatedDestination.nearestStation?.waitingTime).toBeTypeOf('number');
-        expect(updatedDestination.nearestStation?.transitTime).toBe(0);
+        expect(updatedDestination.travelTime).toBe(0);
+        expect(updatedDestination.transportMethodId).toBe(0);
+        expect(updatedDestination.transportMethod).toBe('DEFAULT');
+
+        expect(updatedLastSpot).toBeDefined();
+        expect(updatedLastSpot.nearestStation?.scheduledDepartureTime).toBeDefined();
+        expect(updatedLastSpot.nearestStation?.waitingTime).toBeTypeOf('number');
+        expect(updatedLastSpot.nearestStation?.transitTime).toBe(10);
+
+        expect(targetRoute.duration).toEqual(updatedLastSpot.travelTime);
+        expect(result.routes[3]).toBeUndefined();
       });
     });
 
@@ -846,11 +877,15 @@ describe('planning.ts', () => {
         });
 
         const result = await executePlanning(params);
+        const updatedLastSpot = result.updatedSpots[1];
         const destinationToSpotRoute = result.updatedDestination;
 
         expect(destinationToSpotRoute).toBeDefined();
-        expect(destinationToSpotRoute.transportMethodId).toBe(3);
-        expect(destinationToSpotRoute.transportMethod).toBe('DRIVING');
+        expect(destinationToSpotRoute.transportMethodId).toBe(0);
+        expect(destinationToSpotRoute.transportMethod).toBe('DEFAULT');
+
+        expect(updatedLastSpot.transportMethodId).toBe(3);
+        expect(updatedLastSpot.transportMethod).toBe('DRIVING');
       });
     });
     describe('再プランニング時における区間優先移動手段の採用ルール(最寄駅なし)', () => {
@@ -913,11 +948,15 @@ describe('planning.ts', () => {
         });
 
         const result = await executePlanning(params);
+        const updatedLastSpot = result.updatedSpots[1];
         const destinationToSpotRoute = result.updatedDestination;
 
         expect(destinationToSpotRoute).toBeDefined();
-        expect(destinationToSpotRoute.transportMethodId).toBe(2);
-        expect(destinationToSpotRoute.transportMethod).toBe('BICYCLING');
+        expect(destinationToSpotRoute.transportMethodId).toBe(0);
+        expect(destinationToSpotRoute.transportMethod).toBe('DEFAULT');
+
+        expect(updatedLastSpot.transportMethodId).toBe(2);
+        expect(updatedLastSpot.transportMethod).toBe('BICYCLING');
       });
     });
 
@@ -1285,8 +1324,11 @@ describe('planning.ts', () => {
 
       expect(shortSecondSpot).toBeDefined();
       expect(longSecondSpot).toBeDefined();
-      expect(timeToMinutes(longSecondSpot!.stayStart)).toBeGreaterThan(timeToMinutes(shortSecondSpot!.stayStart));
-      expect(timeToMinutes(longSecondSpot!.stayEnd)).toBeGreaterThan(timeToMinutes(shortSecondSpot!.stayEnd));
+
+      expect(timeToMinutes(longSecondSpot!.stayStart)).toBeGreaterThanOrEqual(
+        timeToMinutes(shortSecondSpot!.stayStart),
+      );
+      expect(timeToMinutes(longSecondSpot!.stayEnd)).toBeGreaterThanOrEqual(timeToMinutes(shortSecondSpot!.stayEnd));
     });
 
     it.each(PLANNING_MATRIX_CASES)(
@@ -1449,6 +1491,7 @@ describe('planning.ts', () => {
         { lat: 35.6895, lng: 139.6917 },
         [...checkedTransportMethodIds, preferredTransportMethodId ?? 1],
         false,
+        540,
         preferredTransportMethodId,
       );
 

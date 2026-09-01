@@ -34,8 +34,6 @@ export function DestinationInfoCard({ destination }: DestinationInfoCardProps) {
               <NearestStationDetail
                 nearestStation={destination.nearestStation}
                 className="w-fit max-w-full rounded-md bg-gray-50 p-2"
-                showDepartureTime={false}
-                showTransitMemo={false}
               />
             </div>
           )}

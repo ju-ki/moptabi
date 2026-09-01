@@ -84,8 +84,8 @@ export const usePlanning = () => {
 
         // 最寄駅の情報は次のスポットに格納されているため
         if (spot.transportMethodId != 4) return;
-        if (!nextSpot.nearestStation?.scheduledDepartureTime) return;
-        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = nextSpot.nearestStation.scheduledDepartureTime;
+        if (!spot.nearestStation?.scheduledDepartureTime) return;
+        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.nearestStation.scheduledDepartureTime;
       });
 
       const lastSpot = spotsData[spotsData.length - 1];
