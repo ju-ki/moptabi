@@ -42,10 +42,8 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
             タイムライン
           </h2>
           {departureData && <DepartureInfoCard departure={departureData} />}
-          {allSpots.map((planSpot, index) => {
-            const nextSpot = allSpots[index + 1];
-            const nextNearestStation = nextSpot?.nearestStation ?? destinationData?.nearestStation;
-            return <SpotInfoCard key={planSpot.id} spot={planSpot} nextNearestStation={nextNearestStation} />;
+          {allSpots.map((planSpot, _) => {
+            return <SpotInfoCard key={planSpot.id} spot={planSpot} />;
           })}
           {destinationData && <DestinationInfoCard destination={destinationData} />}
           <RouteSummary date={plan.date} />
