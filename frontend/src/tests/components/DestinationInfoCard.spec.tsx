@@ -2,37 +2,26 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { DestinationInfoCard } from '@/components/DestinationInfoCard';
-import type { DepartureAndDestinationType } from '@/models/planLocation';
+import { ExtendPlanLocationType } from '@/types/plan';
 
-function createDestination(overrides: Partial<DepartureAndDestinationType> = {}): DepartureAndDestinationType {
+function createDestination(overrides: Partial<ExtendPlanLocationType> = {}): ExtendPlanLocationType {
   return {
     name: '羽田空港',
     latitude: 35.5494,
     longitude: 139.7798,
-    label: null,
-    isDefault: false,
     locationType: 'DESTINATION',
-    usageCount: null,
-    planId: null,
-    planName: null,
-    userLocationId: null,
-    planLocationId: null,
-    transports: {
-      transportMethod: 4,
-      name: 'TRANSIT',
-      fromType: 'SPOT',
-      toType: 'DESTINATION',
-      travelTime: '00:20',
-      cost: 0,
-    },
+    userLocationId: 1,
+    transportMethodId: 4,
+    transportMethod: 'TRANSIT',
+    travelTime: 20,
     time: '18:00',
     nearestStation: {
       placeId: 'station-d-1',
       stationType: 'OTHER',
       name: '不明な乗り場',
       walkingTime: 4,
-      transitTime: 9,
-      memo: '北口\n階段を利用',
+      transitTime: 0,
+      memo: '',
       latitude: 35.5494,
       longitude: 139.7798,
     },
@@ -56,11 +45,11 @@ describe('DestinationInfoCard', () => {
             stationType: 'TRAIN',
             name: '天王洲アイル駅',
             walkingTime: 6,
-            transitTime: 12,
-            scheduledDepartureTime: '16:20',
+            transitTime: 0,
+            scheduledDepartureTime: '',
             latitude: 35.5494,
             longitude: 139.7798,
-            memo: '北口\n階段を利用',
+            memo: '',
           },
         })}
       />,

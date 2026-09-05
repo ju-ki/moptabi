@@ -13,6 +13,8 @@ vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
     getPlanningResult: mockGetPlanningResult,
     switchAlternativeRoute: mockSwitchAlternativeRoute,
+    getSpotInfo: vi.fn(() => []),
+    getDepartureAndDestination: vi.fn(),
   }),
 }));
 
@@ -131,9 +133,29 @@ describe('SpotDetailCard', () => {
       isOverTime: false,
       updatedSpots: [
         {
-          routeToNext: {
+          id: 'spot-1',
+          name: '東京タワー',
+          nearestStation: {
+            name: '神谷町駅',
+            walkingDuration: 7,
             scheduledDepartureTime: '11:00',
           },
+          alternateRoutes: [
+            {
+              transportMethodId: 1,
+              transportMethod: 'WALKING',
+              duration: 420,
+              distance: 300,
+            },
+            {
+              transportMethodId: 2,
+              transportMethod: 'TRANSIT',
+              duration: 720,
+              distance: 5000,
+              departureTime: '11:00',
+              arrivalStation: '浅草駅',
+            },
+          ],
         },
       ],
       updatedDeparture: undefined, // スポットのテストなので仮置き
@@ -604,7 +626,7 @@ describe('SpotDetailCard', () => {
       // SpotDetailCardの現仕様に合わせて文言を検証
       expect(breakdown).toHaveTextContent('徒歩 7分');
       expect(breakdown).toHaveTextContent('神谷町駅');
-      expect(breakdown).toHaveTextContent('電車/バス 8分');
+      expect(breakdown).toHaveTextContent('電車/バス 12分');
       expect(breakdown).toHaveTextContent('発車: 11:00');
       expect(breakdown).toHaveTextContent('浅草駅');
       expect(breakdown).toHaveTextContent('徒歩 5分');

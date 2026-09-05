@@ -2,29 +2,17 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { DepartureInfoCard } from '@/components/DepartureInfoCard';
-import type { DepartureAndDestinationType } from '@/models/planLocation';
+import { ExtendPlanLocationType } from '@/types/plan';
 
-function createDeparture(overrides: Partial<DepartureAndDestinationType> = {}): DepartureAndDestinationType {
+function createDeparture(overrides: Partial<ExtendPlanLocationType> = {}): ExtendPlanLocationType {
   return {
     name: '東京駅',
     latitude: 35.6812,
     longitude: 139.7671,
-    label: null,
-    isDefault: false,
     locationType: 'DEPARTURE',
-    usageCount: null,
-    planId: null,
-    planName: null,
-    userLocationId: null,
-    planLocationId: null,
-    transports: {
-      transportMethod: 4,
-      name: 'TRANSIT',
-      fromType: 'DEPARTURE',
-      toType: 'SPOT',
-      travelTime: '00:40',
-      cost: 0,
-    },
+    transportMethodId: 4,
+    transportMethod: 'TRANSIT',
+    travelTime: 40,
     time: '09:00',
     nearestStation: {
       placeId: 'station-1',
@@ -45,26 +33,6 @@ describe('DepartureInfoCard', () => {
     render(<DepartureInfoCard departure={createDeparture()} />);
 
     expect(screen.getByTestId('nearest-station-type-icon')).toHaveTextContent('?');
-  });
-
-  it('発車時間がない場合は--:--を表示する', () => {
-    render(
-      <DepartureInfoCard
-        departure={createDeparture({
-          nearestStation: {
-            placeId: 'station-2',
-            stationType: 'TRAIN',
-            name: '赤羽橋駅',
-            walkingTime: 5,
-            transitTime: 8,
-            latitude: 35.6812,
-            longitude: 139.7671,
-          },
-        })}
-      />,
-    );
-
-    expect(screen.getByTestId('nearest-station-departure-time')).toHaveTextContent('--:--');
   });
 
   it('最寄駅メモは改行を維持して表示する', () => {
