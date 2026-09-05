@@ -83,8 +83,17 @@ export default function PlanSpotSettingCard({
   const minutes = currentStayDuration % 60;
 
   const shouldRecommend = distanceFromPrevious ? shouldRecommendNearestStation(distanceFromPrevious) : false;
-
   const [useNearestStation, setUseNearestStation] = useState<boolean>(!!spot.nearestStation);
+  const [canDisplayTransitInfo, setCanDisplayTransitInfo] = useState<boolean>(
+    !!spot.nearestStation && (!!nextSpot?.nearestStation || !!destinationData?.nearestStation),
+  );
+
+  useEffect(() => {
+    setCanDisplayTransitInfo(
+      !!spot.nearestStation && (!!nextSpot?.nearestStation || !!destinationData?.nearestStation),
+    );
+  }, [spot.nearestStation, nextSpot?.nearestStation, destinationData?.nearestStation]);
+
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [nearestStations, setNearestStations] = useState<ExtendNearestStationType[]>(
     [spot.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
@@ -470,7 +479,7 @@ export default function PlanSpotSettingCard({
                         )}
                       </div>
 
-                      {spot.nearestStation && (
+                      {canDisplayTransitInfo && (
                         <div className="p-3 bg-green-50 rounded-lg border border-green-200 space-y-3">
                           <div className="flex items-center gap-2 mb-2">
                             <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">

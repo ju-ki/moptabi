@@ -1,5 +1,5 @@
 import React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { TripType } from '@shared/trip/types';
 
 import { useToast } from '@/hooks/use-toast';
@@ -17,10 +17,8 @@ import { Button } from './ui/button';
  * dirty状態の保存ブロックと、保存成功時の初期化・遷移を扱う。
  * @returns 保存ボタンUI
  */
-const CreatePlanButton = ({ isEdit = false }: { isEdit: boolean }) => {
+const CreatePlanButton = ({ isEdit = false, tripId }: { isEdit: boolean; tripId?: string }) => {
   const fields = useStoreForPlanning();
-  const searchParams = useSearchParams();
-  const tripId = searchParams.get('id');
   const router = useRouter();
   const { toast } = useToast();
   const { postTrip, patchTrip } = useFetchTripDetail();
