@@ -615,23 +615,6 @@ export const useStoreForPlanning = create<FormState>()(
 
           if (!selectedRouteInfo) return;
 
-          // transportMethodIdからTravelModeTypeに変換するヘルパー
-          const getTransportName = (methodId: number): 'WALKING' | 'DRIVING' | 'BICYCLING' | 'TRANSIT' | 'DEFAULT' => {
-            switch (methodId) {
-              case 1:
-                return 'WALKING';
-              case 2:
-                return 'BICYCLING';
-              case 3:
-                return 'DRIVING';
-              case 4:
-              case 5:
-                return 'TRANSIT';
-              default:
-                return 'DEFAULT';
-            }
-          };
-
           // ルートを更新
           state.planningResults[date].routes[routeIndex] = {
             ...route,
@@ -646,9 +629,6 @@ export const useStoreForPlanning = create<FormState>()(
           const newTotalDistance = state.planningResults[date].routes.reduce((sum, r) => sum + r.distance, 0);
           state.planningResults[date].totalDuration = newTotalDuration;
           state.planningResults[date].totalDistance = newTotalDistance;
-
-          // 新しいTravelModeType
-          const newTransportName = getTransportName(selectedTransportMethodId);
 
           // スポット・出発地・目的地のtransportsも更新
           const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
@@ -665,7 +645,7 @@ export const useStoreForPlanning = create<FormState>()(
                 travelTime: selectedRouteInfo.duration,
                 transportMethod: selectedRouteInfo.transportMethod,
                 transportMethodId: selectedRouteInfo.transportMethodId,
-                alternativeTransports: route.alternativeRoutes,
+                alternateRoutes: route.alternativeRoutes,
               };
             }
           }
@@ -685,15 +665,28 @@ export const useStoreForPlanning = create<FormState>()(
           }
           // 最後のスポットから目的地へのルートの場合
           else if (route.toType === 'DESTINATION') {
+            //最後のスポットを更新
+            const lastSpotIndex = state.plans[plansForDateIndex].spots.length - 1;
+            if (lastSpotIndex !== -1) {
+              const currentLastSpot = state.plans[plansForDateIndex].spots[lastSpotIndex];
+              state.plans[plansForDateIndex].spots[lastSpotIndex] = {
+                ...currentLastSpot,
+                travelTime: selectedRouteInfo.duration,
+                transportMethod: selectedRouteInfo.transportMethod,
+                transportMethodId: selectedRouteInfo.transportMethodId,
+                alternateRoutes: route.alternativeRoutes,
+              };
+            }
+
             // 直接destinationを更新（immer内なのでsetterを使わない）
             const currentDestination = state.plans[plansForDateIndex].destination;
             if (currentDestination) {
               state.plans[plansForDateIndex].destination = {
                 ...currentDestination,
-                travelTime: selectedRouteInfo.duration,
-                transportMethod: selectedRouteInfo.transportMethod,
-                transportMethodId: selectedRouteInfo.transportMethodId,
-                alternativeTransports: route.alternativeRoutes,
+                travelTime: 0,
+                transportMethod: 'DEFAULT',
+                transportMethodId: 0,
+                alternateRoutes: [],
               };
             }
           }

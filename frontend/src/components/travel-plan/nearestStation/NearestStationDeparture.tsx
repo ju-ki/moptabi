@@ -132,6 +132,8 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
       setIsDepartureManualTransitTime(false);
       handleDepartureChange({
         ...departureData,
+        transportMethodId: 4,
+        transportMethod: 'TRANSIT',
         nearestStation: {
           placeId: stationId,
           spotId: station.spotId,

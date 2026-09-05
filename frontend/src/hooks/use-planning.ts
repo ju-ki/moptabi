@@ -76,6 +76,7 @@ export const usePlanning = () => {
       }
 
       spotsData.forEach((spot, index) => {
+        if (index === spotsData.length - 1) return; // 最後のスポットは次のスポットがないためスキップ
         const nextSpot = spotsData[index + 1];
         if (!nextSpot) return;
         if (!spot.transportMethodId) return;
@@ -84,17 +85,15 @@ export const usePlanning = () => {
 
         // 最寄駅の情報は次のスポットに格納されているため
         if (spot.transportMethodId != 4) return;
-        if (!nextSpot.nearestStation?.scheduledDepartureTime) return;
-        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = nextSpot.nearestStation.scheduledDepartureTime;
+        if (!spot.nearestStation?.scheduledDepartureTime) return;
+        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.nearestStation.scheduledDepartureTime;
       });
 
       const lastSpot = spotsData[spotsData.length - 1];
-      preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transportMethodId;
+      preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = lastSpot.transportMethodId;
 
-      if (destinationData.transportMethodId == 4 && destinationData.nearestStation?.scheduledDepartureTime) {
-        const lastSpot = spotsData[spotsData.length - 1];
-        preferredDepartureTimes[`SPOT_${lastSpot.id}_TO_DESTINATION`] =
-          destinationData.nearestStation.scheduledDepartureTime;
+      if (lastSpot.transportMethodId == 4 && lastSpot.nearestStation?.scheduledDepartureTime) {
+        preferredDepartureTimes[`SPOT_${lastSpot.id}_TO_DESTINATION`] = lastSpot.nearestStation.scheduledDepartureTime;
       }
 
       const params: PlanningParams = {

@@ -2,9 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
-import { DepartureDestinationNearestStation } from '@/models/planLocation';
 import { StationType } from '@/types/nearestStation';
-import { NearestStation } from '@/types/plan';
+import { ExtendNearestStationType } from '@/types/plan';
 
 describe('RouteSummaryNearestStation', () => {
   beforeEach(() => {
@@ -12,8 +11,9 @@ describe('RouteSummaryNearestStation', () => {
   });
 
   it('出発地から最初のスポットまでの最寄駅経由のルート概要を表示する', () => {
-    const originNearestStation: DepartureDestinationNearestStation = {
+    const originNearestStation: ExtendNearestStationType = {
       placeId: 'origin-station',
+      name: '出発駅',
       latitude: 35.6895,
       longitude: 139.6917,
       stationType: 'TRAIN' as StationType,
@@ -24,7 +24,7 @@ describe('RouteSummaryNearestStation', () => {
       scheduledDepartureTime: '08:00',
     };
 
-    const destinationNearestStation: NearestStation = {
+    const destinationNearestStation: ExtendNearestStationType = {
       name: '目的地駅',
       placeId: 'destination-station',
       latitude: 35.6895,
@@ -44,19 +44,19 @@ describe('RouteSummaryNearestStation', () => {
         originNearestStation={originNearestStation}
         destinationNearestStation={destinationNearestStation}
         activeDepartureTime={activeDepartureTime}
-        isReverse={true}
       />,
     );
 
     expect(screen.getByText(`徒歩 ${originNearestStation.walkingTime}分`)).toBeInTheDocument();
-    expect(screen.getByText(`電車/バス ${destinationNearestStation.transitTime}分`)).toBeInTheDocument();
+    expect(screen.getByText(`電車/バス ${originNearestStation.transitTime}分`)).toBeInTheDocument();
     expect(screen.getByTestId('departure-selected-time')).toHaveTextContent(`(発車: ${activeDepartureTime})`);
     expect(screen.getByText(`徒歩 ${destinationNearestStation.walkingTime}分`)).toBeInTheDocument();
     expect(screen.getByText(`${originNearestStation.memo}`)).toBeInTheDocument();
   });
   it('スポット間の最寄駅経由のルート概要を表示する', () => {
-    const originNearestStation: NearestStation = {
+    const originNearestStation: ExtendNearestStationType = {
       placeId: 'origin-station',
+      name: '出発駅',
       latitude: 35.6895,
       longitude: 139.6917,
       stationType: 'TRAIN' as StationType,
@@ -67,7 +67,7 @@ describe('RouteSummaryNearestStation', () => {
       scheduledDepartureTime: '08:00',
     };
 
-    const destinationNearestStation: NearestStation = {
+    const destinationNearestStation: ExtendNearestStationType = {
       name: '次スポット',
       placeId: 'destination-station',
       latitude: 35.6895,
@@ -91,14 +91,15 @@ describe('RouteSummaryNearestStation', () => {
     );
 
     expect(screen.getByText(`徒歩 ${originNearestStation.walkingTime}分`)).toBeInTheDocument();
-    expect(screen.getByText(`電車/バス ${destinationNearestStation.transitTime}分`)).toBeInTheDocument();
+    expect(screen.getByText(`電車/バス ${originNearestStation.transitTime}分`)).toBeInTheDocument();
     expect(screen.getByTestId('departure-selected-time')).toHaveTextContent(`(発車: ${activeDepartureTime})`);
     expect(screen.getByText(`徒歩 ${destinationNearestStation.walkingTime}分`)).toBeInTheDocument();
-    expect(screen.getByText(`${destinationNearestStation.memo}`)).toBeInTheDocument();
+    expect(screen.getByText(`${originNearestStation.memo}`)).toBeInTheDocument();
   });
   it('最後のスポットから目的地までの最寄駅経由のルート概要を表示する', () => {
-    const originNearestStation: NearestStation = {
+    const originNearestStation: ExtendNearestStationType = {
       placeId: 'origin-station',
+      name: '出発駅',
       latitude: 35.6895,
       longitude: 139.6917,
       stationType: 'TRAIN' as StationType,
@@ -109,7 +110,7 @@ describe('RouteSummaryNearestStation', () => {
       scheduledDepartureTime: '08:00',
     };
 
-    const destinationNearestStation: DepartureDestinationNearestStation = {
+    const destinationNearestStation: ExtendNearestStationType = {
       name: '目的地駅',
       placeId: 'destination-station',
       latitude: 35.6895,
@@ -133,9 +134,9 @@ describe('RouteSummaryNearestStation', () => {
     );
 
     expect(screen.getByText(`徒歩 ${originNearestStation.walkingTime}分`)).toBeInTheDocument();
-    expect(screen.getByText(`電車/バス ${destinationNearestStation.transitTime}分`)).toBeInTheDocument();
+    expect(screen.getByText(`電車/バス ${originNearestStation.transitTime}分`)).toBeInTheDocument();
     expect(screen.getByTestId('departure-selected-time')).toHaveTextContent(`(発車: ${activeDepartureTime})`);
     expect(screen.getByText(`徒歩 ${destinationNearestStation.walkingTime}分`)).toBeInTheDocument();
-    expect(screen.getByText(`${destinationNearestStation.memo}`)).toBeInTheDocument();
+    expect(screen.getByText(`${originNearestStation.memo}`)).toBeInTheDocument();
   });
 });

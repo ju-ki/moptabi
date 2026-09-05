@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
 
-import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
@@ -47,39 +46,11 @@ interface DestinationDetailCardProps {
  * - 目的地の住所
  * - 目的地までの移動時間と交通手段表示
  */
-export default function DestinationDetailCard({
-  date,
-  index,
-  departureTimeCandidates = [],
-  onDepartureTimeChange,
-}: DestinationDetailCardProps) {
+export default function DestinationDetailCard({ date, index }: DestinationDetailCardProps) {
   const fields = useStoreForPlanning();
   // ストアから最新の出発地情報を取得（代替ルート切り替え時に更新された値を反映するため）
   const destination = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
-
-  const previousSpot = fields.getSpotInfo(date, null).slice(-1)[0];
-  const transportCandidates =
-    destination?.alternativeTransports?.map((transport) => ({
-      name: transport.transportMethod as TransportMethodType,
-      travelTime: transport.duration,
-      transportMethodId: transport.transportMethodId,
-      isDisabled: false, //TODO: 仮
-    })) ?? [];
   const planningResult = fields.getPlanningResult(date);
-  const routeInfo = planningResult?.routes?.find((r) => r.fromType === 'SPOT' && r.toType === 'DESTINATION');
-  const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
-    planningResult?.updatedDestination.nearestStation?.scheduledDepartureTime ?? DEFAULT_ARRIVAL_TIME,
-  );
-
-  const selectableDepartureCandidates = useMemo(
-    () => departureTimeCandidates.filter((time) => time !== activeDepartureTime),
-    [departureTimeCandidates, activeDepartureTime],
-  );
-
-  const handleDepartureTimeChange = (time: string) => {
-    setActiveDepartureTime(time);
-    onDepartureTimeChange?.(time);
-  };
 
   if (!destination) {
     return (
@@ -90,63 +61,7 @@ export default function DestinationDetailCard({
   }
 
   return (
-    <div className="my-10 border-t border-gray-300 py-8 relative" data-testid={`destination-detail-card-${index}`}>
-      {/* 移動手段 */}
-      <div className="space-y-3 my-4" data-testid="spot-transport">
-        {previousSpot?.nearestStation && destination.nearestStation && destination.transportMethodId == 4 && (
-          <RouteSummaryNearestStation
-            originNearestStation={previousSpot.nearestStation}
-            destinationNearestStation={destination.nearestStation}
-            activeDepartureTime={activeDepartureTime}
-          />
-        )}
-        <>
-          <div className="flex items-center space-x-2 text-gray-600">
-            {transportIcons[destination.transportMethod]?.icon || transportIcons.DEFAULT.icon}
-            <span>
-              {transportIcons[destination.transportMethod]?.label || transportIcons.DEFAULT.label} (
-              {formatDurationAsHourMinute(destination.travelTime)})
-            </span>
-            <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-            {routeInfo && transportCandidates.length > 0 && (
-              <div className="flex flex-wrap gap-2" data-testid="destination-transport-candidates">
-                {transportCandidates
-                  .filter((candidate) => candidate.transportMethodId !== destination.transportMethodId)
-                  .map((candidate) => (
-                    <button
-                      key={`${candidate.name}-${candidate.travelTime}`}
-                      type="button"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
-                      onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
-                    >
-                      {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
-                      <span>
-                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
-                        {formatDurationAsHourMinute(candidate.travelTime)})
-                      </span>
-                    </button>
-                  ))}
-              </div>
-            )}
-          </div>
-        </>
-
-        {selectableDepartureCandidates.length > 0 && (
-          <div className="text-sm text-gray-600" data-testid="destination-time-candidates">
-            <span className="mr-2">他の候補:</span>
-            {selectableDepartureCandidates.map((time) => (
-              <button
-                key={time}
-                type="button"
-                className="mr-2 underline hover:text-blue-600"
-                onClick={() => handleDepartureTimeChange(time)}
-              >
-                {time}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="my-10 border-gray-300 py-8 relative" data-testid={`destination-detail-card-${index}`}>
       {/* スポット情報 */}
       <div className="relative pl-8">
         {/* 番号付き (四角) */}

@@ -3,7 +3,7 @@
 import { Calendar, Clock, ExternalLink, MapPin, Star } from 'lucide-react';
 import Image from 'next/image';
 
-import { ExtendNearestStationType, ExtendSpotType } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 import { calculateDuration } from '@/lib/algorithm';
 import { formatDurationAsHourMinute } from '@/lib/planning';
 
@@ -14,18 +14,16 @@ import { NearestStationDetail } from './NearestStationDetail';
 
 interface SpotCardProps {
   spot: ExtendSpotType;
-  nextNearestStation?: ExtendNearestStationType;
 }
 
-export function SpotInfoCard({ spot, nextNearestStation }: SpotCardProps) {
+export function SpotInfoCard({ spot }: SpotCardProps) {
   const transportIcon = transportIcons[spot.transportMethod]?.icon ?? transportIcons.DEFAULT?.icon;
   const displayNearestStation = spot.nearestStation
     ? {
         ...spot.nearestStation,
-        scheduledDepartureTime:
-          nextNearestStation?.scheduledDepartureTime ?? spot.nearestStation.scheduledDepartureTime,
-        transitTime: nextNearestStation?.transitTime ?? spot.nearestStation.transitTime,
-        memo: nextNearestStation?.memo ?? spot.nearestStation.memo,
+        scheduledDepartureTime: spot.nearestStation.scheduledDepartureTime,
+        transitTime: spot.nearestStation.transitTime,
+        memo: spot.nearestStation.memo,
       }
     : undefined;
 

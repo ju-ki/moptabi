@@ -129,7 +129,6 @@ export default function DepartureDetailCard({
             originNearestStation={departure.nearestStation}
             destinationNearestStation={nextSpot.nearestStation}
             activeDepartureTime={activeDepartureTime}
-            isReverse={true}
           />
         )}
 

@@ -5,7 +5,7 @@ import { MapPin, Clock, Train, FootprintsIcon, X, Car, Bike, CircleHelp, Externa
 import Image from 'next/image';
 import { TransportMethodType } from '@shared/transports/types';
 
-import { ExtendSpotType, TravelModeType } from '@/types/plan';
+import { ExtendSpotType, TransportNodeType, TravelModeType } from '@/types/plan';
 import { placeTypeMap } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
@@ -80,6 +80,8 @@ export default function SpotDetailCard({
   onDepartureTimeChange,
 }: SpotDetailCardProps) {
   const fields = useStoreForPlanning();
+  const spots = fields.getSpotInfo(date, null);
+  const destination = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const transportCandidates =
     spot.alternateRoutes?.map((transport) => ({
       name: transport.transportMethod as TransportMethodType,
@@ -89,7 +91,7 @@ export default function SpotDetailCard({
     })) ?? [];
   const planningResult = fields.getPlanningResult(date);
   const [activeDepartureTime, setActiveDepartureTime] = useState<string>(
-    planningResult?.updatedSpots[index]?.routeToNext?.scheduledDepartureTime ?? '',
+    planningResult?.updatedSpots[index]?.nearestStation?.scheduledDepartureTime ?? '',
   );
 
   const selectableDepartureCandidates = useMemo(
@@ -267,63 +269,71 @@ export default function SpotDetailCard({
       </div>
 
       {/* 移動手段 */}
-      {index !== -1 && (
-        <div className="space-y-3 mb-4" data-testid="spot-transport">
-          {spot.nearestStation && nextSpot.nearestStation && spot.transportMethodId == 4 && (
+      <div className="space-y-3 mb-4" data-testid="spot-transport">
+        {index != spots.length - 1 && spot.nearestStation && nextSpot.nearestStation && spot.transportMethodId == 4 && (
+          <RouteSummaryNearestStation
+            originNearestStation={spot.nearestStation}
+            destinationNearestStation={nextSpot.nearestStation}
+            activeDepartureTime={activeDepartureTime}
+          />
+        )}
+        {index == spots.length - 1 &&
+          spot.transportMethodId == 4 &&
+          spot.nearestStation &&
+          destination.nearestStation && (
             <RouteSummaryNearestStation
               originNearestStation={spot.nearestStation}
-              destinationNearestStation={nextSpot.nearestStation}
+              destinationNearestStation={destination.nearestStation}
               activeDepartureTime={activeDepartureTime}
             />
           )}
-          <div className="flex items-center space-x-2 text-gray-600">
-            {transportIcons[spot.transportMethod as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
-            <span>
-              {transportIcons[spot.transportMethod as TravelModeType]?.label || transportIcons.DEFAULT.label} (
-              {formatDurationAsHourMinute(spot.travelTime)})
-            </span>
-            <div className="flex items-center flex-wrap gap-2 ml-2"></div>
-            {routeInfo && transportCandidates.length > 0 && (
-              <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
-                {transportCandidates
-                  .filter((candidate) => candidate.transportMethodId !== spot.transportMethodId)
-                  .map((candidate) => (
-                    <Button
-                      key={`${candidate.name}-${candidate.travelTime}`}
-                      type="button"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
-                      aria-label={`Change to ${candidate.name}`}
-                      aria-disabled={candidate.isDisabled ? 'true' : 'false'}
-                      onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
-                    >
-                      {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
-                      <span>
-                        {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
-                        {formatDurationAsHourMinute(candidate.travelTime)})
-                      </span>
-                    </Button>
-                  ))}
-              </div>
-            )}
-          </div>
-
-          {selectableDepartureCandidates.length > 0 && (
-            <div className="text-sm text-gray-600" data-testid="spot-departure-candidates">
-              <span className="mr-2">他の候補:</span>
-              {selectableDepartureCandidates.map((time) => (
-                <button
-                  key={time}
-                  type="button"
-                  className="mr-2 underline hover:text-blue-600"
-                  onClick={() => handleDepartureTimeChange(time)}
-                >
-                  {time}
-                </button>
-              ))}
+        <div className="flex items-center space-x-2 text-gray-600">
+          {transportIcons[spot.transportMethod as TravelModeType]?.icon || transportIcons.DEFAULT.icon}
+          <span>
+            {transportIcons[spot.transportMethod as TravelModeType]?.label || transportIcons.DEFAULT.label} (
+            {formatDurationAsHourMinute(spot.travelTime)})
+          </span>
+          <div className="flex items-center flex-wrap gap-2 ml-2"></div>
+          {routeInfo && transportCandidates.length > 0 && (
+            <div className="flex flex-wrap gap-2" data-testid="spot-transport-candidates">
+              {transportCandidates
+                .filter((candidate) => candidate.transportMethodId !== spot.transportMethodId)
+                .map((candidate) => (
+                  <Button
+                    key={`${candidate.name}-${candidate.travelTime}`}
+                    type="button"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-sm text-gray-600 transition-colors cursor-pointer"
+                    aria-label={`Change to ${candidate.name}`}
+                    aria-disabled={candidate.isDisabled ? 'true' : 'false'}
+                    onClick={() => fields.switchAlternativeRoute(date, routeInfo.id, candidate.transportMethodId)}
+                  >
+                    {transportIcons[candidate.name]?.icon || transportIcons.DEFAULT.icon}
+                    <span>
+                      {transportIcons[candidate.name]?.label || transportIcons.DEFAULT.label} (
+                      {formatDurationAsHourMinute(candidate.travelTime)})
+                    </span>
+                  </Button>
+                ))}
             </div>
           )}
         </div>
-      )}
+
+        {selectableDepartureCandidates.length > 0 && (
+          <div className="text-sm text-gray-600" data-testid="spot-departure-candidates">
+            <span className="mr-2">他の候補:</span>
+            {selectableDepartureCandidates.map((time) => (
+              <button
+                key={time}
+                type="button"
+                className="mr-2 underline hover:text-blue-600"
+                onClick={() => handleDepartureTimeChange(time)}
+              >
+                {time}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

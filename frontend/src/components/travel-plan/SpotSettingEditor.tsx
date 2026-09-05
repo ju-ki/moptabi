@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 
 import { Badge } from '@/components/ui/badge';
+import { calcDistance } from '@/lib/algorithm';
 import { useStoreForPlanning } from '@/lib/plan';
 import { ExtendSpotType, TransportNodeType } from '@/types/plan';
 
@@ -22,6 +23,7 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
   const fields = useStoreForPlanning();
   const spots = fields.getSpotInfo(date, null);
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+  const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [draggedSpotId, setDraggedSpotId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
@@ -37,11 +39,9 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
       if (index === 0) {
         // 最初のスポットは出発地からの距離
         if (!departureData) return undefined;
-        return calculateDistance(
-          departureData.latitude,
-          departureData.longitude,
-          currentSpot.latitude,
-          currentSpot.longitude,
+        return calcDistance(
+          { lat: departureData.latitude, lng: departureData.longitude },
+          { lat: currentSpot.latitude, lng: currentSpot.longitude },
         );
       }
 
@@ -49,7 +49,10 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
       const prevSpot = spots.find((s) => s.id === prevSetting.id);
       if (!prevSpot) return undefined;
 
-      return calculateDistance(prevSpot.latitude, prevSpot.longitude, currentSpot.latitude, currentSpot.longitude);
+      return calcDistance(
+        { lat: prevSpot.latitude, lng: prevSpot.longitude },
+        { lat: currentSpot.latitude, lng: currentSpot.longitude },
+      );
     },
     [spots, departureData],
   );
@@ -189,20 +192,11 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
           <PlanSpotSettingCard
             key={spot.id}
             spot={spot}
+            destinationData={index === spots.length - 1 ? destinationData : undefined}
             totalSpots={spots.length}
             onSettingChange={handleSettingChange}
             distanceFromPrevious={getDistanceFromPrevious(spot.id, index)}
-            previousLocation={
-              index > 0
-                ? { id: '', name: '', lat: sortedSpots[index - 1].latitude, lng: sortedSpots[index - 1].longitude }
-                : {
-                    id: 'departure',
-                    name: departureData?.name || '出発地',
-                    lat: departureData?.latitude || 0,
-                    lng: departureData?.longitude || 0,
-                  }
-            }
-            previousSpot={index > 0 ? sortedSpots[index - 1] : undefined}
+            nextSpot={index < spots.length - 1 ? sortedSpots[index + 1] : undefined}
             onOrderChange={handleOrderChange}
             isDragging={draggedSpotId === spot.id}
             isDropTarget={dropTargetId === spot.id}
@@ -218,18 +212,4 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
       </div>
     </div>
   );
-}
-
-/**
- * 2点間の距離を計算（簡易版）
- */
-export function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371000; // 地球の半径（メートル）
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
 }

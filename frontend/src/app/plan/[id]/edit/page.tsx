@@ -20,7 +20,7 @@ import {
 } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
-import { ExtendPlanLocationType, ExtendSpotType, TransportNodeType, TravelPlanType } from '@/types/plan';
+import { TransportNodeType, TravelPlanType } from '@/types/plan';
 import { Button } from '@/components/ui/button';
 import { usePlanning } from '@/hooks/use-planning';
 import { useFetchTripDetail } from '@/hooks/use-trip';
@@ -208,7 +208,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
             </Tabs>
 
             {/* 作成ボタン */}
-            <CreatePlanButton isEdit={true} />
+            <CreatePlanButton isEdit={true} tripId={id} />
           </CardContent>
         </Card>
       </div>

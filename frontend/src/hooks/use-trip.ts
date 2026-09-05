@@ -48,6 +48,12 @@ async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripTyp
                     placeResultForStation.longitude ?? defaultLocation.lng,
                   ),
                 ),
+                distance: calculateDistance(
+                  placeResult.latitude ?? defaultLocation.lat,
+                  placeResult.longitude ?? defaultLocation.lng,
+                  placeResultForStation.latitude ?? defaultLocation.lat,
+                  placeResultForStation.longitude ?? defaultLocation.lng,
+                ),
                 transportMethodId: spot.transportMethodId,
               };
             } catch (error) {
@@ -97,6 +103,12 @@ async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripTyp
                 placeResultForDeparture.longitude ?? defaultLocation.lng,
               ),
             ),
+            distance: calculateDistance(
+              plan.departure.latitude ?? defaultLocation.lat,
+              plan.departure.longitude ?? defaultLocation.lng,
+              placeResultForDeparture.latitude ?? defaultLocation.lat,
+              placeResultForDeparture.longitude ?? defaultLocation.lng,
+            ),
           };
         } catch (error) {
           console.error(
@@ -123,6 +135,12 @@ async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripTyp
                 placeResultForDestination.latitude ?? defaultLocation.lat,
                 placeResultForDestination.longitude ?? defaultLocation.lng,
               ),
+            ),
+            distance: calculateDistance(
+              plan.destination.latitude ?? defaultLocation.lat,
+              plan.destination.longitude ?? defaultLocation.lng,
+              placeResultForDestination.latitude ?? defaultLocation.lat,
+              placeResultForDestination.longitude ?? defaultLocation.lng,
             ),
           };
         } catch (error) {

@@ -245,11 +245,15 @@ const DistanceInfo = ({ date, spots }: SpotProps) => {
           {spots[spots.length - 1].name} <span className="mx-1 text-xs">→</span> {destination.name}
         </div>
         <div className="flex items-center space-x-3">
-          <div className="text-xl flex-shrink-0" role="img" aria-label={destination.transportMethod || '移動手段'}>
-            {transportIcons[destination.transportMethod as TravelModeType]?.icon || 'ℹ️'}
+          <div
+            className="text-xl flex-shrink-0"
+            role="img"
+            aria-label={spots[spots.length - 1].transportMethod || '移動手段'}
+          >
+            {transportIcons[spots[spots.length - 1].transportMethod as TravelModeType]?.icon || 'ℹ️'}
           </div>
           <div className="text-xl font-extrabold text-blue-700 leading-none flex-grow">
-            {formatDurationAsHourMinute(destination.travelTime)}
+            {formatDurationAsHourMinute(spots[spots.length - 1].travelTime)}
           </div>
           <div className="text-xs text-gray-500 flex-shrink-0">
             {formatDistanceAsKilometer(

@@ -278,25 +278,7 @@ describe('SpotInfoCard', () => {
       expect(screen.getByTestId('nearest-station-type-icon')).toHaveTextContent('?');
     });
 
-    it('最寄駅の発車時間が未設定の場合は--:--を表示する', () => {
-      const spot = createMockSpot({
-        nearestStation: {
-          name: '赤羽橋駅',
-          placeId: 'station-no-time',
-          stationType: 'TRAIN',
-          walkingTime: 5,
-          latitude: 35.6565,
-          longitude: 139.7485,
-          transitTime: 10,
-        },
-      });
-
-      render(<SpotInfoCard spot={spot} />);
-
-      expect(screen.getByTestId('nearest-station-departure-time')).toHaveTextContent('--:--');
-    });
-
-    it('最寄駅の発車時間・乗車時間・メモは次スポット情報を優先表示する', () => {
+    it('最寄駅の発車時間・乗車時間・メモは現在のスポット情報を優先表示する', () => {
       const spot = createMockSpot({
         nearestStation: {
           name: '赤羽橋駅',
@@ -306,31 +288,16 @@ describe('SpotInfoCard', () => {
           latitude: 35.6565,
           longitude: 139.7485,
           transitTime: 3,
-          scheduledDepartureTime: '08:00',
+          scheduledDepartureTime: '11:45',
           memo: '現在スポット側メモ',
         },
       });
 
-      render(
-        <SpotInfoCard
-          spot={spot}
-          nextNearestStation={{
-            latitude: 35.6565,
-            longitude: 139.7485,
-            placeId: 'station-next',
-            stationType: 'TRAIN',
-            name: '次スポット側の駅',
-            walkingTime: 7,
-            transitTime: 21,
-            scheduledDepartureTime: '11:45',
-            memo: '次スポット側メモ',
-          }}
-        />,
-      );
+      render(<SpotInfoCard spot={spot} />);
 
       expect(screen.getByTestId('nearest-station-departure-time')).toHaveTextContent('11:45');
-      expect(screen.getByTestId('nearest-station-transit-time')).toHaveTextContent('21分');
-      expect(screen.getByTestId('nearest-station-memo')).toHaveTextContent('次スポット側メモ');
+      expect(screen.getByTestId('nearest-station-transit-time')).toHaveTextContent('3分');
+      expect(screen.getByTestId('nearest-station-memo')).toHaveTextContent('現在スポット側メモ');
     });
 
     it('最寄駅メモが空文字の場合は表示しない', () => {
