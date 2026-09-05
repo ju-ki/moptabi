@@ -645,7 +645,7 @@ export const useStoreForPlanning = create<FormState>()(
                 travelTime: selectedRouteInfo.duration,
                 transportMethod: selectedRouteInfo.transportMethod,
                 transportMethodId: selectedRouteInfo.transportMethodId,
-                alternativeTransports: route.alternativeRoutes,
+                alternateRoutes: route.alternativeRoutes,
               };
             }
           }
@@ -665,6 +665,19 @@ export const useStoreForPlanning = create<FormState>()(
           }
           // 最後のスポットから目的地へのルートの場合
           else if (route.toType === 'DESTINATION') {
+            //最後のスポットを更新
+            const lastSpotIndex = state.plans[plansForDateIndex].spots.length - 1;
+            if (lastSpotIndex !== -1) {
+              const currentLastSpot = state.plans[plansForDateIndex].spots[lastSpotIndex];
+              state.plans[plansForDateIndex].spots[lastSpotIndex] = {
+                ...currentLastSpot,
+                travelTime: selectedRouteInfo.duration,
+                transportMethod: selectedRouteInfo.transportMethod,
+                transportMethodId: selectedRouteInfo.transportMethodId,
+                alternateRoutes: route.alternativeRoutes,
+              };
+            }
+
             // 直接destinationを更新（immer内なのでsetterを使わない）
             const currentDestination = state.plans[plansForDateIndex].destination;
             if (currentDestination) {
@@ -673,7 +686,7 @@ export const useStoreForPlanning = create<FormState>()(
                 travelTime: 0,
                 transportMethod: 'DEFAULT',
                 transportMethodId: 0,
-                alternativeTransports: [],
+                alternateRoutes: [],
               };
             }
           }

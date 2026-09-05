@@ -183,6 +183,8 @@ export default function PlanSpotSettingCard({
 
       onSettingChange({
         ...spot,
+        transportMethodId: 4,
+        transportMethod: 'TRANSIT',
         nearestStation: {
           spotId: station.spotId,
           placeId: stationId,
@@ -195,7 +197,6 @@ export default function PlanSpotSettingCard({
           isManualTransitTime: false,
           scheduledDepartureTime,
           scheduledDepartureTimes: scheduledDepartureTimes.filter((candidate) => candidate !== ''),
-          transportMethodId: 1,
         },
       });
     }

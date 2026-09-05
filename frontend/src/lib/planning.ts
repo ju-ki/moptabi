@@ -1113,7 +1113,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   );
 
   // スポット間での時間調整
-  for (let i = 0; i < plannedSpots.length; i++) {
+  for (let i = 0; i < plannedSpots.length - 1; i++) {
     useNearestStation = false;
     const currentSpot = plannedSpots[i];
     const stayStart = minutesToTime(currentPlanningTime);
@@ -1242,9 +1242,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const lastSegmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
     const preferredLastSegmentMethodId = params.preferredTransportMethodIds?.[lastSegmentKey];
     const preferredLastSegmentDepartureTimes = params.preferredDepartureTimes?.[lastSegmentKey];
+    const stayStart = minutesToTime(currentPlanningTime);
+    const stayEnd = minutesToTime(currentPlanningTime + lastSpot.stayDuration);
     // 読み取り専用プロパティへの直接割り当てを避けるため、新しいオブジェクトを作成
-    let updatedLastSpot: ExtendSpotType = { ...lastSpot };
-
+    let updatedLastSpot: ExtendSpotType = { ...lastSpot, stayStart, stayEnd };
+    currentPlanningTime += updatedLastSpot.stayDuration;
     if (lastSpot.nearestStation && params.destination.nearestStation) {
       useNearestStation = true;
       const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
@@ -1319,7 +1321,6 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     updatedDestination.travelTime = 0;
     updatedDestination.transportMethodId = 0;
     updatedDestination.transportMethod = 'DEFAULT';
-
     currentPlanningTime += updatedLastSpot.travelTime;
     updatedSpots[plannedSpots.length - 1] = updatedLastSpot;
 
