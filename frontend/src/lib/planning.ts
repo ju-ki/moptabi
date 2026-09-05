@@ -1242,6 +1242,9 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     const lastSegmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
     const preferredLastSegmentMethodId = params.preferredTransportMethodIds?.[lastSegmentKey];
     const preferredLastSegmentDepartureTimes = params.preferredDepartureTimes?.[lastSegmentKey];
+    // 読み取り専用プロパティへの直接割り当てを避けるため、新しいオブジェクトを作成
+    let updatedLastSpot: ExtendSpotType = { ...lastSpot };
+
     if (lastSpot.nearestStation && params.destination.nearestStation) {
       useNearestStation = true;
       const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
@@ -1259,17 +1262,17 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
       const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
       const waitingMinutes = Math.max(selectedMinutes - stationArrival, 0);
-      const segmentKey = lastSegmentKey;
       totalDuration = walkToStation + waitingMinutes + transitMinutes + walkFromStation;
 
-      if (lastSpot.nearestStation) {
-        lastSpot.nearestStation = {
+      updatedLastSpot = {
+        ...updatedLastSpot,
+        nearestStation: {
           ...lastSpot.nearestStation,
           waitingTime: waitingMinutes,
           scheduledDepartureTime: selectedCandidates.selectedTime,
           scheduledDepartureTimes: candidates,
-        };
-      }
+        },
+      };
 
       if (updatedDestination.nearestStation) {
         updatedDestination.nearestStation = {
@@ -1283,7 +1286,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
           level: selectedCandidates.level,
           segmentKey: buildSegmentKey(
             selectedCandidates.segmentType ?? PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED,
-            segmentKey,
+            lastSegmentKey,
           ),
           message: selectedCandidates.message,
         });
@@ -1292,34 +1295,37 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
 
     const routeResult = await getOptimalRouteWithAlternatives(
       {
-        lat: lastSpot.latitude,
-        lng: lastSpot.longitude,
+        lat: updatedLastSpot.latitude,
+        lng: updatedLastSpot.longitude,
       },
       destinationCoord,
       [...params.transportMethodIds, preferredLastSegmentMethodId ?? 0],
       useNearestStation,
       currentPlanningTime,
       getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
-      lastSpot.nearestStation,
+      updatedLastSpot.nearestStation,
       params.destination.nearestStation,
       preferredLastSegmentDepartureTimes,
     );
     pushRouteFailureMessages(messages, lastSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
-    lastSpot.travelTime = useNearestStation ? totalDuration : routeResult.selectedRoute.duration;
-    lastSpot.transportMethodId = routeResult.selectedRoute.transportMethodId;
-    lastSpot.transportMethod = getTravelMethodName(routeResult.selectedRoute.transportMethodId);
+    updatedLastSpot = {
+      ...updatedLastSpot,
+      travelTime: useNearestStation ? totalDuration : routeResult.selectedRoute.duration,
+      transportMethodId: routeResult.selectedRoute.transportMethodId,
+      transportMethod: getTravelMethodName(routeResult.selectedRoute.transportMethodId),
+    };
 
     updatedDestination.travelTime = 0;
     updatedDestination.transportMethodId = 0;
     updatedDestination.transportMethod = 'DEFAULT';
 
-    currentPlanningTime += lastSpot.travelTime;
-    updatedSpots[plannedSpots.length - 1] = lastSpot;
+    currentPlanningTime += updatedLastSpot.travelTime;
+    updatedSpots[plannedSpots.length - 1] = updatedLastSpot;
 
     routes.push(
       buildRouteInfo({
-        fromSpotId: lastSpot.id,
+        fromSpotId: updatedLastSpot.id,
         toSpotId: 'destination',
         fromType: 'SPOT',
         toType: 'DESTINATION',
@@ -1331,7 +1337,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     if (routeResult.selectedRoute.transportMethodId === 1) {
       const duration = routeResult.selectedRoute.duration;
       const distance = routeResult.selectedRoute.distance;
-      pushLongWalkMessage(messages, lastSegmentKey, duration, distance, lastSpot.name, DESTINATION_NAME);
+      pushLongWalkMessage(messages, lastSegmentKey, duration, distance, updatedLastSpot.name, DESTINATION_NAME);
     }
   }
   const destinationTime = minutesToTime(currentPlanningTime);

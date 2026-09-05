@@ -1,7 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import userEvent from '@testing-library/user-event';
 
 import NearestStationDestination from '@/components/travel-plan/nearestStation/NearestStationDestination';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -262,8 +261,7 @@ describe('NearestStationDestination', () => {
   });
 
   // SPEC: PC-NSDT-002
-  it('移動時間入力で transitTime が更新される', () => {
-    const user = userEvent.setup();
+  it('目的地の最寄駅の移動時間入力欄は表示されない', () => {
     mockGetDepartureAndDestination.mockReturnValue({
       name: '羽田空港',
       latitude: 35.5494,
@@ -286,22 +284,12 @@ describe('NearestStationDestination', () => {
       </TooltipProvider>,
     );
 
-    const transitTimeInput = screen.getByTestId('transit-time-test');
-
-    fireEvent.change(transitTimeInput, { target: { value: 35 } });
-
-    expect(mockSetDepartureAndDestination).toHaveBeenCalledWith(
-      '2026-04-25',
-      TransportNodeType.DESTINATION,
-      expect.objectContaining({
-        nearestStation: expect.objectContaining({ transitTime: 35 }),
-      }),
-    );
+    const transitTimeInput = screen.queryByTestId('transit-time-test');
+    expect(transitTimeInput).not.toBeInTheDocument();
   });
 
   // SPEC: PC-NSDT-003
-  it('路線メモ入力で memo が更新される', async () => {
-    const user = userEvent.setup();
+  it('目的地の最寄駅のメモは表示されない', async () => {
     mockGetDepartureAndDestination.mockReturnValue({
       name: '羽田空港',
       latitude: 35.5494,
@@ -323,15 +311,7 @@ describe('NearestStationDestination', () => {
       </TooltipProvider>,
     );
 
-    const memoTextarea = screen.getByPlaceholderText('例: ○○線 △△行き、乗り換え1回');
-    await user.type(memoTextarea, 'モノレール 羽田空港行き');
-
-    expect(mockSetDepartureAndDestination).toHaveBeenCalledWith(
-      '2026-04-25',
-      TransportNodeType.DESTINATION,
-      expect.objectContaining({
-        nearestStation: expect.objectContaining({ memo: 'モノレール 羽田空港行き' }),
-      }),
-    );
+    const memoTextarea = screen.queryByPlaceholderText('例: ○○線 △△行き、乗り換え1回');
+    expect(memoTextarea).not.toBeInTheDocument();
   });
 });
