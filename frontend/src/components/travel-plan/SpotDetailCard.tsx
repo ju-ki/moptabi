@@ -112,9 +112,7 @@ export default function SpotDetailCard({
     );
   }
 
-  const routeInfo = planningResult?.routes?.find(
-    (r) => r.fromType === 'SPOT' && r.toType === 'SPOT' && r.fromSpotId === spot.id,
-  );
+  const routeInfo = planningResult?.routes?.find((r) => r.fromSpotId === spot.id);
 
   return (
     <div

@@ -106,8 +106,7 @@ export type ExtendSpotType = TripSpotType &
 
 export type ExtendPlanLocationType = PlanLocationType & {
   nearestStation?: ExtendNearestStationType;
-  alternativeTransports?: AlternativeRouteInfo[];
-  alternateRoutes?: AlternativeRouteInfo[];
+  alternateRoutes: AlternativeRouteInfo[];
 };
 
 export type TravelPlanType = {

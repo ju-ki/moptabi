@@ -159,7 +159,7 @@ export type RouteInfo = {
   useNearestStation?: boolean; // 最寄駅を経由するか
   nearestStationId?: number; // 経由する最寄駅のID
   /** 代替ルート情報 - プレビュー画面での切り替え用 */
-  alternativeRoutes?: AlternativeRouteInfo[];
+  alternativeRoutes: AlternativeRouteInfo[];
 };
 
 /**

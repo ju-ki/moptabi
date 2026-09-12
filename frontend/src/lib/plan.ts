@@ -624,12 +624,6 @@ export const useStoreForPlanning = create<FormState>()(
             distance: selectedRouteInfo.distance,
           };
 
-          // 総距離と総時間を再計算
-          const newTotalDuration = state.planningResults[date].routes.reduce((sum, r) => sum + r.duration, 0);
-          const newTotalDistance = state.planningResults[date].routes.reduce((sum, r) => sum + r.distance, 0);
-          state.planningResults[date].totalDuration = newTotalDuration;
-          state.planningResults[date].totalDistance = newTotalDistance;
-
           // スポット・出発地・目的地のtransportsも更新
           const plansForDateIndex = state.plans.findIndex((plan) => plan.date === date);
           if (plansForDateIndex === -1) return;

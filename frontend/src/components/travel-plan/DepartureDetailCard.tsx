@@ -56,13 +56,14 @@ export default function DepartureDetailCard({
 
   const nextSpot = fields.getSpotInfo(date, null)[0];
   const transportCandidates =
-    departure?.alternativeTransports?.map((transport) => ({
+    departure?.alternateRoutes?.map((transport) => ({
       name: transport.transportMethod as TravelModeType,
       travelTime: transport.duration,
       transportMethod: transport.transportMethod as TransportMethodType,
       transportMethodId: transport.transportMethodId,
       isDisabled: false, //TODO: 仮
     })) ?? [];
+
   const planningResult = fields.getPlanningResult(date);
   const routeInfo = planningResult?.routes?.find((r) => r.fromType === 'DEPARTURE' && r.toType === 'SPOT');
 

@@ -97,6 +97,7 @@ const Destination = ({ date }: { date: string }) => {
                           userLocationId: candidate.userLocationId ?? undefined,
                           transportMethod: 'DEFAULT',
                           transportMethodId: 0,
+                          alternateRoutes: [],
                         });
                         setOpen(false);
                       }}
@@ -137,6 +138,7 @@ const Destination = ({ date }: { date: string }) => {
                           travelTime: 0,
                           transportMethod: 'DEFAULT',
                           transportMethodId: 0,
+                          alternateRoutes: [],
                         });
                         setSelectedPlanLocationId(candidate.planLocationId || null);
                         setOpen(false);

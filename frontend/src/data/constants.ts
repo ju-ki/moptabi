@@ -90,6 +90,7 @@ export const DEFAULT_DEPARTURE_AND_DESTINATION: ExtendPlanLocationType = {
   transportMethod: 'DEFAULT',
   transportMethodId: 0,
   time: '09:00',
+  alternateRoutes: [],
 };
 
 export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {

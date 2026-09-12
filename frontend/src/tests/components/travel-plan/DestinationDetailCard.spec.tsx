@@ -19,7 +19,7 @@ vi.mock('@/lib/plan', () => ({
   }),
 }));
 
-type AlternativeTransport = {
+type AlternativeRoute = {
   transportMethodId: number;
   transportMethod: 'WALKING' | 'BICYCLING' | 'TRANSIT' | 'DRIVING';
   duration: number;
@@ -37,10 +37,10 @@ function createDestination(overrides?: Partial<Record<string, unknown>>) {
       name: '梅田駅',
       walkingTime: 6,
     },
-    alternativeTransports: [
+    alternateRoutes: [
       { transportMethodId: 1, transportMethod: 'WALKING', duration: 30 },
       { transportMethodId: 2, transportMethod: 'BICYCLING', duration: 20 },
-    ] as AlternativeTransport[],
+    ] as AlternativeRoute[],
     ...overrides,
   };
 }
@@ -198,7 +198,7 @@ describe('DestinationDetailCard', () => {
 
     it('複数日で異なる移動手段候補が表示される', () => {
       const destination = createDestination({
-        alternativeTransports: [
+        alternateRoutes: [
           { transportMethodId: 1, transportMethod: 'WALKING', duration: 30 },
           { transportMethodId: 2, transportMethod: 'BICYCLING', duration: 20 },
         ],
@@ -227,6 +227,7 @@ describe('DestinationDetailCard', () => {
 
       render(<DestinationDetailCard date="2025-12-21" index={1} />);
       expect(screen.queryByRole('button', { name: /自転車 \(20分\)/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /徒歩 \(30分\)/ })).not.toBeInTheDocument();
     });
   });
 });

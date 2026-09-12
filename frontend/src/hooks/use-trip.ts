@@ -154,10 +154,12 @@ async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripTyp
       const enrichedDeparture: ExtendPlanLocationType = {
         ...plan.departure,
         nearestStation: nearestStationDeparture,
+        alternateRoutes: [],
       };
       const enrichedDestination: ExtendPlanLocationType = {
         ...plan.destination,
         nearestStation: nearestStationDestination,
+        alternateRoutes: [],
       };
 
       return {

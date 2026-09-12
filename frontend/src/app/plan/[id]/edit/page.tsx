@@ -90,6 +90,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
             transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
             travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
             time: DEFAULT_DEPARTURE_TIME,
+            alternateRoutes: [],
           },
           {
             name: defaultDestination?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
@@ -101,6 +102,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
             transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
             travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
             time: DEFAULT_ARRIVAL_TIME,
+            alternateRoutes: [],
           },
         );
       });

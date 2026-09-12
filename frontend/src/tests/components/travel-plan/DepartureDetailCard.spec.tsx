@@ -37,7 +37,7 @@ function createDeparture(overrides?: Partial<Record<string, unknown>>) {
       name: '新宿三丁目駅',
       walkingTime: 5,
     },
-    alternativeTransports: [
+    alternateRoutes: [
       { transportMethodId: 1, transportMethod: 'WALKING', duration: 20 },
       { transportMethodId: 2, transportMethod: 'BICYCLING', duration: 15 },
     ] as AlternativeTransport[],
@@ -205,7 +205,7 @@ describe('DepartureDetailCard', () => {
 
     it('複数日で異なる移動手段候補が表示される', () => {
       const departure = createDeparture({
-        alternativeTransports: [
+        alternateRoutes: [
           { transportMethodId: 1, transportMethod: 'WALKING', duration: 20 },
           { transportMethodId: 2, transportMethod: 'BICYCLING', duration: 15 },
         ],

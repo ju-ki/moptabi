@@ -1,25 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { MapPin, Train, FootprintsIcon, Car, Bike, CircleHelp, Clock } from 'lucide-react';
+import { MapPin, Train, Clock } from 'lucide-react';
 
 import { TransportNodeType, TravelModeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, SpotMakerColors } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 import { formatDurationAsHourMinute } from '@/lib/planning';
-
-import type { TransportMethodType } from '@shared/transports/types';
-
-/**
- * 移動手段のアイコンと表示名のマッピング
- */
-const transportIcons: Record<TransportMethodType | 'DEFAULT', { icon: JSX.Element; label: string }> = {
-  WALKING: { icon: <FootprintsIcon className="w-5 h-5 text-yellow-500" />, label: '徒歩' },
-  TRANSIT: { icon: <Train className="w-5 h-5 text-blue-500" />, label: '最寄駅/バス停経由' },
-  DRIVING: { icon: <Car className="w-5 h-5 text-gray-700" />, label: '車' },
-  BICYCLING: { icon: <Bike className="w-5 h-5 text-green-500" />, label: '自転車' },
-  DEFAULT: { icon: <CircleHelp className="w-5 h-5 text-gray-400" />, label: '不明' },
-};
 
 /**
  * DestinationDetailCardコンポーネントのプロパティ
