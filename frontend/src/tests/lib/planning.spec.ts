@@ -32,6 +32,7 @@ function createBaseLocation(locationType: 'DEPARTURE' | 'DESTINATION'): ExtendPl
     transportMethod: 'WALKING' as const,
     time: locationType === 'DEPARTURE' ? '09:00' : '11:00',
     travelTime: 0,
+    alternateRoutes: [],
   };
 }
 
