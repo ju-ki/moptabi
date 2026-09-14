@@ -8,7 +8,6 @@ import {
   ExtendNearestStationType,
 } from '@/types/plan';
 import {
-  DEFAULT_ARRIVAL_TIME,
   DEFAULT_DEPARTURE_TIME,
   DEPARTURE_NAME,
   DESTINATION_NAME,
@@ -732,10 +731,8 @@ export async function getOptimalRouteWithAlternatives(
   const uniqueTransportMethodIds = Array.from(new Set(transportMethodIds));
 
   for (const methodId of uniqueTransportMethodIds) {
-    if (methodId == 0) continue; // 無効な移動手段IDはスキップ
+    if (methodId == 0 || methodId == 4) continue; // 無効な移動手段IDはスキップ
     const mode = getTravelModeFromId(methodId);
-    // TRANSITは除外
-    if (mode === 'TRANSIT') continue;
 
     try {
       const result = await getRoute(from, to, mode);
@@ -756,40 +753,6 @@ export async function getOptimalRouteWithAlternatives(
         reason: error instanceof Error ? error.message : 'ルート取得に失敗しました',
         failed: true,
       });
-    }
-  }
-
-  // ルートが取得できなかった場合は徒歩でフォールバック
-  if (routes.length === 0) {
-    try {
-      const fallback = await getRoute(from, to, 'WALKING');
-      return {
-        selectedRoute: { ...fallback, transportMethodId: 1 },
-        alternativeRoutes: [],
-        failedRoutes: failedRoutes.length > 0 ? failedRoutes : undefined,
-        isFallbackToWalking: failedRoutes.length > 0,
-      };
-    } catch (error) {
-      // 徒歩でも取得できなかった場合（非常にレアなケース）
-      console.error('徒歩ルートも取得できませんでした:', error);
-      failedRoutes.push({
-        transportMethodId: 1,
-        reason: error instanceof Error ? error.message : '徒歩ルートも取得できませんでした',
-        failed: true,
-      });
-      // 空のルートを返す（エラーとして処理）
-      return {
-        selectedRoute: {
-          path: [from, to],
-          distance: 0,
-          duration: 0,
-          transportMethod: 'WALKING',
-          transportMethodId: 1,
-        },
-        alternativeRoutes: [],
-        failedRoutes,
-        isFallbackToWalking: true,
-      };
     }
   }
 
@@ -835,6 +798,40 @@ export async function getOptimalRouteWithAlternatives(
     selectedRoute = sortedRoutes[0];
   }
   const alternativeRoutes = [selectedRoute, ...sortedRoutes.filter((route) => route !== selectedRoute)];
+
+  // ルートが取得できなかった場合は徒歩でフォールバック
+  if (selectedRoute === undefined) {
+    try {
+      const fallback = await getRoute(from, to, 'WALKING');
+      return {
+        selectedRoute: { ...fallback, transportMethodId: 1 },
+        alternativeRoutes: [],
+        failedRoutes: failedRoutes.length > 0 ? failedRoutes : undefined,
+        isFallbackToWalking: failedRoutes.length > 0,
+      };
+    } catch (error) {
+      // 徒歩でも取得できなかった場合（非常にレアなケース）
+      console.error('徒歩ルートも取得できませんでした:', error);
+      failedRoutes.push({
+        transportMethodId: 1,
+        reason: error instanceof Error ? error.message : '徒歩ルートも取得できませんでした',
+        failed: true,
+      });
+      // 空のルートを返す（エラーとして処理）
+      return {
+        selectedRoute: {
+          path: [from, to],
+          distance: 0,
+          duration: 0,
+          transportMethod: 'WALKING',
+          transportMethodId: 1,
+        },
+        alternativeRoutes: [],
+        failedRoutes,
+        isFallbackToWalking: true,
+      };
+    }
+  }
 
   return {
     selectedRoute,
