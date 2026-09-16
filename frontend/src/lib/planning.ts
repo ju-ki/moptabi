@@ -1040,8 +1040,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   const firstSegmentKey = 'DEPARTURE_TO_FIRST_SPOT';
   const preferredFirstSegmentMethodId = params.preferredTransportMethodIds?.[firstSegmentKey];
   const preferredFirstSegmentDepartureTime = params.preferredDepartureTimes?.[firstSegmentKey];
-
-  if (params.departure.nearestStation && firstSpot.nearestStation) {
+  if (
+    params.departure.nearestStation &&
+    firstSpot.nearestStation &&
+    (preferredFirstSegmentMethodId == 4 || preferredFirstSegmentMethodId == undefined)
+  ) {
     useNearestStation = true;
     const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
       params.departure.nearestStation,
@@ -1150,7 +1153,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       const segmentKey = `SPOT_${currentSpot.id}_TO_${nextSpot.id}`;
       const preferredSpotToSpotMethodId = params.preferredTransportMethodIds?.[segmentKey];
       const preferredSpotToSpotDepartureTime = params.preferredDepartureTimes?.[segmentKey];
-      if (currentSpot.nearestStation && nextSpot.nearestStation) {
+      if (
+        currentSpot.nearestStation &&
+        nextSpot.nearestStation &&
+        (preferredSpotToSpotMethodId == 4 || preferredSpotToSpotMethodId == undefined)
+      ) {
         useNearestStation = true;
         const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
           currentSpot.nearestStation,
@@ -1263,7 +1270,11 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     // 読み取り専用プロパティへの直接割り当てを避けるため、新しいオブジェクトを作成
     let updatedLastSpot: ExtendSpotType = { ...lastSpot, stayStart, stayEnd };
     currentPlanningTime += updatedLastSpot.stayDuration;
-    if (lastSpot.nearestStation && params.destination.nearestStation) {
+    if (
+      lastSpot.nearestStation &&
+      params.destination.nearestStation &&
+      (preferredLastSegmentMethodId == 4 || preferredLastSegmentMethodId == undefined)
+    ) {
       useNearestStation = true;
       const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
         lastSpot.nearestStation,
