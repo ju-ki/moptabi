@@ -946,6 +946,25 @@ function buildNearestStationRouteInfo(
 
 function buildRouteInfo(params: BuildRouteInfoParams): RouteInfo {
   const isNearestStationRoute = params.routeResult.selectedRoute.transportMethodId === 4;
+  // selectedNearestStationRouteの情報を取得
+  const selectedNearestStationRoute = params.routeResult.selectedNearestStationRoute
+    ? params.routeResult.selectedNearestStationRoute
+    : null;
+  // すでにalternativeRoutesに同じルートが存在するか確認
+  if (
+    selectedNearestStationRoute?.length &&
+    !params.routeResult.alternativeRoutes.some((route) => route.transportMethodId === 4)
+  ) {
+    // selectedNearestStationRouteが存在する場合, alternativeRouteに情報を格納する
+    const nearestStationRoute: RouteResult & { transportMethodId: number } = {
+      path: [],
+      distance: selectedNearestStationRoute.reduce((acc, route) => acc + route.distance, 0),
+      duration: selectedNearestStationRoute.reduce((acc, route) => acc + route.duration, 0),
+      transportMethod: 'TRANSIT',
+      transportMethodId: 4,
+    };
+    params.routeResult.alternativeRoutes.push(nearestStationRoute);
+  }
   return {
     id: `route-${params.fromSpotId}-to-${params.toSpotId}`,
     fromSpotId: params.fromSpotId,
