@@ -6,9 +6,9 @@ pre-commit 実行時に lint だけでなく format:check も必須化し、ど�
 
 ## 2. 変更対象
 
-- `/home/runner/work/moptabi/moptabi/.husky/pre-commit`
+- `"$(git rev-parse --show-toplevel)"/.husky/pre-commit`
   - pre-commit で lint と format:check の両方を順番に実行する
-- `/home/runner/work/moptabi/moptabi/package.json`
+- `"$(git rev-parse --show-toplevel)"/package.json`
   - ルートから frontend / backend の format:check をまとめて実行できる script を追加する
 
 ## 3. 実装方針
@@ -29,7 +29,7 @@ pre-commit 実行時に lint だけでなく format:check も必須化し、ど�
 事前準備:
 
 ```bash
-cd /home/runner/work/moptabi/moptabi
+cd "$(git rev-parse --show-toplevel)"
 ```
 
 ### 5-1. 正常系
@@ -82,7 +82,7 @@ npm run format:check
 ## 6. 実行コマンド
 
 ```bash
-cd /home/runner/work/moptabi/moptabi
+cd "$(git rev-parse --show-toplevel)"
 npm run lint
 npm run format:check
 .husky/pre-commit
