@@ -4,9 +4,12 @@
   "scripts": {
     "lint:frontend": "npm --prefix frontend run lint",
     "lint:backend": "npm --prefix backend run lint",
+    "format:check:frontend": "npm --prefix frontend run format:check",
+    "format:check:backend": "npm --prefix backend run format:check",
     "typecheck:frontend": "npm --prefix frontend run typecheck",
     "typecheck:backend": "npm --prefix backend run typecheck",
     "lint": "npm run lint:frontend && npm run lint:backend",
+    "format:check": "npm run format:check:frontend && npm run format:check:backend",
     "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
     "prepare": "husky install"
   },
