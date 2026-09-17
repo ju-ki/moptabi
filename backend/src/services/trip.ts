@@ -186,6 +186,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
           latitude: pn.departure.latitude,
           longitude: pn.departure.longitude,
           time: pn.departure.time,
+          transportMethodId: pn.departure.transportMethodId,
+          travelTime: pn.departure.travelTime,
         })
         .where(
           and(eq(planLocation.planId, currentPlanData[0].id), eq(planLocation.locationType, LOCATION_TYPE.DEPARTURE)),
@@ -235,6 +237,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
           latitude: pn.destination.latitude,
           longitude: pn.destination.longitude,
           time: pn.destination.time,
+          transportMethodId: pn.destination.transportMethodId,
+          travelTime: pn.destination.travelTime,
         })
         .where(
           and(eq(planLocation.planId, currentPlanData[0].id), eq(planLocation.locationType, LOCATION_TYPE.DESTINATION)),
@@ -290,6 +294,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
             stayStart: spot.stayStart,
             stayEnd: spot.stayEnd,
             stayDuration: spot.stayDuration ?? 0,
+            transportMethodId: spot.transportMethodId,
+            travelTime: spot.travelTime,
           })
           .onConflictDoUpdate({
             target: [planSpot.planId, planSpot.spotId],
@@ -299,6 +305,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
               stayStart: spot.stayStart,
               stayEnd: spot.stayEnd,
               stayDuration: spot.stayDuration ?? 0,
+              transportMethodId: spot.transportMethodId,
+              travelTime: spot.travelTime,
             },
           })
           .returning();
