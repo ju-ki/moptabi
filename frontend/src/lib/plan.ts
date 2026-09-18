@@ -25,20 +25,30 @@ export type FormData = TripType;
 
 /**
  * スポット配列をディープコピーし、スナップショット保存/復元時の参照共有を防ぐ。
+ * 最寄駅情報を含む全フィールドを明示的に保持する。
+ * JSON.stringify では undefined がロストするため、スプレッド演算子を使用。
  * @param spots コピー対象のスポット配列
  * @returns ディープコピー済みのスポット配列
  */
 function cloneSpots(spots: ExtendSpotType[]): ExtendSpotType[] {
-  return JSON.parse(JSON.stringify(spots)) as ExtendSpotType[];
+  return spots.map((spot) => ({
+    ...spot,
+    nearestStation: spot.nearestStation ? { ...spot.nearestStation } : undefined,
+  }));
 }
 
 /**
  * 出発地・目的地情報をディープコピーし、スナップショット保存/復元時の参照共有を防ぐ。
+ * 最寄駅情報を含む全フィールドを明示的に保持する。
+ * JSON.stringify では undefined がロストするため、スプレッド演算子を使用。
  * @param depAndDest コピー対象の出発地・目的地情報
  * @returns ディープコピー済みの出発地・目的地情報
  */
 function cloneDepartureAndDestination(depAndDest: ExtendPlanLocationType): ExtendPlanLocationType {
-  return JSON.parse(JSON.stringify(depAndDest)) as ExtendPlanLocationType;
+  return {
+    ...depAndDest,
+    nearestStation: depAndDest.nearestStation ? { ...depAndDest.nearestStation } : undefined,
+  };
 }
 
 type PlanningInitialState = Pick<
