@@ -1,5 +1,5 @@
 import { Bus, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -213,6 +213,19 @@ const NearestStationDestination = ({ date }: { date: string }) => {
       });
     }
   };
+
+  useEffect(() => {
+    // destinationDataが変更されたときに、最寄駅関連のローカルステートを再初期化
+    if (!destinationData) return;
+    setDestinationNearestStations(destinationData.nearestStation ? [destinationData.nearestStation] : []);
+    setSelectedDestinationStationId(destinationData.nearestStation?.placeId || null);
+    setDestinationTransitTime(destinationData.nearestStation?.transitTime || 0);
+    setScheduledDepartureTime(destinationData.nearestStation?.scheduledDepartureTime || '');
+    setScheduledDepartureTimes(buildInitialDepartureCandidates());
+    setTransitMemo(destinationData.nearestStation?.memo || '');
+    setIsDestinationSectionExpanded(!!destinationData.nearestStation && !!destinationData.nearestStation.name);
+    setUseDestinationNearestStation(!!destinationData.nearestStation);
+  }, [destinationData]);
 
   return (
     <Card>

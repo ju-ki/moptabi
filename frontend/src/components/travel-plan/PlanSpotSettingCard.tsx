@@ -267,6 +267,21 @@ export default function PlanSpotSettingCard({
     onSettingChange({ ...spot, stayDuration: Math.max(0, duration) });
   };
 
+  useEffect(() => {
+    // spotが変更されたときに、最寄駅関連のローカルステートを再初期化
+    setUseNearestStation(!!spot.nearestStation);
+    setNearestStations(spot.nearestStation ? [spot.nearestStation] : []);
+    setSelectedStationId(spot.nearestStation?.placeId || null);
+    setTransitTime(spot.nearestStation?.transitTime || 0);
+    setScheduledDepartureTime(spot.nearestStation?.scheduledDepartureTime || '');
+    setScheduledDepartureTimes(buildInitialDepartureCandidates());
+    setTransitMemo(spot.nearestStation?.memo || '');
+    setIsStationSectionExpanded(!!spot.nearestStation && !!spot.nearestStation.name);
+    setCanDisplayTransitInfo(
+      !!spot.nearestStation && (!!nextSpot?.nearestStation || !!destinationData?.nearestStation),
+    );
+  }, [spot]);
+
   const orderOptions = Array.from({ length: totalSpots }, (_, i) => i + 1);
   const orderSelect = (
     <Select value={String(spot.order)} onValueChange={(value) => onOrderChange(spot.id, Number(value))}>
