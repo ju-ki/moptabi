@@ -49,7 +49,7 @@ jobs:
         run: pnpm run format:check
 
       - name: Run Tests
-        run: pnpm run TZ=Asia/Tokyo test:coverage
+        run: TZ=Asia/Tokyo pnpm run test:coverage
 
       - name: 'Report Coverage'
         if: always()
