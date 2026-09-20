@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { X } from 'lucide-react';
@@ -57,8 +57,21 @@ export const NotificationDetailDialog: React.FC<NotificationDetailDialogProps> =
   /**
    * ダイアログ表示時に、未読の場合は既読にする
    */
+  const viewedNotificationIdsRef = useRef<Set<number>>(new Set());
+
   useEffect(() => {
-    if (isOpen && notification && !notification.isRead && onNotificationView) {
+    if (!isOpen) {
+      viewedNotificationIdsRef.current.clear();
+      return;
+    }
+
+    if (
+      notification &&
+      !notification.isRead &&
+      onNotificationView &&
+      !viewedNotificationIdsRef.current.has(notification.id)
+    ) {
+      viewedNotificationIdsRef.current.add(notification.id);
       onNotificationView(notification.id);
     }
   }, [isOpen, notification, onNotificationView]);

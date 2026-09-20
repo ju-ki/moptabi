@@ -103,6 +103,7 @@ const Notification = () => {
                   <div className="space-y-4">
                     {notifications.map((notification) => (
                       <div
+                        role="button"
                         key={notification.id}
                         data-testid={`notification-item-${notification.id}`}
                         onClick={() => handleNotificationClick(notification)}
