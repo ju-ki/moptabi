@@ -86,6 +86,8 @@ describe('NotificationDetailDialog コンポーネント', () => {
     });
 
     it('公開日時がフォーマットされて表示される', () => {
+      // new Date() を使って現在時刻を固定する場合はここに記述する
+      vi.useFakeTimers().setSystemTime(new Date('2025-09-20T14:30:00+09:00'));
       render(
         <NotificationDetailDialog
           isOpen={true}
@@ -97,6 +99,7 @@ describe('NotificationDetailDialog コンポーネント', () => {
 
       const publishedDate = screen.getByTestId('published-date');
       expect(publishedDate).toHaveTextContent('9月20日 14:30');
+      vi.useRealTimers();
     });
   });
 
