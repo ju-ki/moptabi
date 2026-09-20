@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { AutoExpandTextarea } from '@/components/ui/auto-expand-textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -271,12 +271,12 @@ export function NotificationManagementContainer({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="content">本文</Label>
-                <Textarea
+                <AutoExpandTextarea
                   id="content"
                   value={formData.content}
                   onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                   placeholder="お知らせの本文"
-                  rows={4}
+                  minRows={4}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -430,11 +430,11 @@ export function NotificationManagementContainer({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-content">本文</Label>
-                  <Textarea
+                  <AutoExpandTextarea
                     id="edit-content"
                     value={editingNotification.content}
                     onChange={(e) => setEditingNotification({ ...editingNotification, content: e.target.value })}
-                    rows={4}
+                    minRows={4}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
