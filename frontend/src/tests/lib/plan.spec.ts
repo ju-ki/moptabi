@@ -23,6 +23,21 @@ function createSpot(id: string, overrides: Partial<ExtendSpotType> = {}): Extend
   };
 }
 
+function createLocation(overrides: Partial<ExtendPlanLocationType> = {}): ExtendPlanLocationType {
+  return {
+    name: 'Location 1',
+    latitude: 35,
+    longitude: 139,
+    transportMethod: 'TRANSIT',
+    locationType: 'DEPARTURE',
+    transportMethodId: 4,
+    time: '09:00',
+    travelTime: 10,
+    alternateRoutes: [],
+    ...overrides,
+  };
+}
+
 function setupPlannedDate(date: string, spots: ExtendSpotType[]) {
   const store = useStoreForPlanning.getState();
   store.setFields('plans', [
@@ -77,6 +92,362 @@ describe('useStoreForPlanning', () => {
     expect(resetStore.imageUrl).toBe('');
     expect(resetStore.departureList).toEqual({ favorites: [], history: [] });
     expect(resetStore.destinationList).toEqual({ favorites: [], history: [] });
+  });
+
+  describe('リセット後の最寄駅情報', () => {
+    it('最寄駅情報更新後、更新前の状態に戻っていること', () => {
+      const store = useStoreForPlanning.getState();
+      const targetDate = '2026-06-01';
+
+      // 期待される初期最寄駅情報
+      const expectedDepartureNearestStation = {
+        placeId: 'station-1',
+        name: 'Station 1',
+        latitude: 35.123,
+        longitude: 139.456,
+        stationType: 'BUS' as const,
+        transitTime: 5,
+        walkingTime: 3,
+        spotId: 'departure-spot-1',
+        scheduledDepartureTime: '09:15',
+        scheduledDepartureTimes: ['09:15', '09:30'],
+        waitingTime: 2,
+      };
+
+      const expectedSpotNearestStation = {
+        placeId: 'station-3',
+        name: 'Station 3',
+        latitude: 35.789,
+        longitude: 139.654,
+        stationType: 'TRAIN' as const,
+        transitTime: 8,
+        walkingTime: 4,
+        spotId: 'spot-1-station',
+        scheduledDepartureTime: '10:00',
+        scheduledDepartureTimes: ['10:00', '10:15'],
+        waitingTime: 1,
+      };
+
+      const testSpot = createSpot('spot-1', {
+        nearestStation: expectedSpotNearestStation,
+      });
+
+      // Arrange: 初期状態をセット
+      store.setFields('title', 'テストタイトル');
+      store.setFields('startDate', targetDate);
+      store.setFields('endDate', '2026-06-02');
+      store.setFields('plans', [
+        {
+          date: targetDate,
+          spots: [testSpot],
+          departure: createLocation({
+            locationType: 'DEPARTURE',
+            nearestStation: expectedDepartureNearestStation,
+            travelTime: 12,
+          }),
+          destination: createLocation({
+            locationType: 'DESTINATION',
+            nearestStation: {
+              placeId: 'station-2',
+              name: 'Station 2',
+              latitude: 35.999,
+              longitude: 139.888,
+              stationType: 'BUS' as const,
+              transitTime: 0,
+              walkingTime: 5,
+              spotId: 'destination-spot',
+            },
+          }),
+        },
+      ]);
+
+      // setPlanningResult で最寄駅情報をスナップショット
+      store.setPlanningResult(targetDate, { routes: [] } as any);
+
+      // 最寄駅情報を変更
+      store.setDepartureAndDestination(targetDate, TransportNodeType.DEPARTURE, {
+        ...createLocation({
+          locationType: 'DEPARTURE',
+          nearestStation: {
+            placeId: 'station-999',
+            name: 'Station 999 (Changed)',
+            latitude: 36.0,
+            longitude: 140.0,
+            stationType: 'TRAIN' as const,
+            transitTime: 20,
+          },
+        }),
+      } as ExtendPlanLocationType);
+
+      // Act: 復元実行
+      store.restorePlannedSpots(targetDate);
+
+      // Assert: 復元後の最寄駅情報が元の値と完全に一致することを検証
+      const restoredDeparture = store.getDepartureAndDestination(targetDate, TransportNodeType.DEPARTURE);
+      const restoredSpots = store.getSpotInfo(targetDate, TransportNodeType.SPOT);
+
+      // 出発地の最寄駅情報を検証（8項目）
+      expect(restoredDeparture?.nearestStation).toBeDefined();
+      expect(restoredDeparture?.nearestStation?.placeId).toBe(expectedDepartureNearestStation.placeId);
+      expect(restoredDeparture?.nearestStation?.name).toBe(expectedDepartureNearestStation.name);
+      expect(restoredDeparture?.nearestStation?.latitude).toBe(expectedDepartureNearestStation.latitude);
+      expect(restoredDeparture?.nearestStation?.longitude).toBe(expectedDepartureNearestStation.longitude);
+      expect(restoredDeparture?.nearestStation?.stationType).toBe(expectedDepartureNearestStation.stationType);
+      expect(restoredDeparture?.nearestStation?.spotId).toBe(expectedDepartureNearestStation.spotId);
+      expect(restoredDeparture?.nearestStation?.transitTime).toBe(expectedDepartureNearestStation.transitTime);
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTime).toBe(
+        expectedDepartureNearestStation.scheduledDepartureTime,
+      );
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTimes).toEqual(
+        expectedDepartureNearestStation.scheduledDepartureTimes,
+      );
+
+      // スポットの最寄駅情報を検証
+      expect(restoredSpots.length).toBe(1);
+      expect(restoredSpots[0]?.nearestStation).toBeDefined();
+      expect(restoredSpots[0]?.nearestStation?.placeId).toBe(expectedSpotNearestStation.placeId);
+      expect(restoredSpots[0]?.nearestStation?.name).toBe(expectedSpotNearestStation.name);
+      expect(restoredSpots[0]?.nearestStation?.latitude).toBe(expectedSpotNearestStation.latitude);
+      expect(restoredSpots[0]?.nearestStation?.longitude).toBe(expectedSpotNearestStation.longitude);
+      expect(restoredSpots[0]?.nearestStation?.stationType).toBe(expectedSpotNearestStation.stationType);
+      expect(restoredSpots[0]?.nearestStation?.spotId).toBe(expectedSpotNearestStation.spotId);
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTime).toBe(
+        expectedSpotNearestStation.scheduledDepartureTime,
+      );
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTimes).toEqual(
+        expectedSpotNearestStation.scheduledDepartureTimes,
+      );
+
+      // dirty が解除されていることを確認
+      expect(store.isPlanningDirty(targetDate)).toBe(false);
+    });
+    it('最寄駅情報追加後、追加前の状態に戻っていること', () => {
+      const store = useStoreForPlanning.getState();
+      const targetDate = '2026-06-01';
+
+      // 期待される初期最寄駅情報
+      const expectedDepartureNearestStation = {
+        placeId: 'station-1-add',
+        name: 'Station 1 Add',
+        latitude: 35.111,
+        longitude: 139.111,
+        stationType: 'TRAIN' as const,
+        transitTime: 6,
+        walkingTime: 2,
+        spotId: 'departure-add-spot',
+        scheduledDepartureTime: '08:45',
+        scheduledDepartureTimes: ['08:45', '09:00', '09:15'],
+        waitingTime: 3,
+      };
+
+      const expectedSpotNearestStation = {
+        placeId: 'station-3-add',
+        name: 'Station 3 Add',
+        latitude: 35.222,
+        longitude: 139.222,
+        stationType: 'BUS' as const,
+        transitTime: 7,
+        walkingTime: 3,
+        spotId: 'spot-1-add-station',
+        scheduledDepartureTime: '10:30',
+        scheduledDepartureTimes: ['10:30', '10:45'],
+        waitingTime: 2,
+      };
+
+      const testSpot = createSpot('spot-1');
+
+      // Arrange: 初期状態をセット
+      store.setFields('title', 'テストタイトル');
+      store.setFields('startDate', targetDate);
+      store.setFields('endDate', '2026-06-02');
+      store.setFields('plans', [
+        {
+          date: targetDate,
+          spots: [testSpot],
+          departure: createLocation({
+            locationType: 'DEPARTURE',
+          }),
+          destination: createLocation({
+            locationType: 'DESTINATION',
+          }),
+        },
+      ]);
+
+      // setPlanningResult で最寄駅情報をスナップショット
+      store.setPlanningResult(targetDate, { routes: [] } as any);
+
+      // 最寄駅情報を変更（追加）
+      store.setSpots(
+        targetDate,
+        createSpot('spot-1', {
+          nearestStation: {
+            placeId: 'station-999-add',
+            name: 'Station 999 Add (Changed)',
+            latitude: 36.5,
+            longitude: 140.5,
+            stationType: 'TRAIN' as const,
+            transitTime: 25,
+          },
+        }),
+        false,
+      );
+
+      // Act: 復元実行
+      store.restorePlannedSpots(targetDate);
+
+      // Assert: 復元後の最寄駅情報が元の値と完全に一致することを検証
+      const restoredDeparture = store.getDepartureAndDestination(targetDate, TransportNodeType.DEPARTURE);
+      const restoredSpots = store.getSpotInfo(targetDate, TransportNodeType.SPOT);
+
+      // 出発地の最寄駅情報を検証（8項目）
+      expect(restoredDeparture?.nearestStation).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.placeId).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.name).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.latitude).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.longitude).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.stationType).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.spotId).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTime).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTimes).toBeUndefined();
+
+      // スポットの最寄駅情報を検証
+      expect(restoredSpots.length).toBe(1);
+      expect(restoredSpots[0]?.nearestStation).toBeUndefined();
+      expect(restoredSpots[0]?.nearestStation?.placeId).not.toBe(expectedSpotNearestStation.placeId);
+      expect(restoredSpots[0]?.nearestStation?.name).not.toBe(expectedSpotNearestStation.name);
+      expect(restoredSpots[0]?.nearestStation?.latitude).not.toBe(expectedSpotNearestStation.latitude);
+      expect(restoredSpots[0]?.nearestStation?.longitude).not.toBe(expectedSpotNearestStation.longitude);
+      expect(restoredSpots[0]?.nearestStation?.stationType).not.toBe(expectedSpotNearestStation.stationType);
+      expect(restoredSpots[0]?.nearestStation?.spotId).not.toBe(expectedSpotNearestStation.spotId);
+      expect(restoredSpots[0]?.nearestStation?.transitTime).not.toBe(expectedSpotNearestStation.transitTime);
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTime).not.toBe(
+        expectedSpotNearestStation.scheduledDepartureTime,
+      );
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTimes).not.toEqual(
+        expectedSpotNearestStation.scheduledDepartureTimes,
+      );
+
+      // dirty が解除されていることを確認
+      expect(store.isPlanningDirty(targetDate)).toBe(false);
+    });
+    it('最寄駅情報削除後、削除前の状態に戻っていること', () => {
+      const store = useStoreForPlanning.getState();
+      const targetDate = '2026-06-01';
+
+      // 期待される初期最寄駅情報
+      const expectedDepartureNearestStation = {
+        placeId: 'station-1-del',
+        name: 'Station 1 Del',
+        latitude: 35.555,
+        longitude: 139.555,
+        stationType: 'BUS' as const,
+        transitTime: 4,
+        walkingTime: 1,
+        spotId: 'departure-del-spot',
+        scheduledDepartureTime: '07:30',
+        scheduledDepartureTimes: ['07:30', '08:00'],
+        waitingTime: 1,
+      };
+
+      const expectedSpotNearestStation = {
+        placeId: 'station-3-del',
+        name: 'Station 3 Del',
+        latitude: 35.666,
+        longitude: 139.666,
+        stationType: 'TRAIN' as const,
+        transitTime: 9,
+        walkingTime: 2,
+        spotId: 'spot-1-del-station',
+        scheduledDepartureTime: '11:00',
+        scheduledDepartureTimes: ['11:00', '11:30'],
+        waitingTime: 5,
+      };
+
+      const testSpot = createSpot('spot-1', {
+        nearestStation: expectedSpotNearestStation,
+      });
+
+      // Arrange: 初期状態をセット
+      store.setFields('title', 'テストタイトル');
+      store.setFields('startDate', targetDate);
+      store.setFields('endDate', '2026-06-02');
+      store.setFields('plans', [
+        {
+          date: targetDate,
+          spots: [testSpot],
+          departure: createLocation({
+            locationType: 'DEPARTURE',
+            nearestStation: expectedDepartureNearestStation,
+          }),
+          destination: createLocation({
+            locationType: 'DESTINATION',
+            nearestStation: {
+              placeId: 'station-2-del',
+              name: 'Station 2 Del',
+              latitude: 35.777,
+              longitude: 139.777,
+              stationType: 'BUS' as const,
+              transitTime: 2,
+              walkingTime: 6,
+              spotId: 'destination-del-spot',
+            },
+          }),
+        },
+      ]);
+
+      // setPlanningResult で最寄駅情報をスナップショット
+      store.setPlanningResult(targetDate, { routes: [] } as any);
+
+      // 最寄駅情報を削除（変更）
+      store.setDepartureAndDestination(targetDate, TransportNodeType.DEPARTURE, {
+        ...createLocation({
+          locationType: 'DEPARTURE',
+          nearestStation: undefined, // 最寄駅情報を削除
+        }),
+      } as ExtendPlanLocationType);
+
+      // Act: 復元実行
+      store.restorePlannedSpots(targetDate);
+
+      // Assert: 復元後の最寄駅情報が元の値と完全に一致することを検証
+      const restoredDeparture = store.getDepartureAndDestination(targetDate, TransportNodeType.DEPARTURE);
+      const restoredSpots = store.getSpotInfo(targetDate, TransportNodeType.SPOT);
+
+      // 出発地の最寄駅情報を検証（8項目）
+      expect(restoredDeparture?.nearestStation).toBeDefined();
+      expect(restoredDeparture?.nearestStation?.placeId).toBe(expectedDepartureNearestStation.placeId);
+      expect(restoredDeparture?.nearestStation?.name).toBe(expectedDepartureNearestStation.name);
+      expect(restoredDeparture?.nearestStation?.latitude).toBe(expectedDepartureNearestStation.latitude);
+      expect(restoredDeparture?.nearestStation?.longitude).toBe(expectedDepartureNearestStation.longitude);
+      expect(restoredDeparture?.nearestStation?.stationType).toBe(expectedDepartureNearestStation.stationType);
+      expect(restoredDeparture?.nearestStation?.spotId).toBe(expectedDepartureNearestStation.spotId);
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTime).toBe(
+        expectedDepartureNearestStation.scheduledDepartureTime,
+      );
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTimes).toEqual(
+        expectedDepartureNearestStation.scheduledDepartureTimes,
+      );
+
+      // スポットの最寄駅情報を検証
+      expect(restoredSpots.length).toBe(1);
+      expect(restoredSpots[0]?.nearestStation).toBeDefined();
+      expect(restoredSpots[0]?.nearestStation?.placeId).toBe(expectedSpotNearestStation.placeId);
+      expect(restoredSpots[0]?.nearestStation?.name).toBe(expectedSpotNearestStation.name);
+      expect(restoredSpots[0]?.nearestStation?.latitude).toBe(expectedSpotNearestStation.latitude);
+      expect(restoredSpots[0]?.nearestStation?.longitude).toBe(expectedSpotNearestStation.longitude);
+      expect(restoredSpots[0]?.nearestStation?.stationType).toBe(expectedSpotNearestStation.stationType);
+      expect(restoredSpots[0]?.nearestStation?.spotId).toBe(expectedSpotNearestStation.spotId);
+      expect(restoredSpots[0]?.nearestStation?.transitTime).toBe(expectedSpotNearestStation.transitTime);
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTime).toBe(
+        expectedSpotNearestStation.scheduledDepartureTime,
+      );
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTimes).toEqual(
+        expectedSpotNearestStation.scheduledDepartureTimes,
+      );
+
+      // dirty が解除されていることを確認
+      expect(store.isPlanningDirty(targetDate)).toBe(false);
+    });
   });
 
   it('プランニング後に並び順を変更した場合、対象日付がdirtyになること', () => {

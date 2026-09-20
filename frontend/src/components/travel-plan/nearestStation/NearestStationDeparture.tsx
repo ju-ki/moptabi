@@ -1,5 +1,5 @@
 import { AlertTriangle, Bus, Calendar, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } f
 const NearestStationDeparture = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const firstSpot = fields.getSpotInfo(date, null)[0];
+
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const buildInitialDepartureCandidates = (): string[] => {
     const candidates = departureData?.nearestStation?.scheduledDepartureTimes?.slice(0, 3) ?? [];
@@ -213,6 +214,19 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
       });
     }
   };
+
+  // 変更されたら最初のスポットと出発地データを更新
+  useEffect(() => {
+    if (!departureData) return;
+    setDepartureNearestStations(departureData?.nearestStation ? [departureData.nearestStation] : []);
+    setSelectedDepartureStationId(departureData?.nearestStation?.placeId || '');
+    setDepartureTransitTime(departureData?.nearestStation?.transitTime || 0);
+    setTransitMemo(departureData?.nearestStation?.memo || '');
+    setScheduledDepartureTime(departureData?.nearestStation?.scheduledDepartureTime || '');
+    setScheduledDepartureTimes(buildInitialDepartureCandidates());
+    setIsDepartureSectionExpanded(!!departureData?.nearestStation && !!departureData?.nearestStation.placeId);
+    setUseDepartureNearestStation(!!departureData?.nearestStation);
+  }, [departureData]);
 
   return (
     <Card>
