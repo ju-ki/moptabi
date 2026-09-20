@@ -221,6 +221,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
     setDepartureNearestStations(departureData?.nearestStation ? [departureData.nearestStation] : []);
     setSelectedDepartureStationId(departureData?.nearestStation?.placeId || '');
     setDepartureTransitTime(departureData?.nearestStation?.transitTime || 0);
+    setTransitMemo(departureData?.nearestStation?.memo || '');
     setScheduledDepartureTime(departureData?.nearestStation?.scheduledDepartureTime || '');
     setScheduledDepartureTimes(buildInitialDepartureCandidates());
     setIsDepartureSectionExpanded(!!departureData?.nearestStation && !!departureData?.nearestStation.placeId);

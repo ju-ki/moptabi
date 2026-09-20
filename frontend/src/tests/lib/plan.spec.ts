@@ -194,6 +194,7 @@ describe('useStoreForPlanning', () => {
       expect(restoredDeparture?.nearestStation?.longitude).toBe(expectedDepartureNearestStation.longitude);
       expect(restoredDeparture?.nearestStation?.stationType).toBe(expectedDepartureNearestStation.stationType);
       expect(restoredDeparture?.nearestStation?.spotId).toBe(expectedDepartureNearestStation.spotId);
+      expect(restoredDeparture?.nearestStation?.transitTime).toBe(expectedDepartureNearestStation.transitTime);
       expect(restoredDeparture?.nearestStation?.scheduledDepartureTime).toBe(
         expectedDepartureNearestStation.scheduledDepartureTime,
       );
@@ -253,9 +254,7 @@ describe('useStoreForPlanning', () => {
         waitingTime: 2,
       };
 
-      const testSpot = createSpot('spot-1', {
-        nearestStation: expectedSpotNearestStation,
-      });
+      const testSpot = createSpot('spot-1');
 
       // Arrange: 初期状態をセット
       store.setFields('title', 'テストタイトル');
@@ -267,20 +266,9 @@ describe('useStoreForPlanning', () => {
           spots: [testSpot],
           departure: createLocation({
             locationType: 'DEPARTURE',
-            nearestStation: expectedDepartureNearestStation,
           }),
           destination: createLocation({
             locationType: 'DESTINATION',
-            nearestStation: {
-              placeId: 'station-2-add',
-              name: 'Station 2 Add',
-              latitude: 35.333,
-              longitude: 139.333,
-              stationType: 'TRAIN' as const,
-              transitTime: 1,
-              walkingTime: 4,
-              spotId: 'destination-add-spot',
-            },
           }),
         },
       ]);
@@ -312,33 +300,30 @@ describe('useStoreForPlanning', () => {
       const restoredSpots = store.getSpotInfo(targetDate, TransportNodeType.SPOT);
 
       // 出発地の最寄駅情報を検証（8項目）
-      expect(restoredDeparture?.nearestStation).toBeDefined();
-      expect(restoredDeparture?.nearestStation?.placeId).toBe(expectedDepartureNearestStation.placeId);
-      expect(restoredDeparture?.nearestStation?.name).toBe(expectedDepartureNearestStation.name);
-      expect(restoredDeparture?.nearestStation?.latitude).toBe(expectedDepartureNearestStation.latitude);
-      expect(restoredDeparture?.nearestStation?.longitude).toBe(expectedDepartureNearestStation.longitude);
-      expect(restoredDeparture?.nearestStation?.stationType).toBe(expectedDepartureNearestStation.stationType);
-      expect(restoredDeparture?.nearestStation?.spotId).toBe(expectedDepartureNearestStation.spotId);
-      expect(restoredDeparture?.nearestStation?.scheduledDepartureTime).toBe(
-        expectedDepartureNearestStation.scheduledDepartureTime,
-      );
-      expect(restoredDeparture?.nearestStation?.scheduledDepartureTimes).toEqual(
-        expectedDepartureNearestStation.scheduledDepartureTimes,
-      );
+      expect(restoredDeparture?.nearestStation).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.placeId).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.name).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.latitude).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.longitude).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.stationType).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.spotId).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTime).toBeUndefined();
+      expect(restoredDeparture?.nearestStation?.scheduledDepartureTimes).toBeUndefined();
 
       // スポットの最寄駅情報を検証
       expect(restoredSpots.length).toBe(1);
-      expect(restoredSpots[0]?.nearestStation).toBeDefined();
-      expect(restoredSpots[0]?.nearestStation?.placeId).toBe(expectedSpotNearestStation.placeId);
-      expect(restoredSpots[0]?.nearestStation?.name).toBe(expectedSpotNearestStation.name);
-      expect(restoredSpots[0]?.nearestStation?.latitude).toBe(expectedSpotNearestStation.latitude);
-      expect(restoredSpots[0]?.nearestStation?.longitude).toBe(expectedSpotNearestStation.longitude);
-      expect(restoredSpots[0]?.nearestStation?.stationType).toBe(expectedSpotNearestStation.stationType);
-      expect(restoredSpots[0]?.nearestStation?.spotId).toBe(expectedSpotNearestStation.spotId);
-      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTime).toBe(
+      expect(restoredSpots[0]?.nearestStation).toBeUndefined();
+      expect(restoredSpots[0]?.nearestStation?.placeId).not.toBe(expectedSpotNearestStation.placeId);
+      expect(restoredSpots[0]?.nearestStation?.name).not.toBe(expectedSpotNearestStation.name);
+      expect(restoredSpots[0]?.nearestStation?.latitude).not.toBe(expectedSpotNearestStation.latitude);
+      expect(restoredSpots[0]?.nearestStation?.longitude).not.toBe(expectedSpotNearestStation.longitude);
+      expect(restoredSpots[0]?.nearestStation?.stationType).not.toBe(expectedSpotNearestStation.stationType);
+      expect(restoredSpots[0]?.nearestStation?.spotId).not.toBe(expectedSpotNearestStation.spotId);
+      expect(restoredSpots[0]?.nearestStation?.transitTime).not.toBe(expectedSpotNearestStation.transitTime);
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTime).not.toBe(
         expectedSpotNearestStation.scheduledDepartureTime,
       );
-      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTimes).toEqual(
+      expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTimes).not.toEqual(
         expectedSpotNearestStation.scheduledDepartureTimes,
       );
 
@@ -452,6 +437,7 @@ describe('useStoreForPlanning', () => {
       expect(restoredSpots[0]?.nearestStation?.longitude).toBe(expectedSpotNearestStation.longitude);
       expect(restoredSpots[0]?.nearestStation?.stationType).toBe(expectedSpotNearestStation.stationType);
       expect(restoredSpots[0]?.nearestStation?.spotId).toBe(expectedSpotNearestStation.spotId);
+      expect(restoredSpots[0]?.nearestStation?.transitTime).toBe(expectedSpotNearestStation.transitTime);
       expect(restoredSpots[0]?.nearestStation?.scheduledDepartureTime).toBe(
         expectedSpotNearestStation.scheduledDepartureTime,
       );
