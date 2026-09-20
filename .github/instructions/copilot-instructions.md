@@ -71,7 +71,7 @@
 
 ## テスト
   - テストコード作成後は、必ずテストを実行して、テストが通ることを確認してください。
-  - frontendはfrontendフォルダ下で"npm run test"コマンドでテストを実行できます。
+  - frontendはfrontendフォルダ下で"pnpm run test"コマンドでテストを実行できます。
   - backendはbackendフォルダ下で"bun run test"コマンドでテストを実行できます
   - backendはbunとhonoのtestツールを使用します。
   - frontendはvitestとReact Testing Libraryを使用して、コンポーネントのユニットテストを記述します。
