@@ -1,10 +1,10 @@
 import { eq } from 'drizzle-orm/sql/expressions/conditions';
 import { count } from 'drizzle-orm/sql/functions/aggregate';
 import { HTTPException } from 'hono/http-exception';
+import { TripType } from '@shared/trip/types';
 
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 import { AnyDbType, trip } from '@/db';
-import { TripType } from '@/models/trip';
 
 export const validateLimit = async (db: AnyDbType, userId: string, tripData: TripType): Promise<boolean> => {
   // 上限チェック: プラン作成数

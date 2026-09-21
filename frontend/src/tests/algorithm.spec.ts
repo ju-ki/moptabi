@@ -1,5 +1,6 @@
-import { getPrefectures } from '@/lib/algorithm';
 import { describe, it, expect } from 'vitest';
+
+import { getPrefectures } from '@/lib/algorithm';
 
 // Google Maps APIのAddressComponentのモック型
 type MockAddressComponent = {

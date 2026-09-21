@@ -1,9 +1,14 @@
 import { z } from 'zod';
 
-import { OpeningHoursSchema } from '../trip/schema';
+import { NextTransportSchema, StationTypeSchema } from '../transports/schema';
+import { NearestStationSchema } from '../nearestStation/schema';
 
-// OpeningHoursSchema は trip ドメインで定義済みのため re-export
-export { OpeningHoursSchema };
+export const OpeningHoursSchema = z.array(
+  z.object({
+    day: z.string(),
+    hours: z.string(),
+  }),
+);
 
 // スポットのメタ情報スキーマ
 export const SpotMetaSchema = z.object({
@@ -17,10 +22,11 @@ export const SpotMetaSchema = z.object({
   prefecture: z.string().optional(),
   address: z.string().optional(),
   rating: z.number(),
+  ratingCount: z.number().optional(),
   categories: z.array(z.string()).optional(),
   catchphrase: z.string().optional(),
   description: z.string().optional(),
-  openingHours: OpeningHoursSchema.optional(),
+  regularOpeningHours: OpeningHoursSchema.optional(),
 });
 
 // プランとスポットの中間テーブルスキーマ
@@ -32,6 +38,7 @@ export const PlanSpotSchema = z.object({
   stayDuration: z.number(),
   memo: z.string().optional(),
   order: z.number(),
+  ...NextTransportSchema.shape,
 });
 
 // スポット本体スキーマ
@@ -45,4 +52,15 @@ export const SpotSchema = z.object({
 export const SpotWithMetaSchema = z.object({
   id: z.string(),
   meta: SpotMetaSchema.nullable(),
+});
+
+export const TripSpotSchema = z.object({
+  id: z.string(),
+  stayStart: z.string(),
+  stayEnd: z.string(),
+  stayDuration: z.number().int().min(0),
+  memo: z.string().optional(),
+  order: z.number(),
+  nearestStation: NearestStationSchema.optional(),
+  ...NextTransportSchema.shape,
 });

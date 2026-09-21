@@ -4,7 +4,7 @@ import Image from 'next/image';
 import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Spot } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 import { formatTimeDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { placeTypeMap } from '@/data/constants';
@@ -14,8 +14,8 @@ import { placeTypeMap } from '@/data/constants';
  * 表示内容: 画像、スポット名、評価、住所、外部リンク、訪問回数、前回訪問日時(YYYY-mm-dd)
  */
 interface VisitedSpotCardProps {
-  place: Spot;
-  onSpotClick?: (spot: Spot) => void;
+  place: ExtendSpotType;
+  onSpotClick?: (spot: ExtendSpotType) => void;
   isSpotSelected: (spotId: string) => boolean;
   viewMode?: 'list' | 'split' | 'map';
 }
@@ -23,7 +23,7 @@ interface VisitedSpotCardProps {
 const VisitedSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list' }: VisitedSpotCardProps) => {
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
 
-  const handleClickSpot = (spot: Spot) => {
+  const handleClickSpot = (spot: ExtendSpotType) => {
     onSpotClick?.(spot);
   };
 
@@ -65,7 +65,7 @@ const VisitedSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list'
               width={100}
               height={100}
               src={place.image || '/placeholder.jpg'}
-              alt={place.location.name || ''}
+              alt={place.name || ''}
               className={`w-full h-full object-cover transition-transform duration-500 ${
                 isHovered ? 'scale-110' : 'scale-100'
               }`}
@@ -90,7 +90,7 @@ const VisitedSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list'
                   }`}
                   data-testid={`visited-spot-name-${place.id}`}
                 >
-                  {place.location.name}
+                  {place.name}
                 </h4>
                 {isAdded && (
                   <div
@@ -121,14 +121,14 @@ const VisitedSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list'
             </div>
 
             {/* カテゴリ */}
-            {place.category && place.category.length > 0 && (
+            {place.categories && place.categories.length > 0 && (
               <div
                 className={`flex items-center gap-1.5 rounded-lg mt-4  w-fit ${
                   isSplitMode ? 'px-1.5 py-0.5' : 'px-2 py-1'
                 }`}
                 data-testid={`visited-spot-category-${place.id}`}
               >
-                {place.category.slice(0, 3).map((t: string) => (
+                {place.categories.slice(0, 3).map((t: string) => (
                   <Badge key={t} variant="secondary" className="text-xs font-medium">
                     {placeTypeMap[t] ?? 'その他'}
                   </Badge>

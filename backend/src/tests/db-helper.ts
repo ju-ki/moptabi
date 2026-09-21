@@ -11,7 +11,6 @@ import {
   wishlist,
   userNotification,
   notification,
-  transport,
   userLocation,
   planLocation,
   planLocationNearestStation,
@@ -28,7 +27,6 @@ export {
   wishlist,
   userNotification,
   notification,
-  transport,
   userLocation,
   planLocation,
   planLocationNearestStation,
@@ -58,7 +56,6 @@ export async function disconnectDb(): Promise<void> {
 export async function clearAllTestData(): Promise<void> {
   const db = createDevDb(process.env.DATABASE_URL!); // 開発用DBインスタンスを取得
   try {
-    await db.delete(transport);
     await db.delete(planSpotNearestStation);
     await db.delete(planSpot);
     await db.delete(planLocation);
@@ -105,7 +102,6 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
             .where(inArray(planSpot.planId, planIds));
           planSpotIdList = planSpots.map((ps) => ps.spotId);
         }
-        await db.delete(transport).where(inArray(transport.planId, planIds));
         const planSpotsForDelete = await db
           .select({ id: planSpot.id })
           .from(planSpot)
@@ -387,7 +383,6 @@ export async function deleteAllWishlists() {
  */
 export async function deleteAllTrips() {
   const db = createDevDb(process.env.DATABASE_URL!);
-  await db.delete(transport);
   await db.delete(planSpot);
   await db.delete(plan);
   await db.delete(trip);
@@ -425,7 +420,6 @@ export async function deleteTripsByUser(userId: string) {
     const planIds = plans.map((p) => p.id);
 
     if (planIds.length > 0) {
-      await db.delete(transport).where(inArray(transport.planId, planIds));
       await db.delete(planSpot).where(inArray(planSpot.planId, planIds));
     }
     await db.delete(plan).where(inArray(plan.tripId, tripIds));

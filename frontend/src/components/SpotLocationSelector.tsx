@@ -1,18 +1,18 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 
-import { Spot } from '@/types/plan';
+import { ExtendSpotType } from '@/types/plan';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Label } from './ui/label';
 
 interface SpotLocationSelectorProps {
   /** 選択済みスポット一覧 */
-  spots: Spot[];
+  spots: ExtendSpotType[];
   /** ラベル（例: "観光スポット周辺から出発地を選択する"） */
   label: string;
   /** 選択時のコールバック */
-  onSelect: (spot: Spot) => void;
+  onSelect: (spot: ExtendSpotType) => void;
   /** プレースホルダー */
   placeholder?: string;
 }
@@ -51,7 +51,7 @@ const SpotLocationSelector: React.FC<SpotLocationSelectorProps> = ({
           {spots.map((spot) => (
             <SelectItem key={spot.id} value={spot.id}>
               <div className="flex items-center gap-2">
-                <span>{spot.location.name}</span>
+                <span>{spot.name}</span>
                 {spot.rating && <span className="text-xs text-muted-foreground">★{spot.rating.toFixed(1)}</span>}
               </div>
             </SelectItem>

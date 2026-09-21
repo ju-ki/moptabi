@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import WishlistSpotInfoCard from '@/components/wishlist/WishlistSpotInfoCard';
 import { WishlistType } from '@/types/wishlist';
 

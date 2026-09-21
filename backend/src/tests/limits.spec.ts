@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
+import { PlanLocationType } from '@shared/planlocation/types';
 
 import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 
@@ -96,16 +97,15 @@ const createMockWishlistPayload = (spotId: string) => ({
   },
 });
 
-const createBasePlanLocation = (locationType: 'DEPARTURE' | 'DESTINATION') => ({
+const createBasePlanLocation = (locationType: 'DEPARTURE' | 'DESTINATION'): PlanLocationType => ({
   name: locationType === 'DEPARTURE' ? '出発地' : '目的地',
   latitude: 35.6762,
   longitude: 139.6503,
-  label: null,
-  isDefault: false,
   locationType,
-  usageCount: null,
-  userLocationId: null,
-  planLocationId: null,
+  time: '09:00',
+  transportMethodId: 1,
+  transportMethod: 'WALKING',
+  travelTime: 15,
 });
 
 const createTripPayload = (
@@ -116,8 +116,8 @@ const createTripPayload = (
     plans: Array<{
       date: string;
       spots: any[];
-      departure: ReturnType<typeof createBasePlanLocation>;
-      destination: ReturnType<typeof createBasePlanLocation>;
+      departure: PlanLocationType;
+      destination: PlanLocationType;
     }>;
   }> = {},
 ) => ({
@@ -326,30 +326,8 @@ describe('🔒 上限チェック機能', () => {
             endDate: '2025-01-01',
             plans: [
               {
-                date: '2025-01-01',
+                ...mockPlanData[0],
                 spots,
-                departure: {
-                  name: '出発地',
-                  latitude: 35.6762,
-                  longitude: 139.6503,
-                  label: null,
-                  isDefault: false,
-                  locationType: 'DEPARTURE',
-                  usageCount: null,
-                  userLocationId: null,
-                  planLocationId: null,
-                },
-                destination: {
-                  name: '目的地',
-                  latitude: 35.6762,
-                  longitude: 139.6503,
-                  label: null,
-                  isDefault: false,
-                  locationType: 'DESTINATION',
-                  usageCount: null,
-                  userLocationId: null,
-                  planLocationId: null,
-                },
               },
             ],
           },
@@ -386,12 +364,14 @@ describe('🔒 上限チェック機能', () => {
             title: '更新スポット過多プラン',
             plans: [
               {
+                ...mockPlanData[0],
                 date: '2025-01-01',
                 spots,
                 departure: createBasePlanLocation('DEPARTURE'),
                 destination: createBasePlanLocation('DESTINATION'),
               },
               {
+                ...mockPlanData[0],
                 date: '2025-01-02',
                 spots: [],
                 departure: createBasePlanLocation('DEPARTURE'),
@@ -431,30 +411,9 @@ describe('🔒 上限チェック機能', () => {
         const date = new Date('2025-01-01');
         date.setDate(date.getDate() + i);
         return {
+          ...mockPlanData[0],
           date: date.toISOString().split('T')[0],
           spots: [],
-          departure: {
-            name: '出発地',
-            latitude: 35.6762,
-            longitude: 139.6503,
-            label: null,
-            isDefault: false,
-            locationType: 'DEPARTURE',
-            usageCount: null,
-            userLocationId: null,
-            planLocationId: null,
-          },
-          destination: {
-            name: '目的地',
-            latitude: 35.6762,
-            longitude: 139.6503,
-            label: null,
-            isDefault: false,
-            locationType: 'DESTINATION',
-            usageCount: null,
-            userLocationId: null,
-            planLocationId: null,
-          },
         };
       });
 

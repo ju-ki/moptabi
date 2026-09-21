@@ -1,5 +1,5 @@
 import { AlertTriangle, Bus, Calendar, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,13 +14,12 @@ import { calculateDistance, estimateTransitTime } from '@/data/mockNearestStatio
 import { searchNearestStation } from '@/lib/google-maps';
 import { useStoreForPlanning } from '@/lib/plan';
 import { cn } from '@/lib/utils';
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { NearestStation } from '@/types/nearestStation';
-import { TransportNodeType } from '@/types/plan';
+import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } from '@/types/plan';
 
 const NearestStationDeparture = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const firstSpot = fields.getSpotInfo(date, null)[0];
+
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const buildInitialDepartureCandidates = (): string[] => {
     const candidates = departureData?.nearestStation?.scheduledDepartureTimes?.slice(0, 3) ?? [];
@@ -34,8 +33,8 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
   // 出発地の最寄駅関連の状態（最初のスポットの場合）
-  const [departureNearestStations, setDepartureNearestStations] = useState<NearestStation[]>(
-    [departureData?.nearestStation].filter((s): s is NearestStation => !!s),
+  const [departureNearestStations, setDepartureNearestStations] = useState<ExtendNearestStationType[]>(
+    [departureData?.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
   );
   const [selectedDepartureStationId, setSelectedDepartureStationId] = useState<string | null>(
     departureData?.nearestStation?.placeId || null,
@@ -43,9 +42,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   const [departureTransitTime, setDepartureTransitTime] = useState<number>(
     departureData?.nearestStation?.transitTime || 0,
   );
-  const [isDepartureManualTransitTime, setIsDepartureManualTransitTime] = useState<boolean>(
-    departureData?.nearestStation?.isManualTransitTime || false,
-  );
+
   // 発着時間メモ
   const [scheduledDepartureTime, setScheduledDepartureTime] = useState<string>(
     departureData?.nearestStation?.scheduledDepartureTime || '',
@@ -65,16 +62,11 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
 
   // スポット間の距離を計算
   const getDistanceFromPrevious = useCallback((): number | undefined => {
-    return calculateDistance(
-      firstSpot.location.lat,
-      firstSpot.location.lng,
-      departureData.latitude,
-      departureData.longitude,
-    );
+    return calculateDistance(firstSpot.latitude, firstSpot.longitude, departureData.latitude, departureData.longitude);
   }, [firstSpot, departureData]);
 
   // 出発地の情報を更新（最寄駅など）
-  const handleDepartureChange = (updatedDeparture: DepartureAndDestinationType) => {
+  const handleDepartureChange = (updatedDeparture: ExtendPlanLocationType) => {
     fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, updatedDeparture);
   };
 
@@ -122,7 +114,6 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
       handleDepartureChange({ ...departureData, nearestStation: undefined });
       setSelectedDepartureStationId(null);
       setDepartureTransitTime(0);
-      setIsDepartureManualTransitTime(false);
       setScheduledDepartureTime('');
       setScheduledDepartureTimes(['', '', '']);
     }
@@ -136,9 +127,10 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
       const distanceFromPrevious = getDistanceFromPrevious();
       const estimatedTime = distanceFromPrevious ? estimateTransitTime(distanceFromPrevious) : 0;
       setDepartureTransitTime(estimatedTime);
-      setIsDepartureManualTransitTime(false);
       handleDepartureChange({
         ...departureData,
+        transportMethodId: 4,
+        transportMethod: 'TRANSIT',
         nearestStation: {
           placeId: stationId,
           spotId: station.spotId,
@@ -148,7 +140,6 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
           latitude: station.latitude || 0,
           longitude: station.longitude || 0,
           transitTime: estimatedTime,
-          isManualTransitTime: false,
           scheduledDepartureTime,
           scheduledDepartureTimes: scheduledDepartureTimes.filter((candidate) => candidate !== ''),
         },
@@ -212,7 +203,6 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
   const handleDepartureTransitTimeChange = (newTime: number) => {
     const validTime = Math.min(540, Math.max(1, newTime || 1));
     setDepartureTransitTime(validTime);
-    setIsDepartureManualTransitTime(true);
 
     if (departureData?.nearestStation) {
       handleDepartureChange({
@@ -220,11 +210,23 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
         nearestStation: {
           ...departureData.nearestStation,
           transitTime: validTime,
-          isManualTransitTime: true,
         },
       });
     }
   };
+
+  // 変更されたら最初のスポットと出発地データを更新
+  useEffect(() => {
+    if (!departureData) return;
+    setDepartureNearestStations(departureData?.nearestStation ? [departureData.nearestStation] : []);
+    setSelectedDepartureStationId(departureData?.nearestStation?.placeId || '');
+    setDepartureTransitTime(departureData?.nearestStation?.transitTime || 0);
+    setTransitMemo(departureData?.nearestStation?.memo || '');
+    setScheduledDepartureTime(departureData?.nearestStation?.scheduledDepartureTime || '');
+    setScheduledDepartureTimes(buildInitialDepartureCandidates());
+    setIsDepartureSectionExpanded(!!departureData?.nearestStation && !!departureData?.nearestStation.placeId);
+    setUseDepartureNearestStation(!!departureData?.nearestStation);
+  }, [departureData]);
 
   return (
     <Card>
@@ -342,11 +344,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                             />
                             <span className="text-sm text-muted-foreground">分</span>
                           </div>
-                          {isDepartureManualTransitTime ? (
-                            <Badge variant="outline" className="text-xs">
-                              手入力
-                            </Badge>
-                          ) : (
+                          {
                             <Tooltip>
                               <TooltipTrigger>
                                 <Badge variant="secondary" className="text-xs gap-1">
@@ -362,7 +360,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                                 </p>
                               </TooltipContent>
                             </Tooltip>
-                          )}
+                          }
                         </div>
 
                         {/* 発車時間入力 */}
@@ -433,7 +431,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                           分)
                         </span>
                         <span className="mx-1">→</span>
-                        <span>{firstSpot.location.name}</span>
+                        <span>{firstSpot.name}</span>
                       </div>
                     )}
                   </>

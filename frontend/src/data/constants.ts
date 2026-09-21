@@ -1,5 +1,10 @@
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { Coordination, PlaceTypeGroupKey, TransportNodeType, TravelModeType } from '@/types/plan';
+import {
+  Coordination,
+  ExtendPlanLocationType,
+  PlaceTypeGroupKey,
+  TransportNodeType,
+  TravelModeType,
+} from '@/types/plan';
 
 /**
  * アプリケーション全体の上限設定
@@ -34,13 +39,15 @@ export const THRESHOLD_FOR_DISTANCE = 1500; //1.5km以上離れている場合�
 /**
  * プランニング結果に影響し、再プランニング判定の対象とするスポット項目。
  */
-export const PLANNING_DIRTY_SPOT_FIELDS = [
-  'order',
-  'stayDuration',
-  'stayStart',
-  'stayEnd',
-  'nearestStation',
-  'routeToNext',
+export const PLANNING_DIRTY_SPOT_FIELDS = ['order', 'stayDuration', 'stayStart', 'stayEnd', 'routeToNext'] as const;
+export const PLANNING_DIRTY_DEPARTURE_AND_DESTINATION_FIELDS = ['latitude', 'longitude'] as const;
+
+/** プランニング結果に対して、再プランニングの判定を行う最寄駅項目 */
+export const PLANNING_DIRTY_NEAREST_STATION_FIELDS = [
+  'transitTime',
+  'scheduledDepartureTimes',
+  'latitude',
+  'longitude',
 ] as const;
 
 /**
@@ -74,18 +81,16 @@ export const PLANNING_MESSAGE_PRIORITY: Record<string, number> = {
   [PLANNING_MESSAGE_SEGMENT.EXTRA_TIME]: 7,
 };
 
-export const DEFAULT_DEPARTURE_AND_DESTINATION: DepartureAndDestinationType = {
+export const DEFAULT_DEPARTURE_AND_DESTINATION: ExtendPlanLocationType = {
   name: '',
   latitude: 35.6813,
   longitude: 139.7671,
-  label: null,
   locationType: 'SPOT',
-  isDefault: false,
-  usageCount: 0,
-  userLocationId: null,
-  planId: null,
-  planName: null,
-  planLocationId: null,
+  travelTime: 0,
+  transportMethod: 'DEFAULT',
+  transportMethodId: 0,
+  time: '09:00',
+  alternateRoutes: [],
 };
 
 export const placeTypeGroups: Record<PlaceTypeGroupKey, string[]> = {

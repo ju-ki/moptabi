@@ -78,7 +78,7 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
           rating: spot.rating ?? 0,
           categories: spot.category,
           description: spot.description,
-          openingHours: spot.regularOpeningHours,
+          regularOpeningHours: spot.regularOpeningHours,
         },
       },
       memo: memo,

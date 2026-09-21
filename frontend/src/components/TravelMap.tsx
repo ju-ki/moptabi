@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GoogleMap, Marker, Polyline, InfoWindow } from '@react-google-maps/api';
 import { createPortal } from 'react-dom';
 
-import { Coordination, TransportNodeType, TravelModeType, NearestStation as PlanNearestStation } from '@/types/plan';
+import { Coordination, ExtendNearestStationType, TransportNodeType, TravelModeType } from '@/types/plan';
 import { SpotMakerColors } from '@/data/constants';
 import { RouteResult, useStoreForPlanning } from '@/lib/plan';
 import { calcRoutes } from '@/lib/algorithm';
@@ -63,9 +63,9 @@ const TravelMap = ({ date }: TravelMapProps) => {
       setSpotCoordination(
         result.spotCoordination.map((spot) => ({
           id: spot.id,
-          lat: spot.location.lat,
-          lng: spot.location.lng,
-          name: spot.location.name,
+          lat: spot.latitude,
+          lng: spot.longitude,
+          name: spot.name,
         })),
       );
     }
@@ -81,7 +81,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
 
     type RouteNode = {
       coord: Coordination;
-      nearestStation?: PlanNearestStation;
+      nearestStation?: ExtendNearestStationType;
       transportName: TravelModeType;
     };
 
@@ -103,7 +103,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
         transportName: 'WALKING',
       },
       ...spots.map((spot) => ({
-        coord: { id: spot.id, lat: spot.location.lat, lng: spot.location.lng, name: spot.location.name },
+        coord: { id: spot.id, lat: spot.latitude, lng: spot.longitude, name: spot.name },
         nearestStation: spot.nearestStation
           ? {
               ...spot.nearestStation,
@@ -116,7 +116,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
               longitude: spot.nearestStation.longitude ?? 0,
             }
           : undefined,
-        transportName: (spot.transports?.name ?? 'WALKING') as TravelModeType,
+        transportName: (spot.transportMethod ?? 'WALKING') as TravelModeType,
       })),
       {
         coord: {
@@ -137,7 +137,7 @@ const TravelMap = ({ date }: TravelMapProps) => {
               longitude: destination.nearestStation.longitude ?? 0,
             }
           : undefined,
-        transportName: (destination.transports?.name ?? 'WALKING') as TravelModeType,
+        transportName: (destination.transportMethod ?? 'WALKING') as TravelModeType,
       },
     ];
 

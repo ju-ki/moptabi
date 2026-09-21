@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MapPin, Search } from 'lucide-react';
 
+import { Spot, ExtendSpotType } from '@/types/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -18,12 +19,11 @@ import { useStoreForPlanning } from '@/lib/plan';
 import { searchSpots } from '@/lib/plan';
 import { prefectureCenters, prefectures } from '@/data/constants';
 import { setStartTimeAutomatically } from '@/lib/algorithm';
-import { Spot } from '@/types/plan';
 
 type GoogleSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
-  onSpotSelect: (spot: Spot, isDeleted: boolean) => void;
+  onSpotSelect: (spot: ExtendSpotType, isDeleted: boolean) => void;
 };
 
 export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: GoogleSpotSearchProps) {
@@ -48,6 +48,22 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
   } = useSpotSearchStore();
 
   const { plans } = useStoreForPlanning();
+
+  const convertToExtendSpotType = (spots: Spot[]): ExtendSpotType[] => {
+    return spots.map((spot) => ({
+      ...spot,
+      spotId: spot.id,
+      rating: spot.rating ?? 0,
+      name: spot.location.name,
+      latitude: spot.location.lat,
+      longitude: spot.location.lng,
+      transportMethod: 'DEFAULT',
+      transportMethodId: 0,
+      travelTime: 0,
+      stayDuration: 60,
+      order: 0,
+    }));
+  };
 
   const categories = [
     { id: 'tourist_attraction', label: '観光スポット' },
@@ -104,7 +120,7 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
     }
   };
 
-  const handleSpotClick = (spot: Spot) => {
+  const handleSpotClick = (spot: ExtendSpotType) => {
     const isSelected = selectedSpotIds.includes(spot.id);
     if (!isSelected) {
       // 自動的に滞在時間を設定（既存ロジック活用）
@@ -251,7 +267,11 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
       </Tabs>
 
       {/* 検索結果表示（wishlist の SearchResultsView を再利用） */}
-      <SearchResultsView spots={searchResults} selectedSpotIds={selectedSpotIds} onSpotClick={handleSpotClick} />
+      <SearchResultsView
+        spots={convertToExtendSpotType(searchResults)}
+        selectedSpotIds={selectedSpotIds}
+        onSpotClick={handleSpotClick}
+      />
       {searchResults.length === 0 && !isSearching && (
         <div className="text-center text-gray-500 py-8">検索結果がありません</div>
       )}

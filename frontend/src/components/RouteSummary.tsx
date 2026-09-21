@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { MapPin } from 'lucide-react';
 
+import { calcTotalTransportTime, calcTotalDistance } from '@/lib/algorithm';
+import { formatDistanceAsKilometer, formatDurationAsHourMinute } from '@/lib/planning';
 import { useStoreForPlanning } from '@/lib/plan';
-import { convertHHmmToJpFormat } from '@/lib/utils';
-import { calcDistance, calcTotalTransportTime } from '@/lib/algorithm';
 import { TransportNodeType } from '@/types/plan';
 
 import TravelMap from './TravelMap';
@@ -16,22 +16,20 @@ const RouteSummary = ({ date }: RouteSummaryProps) => {
   const fields = useStoreForPlanning();
   const allSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
-  const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const sightseeingSpots = fields.getSpotInfo(date, TransportNodeType.SPOT);
-  const [totalDuration, setTotalDuration] = useState<string>('不明');
+  const [totalDuration, setTotalDuration] = useState<number>(0);
   const [totalDistance, setTotalDistance] = useState<number>(0);
 
   useEffect(() => {
     if (allSpots.length) {
-      setTotalDuration(calcTotalTransportTime(departureData, destinationData, allSpots));
-      let totalDistance = 0;
-      allSpots.map((spot, idx) => {
-        if (idx != allSpots.length - 1) {
-          const distance = calcDistance(spot.location, allSpots[idx + 1].location);
-          totalDistance += Number.parseFloat(distance.replace(/km/, ''));
-        }
-      });
-      setTotalDistance(parseFloat(totalDistance.toFixed(1)));
+      setTotalDuration(calcTotalTransportTime(departureData, allSpots));
+      setTotalDistance(
+        calcTotalDistance(
+          departureData,
+          fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION),
+          allSpots,
+        ),
+      );
     }
   }, [allSpots, date]);
   return (
@@ -50,11 +48,11 @@ const RouteSummary = ({ date }: RouteSummaryProps) => {
       <div className="space-y-2 mb-4 pb-4 border-gray-200">
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">総距離</span>
-          <span className="font-semibold">{totalDistance}km</span>
+          <span className="font-semibold">{formatDistanceAsKilometer(totalDistance)}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">総移動時間</span>
-          <span className="font-semibold">{convertHHmmToJpFormat(totalDuration)}</span>
+          <span className="font-semibold">{formatDurationAsHourMinute(totalDuration)}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-600">訪問スポット</span>

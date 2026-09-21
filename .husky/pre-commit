@@ -1,22 +1,22 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
-echo "Running repository linters before commit..."
+echo "Running repository lint and format checks before commit..."
 
-echo "-> Frontend lint"
-npm --prefix frontend run lint
-FRONTEND_STATUS=$?
-if [ $FRONTEND_STATUS -ne 0 ]; then
-  echo "Frontend lint failed (status $FRONTEND_STATUS). Commit aborted."
-  exit $FRONTEND_STATUS
+echo "-> Lint"
+npm run lint
+LINT_STATUS=$?
+if [ $LINT_STATUS -ne 0 ]; then
+  echo "Lint failed (status $LINT_STATUS). Commit aborted."
+  exit $LINT_STATUS
 fi
 
-echo "-> Backend lint"
-npm --prefix backend run lint
-BACKEND_STATUS=$?
-if [ $BACKEND_STATUS -ne 0 ]; then
-  echo "Backend lint failed (status $BACKEND_STATUS). Commit aborted."
-  exit $BACKEND_STATUS
+echo "-> Format check"
+npm run format:check
+FORMAT_STATUS=$?
+if [ $FORMAT_STATUS -ne 0 ]; then
+  echo "Format check failed (status $FORMAT_STATUS). Commit aborted."
+  exit $FORMAT_STATUS
 fi
 
-echo "All linters passed. Proceeding with commit."
+echo "All lint and format checks passed. Proceeding with commit."
