@@ -4,8 +4,8 @@ import { GoogleMap, Marker } from '@react-google-maps/api';
 import { PlanLocationCandidateItemType } from '@shared/user/types';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { TransportNodeType } from '@/types/plan';
-import { DEFAULT_DEPARTURE_TIME } from '@/data/constants';
+import { ExtendPlanLocationType, TransportNodeType } from '@/types/plan';
+import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -16,6 +16,7 @@ import { Checkbox } from './ui/checkbox';
 import AddressSearch from './AddressSearch';
 import SpotLocationSelector from './SpotLocationSelector';
 import TimeSetting from './travel-plan/TimeSetting';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 const containerStyle = {
   width: '100%',
@@ -24,277 +25,422 @@ const containerStyle = {
   boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
 };
 
-const Departure = ({ date }: { date: string }) => {
+const DepartureAndDestination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
-  const candidates = fields.departureList;
+  const departureCandidates = fields.departureList;
+  const destinationCandidates = fields.destinationList;
+  const [departureOrDestination, setDepartureOrDestination] = useState<'DEPARTURE' | 'DESTINATION'>('DEPARTURE');
   const [isCheckCurrentLocation, setIsCheckCurrentLocation] = useState<boolean>(false);
   const [selectedPlanLocationId, setSelectedPlanLocationId] = useState<number | null>(null);
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+  const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [open, setOpen] = useState<boolean>(false);
 
   // 日付に対応するスポット情報を取得
   const currentDayPlan = fields.plans.find((p) => p.date === date);
   const currentDaySpots = currentDayPlan?.spots || [];
+  const targetName = departureOrDestination === 'DEPARTURE' ? '出発地' : '目的地';
+
+  function setDepartureAndDestination(overrides: Partial<ExtendPlanLocationType>) {
+    if (departureOrDestination === 'DEPARTURE') {
+      fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
+        ...departureData,
+        latitude: overrides.latitude ?? departureData.latitude,
+        longitude: overrides.longitude ?? departureData.longitude,
+        name: overrides.name ?? departureData.name,
+        locationType: TransportNodeType.DEPARTURE,
+      });
+    } else if (departureOrDestination === 'DESTINATION') {
+      fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+        ...destinationData,
+        latitude: overrides.latitude ?? destinationData.latitude,
+        longitude: overrides.longitude ?? destinationData.longitude,
+        name: overrides.name ?? destinationData.name,
+        locationType: TransportNodeType.DESTINATION,
+      });
+    }
+  }
 
   return (
     <div>
       <Label className="text-lg font-semibold text-gray-800 my-2 flex space-x-2">
-        <span>出発地</span>
-        <div className="flex items-center space-x-1">
-          <Info className="w-3 h-3" />
-          <span className="text-sm font-normal">未選択の場合は地図で選択されている場所が選択されます</span>
-        </div>
+        <span>出発地/目的地</span>
+        <div className="flex items-center space-x-1"></div>
       </Label>
       {fields.planErrors[date]?.departure && (
         <div className="mb-2 text-sm text-red-600">{fields.planErrors[date]?.departure}</div>
       )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="w-full justify-start" id="departure-select-box">
-            {departureData ? (
-              <>
-                <MapPinIcon className="mr-2 h-4 w-4" />
-                <span>
-                  {departureData.userLocationId || selectedPlanLocationId
-                    ? departureData.name
-                    : '候補以外の地点を選択中'}
-                </span>
-              </>
-            ) : (
-              <>
-                <MapPinIcon className="mr-2 h-4 w-4" />
-                <span>出発地を選択</span>
-              </>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0">
-          <Command>
-            <CommandInput placeholder="検索..." />
-            <CommandList>
-              <CommandEmpty>候補が見つかりません</CommandEmpty>
-              {/* お気に入りグループ */}
-              {candidates?.favorites && candidates.favorites.length > 0 && (
-                <CommandGroup
-                  heading={
-                    <span className="flex items-center gap-1">
-                      <Star className="h-3 w-3" />
-                      お気に入り
-                    </span>
-                  }
-                >
-                  {candidates.favorites.map((candidate: PlanLocationCandidateItemType) => (
-                    <CommandItem
-                      key={`favorite-${candidate.userLocationId}`}
-                      onSelect={() => {
-                        fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                          name: candidate.name,
-                          latitude: candidate.latitude,
-                          longitude: candidate.longitude,
-                          locationType: TransportNodeType.DEPARTURE,
-                          time: DEFAULT_DEPARTURE_TIME,
-                          travelTime: 0,
-                          userLocationId: candidate.userLocationId ?? undefined,
-                          transportMethod: 'DEFAULT',
-                          transportMethodId: 0,
-                          alternateRoutes: [],
-                        });
-                        setOpen(false);
-                      }}
-                      className="flex items-center"
-                    >
-                      {departureData && departureData.userLocationId === candidate.userLocationId && (
-                        <Check className="mr-2 h-4 w-4" />
-                      )}
-                      <div className="flex flex-col">
-                        <span>{candidate.name}</span>
-                        {candidate.label && <span className="text-xs text-muted-foreground">{candidate.label}</span>}
-                      </div>
-                      {candidate.isDefault && <span className="ml-auto text-xs text-blue-500">デフォルト</span>}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-              {/* 履歴グループ */}
-              {candidates?.history && candidates.history.length > 0 && (
-                <CommandGroup
-                  heading={
-                    <span className="flex items-center gap-1">
-                      <History className="h-3 w-3" />
-                      履歴
-                    </span>
-                  }
-                >
-                  {candidates.history.map((candidate: PlanLocationCandidateItemType) => (
-                    <CommandItem
-                      key={`history-${candidate.planLocationId}`}
-                      onSelect={() => {
-                        fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                          name: candidate.name,
-                          latitude: candidate.latitude,
-                          longitude: candidate.longitude,
-                          locationType: TransportNodeType.DEPARTURE,
-                          time: DEFAULT_DEPARTURE_TIME,
-                          travelTime: 0,
-                          transportMethod: 'DEFAULT',
-                          transportMethodId: 0,
-                          alternateRoutes: [],
-                        });
-                        setSelectedPlanLocationId(candidate.planLocationId || null);
-                        setOpen(false);
-                      }}
-                      className="flex items-center"
-                    >
-                      {selectedPlanLocationId && selectedPlanLocationId === candidate.planLocationId && (
-                        <Check className="mr-2 h-4 w-4" />
-                      )}
-                      <div className="flex flex-col">
-                        <span>{candidate.name}</span>
-                        {candidate.planName && (
-                          <span className="text-xs text-muted-foreground">
-                            使用プラン名:{candidate.planName} 使用種別:
-                            {candidate.locationType === TransportNodeType.DEPARTURE ? '出発地' : '目的地'}
-                          </span>
-                        )}
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      <div className="space-y-4 p-4">
-        <div>
-          <Label htmlFor="destination-input" className="block text-sm  text-gray-800">
-            出発地の名前を設定(空の場合は出発地_{date}になります)
+
+      <Tabs
+        className="w-full min-w-0"
+        value={departureOrDestination}
+        onValueChange={(value) => setDepartureOrDestination(value as 'DEPARTURE' | 'DESTINATION')}
+      >
+        <div className="w-full max-w-full overflow-x-auto pb-1">
+          <TabsList className="inline-flex w-max min-w-full flex-nowrap justify-start gap-2 whitespace-nowrap">
+            <TabsTrigger value="DEPARTURE">出発地</TabsTrigger>
+            <TabsTrigger value="DESTINATION">目的地</TabsTrigger>
+          </TabsList>
+        </div>
+        {/* 時間設定 */}
+        <div className="flex space-x-4 my-4">
+          <TimeSetting type={TransportNodeType.DEPARTURE} date={date} />
+          <TimeSetting type={TransportNodeType.DESTINATION} date={date} />
+        </div>
+
+        <div className="space-x-4 my-4">
+          <Label htmlFor="target-input" className="text-sm  text-gray-800">
+            {targetName}の名前を設定
           </Label>
           <Input
-            id="departure-input"
+            id="target-input"
             type="text"
-            value={departureData.name || ''}
-            placeholder="出発地の名前を設定する"
-            className="mt-2 w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={departureOrDestination === 'DEPARTURE' ? departureData.name : destinationData.name}
+            placeholder={`${targetName}の名前を設定する`}
+            className="flex mt-2 mx-auto rounded-md border"
             onInput={(e) => {
-              const departureName = e.currentTarget.value;
-              fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                ...departureData,
-                name: departureName,
-                locationType: TransportNodeType.DEPARTURE,
+              const targetName = e.currentTarget.value;
+              setDepartureAndDestination({
+                name: targetName,
               });
             }}
           />
         </div>
 
-        {/* 時間設定 */}
-        <TimeSetting type={TransportNodeType.DEPARTURE} date={date} />
+        <TabsContent value="DEPARTURE">
+          <Label htmlFor="target-selector" className="block text-sm  text-gray-800">
+            {targetName}の候補リスト
+          </Label>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button role="combobox" variant="outline" className="w-full justify-start" id="target-selector">
+                {departureData ? (
+                  <>
+                    <MapPinIcon className="mr-2 h-4 w-4" />
+                    <span>
+                      {departureData.userLocationId || selectedPlanLocationId ? departureData.name : '出発地を選択'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <MapPinIcon className="mr-2 h-4 w-4" />
+                    <span>出発地を選択</span>
+                  </>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command>
+                <CommandInput placeholder="検索..." />
+                <CommandList>
+                  <CommandEmpty>候補が見つかりません</CommandEmpty>
+                  {/* お気に入りグループ */}
+                  {departureCandidates?.favorites && departureCandidates.favorites.length > 0 && (
+                    <CommandGroup
+                      heading={
+                        <span className="flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          お気に入り
+                        </span>
+                      }
+                    >
+                      {departureCandidates.favorites.map((candidate: PlanLocationCandidateItemType) => (
+                        <CommandItem
+                          key={`favorite-${candidate.userLocationId}`}
+                          onSelect={() => {
+                            setDepartureAndDestination({
+                              name: candidate.name,
+                              latitude: candidate.latitude,
+                              longitude: candidate.longitude,
+                              locationType: TransportNodeType.DEPARTURE,
+                              time: DEFAULT_DEPARTURE_TIME,
+                              travelTime: 0,
+                              userLocationId: candidate.userLocationId ?? undefined,
+                              transportMethod: 'DEFAULT',
+                              transportMethodId: 0,
+                              alternateRoutes: [],
+                            });
+                            setOpen(false);
+                          }}
+                          className="flex items-center"
+                        >
+                          {departureData && departureData.userLocationId === candidate.userLocationId && (
+                            <Check className="mr-2 h-4 w-4" />
+                          )}
+                          <div className="flex flex-col">
+                            <span>{candidate.name}</span>
+                            {candidate.label && (
+                              <span className="text-xs text-muted-foreground">{candidate.label}</span>
+                            )}
+                          </div>
+                          {candidate.isDefault && <span className="ml-auto text-xs text-blue-500">デフォルト</span>}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                  {/* 履歴グループ */}
+                  {departureCandidates?.history && departureCandidates.history.length > 0 && (
+                    <CommandGroup
+                      heading={
+                        <span className="flex items-center gap-1">
+                          <History className="h-3 w-3" />
+                          履歴
+                        </span>
+                      }
+                    >
+                      {departureCandidates.history.map((candidate: PlanLocationCandidateItemType) => (
+                        <CommandItem
+                          key={`history-${candidate.planLocationId}`}
+                          onSelect={() => {
+                            setDepartureAndDestination({
+                              name: candidate.name,
+                              latitude: candidate.latitude,
+                              longitude: candidate.longitude,
+                              locationType: TransportNodeType.DEPARTURE,
+                              time: DEFAULT_DEPARTURE_TIME,
+                              travelTime: 0,
+                              userLocationId: candidate.userLocationId ?? undefined,
+                              transportMethod: 'DEFAULT',
+                              transportMethodId: 0,
+                              alternateRoutes: [],
+                            });
+                            setSelectedPlanLocationId(candidate.planLocationId || null);
+                            setOpen(false);
+                          }}
+                          className="flex items-center"
+                        >
+                          {selectedPlanLocationId && selectedPlanLocationId === candidate.planLocationId && (
+                            <Check className="mr-2 h-4 w-4" />
+                          )}
+                          <div className="flex flex-col">
+                            <span>{candidate.name}</span>
+                            {candidate.planName && (
+                              <span className="text-xs text-muted-foreground">
+                                使用プラン名:{candidate.planName} 使用種別:
+                                {candidate.locationType === TransportNodeType.DEPARTURE ? '出発地' : '目的地'}
+                              </span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </TabsContent>
+        <TabsContent value="DESTINATION">
+          <Label htmlFor="target-selector" className="block text-sm  text-gray-800">
+            {targetName}の候補リスト
+          </Label>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button role="combobox" variant="outline" className="w-full justify-start" id="target-selector">
+                {destinationData ? (
+                  <>
+                    <MapPinIcon className="mr-2 h-4 w-4" />
+                    <span>
+                      {destinationData.userLocationId || selectedPlanLocationId ? destinationData.name : '目的地を選択'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <MapPinIcon className="mr-2 h-4 w-4" />
+                    <span>目的地を選択</span>
+                  </>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command>
+                <CommandInput placeholder="検索..." />
+                <CommandList>
+                  <CommandEmpty>候補が見つかりません</CommandEmpty>
+                  {/* お気に入りグループ */}
+                  {destinationCandidates?.favorites && destinationCandidates.favorites.length > 0 && (
+                    <CommandGroup
+                      heading={
+                        <span className="flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          お気に入り
+                        </span>
+                      }
+                    >
+                      {destinationCandidates.favorites.map((candidate: PlanLocationCandidateItemType) => (
+                        <CommandItem
+                          key={`favorite-${candidate.userLocationId}`}
+                          onSelect={() => {
+                            fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                              name: candidate.name,
+                              latitude: candidate.latitude,
+                              longitude: candidate.longitude,
+                              locationType: TransportNodeType.DESTINATION,
+                              time: DEFAULT_ARRIVAL_TIME,
+                              travelTime: 0,
+                              userLocationId: candidate.userLocationId ?? undefined,
+                              transportMethod: 'DEFAULT',
+                              transportMethodId: 0,
+                              alternateRoutes: [],
+                            });
+                            setOpen(false);
+                          }}
+                          className="flex items-center"
+                        >
+                          {destinationData && destinationData.userLocationId === candidate.userLocationId && (
+                            <Check className="mr-2 h-4 w-4" />
+                          )}
+                          <div className="flex flex-col">
+                            <span>{candidate.name}</span>
+                            {candidate.label && (
+                              <span className="text-xs text-muted-foreground">{candidate.label}</span>
+                            )}
+                          </div>
+                          {candidate.isDefault && <span className="ml-auto text-xs text-blue-500">デフォルト</span>}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                  {/* 履歴グループ */}
+                  {destinationCandidates?.history && destinationCandidates.history.length > 0 && (
+                    <CommandGroup
+                      heading={
+                        <span className="flex items-center gap-1">
+                          <History className="h-3 w-3" />
+                          履歴
+                        </span>
+                      }
+                    >
+                      {destinationCandidates.history.map((candidate: PlanLocationCandidateItemType) => (
+                        <CommandItem
+                          key={`history-${candidate.planLocationId}`}
+                          onSelect={() => {
+                            fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
+                              name: candidate.name,
+                              latitude: candidate.latitude,
+                              longitude: candidate.longitude,
+                              locationType: TransportNodeType.DESTINATION,
+                              time: DEFAULT_ARRIVAL_TIME,
+                              travelTime: 0,
+                              transportMethod: 'DEFAULT',
+                              transportMethodId: 0,
+                              alternateRoutes: [],
+                            });
+                            setSelectedPlanLocationId(candidate.planLocationId || null);
+                            setOpen(false);
+                          }}
+                          className="flex items-center"
+                        >
+                          {selectedPlanLocationId && selectedPlanLocationId === candidate.planLocationId && (
+                            <Check className="mr-2 h-4 w-4" />
+                          )}
+                          <div className="flex flex-col">
+                            <span>{candidate.name}</span>
+                            {candidate.planName && (
+                              <span className="text-xs text-muted-foreground">
+                                使用プラン名:{candidate.planName} 使用種別:
+                                {candidate.locationType === TransportNodeType.DEPARTURE ? '出発地' : '目的地'}
+                              </span>
+                            )}
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </TabsContent>
+      </Tabs>
 
-        {/* 住所検索 */}
+      {/* 住所検索 */}
+      <div className="space-x-4 my-4">
         <AddressSearch
-          label="住所から出発地を検索"
+          label={`住所から${targetName}を検索`}
           placeholder="住所を入力（例: 東京都渋谷区渋谷1-1-1）"
           onCoordinateFound={(coord) => {
-            fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-              ...departureData,
-              name: '',
-              latitude: coord.lat,
-              longitude: coord.lng,
-              locationType: TransportNodeType.DEPARTURE,
-            });
+            setDepartureAndDestination({ latitude: coord.lat, longitude: coord.lng });
           }}
         />
+      </div>
 
-        {/* 観光スポット周辺から出発地を選択 */}
+      {/* 観光スポット周辺から出発地を選択 */}
+      <div className="space-x-4 my-4">
         <SpotLocationSelector
           spots={currentDaySpots}
-          label="観光スポット周辺から出発地を選択する"
+          label={`観光スポット周辺から${targetName}を選択する`}
           placeholder="スポットを選択"
           onSelect={(spot) => {
-            fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-              ...departureData,
-              name: spot.name,
-              latitude: spot.latitude,
-              longitude: spot.longitude,
-              locationType: TransportNodeType.DEPARTURE,
-            });
+            setDepartureAndDestination({ latitude: spot.latitude, longitude: spot.longitude, name: spot.name });
           }}
         />
+      </div>
 
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="current-location-checkbox-for-departure"
-            checked={isCheckCurrentLocation}
-            className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            onCheckedChange={(checked) => {
-              setIsCheckCurrentLocation((prev) => !prev);
-              if (checked) {
-                navigator.geolocation.getCurrentPosition((position) => {
-                  const newCoordinate = {
-                    id: '',
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    name: '',
-                  };
-                  fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                    ...departureData,
-                    ...newCoordinate,
-                    locationType: TransportNodeType.DEPARTURE,
-                  });
-                });
-              }
-            }}
-          />
-          <Label
-            htmlFor="current-location-checkbox-for-departure"
-            className="cursor-pointer text-sm font-medium text-gray-700"
-          >
-            現在地を出発地に設定する
-          </Label>
-        </div>
-
-        <div className="mt-4">
-          <GoogleMap
-            center={{ lat: departureData.latitude, lng: departureData.longitude }}
-            mapContainerStyle={containerStyle}
-            onClick={(coord) => {
-              const clickedCoord = {
-                id: `clicked-${coord.latLng?.lat()}-${coord.latLng?.lng()}`,
-                name: '',
-                lat: coord.latLng?.lat() || 0,
-                lng: coord.latLng?.lng() || 0,
-              };
-              fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-                ...departureData,
-                name: clickedCoord.name,
-                latitude: clickedCoord.lat,
-                longitude: clickedCoord.lng,
-                locationType: TransportNodeType.DEPARTURE,
+      <div className="flex items-center space-x-4 my-4">
+        <Checkbox
+          id="current-location-checkbox-for-departure"
+          checked={isCheckCurrentLocation}
+          className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          onCheckedChange={(checked) => {
+            setIsCheckCurrentLocation((prev) => !prev);
+            if (checked) {
+              navigator.geolocation.getCurrentPosition((position) => {
+                const newCoordinate = {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                };
+                setDepartureAndDestination({ latitude: newCoordinate.latitude, longitude: newCoordinate.longitude });
               });
-            }}
-            options={{
-              zoom: 12,
-              styles: [
-                {
-                  featureType: 'poi',
-                  elementType: 'labels',
-                  stylers: [{ visibility: 'on' }],
-                },
-                {
-                  featureType: 'transit',
-                  elementType: 'labels',
-                  stylers: [{ visibility: 'on' }],
-                },
-              ],
-            }}
-          >
-            {/* 出発地のマーカー */}
-            <Marker position={{ lat: departureData.latitude, lng: departureData.longitude }} />
-          </GoogleMap>
-        </div>
+            }
+          }}
+        />
+        <Label
+          htmlFor="current-location-checkbox-for-departure"
+          className="cursor-pointer text-sm font-medium text-gray-700"
+        >
+          {`現在地を${targetName}に設定する`}
+        </Label>
+      </div>
+
+      <div className="my-4">
+        <GoogleMap
+          center={
+            departureOrDestination == 'DEPARTURE'
+              ? { lat: departureData.latitude, lng: departureData.longitude }
+              : { lat: destinationData.latitude, lng: destinationData.longitude }
+          }
+          mapContainerStyle={containerStyle}
+          onClick={(coord) => {
+            const clickedCoord = {
+              lat: coord.latLng?.lat() || 0,
+              lng: coord.latLng?.lng() || 0,
+            };
+            setDepartureAndDestination({ latitude: clickedCoord.lat, longitude: clickedCoord.lng });
+          }}
+          options={{
+            zoom: 12,
+            styles: [
+              {
+                featureType: 'poi',
+                elementType: 'labels',
+                stylers: [{ visibility: 'on' }],
+              },
+              {
+                featureType: 'transit',
+                elementType: 'labels',
+                stylers: [{ visibility: 'on' }],
+              },
+            ],
+          }}
+        >
+          {/* 出発地のマーカー */}
+          <Marker position={{ lat: departureData.latitude, lng: departureData.longitude }} />
+          <Marker position={{ lat: destinationData.latitude, lng: destinationData.longitude }} />
+        </GoogleMap>
       </div>
     </div>
   );
 };
 
-export default Departure;
+export default DepartureAndDestination;

@@ -42,15 +42,11 @@ const PlanningComp = ({ date }: { date: string }) => {
         />
       </div>
 
-      {/* 出発地 */}
+      {/* 出発地と目的地 */}
       <div className="space-y-4">
         <Departure date={date} />
       </div>
 
-      {/* 目的地 */}
-      <div className="space-y-4">
-        <Destination date={date} />
-      </div>
       {/* 備考 */}
       <div className="space-y-4">
         <Label className="block text-lg font-semibold text-gray-800">備考</Label>
