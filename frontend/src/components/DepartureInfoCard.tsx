@@ -2,20 +2,21 @@
 
 import { Home } from 'lucide-react';
 
-import { convertHHmmToJpFormat } from '@/lib/utils';
-import { DepartureAndDestinationType } from '@/models/planLocation';
 import { TravelModeType } from '@/types/plan';
+import { formatDurationAsHourMinute } from '@/lib/planning';
 
-import { transportIcons } from './TravelPlan';
 import { NearestStationDetail } from './NearestStationDetail';
+import { transportIcons } from './TravelPlan';
+
+import type { PlanLocationType } from '@shared/planlocation/types';
 
 interface DepartureAndDestinationCardProps {
-  departure: DepartureAndDestinationType;
+  departure: PlanLocationType;
 }
 
 export function DepartureInfoCard({ departure }: DepartureAndDestinationCardProps) {
   const transportIcon =
-    transportIcons[departure.transports?.name as TravelModeType]?.icon ?? transportIcons.DEFAULT?.icon;
+    transportIcons[departure.transportMethod as TravelModeType]?.icon ?? transportIcons.DEFAULT?.icon;
 
   return (
     <div className="relative flex gap-10 items-center pb-6">
@@ -28,12 +29,7 @@ export function DepartureInfoCard({ departure }: DepartureAndDestinationCardProp
 
         <div className="absolute top-[calc(100%+30px)] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-2 py-1 rounded text-xs text-gray-600 border border-gray-200 shadow-sm whitespace-nowrap z-20 flex items-center gap-1">
           <span data-testid="timeline-transport-icon">{transportIcon}</span>
-          <span className="font-semibold">
-            {departure &&
-              departure.transports &&
-              departure.transports.travelTime &&
-              convertHHmmToJpFormat(departure.transports.travelTime)}
-          </span>
+          <span className="font-semibold">{formatDurationAsHourMinute(departure.travelTime)}</span>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
-import WishlistHeader from '@/components/wishlist/Header';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import WishlistHeader from '@/components/wishlist/Header';
 
 // Prepare mocks for the zustand store used by Header
 const setViewModeMock = vi.fn();

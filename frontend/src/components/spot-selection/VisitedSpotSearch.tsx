@@ -8,14 +8,14 @@ import { Input } from '@/components/ui/input';
 import { SearchResultsView } from '@/components/common/SearchResultsView';
 import { useVisitedSpots } from '@/hooks/spot-search/use-visited-spots';
 import { prefectures } from '@/data/constants';
-import { Spot } from '@/types/plan';
+import { ExtendSpotType, Spot } from '@/types/plan';
 import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
 
 // TODO: dateは営業時間のフィルターで使用予定
 type VisitedSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
-  onSpotSelect: (spot: Spot, isDeleted: boolean) => void;
+  onSpotSelect: (spot: ExtendSpotType, isDeleted: boolean) => void;
 };
 
 export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: VisitedSpotSearchProps) {
@@ -29,8 +29,24 @@ export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: Visit
     sortOrder: spotSearchStore.visitedSortOrder,
   });
 
-  const handleSpotClick = (spot: Spot) => {
-    const isSelected = selectedSpotIds.includes(spot.id);
+  const convertToExtendSpotType = (spots: Spot[]): ExtendSpotType[] => {
+    return spots.map((spot) => ({
+      ...spot,
+      spotId: spot.id,
+      rating: spot.rating ?? 0,
+      name: spot.location.name,
+      latitude: spot.location.lat,
+      longitude: spot.location.lng,
+      transportMethod: 'DEFAULT',
+      transportMethodId: 0,
+      travelTime: 0,
+      stayDuration: 60,
+      order: 0,
+    }));
+  };
+
+  const handleSpotClick = (spot: ExtendSpotType) => {
+    const isSelected = selectedSpotIds.includes(spot.spotId);
     onSpotSelect(spot, isSelected);
   };
 
@@ -159,7 +175,7 @@ export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: Visit
 
       {/* 検索結果 */}
       <SearchResultsView
-        spots={spots}
+        spots={convertToExtendSpotType(spots)}
         selectedSpotIds={selectedSpotIds}
         onSpotClick={handleSpotClick}
         cardType="visited"

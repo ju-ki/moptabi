@@ -166,14 +166,14 @@ const WishlistSpotInfoCard = ({ item, idx }: WishlistSpotInfoCardProps) => {
         </div>
 
         {/* 営業時間 */}
-        {item.spot.meta.openingHours && (
+        {item.spot.meta.regularOpeningHours && (
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
             <div className="flex items-start gap-2.5">
               <Clock size={16} className="mt-0.5 flex-shrink-0 text-blue-600" />
               <div className="flex-1">
                 <span className="font-semibold text-gray-900 text-sm block mb-2">営業時間</span>
                 <div className="space-y-1.5">
-                  {item.spot.meta.openingHours.map((item, idx) => (
+                  {item.spot.meta.regularOpeningHours.map((item, idx) => (
                     <div key={idx} className="flex gap-3 text-sm">
                       {item.day !== '不明' && item.day !== '全' && (
                         <span className="font-medium text-gray-700 w-6">{item.day}</span>

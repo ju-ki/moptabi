@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import React, { use, useEffect } from 'react';
-import { Calendar, Clock, Pencil, Printer, Share, Trash2 } from 'lucide-react';
+import { Calendar, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import useSWRMutation from 'swr/mutation';
@@ -15,7 +15,7 @@ import { useFetcher } from '@/hooks/use-fetcher';
 import { useToast } from '@/hooks/use-toast';
 import { useFetchTripDetail } from '@/hooks/use-trip';
 import { useStoreForPlanning } from '@/lib/plan';
-import { TransportNodeType } from '@/types/plan';
+import { TransportNodeType, TravelPlanType } from '@/types/plan';
 
 const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
@@ -35,11 +35,12 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
     fields.setFields('id', Number.parseInt(id));
     fields.setFields('title', trip.title);
     fields.setRangeDate({ from: trip.startDate, to: trip.endDate });
-    trip.plans.forEach((plan) => {
+    trip.plans.forEach((plan: TravelPlanType) => {
       plan.spots.map((spot) => {
         fields.setSpots(plan.date, spot, false);
       });
-      fields.setPlanInfo(plan.date, { ...plan, memo: plan.memo ?? '' });
+
+      fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
     });
@@ -72,18 +73,6 @@ const PageDetail = ({ params }: { params: Promise<{ id: string }> }) => {
           </Button>
         </div>
         <div className="flex gap-2 py-3 px-3 justify-end">
-          {/*  TODO: 対応できていない機能のためコメントアウト */}
-          {/* <Button variant="ghost-subtle" size="sm" onClick={() => {}} className="flex items-center gap-1">
-            <Share className="w-4 h-4" />
-            シェアする
-          </Button> */}
-
-          {/*  TODO: 対応できていない機能のためコメントアウト */}
-          {/* <Button variant="ghost-subtle" size="sm" onClick={() => {}} className="flex items-center gap-1">
-            <Printer className="w-4 h-4" />
-            印刷
-          </Button> */}
-
           <Button variant="secondary-outline" size="sm" onClick={() => {}} className="flex items-center gap-1">
             <Pencil className="w-4 h-4" />
             <Link href={`/plan/${id}/edit`}>編集</Link>

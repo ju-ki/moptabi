@@ -9,4 +9,4 @@ export {
   SpotWithMetaSchema,
 } from '@shared/spot/schema';
 
-export type { OpeningHoursType, PlanSpotType, SpotMetaType, SpotType, SpotWithMetaType } from '@shared/spot/types';
+export type { OpeningHoursType, SpotMetaType, SpotType, SpotWithMetaType } from '@shared/spot/types';

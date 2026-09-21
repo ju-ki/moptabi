@@ -27,6 +27,7 @@ vi.mock('@/hooks/use-fetcher', () => ({
 
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
+
 import { useAdminData } from '@/hooks/use-admin';
 
 const mockUseSession = vi.mocked(useSession);

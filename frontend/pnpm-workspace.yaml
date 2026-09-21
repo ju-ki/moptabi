@@ -4,3 +4,7 @@ allowBuilds:
   esbuild: true
   workerd: true
   "@clerk/shared": true
+
+packages:
+  - '.'
+  - '../packages/*'

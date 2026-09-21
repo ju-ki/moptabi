@@ -23,10 +23,10 @@ export const usePlanning = () => {
       isError = true;
     }
 
-    // 出発時間と目的地の時間が両方とも入力されていない場合はエラー
-    if ((!departureData.time && !destinationData.time) || (departureData.time === '' && destinationData.time === '')) {
+    // 出発時間と目的地の時間が片方でも入力されていない場合はエラー
+    if (departureData.time === '' || destinationData.time === '') {
       fields.setPlanErrors(date, {
-        departure: '出発時間または到着時間のどちらかを入力してください',
+        departure: '出発時間と到着時間を入力してください',
       });
       isError = true;
     }
@@ -69,44 +69,31 @@ export const usePlanning = () => {
       // プランニング再実施時に既に発車時間が設定されている場合のその発車時間を取得する
       const preferredDepartureTimes: Record<string, string> = {};
 
-      if (departureData.transports?.transportMethod) {
-        preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transports.transportMethod;
-      }
+      preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transportMethodId;
 
-      if (
-        departureData.transports?.transportMethod &&
-        departureData.transports?.transportMethod == 4 &&
-        departureData.nearestStation?.scheduledDepartureTime
-      ) {
-        preferredDepartureTimes.DEPARTURE_TO_FIRST_SPOT = departureData.nearestStation?.scheduledDepartureTime;
+      if (departureData.transportMethodId == 4 && departureData.nearestStation?.scheduledDepartureTime) {
+        preferredDepartureTimes.DEPARTURE_TO_FIRST_SPOT = departureData.nearestStation.scheduledDepartureTime;
       }
 
       spotsData.forEach((spot, index) => {
+        if (index === spotsData.length - 1) return; // 最後のスポットは次のスポットがないためスキップ
         const nextSpot = spotsData[index + 1];
         if (!nextSpot) return;
-        if (!spot.transports?.transportMethod) return;
+        if (!spot.transportMethodId) return;
 
-        preferredTransportMethodIds[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.transports.transportMethod;
+        preferredTransportMethodIds[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.transportMethodId;
 
         // 最寄駅の情報は次のスポットに格納されているため
-        if (spot.transports.transportMethod != 4) return;
-        if (!nextSpot.nearestStation?.scheduledDepartureTime) return;
-        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = nextSpot.nearestStation.scheduledDepartureTime;
+        if (spot.transportMethodId != 4) return;
+        if (!spot.nearestStation?.scheduledDepartureTime) return;
+        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.nearestStation.scheduledDepartureTime;
       });
 
-      if (spotsData.length > 0 && destinationData.transports?.transportMethod) {
-        const lastSpot = spotsData[spotsData.length - 1];
-        preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = destinationData.transports.transportMethod;
-      }
+      const lastSpot = spotsData[spotsData.length - 1];
+      preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = lastSpot.transportMethodId;
 
-      if (
-        destinationData.transports?.transportMethod &&
-        destinationData.transports?.transportMethod == 4 &&
-        destinationData.nearestStation?.scheduledDepartureTime
-      ) {
-        const lastSpot = spotsData[spotsData.length - 1];
-        preferredDepartureTimes[`SPOT_${lastSpot.id}_TO_DESTINATION`] =
-          destinationData.nearestStation.scheduledDepartureTime;
+      if (lastSpot.transportMethodId == 4 && lastSpot.nearestStation?.scheduledDepartureTime) {
+        preferredDepartureTimes[`SPOT_${lastSpot.id}_TO_DESTINATION`] = lastSpot.nearestStation.scheduledDepartureTime;
       }
 
       const params: PlanningParams = {
@@ -135,6 +122,7 @@ export const usePlanning = () => {
           stayEnd: spot.stayEnd,
           stayDuration: spot.stayDuration,
           routeToNext: spot.routeToNext,
+          nearestStation: spot.nearestStation,
         });
       }
 

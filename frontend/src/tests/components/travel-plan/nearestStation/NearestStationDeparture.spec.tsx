@@ -1,11 +1,11 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 
 import NearestStationDeparture from '@/components/travel-plan/nearestStation/NearestStationDeparture';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { TransportNodeType } from '@/types/plan';
-import userEvent from '@testing-library/user-event';
 
 const mockSearchNearestStation = vi.fn();
 const mockGetSpotInfo = vi.fn();

@@ -4,11 +4,11 @@ import React, { useState, useMemo } from 'react';
 import { AlertCircle, Asterisk, Heart, History, Search } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { Spot } from '@/types/plan';
 import { APP_LIMITS } from '@/data/constants';
 import { isSpotsPerDayLimitReached, getLimitErrorMessage, getRemainingCount } from '@/lib/limits';
 import { getActualSpotCount } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { ExtendSpotType, Spot } from '@/types/plan';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -42,7 +42,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
     return plans.find((plan) => plan.date === date)?.spots.map((s) => s.id) ?? [];
   }, [plans, date]);
 
-  const handleSpotSelect = (spot: Spot, isDeleted: boolean) => {
+  const handleSpotSelect = (spot: ExtendSpotType, isDeleted: boolean) => {
     // 削除の場合は上限チェックをスキップ
     if (!isDeleted && isLimitReached) {
       toast({
@@ -54,7 +54,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
     }
 
     const selectedSpots = plans.find((plan) => plan.date === date)?.spots ?? [];
-    const updatedSpot: Spot = {
+    const updatedSpot: ExtendSpotType = {
       ...spot,
       stayDuration: 60, // デフォルトの滞在時間を60分に設定
       order: selectedSpots.length + 1, // 追加するスポットの順番は現在のスポット数 + 1

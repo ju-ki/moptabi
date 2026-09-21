@@ -95,7 +95,7 @@ const TravelPlan = ({ travelPlan }: { travelPlan: TravelPlanType }) => {
             key={spot.id}
             spot={spot}
             nextSpot={spots[index + 1]}
-            index={index == spots.length - 1 ? -1 : index}
+            index={index}
             onDelete={handleDeleteSpot}
             onMemoChange={(memo) => fields.setSpots(travelPlan.date, { ...spot, memo }, false)}
           />

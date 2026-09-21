@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-
-import { fetchPlaceDetailsWithRetry } from '@/lib/place-fetcher';
 import type { StationType } from '@/types/nearestStation';
 
 type NearestStationDisplay = {
@@ -18,8 +15,6 @@ type NearestStationDisplay = {
 interface NearestStationDetailProps {
   nearestStation: NearestStationDisplay;
   className?: string;
-  showDepartureTime?: boolean;
-  showTransitMemo?: boolean;
 }
 
 function getStationTypeIcon(stationType?: StationType): string {
@@ -28,52 +23,8 @@ function getStationTypeIcon(stationType?: StationType): string {
   return '?';
 }
 
-export function NearestStationDetail({
-  nearestStation,
-  className,
-  showDepartureTime = true,
-  showTransitMemo = true,
-}: NearestStationDetailProps) {
-  const [resolvedStationName, setResolvedStationName] = useState(nearestStation.name ?? '');
-  const [hasFetchError, setHasFetchError] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function resolveStationName() {
-      const hasName = Boolean(nearestStation.name?.trim()) && nearestStation.name !== '最寄駅';
-      if (!nearestStation.placeId || hasName) {
-        setResolvedStationName(nearestStation.name ?? '');
-        setHasFetchError(false);
-        return;
-      }
-
-      const result = await fetchPlaceDetailsWithRetry(nearestStation.placeId);
-      if (!isMounted) return;
-
-      if (result.hasError || !result.data?.name) {
-        setHasFetchError(true);
-        setResolvedStationName(nearestStation.name ?? '');
-        return;
-      }
-
-      setHasFetchError(false);
-      setResolvedStationName(result.data.name);
-    }
-
-    resolveStationName();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [nearestStation.placeId, nearestStation.name]);
-
-  const stationName = useMemo(() => {
-    const name = resolvedStationName?.trim();
-    return name && name.length > 0 ? name : '駅名未取得';
-  }, [resolvedStationName]);
-
-  const departureTime = nearestStation.scheduledDepartureTime?.trim() || '--:--';
+export function NearestStationDetail({ nearestStation, className }: NearestStationDetailProps) {
+  const departureTime = nearestStation.scheduledDepartureTime?.trim() ?? '';
   const hasTransitMemo = Boolean(nearestStation.memo?.trim());
   const containerClassName = className ? `space-y-1 ${className}` : 'space-y-1';
 
@@ -92,7 +43,7 @@ export function NearestStationDetail({
           </span>
           <div className="min-w-0">
             <p className="text-[11px] text-gray-500">駅名</p>
-            <p className="break-words font-medium leading-5">{stationName}</p>
+            <p className="break-words font-medium leading-5">{nearestStation.name ?? '駅名未取得'}</p>
           </div>
         </div>
 
@@ -104,7 +55,7 @@ export function NearestStationDetail({
           >
             <span className="font-medium text-gray-700">徒歩{nearestStation.walkingTime ?? '-'}分</span>
           </span>
-          {showDepartureTime && (
+          {departureTime !== '' && (
             <span
               className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
               data-testid="nearest-station-departure-time"
@@ -112,7 +63,7 @@ export function NearestStationDetail({
               <span className="font-medium text-gray-700">発車 {departureTime}</span>
             </span>
           )}
-          {showDepartureTime && (
+          {departureTime !== '' && (
             <span
               className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
               data-testid="nearest-station-transit-time"
@@ -123,7 +74,7 @@ export function NearestStationDetail({
         </div>
 
         {/* メモ */}
-        {showTransitMemo && hasTransitMemo && (
+        {hasTransitMemo && (
           <div className="rounded-md bg-gray-50 px-2 py-1.5">
             <p className="text-[11px] text-gray-500 mb-1">メモ</p>
             <p className="line-clamp-2 whitespace-pre-wrap text-xs text-gray-600" data-testid="nearest-station-memo">
@@ -132,12 +83,6 @@ export function NearestStationDetail({
           </div>
         )}
       </div>
-
-      {hasFetchError && (
-        <p className="text-xs text-amber-600" data-testid="nearest-station-fetch-error">
-          最寄駅情報を取得できませんでした
-        </p>
-      )}
     </div>
   );
 }

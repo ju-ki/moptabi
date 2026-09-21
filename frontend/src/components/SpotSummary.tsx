@@ -40,7 +40,7 @@ const SpotSummary = ({ date }: SpotSummaryProps) => {
               <span className="w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-semibold flex items-center justify-center flex-shrink-0">
                 {index + 1}
               </span>
-              <span className="text-sm font-medium text-gray-900 truncate">{data.location.name}</span>
+              <span className="text-sm font-medium text-gray-900 truncate">{data.name}</span>
             </div>
           </button>
         ))}

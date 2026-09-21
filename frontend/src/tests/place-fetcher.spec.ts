@@ -13,6 +13,7 @@
 // 2. localStorage はテスト環境（jsdom）の実装が不安定（.clear() 未実装）なため、
 //    信頼性のある独自モックを使用する。
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import {
   fetchPlaceDetailsWithRetry,
   cleanExpiredPlaceCache,

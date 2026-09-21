@@ -1,22 +1,17 @@
-import { AlertTriangle, Bus, Calendar, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
-import React, { useCallback, useRef, useState } from 'react';
+import { Bus, ChevronDown, ChevronUp, Loader2, Train } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { calculateDistance, estimateTransitTime } from '@/data/mockNearestStation';
 import { searchNearestStation } from '@/lib/google-maps';
 import { useStoreForPlanning } from '@/lib/plan';
 import { cn } from '@/lib/utils';
-import { DepartureAndDestinationType } from '@/models/planLocation';
-import { NearestStation } from '@/types/nearestStation';
-import { TransportNodeType } from '@/types/plan';
+import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } from '@/types/plan';
 
 const NearestStationDestination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
@@ -34,17 +29,14 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
   const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
   // 目的地の最寄駅関連の状態（最後のスポットの場合）
-  const [destinationNearestStations, setDestinationNearestStations] = useState<NearestStation[]>(
-    [destinationData?.nearestStation].filter((s): s is NearestStation => !!s),
+  const [destinationNearestStations, setDestinationNearestStations] = useState<ExtendNearestStationType[]>(
+    [destinationData?.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
   );
   const [selectedDestinationStationId, setSelectedDestinationStationId] = useState<string | null>(
     destinationData?.nearestStation?.placeId || null,
   );
   const [destinationTransitTime, setDestinationTransitTime] = useState<number>(
     destinationData?.nearestStation?.transitTime || 0,
-  );
-  const [isDestinationManualTransitTime, setIsDestinationManualTransitTime] = useState<boolean>(
-    destinationData?.nearestStation?.isManualTransitTime || false,
   );
   // 発着時間メモ
   const [scheduledDepartureTime, setScheduledDepartureTime] = useState<string>(
@@ -67,15 +59,15 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   // スポット間の距離を計算
   const getDistanceFromPrevious = useCallback((): number | undefined => {
     return calculateDistance(
-      lastSpot.location.lat,
-      lastSpot.location.lng,
+      lastSpot.latitude,
+      lastSpot.longitude,
       destinationData.latitude,
       destinationData.longitude,
     );
   }, [lastSpot, destinationData]);
 
   // 目的地の情報を更新（最寄駅など）
-  const handleDestinationChange = (updatedDestination: DepartureAndDestinationType) => {
+  const handleDestinationChange = (updatedDestination: ExtendPlanLocationType) => {
     fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, updatedDestination);
   };
 
@@ -123,7 +115,6 @@ const NearestStationDestination = ({ date }: { date: string }) => {
       handleDestinationChange({ ...destinationData, nearestStation: undefined });
       setSelectedDestinationStationId(null);
       setDestinationTransitTime(0);
-      setIsDestinationManualTransitTime(false);
       setScheduledDepartureTime('');
       setScheduledDepartureTimes(['', '', '']);
     }
@@ -137,7 +128,6 @@ const NearestStationDestination = ({ date }: { date: string }) => {
       const distanceFromPrevious = getDistanceFromPrevious();
       const estimatedTime = distanceFromPrevious ? estimateTransitTime(distanceFromPrevious) : 0;
       setDestinationTransitTime(estimatedTime);
-      setIsDestinationManualTransitTime(false);
       handleDestinationChange({
         ...destinationData,
         nearestStation: {
@@ -149,7 +139,6 @@ const NearestStationDestination = ({ date }: { date: string }) => {
           latitude: station.latitude || 0,
           longitude: station.longitude || 0,
           transitTime: estimatedTime,
-          isManualTransitTime: false,
           scheduledDepartureTime,
           scheduledDepartureTimes: scheduledDepartureTimes.filter((candidate) => candidate !== ''),
         },
@@ -213,7 +202,6 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   const handleDestinationTransitTimeChange = (newTime: number) => {
     const validTime = Math.min(540, Math.max(1, newTime || 1));
     setDestinationTransitTime(validTime);
-    setIsDestinationManualTransitTime(true);
 
     if (destinationData?.nearestStation) {
       handleDestinationChange({
@@ -221,11 +209,23 @@ const NearestStationDestination = ({ date }: { date: string }) => {
         nearestStation: {
           ...destinationData.nearestStation,
           transitTime: validTime,
-          isManualTransitTime: true,
         },
       });
     }
   };
+
+  useEffect(() => {
+    // destinationDataが変更されたときに、最寄駅関連のローカルステートを再初期化
+    if (!destinationData) return;
+    setDestinationNearestStations(destinationData.nearestStation ? [destinationData.nearestStation] : []);
+    setSelectedDestinationStationId(destinationData.nearestStation?.placeId || null);
+    setDestinationTransitTime(destinationData.nearestStation?.transitTime || 0);
+    setScheduledDepartureTime(destinationData.nearestStation?.scheduledDepartureTime || '');
+    setScheduledDepartureTimes(buildInitialDepartureCandidates());
+    setTransitMemo(destinationData.nearestStation?.memo || '');
+    setIsDestinationSectionExpanded(!!destinationData.nearestStation && !!destinationData.nearestStation.name);
+    setUseDestinationNearestStation(!!destinationData.nearestStation);
+  }, [destinationData]);
 
   return (
     <Card>
@@ -321,130 +321,6 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                         <span className="text-sm text-muted-foreground">目的地周辺に最寄駅が見つかりませんでした</span>
                       )}
                     </div>
-
-                    {/* 目的地への移動時間入力 */}
-                    {lastSpot.nearestStation && destinationData.nearestStation && (
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-200 space-y-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300">
-                            移動情報
-                          </Badge>
-                          <span className="text-sm text-gray-600">このスポット → 目的地の最寄駅 の電車/バス移動</span>
-                        </div>
-
-                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                          <div className="flex items-center gap-2">
-                            <Train className="h-4 w-4 text-muted-foreground" />
-                            <Label className="text-sm">移動時間</Label>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              min={1}
-                              max={540}
-                              data-testid="transit-time-test"
-                              value={destinationTransitTime}
-                              onChange={(e) => handleDestinationTransitTimeChange(Number(e.target.value))}
-                              className="w-20 text-center"
-                            />
-                            <span className="text-sm text-muted-foreground">分</span>
-                          </div>
-                          {isDestinationManualTransitTime ? (
-                            <Badge variant="outline" className="text-xs">
-                              手入力
-                            </Badge>
-                          ) : (
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Badge variant="secondary" className="text-xs gap-1">
-                                  <AlertTriangle className="h-3 w-3" />
-                                  推定値
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">
-                                  直線距離からの概算です。
-                                  <br />
-                                  乗換案内アプリで調べた時間に修正してください。
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                        {/* 発車時間入力 */}
-
-                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:gap-4">
-                          <div className="flex items-center gap-2 min-w-fit sm:mt-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <Label className="text-sm">発車時間</Label>
-                          </div>
-                          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                            {scheduledDepartureTimes.map((candidate, index) => (
-                              <Input
-                                key={`destination-candidate-${index}`}
-                                type="time"
-                                value={candidate}
-                                onChange={(e) => handleScheduledDepartureTimeCandidateChange(index, e.target.value)}
-                                className="w-28"
-                                aria-label={`発車時間候補${index + 1}`}
-                              />
-                            ))}
-                          </div>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <span className="text-xs text-muted-foreground cursor-help">?</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">
-                                乗換案内アプリで調べた発車時間を入力してください。
-                                <br />
-                                最寄駅到着時間に応じた発車時間が自動で採用されます。
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-
-                        {/* 路線メモ */}
-                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:gap-4">
-                          <Label className="min-w-fit text-sm sm:mt-2">路線メモ</Label>
-                          <Textarea
-                            value={transitMemo}
-                            onChange={(e) => handleTransitMemoChange(e.target.value)}
-                            placeholder="例: ○○線 △△行き、乗り換え1回"
-                            className="h-16 text-sm"
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 目的地ルートサマリー */}
-                    {lastSpot.nearestStation && destinationData.nearestStation && (
-                      <div className="break-words rounded bg-gray-100 p-2 text-sm text-gray-600">
-                        <span className="font-medium">ルート: </span>
-                        <span>{lastSpot.location.name}</span>
-                        <span className="mx-1">→</span>
-                        <span className="text-purple-600">
-                          {lastSpot.nearestStation?.name}
-                          (徒歩
-                          {lastSpot.nearestStation?.walkingTime}
-                          分)
-                        </span>
-                        <span className="mx-1">→</span>
-                        <span className="text-green-600">🚃 {destinationTransitTime}分</span>
-                        <span className="mx-1">→</span>
-                        <span className="text-purple-600">
-                          {destinationNearestStations.find((s) => s.placeId === selectedDestinationStationId)?.name}
-                          (徒歩
-                          {
-                            destinationNearestStations.find((s) => s.placeId === selectedDestinationStationId)
-                              ?.walkingTime
-                          }
-                          分)
-                        </span>
-                        <span className="mx-1">→</span>
-                        <span>{destinationData.name}</span>
-                      </div>
-                    )}
                   </>
                 )}
               </div>
