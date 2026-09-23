@@ -41,24 +41,19 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
   const currentDaySpots = currentDayPlan?.spots || [];
   const targetName = departureOrDestination === 'DEPARTURE' ? '出発地' : '目的地';
 
+  /**
+   * 出発地と目的地を更新する処理
+   * @param overrides 上書きする出発地または目的地の情報
+   */
   function setDepartureAndDestination(overrides: Partial<ExtendPlanLocationType>) {
-    if (departureOrDestination === 'DEPARTURE') {
-      fields.setDepartureAndDestination(date, TransportNodeType.DEPARTURE, {
-        ...departureData,
-        latitude: overrides.latitude ?? departureData.latitude,
-        longitude: overrides.longitude ?? departureData.longitude,
-        name: overrides.name ?? departureData.name,
-        locationType: TransportNodeType.DEPARTURE,
-      });
-    } else if (departureOrDestination === 'DESTINATION') {
-      fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
-        ...destinationData,
-        latitude: overrides.latitude ?? destinationData.latitude,
-        longitude: overrides.longitude ?? destinationData.longitude,
-        name: overrides.name ?? destinationData.name,
-        locationType: TransportNodeType.DESTINATION,
-      });
-    }
+    const isDeparture = departureOrDestination === 'DEPARTURE';
+    const locationType = isDeparture ? TransportNodeType.DEPARTURE : TransportNodeType.DESTINATION;
+    const baseData = isDeparture ? departureData : destinationData;
+    fields.setDepartureAndDestination(date, locationType, {
+      ...baseData,
+      ...overrides,
+      locationType,
+    });
   }
 
   return (
@@ -74,7 +69,10 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
       <Tabs
         className="w-full min-w-0"
         value={departureOrDestination}
-        onValueChange={(value) => setDepartureOrDestination(value as 'DEPARTURE' | 'DESTINATION')}
+        onValueChange={(value) => {
+          setDepartureOrDestination(value as 'DEPARTURE' | 'DESTINATION');
+          setIsCheckCurrentLocation(false);
+        }}
       >
         <div className="w-full max-w-full overflow-x-auto pb-1">
           <TabsList className="inline-flex w-max min-w-full flex-nowrap justify-start gap-2 whitespace-nowrap">
