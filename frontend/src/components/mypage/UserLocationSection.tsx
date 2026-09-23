@@ -1,7 +1,21 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
-import { LocateIcon, Plus, Pencil, Trash2, MapPin, Star, Info, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import {
+  LocateIcon,
+  Plus,
+  Pencil,
+  Trash2,
+  MapPin,
+  Star,
+  Info,
+  Loader2,
+  AlertCircle,
+  ChevronUp,
+  ChevronDown,
+  Bus,
+  Train,
+} from 'lucide-react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 
 import {
@@ -12,6 +26,9 @@ import {
   UpdateUserLocationRequest,
 } from '@/models/userLocation';
 import { useGeocoding } from '@/hooks/use-geocoding';
+import { cn } from '@/lib/utils';
+import { searchNearestStation } from '@/lib/google-maps';
+import { ExtendNearestStationType } from '@/types/plan';
 
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -30,6 +47,7 @@ import {
 } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Switch } from '../ui/switch';
 
 /**
  * ユーザーお気に入り地点コンポーネント
@@ -64,6 +82,7 @@ export function UserLocationSection({
     longitude: 139.6917,
     label: '',
     isDefault: false,
+    nearestStation: undefined,
   });
 
   // 追加ダイアログを開く
@@ -74,6 +93,7 @@ export function UserLocationSection({
       longitude: 139.6917,
       label: '',
       isDefault: false,
+      nearestStation: undefined,
     });
     setIsAddDialogOpen(true);
   }
@@ -87,6 +107,7 @@ export function UserLocationSection({
       longitude: location.longitude,
       label: location.label || '',
       isDefault: location.isDefault,
+      nearestStation: location.nearestStation,
     });
     setIsEditDialogOpen(true);
   }
@@ -110,6 +131,7 @@ export function UserLocationSection({
       isDefault: formData.isDefault || false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      nearestStation: formData.nearestStation,
     };
 
     const result = await postUserLocation(formData);
@@ -236,6 +258,11 @@ export function UserLocationSection({
                           {location.label}
                         </Badge>
                       )}
+                      {location.nearestStation && (
+                        <Badge variant="outline" className="text-xs">
+                          最寄り駅あり
+                        </Badge>
+                      )}
                     </div>
                     <span className="text-xs text-gray-400">使用回数: {location.usageCount}回</span>
                   </div>
@@ -358,6 +385,20 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
   const { isLoading: isGeocodingLoading, error: geocodingError, searchByAddress, clearError } = useGeocoding();
   const [address, setAddress] = useState<string>('');
   const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [isDepartureSectionExpanded, setIsDepartureSectionExpanded] = useState<boolean>(!!formData.nearestStation);
+  const [useDepartureNearestStation, setUseDepartureNearestStation] = useState<boolean>(!!formData.nearestStation);
+  const [excludeBusStop, setExcludeBusStop] = useState<boolean>(false);
+  const [isLoadingStations, setIsLoadingStations] = useState<boolean>(false);
+  const [departureNearestStations, setDepartureNearestStations] = useState<ExtendNearestStationType[]>(
+    [formData?.nearestStation].filter((s): s is ExtendNearestStationType => !!s),
+  );
+  const [selectedDepartureStationId, setSelectedDepartureStationId] = useState<string | null>(
+    formData?.nearestStation?.placeId || null,
+  );
+  const lastSearchBusStop = useRef<boolean>(excludeBusStop);
+  const lastSearchCoord = useRef<{ lat: number; lng: number } | null>(
+    formData.latitude && formData.longitude ? { lat: formData.latitude, lng: formData.longitude } : null,
+  );
 
   /**
    * 住所からカーソルが離れた時に座標を検索
@@ -391,6 +432,71 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
     },
     [clearError, setFormData],
   );
+
+  // 出発地の最寄駅を取得する関数
+  const fetchDepartureNearestStations = async () => {
+    if (!formData.latitude || !formData.longitude) return;
+
+    setIsLoadingStations(true);
+    try {
+      const stations = await searchNearestStation({
+        center: {
+          id: 'departure',
+          name: formData.name,
+          lat: formData.latitude,
+          lng: formData.longitude,
+        },
+        radius: 1,
+        excludeBusStop,
+      });
+      setDepartureNearestStations(stations);
+      lastSearchBusStop.current = excludeBusStop;
+      lastSearchCoord.current = { lat: formData.latitude, lng: formData.longitude };
+    } catch (error) {
+      console.error('出発地の最寄駅の取得に失敗しました:', error);
+    } finally {
+      setIsLoadingStations(false);
+    }
+  };
+
+  // 出発地の最寄駅使用のON/OFF切り替え
+  const handleUseDepartureNearestStationChange = (checked: boolean) => {
+    setUseDepartureNearestStation(checked);
+    setIsDepartureSectionExpanded(checked);
+    if (
+      checked &&
+      (lastSearchBusStop.current !== excludeBusStop ||
+        lastSearchCoord.current?.lat !== formData.latitude ||
+        lastSearchCoord.current?.lng !== formData.longitude ||
+        departureNearestStations.length === 0)
+    ) {
+      fetchDepartureNearestStations();
+    }
+    if (!checked) {
+      setDepartureNearestStations([]);
+    }
+  };
+
+  // 出発地の最寄駅選択時の処理
+  const handleDepartureStationSelect = (stationId: string) => {
+    setSelectedDepartureStationId(stationId);
+    const station = departureNearestStations.find((s) => s.placeId === stationId);
+    if (station && formData) {
+      setFormData((prev) => ({
+        ...prev,
+        nearestStation: {
+          placeId: station.placeId,
+          spotId: station.spotId,
+          stationType: station.stationType,
+          name: station.name || '',
+          transitTime: 0,
+          walkingTime: station.walkingTime || 0,
+          latitude: station.latitude || 0,
+          longitude: station.longitude || 0,
+        },
+      }));
+    }
+  };
 
   return (
     <div className="grid gap-4 py-4">
@@ -454,6 +560,95 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
           </div>
         ) : (
           <p className="text-xs text-gray-500">住所を入力してカーソルを外すと、Google Mapで位置を自動取得します</p>
+        )}
+      </div>
+
+      {/* 最寄駅の設定 */}
+      <div className="grid gap-2">
+        <Label htmlFor="nearest-station">最寄駅</Label>
+        <div
+          data-testid="departure-station-section-toggle"
+          className={cn(
+            'flex cursor-pointer flex-col gap-3 px-4 py-3 transition-colors sm:flex-row sm:items-center sm:justify-between',
+            useDepartureNearestStation ? 'bg-purple-50' : 'bg-gray-50 hover:bg-gray-100',
+          )}
+          onClick={() => setIsDepartureSectionExpanded(!isDepartureSectionExpanded)}
+        >
+          <div className="flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:items-center">
+            <Train className={cn('h-4 w-4', useDepartureNearestStation ? 'text-purple-600' : 'text-gray-400')} />
+            <div className="min-w-0">
+              <span className="text-sm font-medium">お気に入りの場所の最寄駅</span>
+              <p className="text-xs text-gray-500">最寄駅を設定</p>
+            </div>
+            <div className="flex items-center gap-1 sm:ml-2">
+              <Checkbox
+                checked={excludeBusStop}
+                onCheckedChange={() => setExcludeBusStop((prev) => !prev)}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <Label className="text-sm cursor-pointer flex items-center gap-1 text-muted-foreground">
+                <Bus className="h-4 w-4" />
+                バス停を除外
+              </Label>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 self-end sm:self-auto">
+            <div onClick={(e) => e.stopPropagation()}>
+              <Switch checked={useDepartureNearestStation} onCheckedChange={handleUseDepartureNearestStationChange} />
+            </div>
+            {isDepartureSectionExpanded ? (
+              <ChevronUp className="h-4 w-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-gray-400" />
+            )}
+          </div>
+        </div>
+        {useDepartureNearestStation && isDepartureSectionExpanded && (
+          <div className="p-4 border-t bg-white space-y-4">
+            {isLoadingStations ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                駅を検索中...
+              </div>
+            ) : (
+              <>
+                {/* 出発地の最寄駅 */}
+                <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className="bg-purple-100 text-purple-700 border-purple-300">
+                      最寄駅
+                    </Badge>
+                    <span className="text-sm text-gray-600">（{formData.name}）周辺の最寄駅</span>
+                  </div>
+                  {departureNearestStations.length > 0 ? (
+                    <div className="space-y-2">
+                      <Select value={selectedDepartureStationId || ''} onValueChange={handleDepartureStationSelect}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="最寄駅を選択" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departureNearestStations.map((station) => (
+                            <SelectItem key={station.placeId} value={station.placeId}>
+                              {station.stationType === 'BUS' ? '🚌' : '🚃'} {station.name} (徒歩
+                              {station.walkingTime}分 / 距離{station.distance}m)
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedDepartureStationId && (
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <span>✓ 選択中:</span>
+                          {departureNearestStations.find((s) => s.placeId === selectedDepartureStationId)?.name}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">周辺に最寄駅が見つかりませんでした</span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
 

@@ -22,6 +22,10 @@ const mockUserLocation = {
   isDefault: true,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  nearestStations: {
+    placeId: 'station_1',
+    stationType: 'train',
+  },
 };
 
 describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {

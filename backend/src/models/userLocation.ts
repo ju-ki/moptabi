@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { StationTypeSchema } from '@shared/transports/schema';
 
 import type { CreateUserLocationType, UpdateUserLocationType, UserLocationType } from '@shared/user/types';
 
@@ -17,6 +18,14 @@ export const UserLocationSchema = z.object({
   isDefault: z.boolean().openapi({ example: false }),
   createdAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
   updatedAt: z.string().datetime().openapi({ example: '2025-10-15T12:00:00Z' }),
+  nearestStation: z
+    .object({
+      placeId: z.string().max(255).openapi({ example: 'station_1' }),
+      stationType: StationTypeSchema,
+    })
+    .nullable()
+    .optional()
+    .openapi({ example: { placeId: 'station_1', stationType: 'TRAIN' } }),
 });
 
 // ユーザーのお気に入り地点の一覧スキーマ
@@ -41,6 +50,14 @@ export const CreateUserLocationSchema = z.object({
     .openapi({ example: 139.6917 }),
   label: z.string().max(255).nullable().optional().openapi({ example: '自宅' }),
   isDefault: z.boolean().optional().default(false).openapi({ example: false }),
+  nearestStation: z
+    .object({
+      placeId: z.string().max(255).openapi({ example: 'station_1' }),
+      stationType: StationTypeSchema,
+    })
+    .nullable()
+    .optional()
+    .openapi({ example: { placeId: 'station_1', stationType: 'TRAIN' } }),
 });
 
 // 更新時のスキーマ（ボディ用 - idはパスパラメータから取得）
@@ -65,6 +82,14 @@ export const UpdateUserLocationSchema = z.object({
     .openapi({ example: 139.6917 }),
   label: z.string().max(255).nullable().optional().openapi({ example: '自宅' }),
   isDefault: z.boolean().optional().openapi({ example: false }),
+  nearestStation: z
+    .object({
+      placeId: z.string().max(255).openapi({ example: 'station_1' }),
+      stationType: StationTypeSchema,
+    })
+    .nullable()
+    .optional()
+    .openapi({ example: { placeId: 'station_1', stationType: 'TRAIN' } }),
 });
 
 // 削除時のスキーマ（パスパラメータ用）

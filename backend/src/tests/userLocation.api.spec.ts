@@ -11,6 +11,7 @@ import {
   deleteUserLocationByUser,
   findUserLocationById,
   countUserLocations,
+  findNearestStationByUserLocationId,
 } from './db-helper';
 
 // テスト用ユーザーID
@@ -148,6 +149,27 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       expect(data[0].name).toBe('職場');
       expect(data[1].name).toBe('自宅');
     });
+
+    it('最寄駅を含んだ地点を取得できる', async () => {
+      await createUserLocation({
+        userId: TEST_USER_ID,
+        name: '自宅',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        nearestStation: {
+          placeId: 'station_1',
+          stationType: 'TRAIN',
+        },
+      });
+
+      const response = await client.api['userLocation'].$get({}, { headers: getAuthHeaders() });
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.length).toBe(1);
+      expect(data[0].nearestStation).toBeDefined();
+      expect(data[0].nearestStation.placeId).toBe('station_1');
+      expect(data[0].nearestStation.stationType).toBe('TRAIN');
+    });
   });
 
   // ========================================
@@ -189,6 +211,27 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       const data = await response.json();
       expect(data.name).toBe('職場');
       expect(data.isDefault).toBe(false);
+    });
+
+    it('最寄駅が入っていても登録できる', async () => {
+      const minimalData = {
+        name: '職場',
+        latitude: 35.6812,
+        longitude: 139.7671,
+        isDefault: false,
+        nearestStation: {
+          placeId: 'station_1',
+          stationType: 'TRAIN',
+        },
+      };
+      const response = await client.api['userLocation'].$post({ json: minimalData }, { headers: getAuthHeaders() });
+      expect(response.status).toBe(201);
+      const data = await response.json();
+      expect(data.name).toBe('職場');
+      expect(data.isDefault).toBe(false);
+      expect(data.nearestStation).not.toBeNull();
+      expect(data.nearestStation.placeId).toBe('station_1');
+      expect(data.nearestStation.stationType).toBe('TRAIN');
     });
 
     it('最大5件まで登録できる', async () => {
@@ -378,6 +421,87 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       expect(data.latitude).toBe(35.6895);
     });
 
+    it('最寄駅を更新できる(なし→あり)', async () => {
+      const created = await createUserLocation({
+        userId: TEST_USER_ID,
+        name: '自宅',
+        latitude: 35.6895,
+        longitude: 139.6917,
+      });
+
+      const response = await client.api.userLocation[':id'].$patch(
+        {
+          param: { id: created.id },
+          json: {
+            nearestStation: {
+              placeId: 'station_2',
+              stationType: 'BUS',
+            },
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.nearestStation.placeId).toBe('station_2');
+      expect(data.nearestStation.stationType).toBe('BUS');
+    });
+    it('最寄駅を更新できる(あり→なし)', async () => {
+      const created = await createUserLocation({
+        userId: TEST_USER_ID,
+        name: '自宅',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        nearestStation: {
+          placeId: 'station_2',
+          stationType: 'BUS',
+        },
+      });
+
+      const response = await client.api.userLocation[':id'].$patch(
+        {
+          param: { id: created.id },
+          json: {
+            nearestStation: null,
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.nearestStation).toBeNull();
+    });
+
+    it('最寄駅を更新できる(あり→あり)', async () => {
+      const created = await createUserLocation({
+        userId: TEST_USER_ID,
+        name: '自宅',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        nearestStation: {
+          placeId: 'station_1',
+          stationType: 'TRAIN',
+        },
+      });
+
+      const response = await client.api.userLocation[':id'].$patch(
+        {
+          param: { id: created.id },
+          json: {
+            nearestStation: {
+              placeId: 'station_2',
+              stationType: 'BUS',
+            },
+          },
+        },
+        { headers: getAuthHeaders() },
+      );
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.nearestStation.placeId).toBe('station_2');
+      expect(data.nearestStation.stationType).toBe('BUS');
+    });
+
     it('isDefaultをtrueに更新すると既存のデフォルトが解除される', async () => {
       const first = await createUserLocation({
         userId: TEST_USER_ID,
@@ -484,6 +608,27 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
 
       const afterCount = await countUserLocations(TEST_USER_ID);
       expect(afterCount).toBe(0);
+    });
+
+    it('最寄駅が登録されている場合、最寄駅情報も削除される', async () => {
+      const created = await createUserLocation({
+        userId: TEST_USER_ID,
+        name: '自宅',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        nearestStation: {
+          placeId: 'station_1',
+          stationType: 'TRAIN',
+        },
+      });
+
+      await client.api['userLocation'][':id'].$delete({ param: { id: created.id } }, { headers: getAuthHeaders() });
+
+      const deleted = await findUserLocationById(created.id);
+      expect(deleted).toBeNull();
+
+      const nearestStation = await findNearestStationByUserLocationId(created.id);
+      expect(nearestStation).toBeNull();
     });
   });
 });
