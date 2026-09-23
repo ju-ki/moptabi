@@ -25,7 +25,7 @@
 
 ### 2-3. issue #345 / PR #362 との関連
 
-- issue #345 を閉じた PR は `#362 feature345 transportとnearestStaionの持ち方変更`。
+- issue #345 を閉じた PR は `#362 feature345 transportとnearestStationの持ち方変更`。
 - PR #362 の差分上、`backend/src/controllers/trip.ts` で以下の変更が入っている。
   - `getTrips: getDbFromContext(c) -> getPostgresDb(c)`
   - `createTrip: getPostgresDb(c)` を利用
