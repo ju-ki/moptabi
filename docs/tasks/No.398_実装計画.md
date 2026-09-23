@@ -23,7 +23,26 @@
 - Cloudflare Workers では、同じ backend 内でも大半の API は `getDbFromContext()` 経由で Worker 向け DB ドライバを使う。
 - そのため **trips 関連 API だけが Cloudflare 実行環境との差分を持つ** 状態になっている。
 
-### 2-3. issue #345 / PR #362 との関連
+### 2-3. 500 エラーになるまでの経路
+
+#### `GET /trips` の場合
+
+1. `backend/src/controllers/trip.ts` の `getTrips()` は `getPostgresDb(c)` を呼ぶ。
+2. `backend/src/db/index.ts` の `getPostgresDb(c)` は、`c.env.DATABASE_URL` がある Cloudflare 実行環境でも `createDevDb(c.env.DATABASE_URL)` を返す。
+3. `createDevDb()` は `pg` の `Pool` を生成し、`db.query.trip.findMany(...)` 実行時にその接続経路を使う。
+4. この例外は `getTrips()` 内では捕捉されず、`backend/src/index.ts` の `app.onError()` に到達する。
+5. `app.onError()` は `HTTPException` 以外をそのまま 500 として返すため、結果としてクライアントからは「謎の 500」に見える。
+
+#### `POST /trips/create` / `PATCH /trips/:id` の場合
+
+1. `createTrip()` / `updateTrip()` も同じく `getPostgresDb(c)` を使うため、まず `GET /trips` と同じ DB 接続経路の問題を引き継ぐ。
+2. 加えて `backend/src/services/trip.ts` では `db.transaction(...)` を前提にしているため、Cloudflare 向けの HTTP ドライバへ単純に切り替えるだけでも別の失敗要因が残る。
+3. つまり trips 系は
+   - **現状の `pg` 経路のままだと Cloudflare 実行環境で 500 化しうる**
+   - **Worker 向け HTTP 経路へ寄せても transaction 戦略が未整理だと別要因で失敗しうる**
+   という二段構えの問題を持っている。
+
+### 2-4. issue #345 / PR #362 との関連
 
 - issue #345 を閉じた PR は `#362 feature345 transportとnearestStationの持ち方変更`。
 - PR #362 の差分上、`backend/src/controllers/trip.ts` で以下の変更が入っている。
@@ -36,7 +55,8 @@
 
 - **trips 系 API が Cloudflare Workers 上でも `pg` / `node-postgres` 側の DB 接続経路を通っていること** が最有力原因。
 - 現状の設計では、Cloudflare Workers では `getDbFromContext()` に寄せて `neon-http` 経由で扱う前提になっているが、trips 系 API だけ例外になっている。
-- そのため、Cloudflare 環境で trips 一覧・作成・更新を叩いたときだけ 500 になりやすい。
+- その結果、`GET /trips` では **`getPostgresDb()` で解決した `pg` 経路の例外が未捕捉のまま `app.onError()` に流れ、500 になる**。
+- `POST /PATCH` では同じ経路問題に加えて transaction 前提実装も残っているため、一覧より修正難易度が高い。
 
 ## 4. 「初回アクセスで多発」に見える理由
 
