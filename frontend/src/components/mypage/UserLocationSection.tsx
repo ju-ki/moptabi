@@ -474,6 +474,8 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
     }
     if (!checked) {
       setDepartureNearestStations([]);
+      setSelectedDepartureStationId(null);
+      setFormData((prev) => ({ ...prev, nearestStation: undefined }));
     }
   };
 

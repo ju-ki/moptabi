@@ -24,7 +24,7 @@ const mockUserLocation = {
   updatedAt: new Date().toISOString(),
   nearestStations: {
     placeId: 'station_1',
-    stationType: 'train',
+    stationType: 'TRAIN',
   },
 };
 
