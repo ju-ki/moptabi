@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { eq, and, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
 
-import { userLocation, AnyDbType } from '@/db';
+import { userLocation, AnyDbType, userLocationNearestStation } from '@/db';
 import { getUserId } from '@/middleware/auth';
 import { CreateUserLocationSchema, MAX_USER_LOCATIONS, UpdateUserLocationSchema } from '@/models/userLocation';
 
@@ -11,6 +11,9 @@ export const getUserLocationList = async (db: AnyDbType, c: Context) => {
 
   const userLocationList = await db.query.userLocation.findMany({
     where: eq(userLocation.userId, userId),
+    with: {
+      nearestStation: true,
+    },
     orderBy: desc(userLocation.usageCount),
   });
 
@@ -61,7 +64,22 @@ export const createUserLocation = async (db: AnyDbType, c: Context) => {
     })
     .returning();
 
-  return newUserLocation;
+  if (userLocationData.nearestStation) {
+    await db.insert(userLocationNearestStation).values({
+      userLocationId: newUserLocation.id,
+      placeId: userLocationData.nearestStation.placeId,
+      stationType: userLocationData.nearestStation.stationType,
+    });
+  }
+
+  const createdUserLocation = await db.query.userLocation.findFirst({
+    where: (userLocation, { eq }) => eq(userLocation.id, newUserLocation.id),
+    with: {
+      nearestStation: true,
+    },
+  });
+
+  return createdUserLocation;
 };
 
 export const updateUserLocation = async (db: AnyDbType, c: Context) => {
@@ -115,7 +133,35 @@ export const updateUserLocation = async (db: AnyDbType, c: Context) => {
     .where(and(eq(userLocation.id, userLocationId)))
     .returning();
 
-  return updated;
+  if (userLocationData.nearestStation) {
+    await db
+      .insert(userLocationNearestStation)
+      .values({
+        userLocationId: updated.id,
+        placeId: userLocationData.nearestStation.placeId,
+        stationType: userLocationData.nearestStation.stationType,
+      })
+      .onConflictDoUpdate({
+        target: [userLocationNearestStation.userLocationId],
+        set: {
+          placeId: userLocationData.nearestStation.placeId,
+          stationType: userLocationData.nearestStation.stationType,
+        },
+      });
+  }
+
+  if (userLocationData.nearestStation === null) {
+    await db.delete(userLocationNearestStation).where(eq(userLocationNearestStation.userLocationId, updated.id));
+  }
+
+  const updatedUserLocation = await db.query.userLocation.findFirst({
+    where: (userLocation, { eq }) => eq(userLocation.id, userLocationId),
+    with: {
+      nearestStation: true,
+    },
+  });
+
+  return updatedUserLocation;
 };
 
 export const deleteUserLocation = async (db: AnyDbType, c: Context) => {

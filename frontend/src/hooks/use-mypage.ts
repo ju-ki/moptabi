@@ -3,6 +3,9 @@ import useSWR from 'swr';
 import { useFetcher } from '@/hooks/use-fetcher';
 import { CreateUserLocationRequest, UpdateUserLocationRequest, UserLocation } from '@/models/userLocation';
 import { CountResponse, MypageData, NextTrip, RecentTrip, TripSummary, WishlistSummary } from '@/models/mypage';
+import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStation';
+
+import { fetchRequiredPlaceDetails } from './use-trip';
 
 export type { MypageData };
 
@@ -57,6 +60,38 @@ function isFutureDate(dateStr: string): boolean {
   return date > today;
 }
 
+async function enrichUserLocationWithNearestStation(userLocation: UserLocation): Promise<UserLocation> {
+  if (!userLocation.nearestStation) {
+    return userLocation;
+  }
+
+  try {
+    const placeResultForStation = await fetchRequiredPlaceDetails(userLocation.nearestStation.placeId);
+    return {
+      ...userLocation,
+      nearestStation: {
+        ...userLocation.nearestStation,
+        name: placeResultForStation.name ?? '',
+        latitude: placeResultForStation.latitude ?? 0,
+        longitude: placeResultForStation.longitude ?? 0,
+        walkingTime: estimateWalkingTime(
+          calculateDistance(
+            userLocation.latitude ?? 0,
+            userLocation.longitude ?? 0,
+            placeResultForStation.latitude ?? 0,
+            placeResultForStation.longitude ?? 0,
+          ),
+        ),
+      },
+    };
+  } catch (error) {
+    console.error(
+      `Failed to fetch nearest station for user location ${userLocation.id}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
+    return userLocation;
+  }
+}
+
 /**
  * マイページに必要なデータを一括で取得・整形するカスタムフック
  */
@@ -98,11 +133,19 @@ export function useMypageData(): MypageData {
     isLoading: wishlistCountLoading,
   } = useSWR<CountResponse>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/wishlist/count` : null, getFetcher);
 
+  const userLocationFetcher = async (url: string) => {
+    const raw = await getFetcher(url);
+    return await Promise.all(raw.map(enrichUserLocationWithNearestStation));
+  };
+
   const {
     data: userLocations,
     error: userLocationsError,
     isLoading: userLocationsLoading,
-  } = useSWR<UserLocation[]>(shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation` : null, getFetcher);
+  } = useSWR<UserLocation[]>(
+    shouldFetch ? `${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation` : null,
+    userLocationFetcher,
+  );
 
   const postUserLocation = async (newUserLocation: CreateUserLocationRequest): Promise<UserLocation> => {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/userLocation`, {

@@ -96,6 +96,26 @@ export const userLocation = pgTable(
   ],
 );
 
+export const userLocationNearestStation = pgTable(
+  'UserLocationNearestStation',
+  {
+    id: serial().primaryKey().notNull(),
+    userLocationId: integer().notNull(),
+    placeId: text().notNull(),
+    stationType: stationType().notNull(),
+  },
+  (table) => [
+    uniqueIndex('UserLocationNearestStation_userLocationId_key').on(table.userLocationId),
+    foreignKey({
+      columns: [table.userLocationId],
+      foreignColumns: [userLocation.id],
+      name: 'UserLocationNearestStation_userLocationId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
 export const plan = pgTable(
   'Plan',
   {
