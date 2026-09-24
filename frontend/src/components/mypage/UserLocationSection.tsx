@@ -501,7 +501,7 @@ function LocationForm({ formData, setFormData }: LocationFormProps) {
   };
 
   return (
-    <div className="grid gap-4 py-4">
+    <div className="grid gap-4 py-4 h-96 overflow-auto">
       {/* 名前（必須） */}
       <div className="grid gap-2">
         <Label htmlFor="name">
