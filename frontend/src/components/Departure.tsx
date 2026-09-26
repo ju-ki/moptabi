@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Check, Info, MapPinIcon, Star, History } from 'lucide-react';
+import { Check, MapPinIcon, Star, History } from 'lucide-react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { PlanLocationCandidateItemType } from '@shared/user/types';
 
 import { useStoreForPlanning } from '@/lib/plan';
 import { ExtendPlanLocationType, TransportNodeType } from '@/types/plan';
 import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
+import { calculateDistance } from '@/data/mockNearestStation';
 
 import { Label } from './ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -146,6 +147,7 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
                         <CommandItem
                           key={`favorite-${candidate.userLocationId}`}
                           onSelect={() => {
+                            const isNearestStationSet = candidate.nearestStation ? true : false;
                             setDepartureAndDestination({
                               name: candidate.name,
                               latitude: candidate.latitude,
@@ -154,8 +156,26 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
                               time: DEFAULT_DEPARTURE_TIME,
                               travelTime: 0,
                               userLocationId: candidate.userLocationId ?? undefined,
-                              transportMethod: 'DEFAULT',
-                              transportMethodId: 0,
+                              transportMethod: isNearestStationSet ? 'TRANSIT' : 'DEFAULT',
+                              transportMethodId: isNearestStationSet ? 4 : 0,
+                              isSetSelectedNearestStation: isNearestStationSet,
+                              nearestStation: candidate.nearestStation
+                                ? {
+                                    placeId: candidate.nearestStation.placeId,
+                                    stationType: candidate.nearestStation.stationType,
+                                    latitude: candidate.nearestStation.latitude,
+                                    longitude: candidate.nearestStation.longitude,
+                                    name: candidate.nearestStation.name,
+                                    walkingTime: candidate.nearestStation.walkingTime,
+                                    distance: calculateDistance(
+                                      candidate.latitude,
+                                      candidate.longitude,
+                                      candidate.nearestStation.latitude,
+                                      candidate.nearestStation.longitude,
+                                    ),
+                                    transitTime: 0,
+                                  }
+                                : undefined,
                               alternateRoutes: [],
                             });
                             setOpen(false);
@@ -269,6 +289,7 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
                         <CommandItem
                           key={`favorite-${candidate.userLocationId}`}
                           onSelect={() => {
+                            const isNearestStationSet = candidate.nearestStation ? true : false;
                             fields.setDepartureAndDestination(date, TransportNodeType.DESTINATION, {
                               name: candidate.name,
                               latitude: candidate.latitude,
@@ -277,8 +298,26 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
                               time: DEFAULT_ARRIVAL_TIME,
                               travelTime: 0,
                               userLocationId: candidate.userLocationId ?? undefined,
-                              transportMethod: 'DEFAULT',
-                              transportMethodId: 0,
+                              transportMethod: isNearestStationSet ? 'TRANSIT' : 'DEFAULT',
+                              transportMethodId: isNearestStationSet ? 4 : 0,
+                              isSetSelectedNearestStation: isNearestStationSet,
+                              nearestStation: candidate.nearestStation
+                                ? {
+                                    placeId: candidate.nearestStation.placeId,
+                                    stationType: candidate.nearestStation.stationType,
+                                    latitude: candidate.nearestStation.latitude,
+                                    longitude: candidate.nearestStation.longitude,
+                                    name: candidate.nearestStation.name,
+                                    walkingTime: candidate.nearestStation.walkingTime,
+                                    distance: calculateDistance(
+                                      candidate.latitude,
+                                      candidate.longitude,
+                                      candidate.nearestStation.latitude,
+                                      candidate.nearestStation.longitude,
+                                    ),
+                                    transitTime: 0,
+                                  }
+                                : undefined,
                               alternateRoutes: [],
                             });
                             setOpen(false);

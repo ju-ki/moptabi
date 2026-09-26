@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { PlanLocationType } from '@shared/planlocation/types';
 
-import { plan, planLocation, planLocationNearestStation, trip, userLocation } from '@/db';
+import { plan, planLocation, planLocationNearestStation, trip, userLocation, userLocationNearestStation } from '@/db';
 import type { AnyDbType } from '@/db';
 import { CreatePlanLocationType, LocationType } from '@/models/planLocation';
 
@@ -90,6 +90,7 @@ export async function getPlanLocationCandidates(
   const favorites = await database
     .select()
     .from(userLocation)
+    .leftJoin(userLocationNearestStation, eq(userLocationNearestStation.userLocationId, userLocation.id))
     .where(eq(userLocation.userId, userId))
     .orderBy(desc(userLocation.usageCount), asc(userLocation.id))
     .limit(limit);
@@ -114,13 +115,19 @@ export async function getPlanLocationCandidates(
   return {
     favorites: favorites.map((fav) => ({
       planLocationId: null,
-      userLocationId: fav.id,
-      name: fav.name,
-      latitude: fav.latitude,
-      longitude: fav.longitude,
-      label: fav.label,
-      usageCount: fav.usageCount,
-      isDefault: fav.isDefault,
+      userLocationId: fav.UserLocation.id,
+      name: fav.UserLocation.name,
+      latitude: fav.UserLocation.latitude,
+      longitude: fav.UserLocation.longitude,
+      label: fav.UserLocation.label,
+      usageCount: fav.UserLocation.usageCount,
+      isDefault: fav.UserLocation.isDefault,
+      nearestStation: fav.UserLocationNearestStation
+        ? {
+            placeId: fav.UserLocationNearestStation.placeId,
+            stationType: fav.UserLocationNearestStation.stationType,
+          }
+        : null,
       locationType: 'BOTH' as const,
     })),
     history: history.map((hist) => ({
