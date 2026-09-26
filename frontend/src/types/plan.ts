@@ -106,6 +106,7 @@ export type ExtendSpotType = TripSpotType &
 
 export type ExtendPlanLocationType = PlanLocationType & {
   nearestStation?: ExtendNearestStationType;
+  isSetSelectedNearestStation?: boolean;
   alternateRoutes: AlternativeRouteInfo[];
 };
 

@@ -16,6 +16,7 @@ import {
   planLocationNearestStation,
   planSpotNearestStation,
   createDevDb,
+  userLocationNearestStation,
 } from '@db';
 
 // スキーマを再エクスポート
@@ -469,6 +470,16 @@ export async function countUserNotifications(params: { userId?: string; isRead?:
   return result.length;
 }
 
+export async function findNearestStationByUserLocationId(userLocationId: number) {
+  const db = createDevDb(process.env.DATABASE_URL!);
+  const [found] = await db
+    .select()
+    .from(userLocationNearestStation)
+    .where(eq(userLocationNearestStation.userLocationId, userLocationId))
+    .limit(1);
+  return found ?? null;
+}
+
 /**
  * Userをupsert（存在すれば更新、なければ作成）
  */
@@ -572,6 +583,10 @@ export async function createUserLocation(data: {
   label?: string | null;
   usageCount?: number;
   isDefault?: boolean;
+  nearestStation?: {
+    placeId: string;
+    stationType: 'BUS' | 'TRAIN';
+  } | null;
 }) {
   const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
@@ -586,6 +601,13 @@ export async function createUserLocation(data: {
       isDefault: data.isDefault ?? false,
     })
     .returning();
+  if (data.nearestStation) {
+    await db.insert(userLocationNearestStation).values({
+      userLocationId: created.id,
+      placeId: data.nearestStation.placeId,
+      stationType: data.nearestStation.stationType,
+    });
+  }
   return created;
 }
 
