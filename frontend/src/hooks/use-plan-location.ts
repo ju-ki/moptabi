@@ -10,10 +10,48 @@ import {
   PlanLocationCandidatesResponse,
   CreatePlanLocationRequest,
 } from '@/models/planLocation';
+import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStation';
 
 import { useFetcher } from './use-fetcher';
+import { fetchRequiredPlaceDetails } from './use-trip';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+async function enrichUserLocationWithNearestStation(candidate: PlanLocationCandidatesResponse) {
+  const updatedFavorites = candidate.favorites.map(async (favorite) => {
+    if (!favorite.nearestStation || !favorite.nearestStation.placeId) {
+      return favorite;
+    }
+    try {
+      const placeResultForStation = await fetchRequiredPlaceDetails(favorite.nearestStation?.placeId ?? '');
+      favorite.nearestStation = {
+        ...favorite.nearestStation,
+        placeId: favorite.nearestStation?.placeId,
+        latitude: placeResultForStation?.latitude ?? 0,
+        longitude: placeResultForStation?.longitude ?? 0,
+        name: placeResultForStation?.name ?? '',
+        transitTime: 0,
+        stationType: favorite.nearestStation?.stationType ?? 'OTHER',
+        walkingTime: estimateWalkingTime(
+          calculateDistance(
+            favorite.latitude,
+            favorite.longitude,
+            placeResultForStation?.latitude ?? 0,
+            placeResultForStation?.longitude ?? 0,
+          ),
+        ),
+      };
+      return {
+        ...favorite,
+      };
+    } catch (error) {
+      console.error('Failed to enrich nearest station:', error);
+      return { ...favorite, nearestStation: null };
+    }
+  });
+  candidate.favorites = await Promise.all(updatedFavorites);
+  return candidate;
+}
 
 /**
  * PlanLocation候補を取得するフック
@@ -36,9 +74,15 @@ export function usePlanLocationCandidates(locationType?: LocationType, limit?: n
 
   const shouldFetch = isAuthenticated && !isSessionLoading;
 
+  const planLocationFetcher = async (url: string): Promise<PlanLocationCandidatesResponse> => {
+    const raw = await getFetcher(url);
+    const enriched = await enrichUserLocationWithNearestStation(raw);
+    return enriched;
+  };
+
   const { data, error, isLoading, mutate } = useSWR<PlanLocationCandidatesResponse>(
     shouldFetch ? url : null,
-    getFetcher,
+    planLocationFetcher,
   );
 
   return {

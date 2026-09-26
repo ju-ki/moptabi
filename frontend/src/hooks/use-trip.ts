@@ -9,7 +9,7 @@ import { SpotMetaType } from '@/types/spot';
 
 import { useFetcher } from './use-fetcher';
 
-async function fetchRequiredPlaceDetails(placeId: string): Promise<SpotMetaType> {
+export async function fetchRequiredPlaceDetails(placeId: string): Promise<SpotMetaType> {
   const placeResult = await fetchPlaceDetailsWithRetry(placeId);
 
   if (placeResult.hasError) {
