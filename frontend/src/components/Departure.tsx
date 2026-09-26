@@ -220,6 +220,7 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
                               userLocationId: candidate.userLocationId ?? undefined,
                               transportMethod: 'DEFAULT',
                               transportMethodId: 0,
+                              nearestStation: undefined,
                               alternateRoutes: [],
                             });
                             setSelectedPlanLocationId(candidate.planLocationId || null);
@@ -361,6 +362,7 @@ const DepartureAndDestination = ({ date }: { date: string }) => {
                               travelTime: 0,
                               transportMethod: 'DEFAULT',
                               transportMethodId: 0,
+                              nearestStation: undefined,
                               alternateRoutes: [],
                             });
                             setSelectedPlanLocationId(candidate.planLocationId || null);

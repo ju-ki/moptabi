@@ -22,27 +22,32 @@ async function enrichUserLocationWithNearestStation(candidate: PlanLocationCandi
     if (!favorite.nearestStation || !favorite.nearestStation.placeId) {
       return favorite;
     }
-    const placeResultForStation = await fetchRequiredPlaceDetails(favorite.nearestStation?.placeId ?? '');
-    favorite.nearestStation = {
-      ...favorite.nearestStation,
-      placeId: favorite.nearestStation?.placeId,
-      latitude: placeResultForStation?.latitude ?? 0,
-      longitude: placeResultForStation?.longitude ?? 0,
-      name: placeResultForStation?.name ?? '',
-      transitTime: 0,
-      stationType: favorite.nearestStation?.stationType ?? 'OTHER',
-      walkingTime: estimateWalkingTime(
-        calculateDistance(
-          favorite.latitude,
-          favorite.longitude,
-          placeResultForStation?.latitude ?? 0,
-          placeResultForStation?.longitude ?? 0,
+    try {
+      const placeResultForStation = await fetchRequiredPlaceDetails(favorite.nearestStation?.placeId ?? '');
+      favorite.nearestStation = {
+        ...favorite.nearestStation,
+        placeId: favorite.nearestStation?.placeId,
+        latitude: placeResultForStation?.latitude ?? 0,
+        longitude: placeResultForStation?.longitude ?? 0,
+        name: placeResultForStation?.name ?? '',
+        transitTime: 0,
+        stationType: favorite.nearestStation?.stationType ?? 'OTHER',
+        walkingTime: estimateWalkingTime(
+          calculateDistance(
+            favorite.latitude,
+            favorite.longitude,
+            placeResultForStation?.latitude ?? 0,
+            placeResultForStation?.longitude ?? 0,
+          ),
         ),
-      ),
-    };
-    return {
-      ...favorite,
-    };
+      };
+      return {
+        ...favorite,
+      };
+    } catch (error) {
+      console.error('Failed to enrich nearest station:', error);
+      return { ...favorite, nearestStation: null };
+    }
   });
   candidate.favorites = await Promise.all(updatedFavorites);
   return candidate;
