@@ -1,6 +1,52 @@
 # SpotSelection コンポーネント設計書
 
 ## 概要
+
+### 背景（issue #339 対応）
+現行の検索方法はアプリのコンセプト（AI × Google Maps でプランを最適化する）からずれており、以下の問題がある：
+- 検索中心点が常に手動設定で、プランの文脈（出発地・目的地・登録スポット）を活かせていない
+- エリア検索とキーワード検索が同一UI内に混在しておりわかりにくい
+- 「現在地から探す」「プランに既にあるスポットの近くで探す」という自然な使い方ができない
+
+### 改善方針（issue #339 確定要件）
+- 現在地から検索できる（主に即時探索向け）
+- 出発地・目的地・登録スポットを統合した「プランの地点付近」から検索できる
+  - 1点選択 → その地点付近を検索
+  - 2点選択 → 中間地点を自動計算して検索（出発地とスポット間など）
+  - 地点選択方式は**バッジ選択**を採用。プランデータは既に座標を持つため候補リスト化できる。
+
+### タブ構成
+Google検索のモード（現在地 / プランの地点付近）は**1タブ内にまとめ**、ラジオボタンで切り替える。3タブ構成とする。
+
+| タブ | 内容 |
+|---|---|
+| Google検索 | モード選択（現在地 / プランの地点付近）+ 検索パネル |
+| 行きたいリスト | 登録済みウィッシュリストから選ぶ |
+| 過去スポット | 訪問済み・過去プランのスポットから選ぶ |
+
+### 検索パネル（Google検索タブ共通）
+Google検索タブに**共通の検索パネル**を配置。キーワードと高評価フィルターを横並びに、テーマチップをその下に配置。
+
+| 要素 | 配置 | 説明 |
+|---|---|---|
+| キーワード入力 | 横並び左 | テキスト検索（テーマと組み合わせ可） |
+| 高評価フィルター | 横並び右 | 評価4.0以上のみ表示 |
+| テーマチップ | 下段 | 複数選択可。未選択時は全カテゴリ対象 |
+
+### テーマ・カテゴリフィルター
+カテゴリを旅行目的ベースのテーマに束ねる。
+
+| テーマ | 対応カテゴリ（Google Places型） |
+|---|---|
+| グルメ | restaurant, cafe, bakery |
+| 観光・文化 | tourist_attraction, museum, art_gallery, zoo, aquarium |
+| 歴史・神社仏閣 | historical_place |
+| 自然・公園 | park |
+| ショッピング | shopping_mall, store |
+| 体験・レジャー | amusement_park, bowling_alley, movie_theater, spa |
+
+---
+
 現在の `SpotSelection.tsx` は以下の責務を持っており、テストやメンテナンスが困難な状態です：
 - 検索条件の状態管理
 - スポット検索のロジック
@@ -32,7 +78,7 @@ Zod スキーマによるバリデーションとTypeScriptの厳格な型チェ
 
 ### 6. テストコマンド
 ```sh
-npm run test:watch SpotSelection.spec.tsx
+pnpm run test:watch SpotSelection.spec.tsx
 ```
 
 ## 推奨技術スタック
@@ -57,7 +103,7 @@ npm run test:watch SpotSelection.spec.tsx
 - ✅ `SearchResultsView.tsx`: リスト/地図/分割ビューの切り替え (**そのまま再利用**)
 - ✅ `AreaSearch.tsx`: エリア検索の実装パターン (**参考に改修**)
 - ✅ `KeywordSearchWithMap.tsx`: キーワード検索のUI (**参考に改修**)
-- ✅ `LocationAdjustModal.tsx`: 地図での位置調整 (**そのまま再利用**)
+- ✅ `LocationAdjustModal.tsx`: 地図での位置調整。`subPoints?: Coordination[]` を追加し、2点間検索時に両地点をサブマーカーとして地図上に表示できるよう拡張済み。
 
 #### 既存の Zustand ストア
 - ✅ `useStoreForPlanning`: 計画全体の状態管理（spots, plans, tripInfo など）
@@ -75,10 +121,9 @@ src/
 ├── components/
 │   ├── spot-selection/
 │   │   ├── SpotSelectionDialog.tsx              # 🆕 NEW: メインダイアログ（既存SpotSelection.tsxをリファクタ）
-│   │   ├── SpotSearchTabs.tsx                   # 🆕 NEW: タブ切り替え（Google検索/行きたいリスト/過去スポット）
-│   │   ├── GoogleSpotSearch.tsx                 # 🔄 REFACTOR: AreaSearch.tsx + KeywordSearchWithMapのロジック統合
-│   │   ├── WishlistSpotSearch.tsx               # 🆕 NEW: 行きたいリストからの検索・選択
-│   │   ├── VisitedSpotSearch.tsx                # 🆕 NEW: 過去スポットからの検索・選択
+│   │   ├── GoogleSpotSearch.tsx                 # 🔄 UPDATE: モード選択＋検索パネルを内包した統合コンポーネント
+│   │   ├── WishlistSpotSearch.tsx               # ✅ EXISTING: そのまま維持
+│   │   ├── VisitedSpotSearch.tsx                # ✅ EXISTING: そのまま維持
 │   │   └── index.ts                             # エクスポート
 │   │
 │   └── common/                                  # 共通コンポーネント
@@ -87,28 +132,26 @@ src/
 │
 ├── hooks/
 │   ├── spot-search/
-│   │   ├── use-spot-search-state.ts             # 🆕 NEW: 検索状態の統合管理（Zustand）
-│   │   ├── use-wishlist-spots.ts                # 🆕 NEW: 未訪問行きたいリスト取得
-│   │   ├── use-visited-spots.ts                 # 🆕 NEW: 訪問済み＋過去計画スポット取得
-│   │   └── use-spot-selection.ts                # 🔄 REFACTOR: useStoreForPlanningと統合
+│   │   ├── use-current-location.ts              # 🆕 NEW: Geolocation API で現在地取得
+│   │   ├── use-wishlist-spots.ts                # ✅ EXISTING: そのまま維持
+│   │   └── use-visited-spots.ts                 # ✅ EXISTING: そのまま維持
 │   │
 │   └── use-wishlist.ts                          # ✅ EXISTING: そのまま利用
 │
 ├── lib/
 │   ├── api/
-│   │   └── spots.ts                             # 🆕 NEW: バックエンドAPI呼び出し（/api/spots/*）
+│   │   └── spots.ts                             # ✅ EXISTING: /api/spots/* API呼び出し
 │   │
 │   ├── plan.ts                                  # ✅ EXISTING: searchSpots()を継続利用
 │   │
-│   └── validators/
-│       └── spot-search.ts                       # 🆕 NEW: Zod スキーマ定義
+│   └── geo.ts                                   # 🆕 NEW: 中間地点計算ユーティリティ（2座標の重心）
 │
 └── store/
     ├── planning/
-    │   └── spotSearchStore.ts                   # 🆕 NEW: スポット検索専用Zustandストア
+    │   └── spotSearchStore.ts                   # 🔄 UPDATE: searchCenterMode / planSpotSelection 追加
     │
     └── wishlist/
-        └── wishlistStore.ts                     # ✅ EXISTING: 一部ロジックを共通化
+        └── wishlistStore.ts                     # ✅ EXISTING: 変更なし
 ```
 
 ## 詳細設計
@@ -168,31 +211,33 @@ export function SpotSelectionDialog({ date }: SpotSelectionDialogProps) {
           <div className="text-sm text-red-600">{planErrors[date].spots}</div>
         )}
 
-        {/* タブ切り替え */}
+        {/* タブ切り替え: 3タブ構成 */}
         <Tabs defaultValue="google" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="google">
-              <Search className="mr-2 h-4 w-4" />
+              <Search className="mr-1 h-4 w-4" />
               Google検索
             </TabsTrigger>
             <TabsTrigger value="wishlist">
-              <Heart className="mr-2 h-4 w-4" />
+              <Heart className="mr-1 h-4 w-4" />
               行きたいリスト
             </TabsTrigger>
             <TabsTrigger value="visited">
-              <History className="mr-2 h-4 w-4" />
+              <History className="mr-1 h-4 w-4" />
               過去のスポット
             </TabsTrigger>
           </TabsList>
 
+          {/* Google検索タブ: モード選択＋検索パネル（SearchPanel）をまとめて内包 */}
           <TabsContent value="google" className="mt-4">
-            <GoogleSpotSearch 
+            <GoogleSpotSearch
               date={date}
               selectedSpotIds={selectedSpotIds}
               onSpotSelect={handleSpotSelect}
             />
           </TabsContent>
 
+          {/* 行きたいリスト */}
           <TabsContent value="wishlist" className="mt-4">
             <WishlistSpotSearch 
               date={date}
@@ -201,6 +246,7 @@ export function SpotSelectionDialog({ date }: SpotSelectionDialogProps) {
             />
           </TabsContent>
 
+          {/* 過去のスポット */}
           <TabsContent value="visited" className="mt-4">
             <VisitedSpotSearch 
               date={date}
@@ -217,228 +263,66 @@ export function SpotSelectionDialog({ date }: SpotSelectionDialogProps) {
 
 ### 2. Google検索タブ: `GoogleSpotSearch.tsx`
 
-**責務**: Google Places API を使用した検索（エリア検索＋キーワード検索）
+**責務**: Google Places API を使用した検索。内部にモード選択（現在地 / プランの地点付近）と検索パネルを持つ統合コンポーネント。
 
-**既存との差分**: `AreaSearch.tsx` と `KeywordSearchWithMap.tsx` のロジックを統合
+**実装済みの主要ロジック**:
+- `CenterMode = 'current-location' | 'plan-location'`（2モード）
+- `PlanPoint` 型で出発地・目的地・スポットを統合して保持
+- `useEffect` でモード・バッジ選択変化時に `searchCenter` を同期
+- 2点選択時は `calcMidpoint` で中間地点を計算し `searchCenter` に反映
+- `mapSubPoints`: 2点選択時に地図モーダルで両地点をサブマーカー表示
+- `LocationAdjustModal` は両モード共通で表示（`subPoints` で2点マーカーを渡す）
+- `sortOption`: `plan-location` モードは `'distance'`、`current-location` は `'popularity'`
 
+**検索パネルのレイアウト**:
+- 横並び: キーワード入力（左・flex-1）+ 評価4.0以上チェックボックス（右）
+- 下段: テーマチップ（flex-wrap）
+
+**型定義**:
 ```typescript
-'use client';
+type CenterMode = 'current-location' | 'plan-location';
+type PlanPoint = { id: string; name: string; lat: number; lng: number };
+```
 
-import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MapPin, Search } from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { SearchResultsView } from '@/components/common/SearchResultsView';
-import { LocationAdjustModal } from '@/components/common/LocationAdjustModal';
-import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
-import { useStoreForPlanning } from '@/lib/plan';
-import { searchSpots } from '@/lib/plan';
-import { prefectureCenters, prefectures } from '@/data/constants';
-import { setStartTimeAutomatically } from '@/lib/algorithm';
-
+**主要 props/state**:
+```typescript
 type GoogleSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
-  onSpotSelect: (spot: Spot, isSelected: boolean) => void;
+  onSpotSelect: (spot: ExtendSpotType, isDeleted: boolean) => void;
 };
+```
 
-export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: GoogleSpotSearchProps) {
-  const [searchType, setSearchType] = useState<'area' | 'keyword'>('area');
-  const [isSearching, setIsSearching] = useState(false);
-  
-  // Zustand から検索条件を取得（wishlistStore のパターンを活用）
-  const {
-    searchCenter,
-    setSearchCenter,
-    searchRadius,
-    setSearchRadius,
-    searchCategories,
-    setSearchCategories,
-    searchKeyword,
-    setSearchKeyword,
-    searchResults,
-    setSearchResults,
-    mapCenter,
-    setMapCenter,
-    highRating,
-    setHighRating,
-  } = useSpotSearchStore();
+**`planPoints` の構成**（出発地→目的地→スポットの順）:
+```typescript
+const planPoints = useMemo((): PlanPoint[] => {
+  const points: PlanPoint[] = [];
+  const dep = currentPlan?.departure;
+  if (dep?.latitude != null && dep?.longitude != null) {
+    points.push({ id: 'departure', name: dep.name + ' (出発地)', lat: dep.latitude, lng: dep.longitude });
+  }
+  const dest = currentPlan?.destination;
+  if (dest?.latitude != null && dest?.longitude != null) {
+    points.push({ id: 'destination', name: dest.name + ' (目的地)', lat: dest.latitude, lng: dest.longitude });
+  }
+  for (const s of planSpots) {
+    points.push({ id: s.id, name: s.name, lat: s.latitude, lng: s.longitude });
+  }
+  return points;
+}, [currentPlan, planSpots]);
+```
 
-  const { plans } = useStoreForPlanning();
-
-  const categories = [
-    { id: 'tourist_attraction', label: '観光スポット' },
-    { id: 'restaurant', label: 'グルメ' },
-    { id: 'museum', label: '美術館・博物館' },
-    { id: 'park', label: '公園・自然' },
-    { id: 'historical_place', label: '歴史文化' },
-    { id: 'amusement_park', label: 'レジャー' },
-  ];
-
-  const handleAreaSearch = async () => {
-    setIsSearching(true);
-    try {
-      const spots = await searchSpots({
-        center: searchCenter,
-        genreIds: searchCategories,
-        radius: searchRadius[0],
-        sortOption: 'popularity',
-        maxResultLimit: 20,
-      });
-      
-      const filtered = highRating ? spots.filter(s => s.rating && s.rating >= 4) : spots;
-      setSearchResults(filtered);
-      if (filtered.length > 0) setMapCenter(filtered[0].location);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleKeywordSearch = async () => {
-    if (!searchKeyword) return;
-    
-    setIsSearching(true);
-    try {
-      const spots = await searchSpots({
-        searchWord: searchKeyword,
-        maxResultLimit: 20,
-        sortOption: 'popularity',
-      });
-      setSearchResults(spots);
-      if (spots.length > 0) setMapCenter(spots[0].location);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleSpotClick = (spot: Spot) => {
-    const isSelected = selectedSpotIds.includes(spot.id);
-    if (!isSelected) {
-      // 自動的に滞在時間を設定（既存ロジック活用）
-      const updatedSpot = setStartTimeAutomatically(
-        spot,
-        plans.find(p => p.date === date)?.spots ?? []
-      );
-      onSpotSelect(updatedSpot, false);
-    } else {
-      onSpotSelect(spot, true);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <Tabs value={searchType} onValueChange={(v) => setSearchType(v as 'area' | 'keyword')}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="area">
-            <MapPin className="mr-2 h-4 w-4" />
-            エリアで検索
-          </TabsTrigger>
-          <TabsTrigger value="keyword">
-            <Search className="mr-2 h-4 w-4" />
-            キーワード検索
-          </TabsTrigger>
-        </TabsList>
-
-        {/* エリア検索 */}
-        <TabsContent value="area" className="space-y-4">
-          <Accordion type="single" collapsible defaultValue="conditions">
-            <AccordionItem value="conditions">
-              <AccordionTrigger>検索条件</AccordionTrigger>
-              <AccordionContent className="space-y-4">
-                {/* 都道府県選択 */}
-                <div className="space-y-2">
-                  <Label>都道府県</Label>
-                  <Select onValueChange={(v) => setSearchCenter(prefectureCenters[v])}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="選択してください" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {prefectures.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* 検索範囲 */}
-                <div className="space-y-2">
-                  <Label>検索範囲: {searchRadius[0]}km</Label>
-                  <Slider 
-                    value={searchRadius} 
-                    onValueChange={setSearchRadius}
-                    max={10} 
-                    min={1} 
-                    step={1} 
-                  />
-                </div>
-
-                {/* 位置調整 */}
-                <LocationAdjustModal onConfirm={handleAreaSearch} />
-
-                {/* カテゴリ選択 */}
-                <div className="space-y-2">
-                  <Label>カテゴリ</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {categories.map(cat => (
-                      <div key={cat.id} className="flex items-center space-x-2">
-                        <Checkbox 
-                          checked={searchCategories.includes(cat.id)}
-                          onCheckedChange={() => setSearchCategories(cat.id)}
-                        />
-                        <Label>{cat.label}</Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 高評価フィルター */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox checked={highRating} onCheckedChange={setHighRating} />
-                  <Label>評価4.0以上のみ</Label>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-
-          <Button onClick={handleAreaSearch} disabled={isSearching} className="w-full">
-            {isSearching ? '検索中...' : '検索実行'}
-          </Button>
-        </TabsContent>
-
-        {/* キーワード検索 */}
-        <TabsContent value="keyword" className="space-y-4">
-          <div className="space-y-2">
-            <Label>キーワード</Label>
-            <div className="flex gap-2">
-              <Input 
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="例: 渋谷 カフェ"
-              />
-              <Button onClick={handleKeywordSearch} disabled={isSearching || !searchKeyword}>
-                検索
-              </Button>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* 検索結果表示（wishlist の SearchResultsView を再利用） */}
-      <SearchResultsView 
-        searchResults={searchResults}
-        mapCenter={mapCenter}
-        selectedSpotIds={selectedSpotIds}
-        onSpotClick={handleSpotClick}
-      />
-    </div>
-  );
-}
+**`LocationAdjustModal` の呼び出し例**（2点マーカー付き）:
+```typescript
+<LocationAdjustModal
+  open={mapSelectOpen}
+  onOpenChange={setMapSelectOpen}
+  searchCenter={searchCenter}
+  onSearchCenterChange={setSearchCenter}
+  searchRadius={searchRadius}
+  onConfirm={handleSearch}
+  subPoints={mapSubPoints}  // 2点選択時に両地点をマーカー表示
+/>
 ```
 
 ### 3. 行きたいリストタブ: `WishlistSpotSearch.tsx`
@@ -914,7 +798,7 @@ export function useVisitedSpots() {
 
 **責務**: スポット検索関連の状態管理
 
-**実装パターン**: `useWishlistStore` のパターンを活用して実装
+**変更点**: `selectedThemes`（テーマ横断フィルター）・`planSpotSelection`（プランスポット選択）を追加。既存フィールドは維持。
 
 ```typescript
 import { create } from 'zustand';
@@ -926,24 +810,31 @@ interface SpotSearchState {
   // 検索条件
   searchCenter: Coordination | undefined;
   searchRadius: number[];
-  searchCategories: string[];
   searchKeyword: string;
   highRating: boolean;
-  
+
+  // テーマ横断フィルター（Google検索3タブ共通）
+  selectedThemes: string[];
+
+  // プランスポット基準検索: 選択中スポットID（最大2件）
+  planSpotSelection: string[];
+
   // 検索結果
   searchResults: Spot[];
   mapCenter: Coordination;
-  
+
   // UI状態
   mapSelectOpen: boolean;
   selectedSpot: Spot | null;
-  
+
   // アクション
   setSearchCenter: (center: Coordination | undefined) => void;
   setSearchRadius: (radius: number[]) => void;
-  setSearchCategories: (categoryId: string) => void; // トグル動作
   setSearchKeyword: (keyword: string) => void;
   setHighRating: (value: boolean) => void;
+  setSelectedThemes: (themes: string[]) => void;
+  togglePlanSpotSelection: (spotId: string) => void; // 最大2件までトグル
+  clearPlanSpotSelection: () => void;
   setSearchResults: (results: Spot[]) => void;
   setMapCenter: (center: Coordination) => void;
   setMapSelectOpen: (open: boolean) => void;
@@ -960,90 +851,114 @@ const defaultCenter: Coordination = {
 
 export const useSpotSearchStore = create<SpotSearchState>()(
   immer(
-    devtools((set, get) => ({
-      // 初期値（wishlistStore と同様のパターン）
-      searchCenter: defaultCenter,
+    devtools((set) => ({
+      searchCenter: undefined,
       searchRadius: [5],
-      searchCategories: [],
       searchKeyword: '',
       highRating: false,
+      selectedThemes: [],
+      planSpotSelection: [],
       searchResults: [],
       mapCenter: defaultCenter,
       mapSelectOpen: false,
       selectedSpot: null,
 
-      // アクション
-      setSearchCenter: (center) => {
-        set((state) => {
-          state.searchCenter = center;
-        });
-      },
+      setSearchCenter: (center) => set((state) => { state.searchCenter = center; }),
+      setSearchRadius: (radius) => set((state) => { state.searchRadius = radius; }),
+      setSearchKeyword: (keyword) => set((state) => { state.searchKeyword = keyword; }),
+      setHighRating: (value) => set((state) => { state.highRating = value; }),
+      setSelectedThemes: (themes) => set((state) => { state.selectedThemes = themes; }),
 
-      setSearchRadius: (radius) => {
-        set((state) => {
-          state.searchRadius = radius;
-        });
-      },
+      togglePlanSpotSelection: (spotId) => set((state) => {
+        const idx = state.planSpotSelection.indexOf(spotId);
+        if (idx >= 0) {
+          state.planSpotSelection.splice(idx, 1);
+        } else if (state.planSpotSelection.length < 2) {
+          state.planSpotSelection.push(spotId);
+        }
+        // 3件目以降は無視（最大2件制約）
+      }),
 
-      setSearchCategories: (categoryId) => {
-        set((state) => {
-          const index = state.searchCategories.indexOf(categoryId);
-          if (index >= 0) {
-            state.searchCategories.splice(index, 1);
-          } else {
-            state.searchCategories.push(categoryId);
-          }
-        });
-      },
+      clearPlanSpotSelection: () => set((state) => { state.planSpotSelection = []; }),
+      setSearchResults: (results) => set((state) => { state.searchResults = results; }),
+      setMapCenter: (center) => set((state) => { state.mapCenter = center; }),
+      setMapSelectOpen: (open) => set((state) => { state.mapSelectOpen = open; }),
+      setSelectedSpot: (spot) => set((state) => { state.selectedSpot = spot; }),
 
-      setSearchKeyword: (keyword) => {
-        set((state) => {
-          state.searchKeyword = keyword;
-        });
-      },
-
-      setHighRating: (value) => {
-        set((state) => {
-          state.highRating = value;
-        });
-      },
-
-      setSearchResults: (results) => {
-        set((state) => {
-          state.searchResults = results;
-        });
-      },
-
-      setMapCenter: (center) => {
-        set((state) => {
-          state.mapCenter = center;
-        });
-      },
-
-      setMapSelectOpen: (open) => {
-        set((state) => {
-          state.mapSelectOpen = open;
-        });
-      },
-
-      setSelectedSpot: (spot) => {
-        set((state) => {
-          state.selectedSpot = spot;
-        });
-      },
-
-      resetFilters: () => {
-        set((state) => {
-          state.searchCenter = defaultCenter;
-          state.searchRadius = [5];
-          state.searchCategories = [];
-          state.searchKeyword = '';
-          state.highRating = false;
-        });
-      },
+      resetFilters: () => set((state) => {
+        state.searchCenter = undefined;
+        state.searchRadius = [5];
+        state.searchKeyword = '';
+        state.highRating = false;
+        state.selectedThemes = [];
+        state.planSpotSelection = [];
+      }),
     })),
   ),
 );
+```
+
+---
+
+### 8. 新規フック: `use-current-location.ts`
+
+**責務**: Geolocation API で現在地を取得し、`Coordination` 型で返す。
+
+```typescript
+import { useState, useEffect } from 'react';
+import { Coordination } from '@/types/plan';
+
+export function useCurrentLocation() {
+  const [currentLocation, setCurrentLocation] = useState<Coordination | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setError('このブラウザは位置情報をサポートしていません');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentLocation({
+          id: 'current-location',
+          name: '現在地',
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+        setIsLocating(false);
+      },
+      () => {
+        setError('位置情報の取得に失敗しました');
+        setIsLocating(false);
+      },
+      { timeout: 10000 }
+    );
+  }, []);
+
+  return { currentLocation, isLocating, error };
+}
+```
+
+---
+
+### 9. 新規ユーティリティ: `lib/geo.ts`
+
+**責務**: 2座標の中間地点を計算する。PlanSpotSearch で利用。
+
+```typescript
+import { Coordination } from '@/types/plan';
+
+// 2座標の重心（単純平均）を返す。近距離（国内旅行スケール）では十分な精度。
+export function calcMidpoint(a: Coordination, b: Coordination): Coordination {
+  return {
+    id: `midpoint-${a.id}-${b.id}`,
+    name: `${a.name}と${b.name}の中間`,
+    lat: (a.lat + b.lat) / 2,
+    lng: (a.lng + b.lng) / 2,
+  };
+}
 ```
 
 ## テスト戦略
@@ -1228,27 +1143,28 @@ export function SpotSearchForm({ onSearch }: Props) {
 }
 ```
 
-## マイグレーション計画
+## マイグレーション計画（issue #339 対応版）
 
-### フェーズ1: 基盤整備（1週間）
-1. 型定義とバリデーションスキーマの作成
-2. カスタムフックの実装とテスト
-3. API クライアントの実装
+### フェーズ1: ストア・ユーティリティ更新（0.5週）
+1. `spotSearchStore.ts` に `selectedThemes` / `planSpotSelection` を追加
+2. `lib/geo.ts`（`calcMidpoint`）を新規作成
+3. `use-current-location.ts` を新規作成
 
-### フェーズ2: コンポーネント分割（2週間）
-1. サブコンポーネントの実装
-2. 既存の `SpotSelection.tsx` を新コンポーネントで置き換え
-3. ユニットテストの作成
+### フェーズ2: 新規コンポーネント実装（1週）
+1. `ThemeFilter.tsx` 実装
+2. `GoogleSpotSearch.tsx` に `centerMode` props を追加し、現在地・出発地目的地モードに対応
+3. `PlanSpotSearch.tsx` を新規実装
+4. `SpotSelectionDialog.tsx` を5タブ構成に変更
 
-### フェーズ3: 統合とリファクタリング（1週間）
-1. 統合テストの実装
-2. パフォーマンス最適化
-3. アクセシビリティ改善
+### フェーズ3: テスト・調整（0.5週）
+1. `use-current-location` のユニットテスト
+2. `calcMidpoint` のユニットテスト
+3. `PlanSpotSearch` の統合テスト（スポット選択→中心点計算→検索）
+4. 既存のWishlist・Visited検索のリグレッションテスト
 
-### フェーズ4: 新機能追加（継続的）
-1. 行きたいリストからの選択機能
-2. 過去スポットからの選択機能
-3. 高度なフィルタリング機能
+### 削除・非推奨
+- `searchCategories` フィールド（`spotSearchStore` から削除、`selectedThemes` に統一）
+- `GoogleSpotSearch` 内のカテゴリチェックボックスUI（`ThemeFilter` に移行）
 
 ## 既存実装との統合ポイント
 

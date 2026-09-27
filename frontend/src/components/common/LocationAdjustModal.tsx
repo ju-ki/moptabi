@@ -34,6 +34,8 @@ interface LocationAdjustModalProps {
   onSearchCenterChange: (center: Coordination) => void;
   searchRadius: number[];
   onConfirm: () => void;
+  /** 地図上に参照マーカーとして表示する追加地点（2点間検索時の選択地点など） */
+  subPoints?: Coordination[];
 }
 
 export const LocationAdjustModal = ({
@@ -43,6 +45,7 @@ export const LocationAdjustModal = ({
   onSearchCenterChange,
   searchRadius,
   onConfirm,
+  subPoints,
 }: LocationAdjustModalProps) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
@@ -96,6 +99,7 @@ export const LocationAdjustModal = ({
               }}
               onUnmount={onUnmount}
             >
+              {/* 検索中心点マーカー */}
               <Marker
                 position={searchCenter}
                 onClick={() =>
@@ -107,6 +111,15 @@ export const LocationAdjustModal = ({
                   })
                 }
               />
+              {/* 参照地点マーカー（2点間検索時の選択地点） */}
+              {subPoints?.map((point) => (
+                <Marker
+                  key={point.id}
+                  position={point}
+                  label={{ text: point.name, color: '#1d4ed8', fontSize: '11px' }}
+                  options={{ opacity: 0.75 }}
+                />
+              ))}
               <Circle center={searchCenter} radius={(searchRadius[0] ?? 10) * 1000} options={circleOptions} />
             </GoogleMap>
           </div>
