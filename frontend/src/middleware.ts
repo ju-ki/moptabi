@@ -32,8 +32,9 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
+    // Skip Next.js internals, Auth.js routes and all static files
+    // /api/auth を通すと auth() が更新済みセッション Cookie を付与し、signout の Cookie 削除を上書きしてしまう
+    '/((?!api/auth|_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api(?!/auth)|trpc)(.*)',
   ],
 };
