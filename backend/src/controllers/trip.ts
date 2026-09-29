@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { eq, and, count, sql, inArray } from 'drizzle-orm';
-import { getDbFromContext, trip, planLocation, userLocation, getPostgresDb } from '@db';
+import { eq, and, count } from 'drizzle-orm';
+import { getDbFromContext, trip, getPostgresDb } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 import { createTrip, getTripDetailById, updateTrip } from '@/services/trip';
@@ -11,7 +11,7 @@ import { APP_LIMITS } from '../constants/limits';
 export const getTripHandler = {
   // 全ての旅行計画を取得
   getTrips: async (c: Context) => {
-    const db = getPostgresDb(c);
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
 
     if (!userId) {
