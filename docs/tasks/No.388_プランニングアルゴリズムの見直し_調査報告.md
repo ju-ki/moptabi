@@ -50,16 +50,16 @@
 
 ```mermaid
 flowchart TD
-  A[use-planning: handlePreprocessingPlanning] --> B{バリデーション<br>日付/出発・到着時間/HH:mm/スポット1件以上}
-  B -- NG --> Z[status=9 でエラー表示]
-  B -- OK --> C[前回結果から preferred を生成<br>区間キー → transportMethodId / scheduledDepartureTime]
-  C --> D[executePlanning]
-  D --> E[runForwardPlanning<br>出発時刻から順方向に積み上げ]
-  E --> F[到着超過 / 余裕時間の判定とメッセージ追加]
-  F --> G[メッセージを優先度順にソート]
-  G --> H[ストア反映<br>setPlanningResult / setDepartureAndDestination / editSpots]
-  H --> I[各ルートで switchAlternativeRoute を呼び<br>transportMethodId / travelTime / alternateRoutes を書き戻す]
-  I --> J[setPlanningResult を再実行して dirty 解除]
+  A["use-planning: handlePreprocessingPlanning"] --> B{"バリデーション<br>日付 / 出発・到着時間 / HH:mm / スポット1件以上"}
+  B -- NG --> Z["status=9 でエラー表示"]
+  B -- OK --> C["前回結果から preferred を生成<br>区間キーごとに transportMethodId / scheduledDepartureTime"]
+  C --> D["executePlanning"]
+  D --> E["runForwardPlanning<br>出発時刻から順方向に積み上げ"]
+  E --> F["到着超過 / 余裕時間の判定とメッセージ追加"]
+  F --> G["メッセージを優先度順にソート"]
+  G --> H["ストア反映<br>setPlanningResult / setDepartureAndDestination / editSpots"]
+  H --> I["各ルートで switchAlternativeRoute を呼び<br>transportMethodId / travelTime / alternateRoutes を書き戻す"]
+  I --> J["setPlanningResult を再実行して dirty 解除"]
 ```
 
 ### 1.4 `runForwardPlanning` の区間処理
@@ -74,17 +74,20 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  S[区間開始 currentTime] --> Q{両端に nearestStation がある<br>かつ preferred が 4 または undefined}
-  Q -- Yes --> N[最寄駅経由を計算<br>駅到着 = currentTime + walkingTime(出発側)<br>発車 = selectDepartureCandidate(駅到着, 候補)<br>待ち = 発車 - 駅到着<br>所要 = 徒歩 + 待ち + transitTime(出発側) + walkingTime(到着側)]
+  S["区間開始 currentTime"] --> Q{"両端に nearestStation がある<br>かつ preferred が 4 または undefined"}
+  Q -- Yes --> N["最寄駅経由を計算<br>駅到着 = currentTime + 出発側 walkingTime<br>発車 = selectDepartureCandidate で候補から選択<br>待ち = 発車 - 駅到着<br>所要 = 徒歩 + 待ち + 出発側 transitTime + 到着側 walkingTime"]
   Q -- No --> R
-  N --> R[getOptimalRouteWithAlternatives<br>徒歩/自転車/車 を getRoute で全取得]
-  R --> SEL{選択ルール}
-  SEL -- 最寄駅経由 --> T[transportMethodId=4, 所要=最寄駅計算値]
-  SEL -- preferred が直接手段 --> P[preferred の手段。取得失敗なら優先度最上位]
-  SEL -- preferred なし --> PR[優先度最上位 車 > 自転車 > 徒歩]
-  SEL -- 1件も取れない --> W[徒歩で再取得。それも失敗なら距離0・所要0]
-  T & P & PR & W --> M[メッセージ付与<br>取得失敗/徒歩フォールバック/徒歩1.5km以上/発車時間補正]
-  M --> U[travelTime を出発側ノードへ書き戻し<br>currentTime += travelTime]
+  N --> R["getOptimalRouteWithAlternatives<br>徒歩 / 自転車 / 車 を getRoute で全取得"]
+  R --> SEL{"選択ルール"}
+  SEL -- 最寄駅経由 --> T["transportMethodId=4<br>所要=最寄駅計算値"]
+  SEL -- preferred が直接手段 --> P["preferred の手段<br>取得失敗なら優先度最上位"]
+  SEL -- preferred なし --> PR["優先度最上位<br>車、自転車、徒歩の順"]
+  SEL -- 1件も取れない --> W["徒歩で再取得<br>それも失敗なら距離0・所要0"]
+  T --> M
+  P --> M
+  PR --> M
+  W --> M["メッセージ付与<br>取得失敗 / 徒歩フォールバック / 徒歩1.5km以上 / 発車時間補正"]
+  M --> U["travelTime を出発側ノードへ書き戻し<br>currentTime += travelTime"]
 ```
 
 #### 発車時間の選択ルール（`selectDepartureCandidate`）
@@ -265,6 +268,8 @@ flowchart TD
 
 - 再現: 両端に最寄駅、`getRoute` をすべて失敗させる → 出発地区間は 4 が選ばれて所要時間も出るが、`ROUTE_FETCH_FAILED:DEPARTURE_TO_FIRST_SPOT`（最優先の警告）も出る。
 - 原因: `pushRouteFailureMessages` が、選択ルートが最寄駅経由かどうかを見ずに「失敗一覧に徒歩が含まれるか」だけで判定している。
+- 影響: 徒歩・自転車・車のルートが1件も取れない区間（Google 側でルートが引けない、API エラーなど）で、最寄駅経由を採用してプラン自体は組めているのに、最優先（優先度2）の警告として「ルートが取得できませんでした。スポットの見直しをしてください。」が一番上に表示される。ユーザーからは「プランが失敗したのか、成功したのか」が分からない。発生頻度は低い。
+- 対応案: 選択ルートが最寄駅経由のときは `ROUTE_FETCH_FAILED` を出さない、または「徒歩・車などの候補は取得できませんでした（最寄駅経由で計算しています）」のような弱い文言にする。
 
 ### B9. 片側だけ最寄駅がある区間は黙って直接移動になる【再現済み・仕様確認が必要】
 
@@ -272,9 +277,13 @@ flowchart TD
 
 ### その他（軽微・仕様確認）
 
-- `PlanSpotSettingCard` の乗車時間の初期見積もり（`estimateTransitTime(distanceFromPrevious)`）は「前のスポットからの距離」で計算しているが、その `transitTime` は「そのスポットから次への区間」で使われる。
+- `PlanSpotSettingCard` の乗車時間の初期見積もりが、別の区間の距離で計算されている。
+  - スポット X のカードで最寄駅を選ぶと、乗車時間 `transitTime` が `estimateTransitTime(distanceFromPrevious)` で自動入力される。`distanceFromPrevious` は「**前のスポット → X**」の距離。
+  - 一方アルゴリズムは X の `transitTime` を「**X → 次のスポット**」の乗車時間として使う（1.2 の「出発側ノードの値を使う」）。
+  - 例: 前のスポット → X が 1km、X → 次が 10km のとき、10km 乗る区間に 1km 分の見積もりが初期値として入る。ユーザーが手で直せば問題ないため、影響は初期値だけ。
+  - `NearestStationDeparture` は「出発地 → スポット1」の距離で見積もっており、こちらは正しい。
 - `SpotSettingEditor` の `getDistanceFromPrevious` は `spots[index - 1]` を使い、`nextSpot` は `sortedSpots[index + 1]` を使っている。`spots` の並び順次第で前スポットがずれる可能性がある。
-- 最寄駅経由ルートの `distance` は直線距離（`calcDistance2`）の合計で、小数のまま返している。
+- 最寄駅経由ルートの `distance` は直線距離（`calcDistance2`）の合計で、小数のまま返している。 `calcDistance2` は `calcDistance`（`frontend/src/lib/algorithm.ts`）と中身が同じ仮メソッドのため、`calcDistance` に置き換える。
 - 全手段（徒歩含む）が失敗すると `duration=0` のルートになり、時刻が進まないまま後続が計算される（メッセージは出る）。
 
 ---
@@ -290,6 +299,28 @@ flowchart TD
 3. **時刻は通算分で扱う**（B5）。
 4. `use-planning.ts` の preferred 生成を関数に切り出してテスト可能にし、`0` の扱い・並び替え時のリセットを決める（B6・B7）。
 5. 仕様確認が必要な点（B9、目的地側の乗車時間入力の要否）は別途決める。
+
+---
+
+## 6. レビューでの決定事項（2026-09-30）
+
+PR #418 のレビューコメントで決まった対応方針。
+
+| 項目 | 方針 |
+| --- | --- |
+| B1 最寄駅を再選択できない | 対応する（Issue の本題） |
+| B2 最後のスポットの発車時間候補が無視される | 直す |
+| B3 `['']` がストアに保存される | 直す。#371（発車時間の選択機能）に影響するため |
+| B4 外した移動手段が採用され続ける | 直す。ユーザーがプランニングをやり直す回数が増えるため |
+| B5 日付跨ぎ | 23:59 を超えた場合にエラーメッセージを出す。日付ごとに独立しているので他の日付への影響はない |
+| B6 後から最寄駅を設定しても反映されない | B1 と合わせて対応 |
+| B7 並び替え後に手段が別の区間へ引き継がれる | 対応する。移動手段を細かく変える想定はなかったが、距離や所要時間で変わりうるため |
+| B8 最寄駅経由で成功しているのに取得失敗メッセージ | 影響と対応案を追記（4 章 B8）。対応要否は要確認 |
+| B9 片側だけ最寄駅がある区間 | 挙動は仕様どおり。ただし分かりづらいので、今回の対応で警告メッセージを表示する |
+| 乗車時間の初期見積もり | 説明を追記（4 章 その他）。対応要否は要確認 |
+| `calcDistance2` | 仮メソッドのため `calcDistance` に置き換える |
+| 全手段失敗時に時刻が進まない | 頻度が低いため今回は対応しない |
+| テスト | 見づらさもバグの一因のため、観点ごとに追いやすいテスト構造に組み直す |
 
 ---
 
