@@ -22,7 +22,7 @@ function calculateDaysUntil(targetDate: string): number {
   today.setHours(0, 0, 0, 0);
   const target = new Date(targetDate);
   const diffTime = target.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
 function isPastDate(dateStr: string): boolean {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -39,12 +39,18 @@ function isDateInRange(date: Date, startDate: string, endDate: string): boolean 
 }
 
 export function TripCalendar({ trips, defaultDate }: TripCalendarProps) {
+  const defaultYear = defaultDate.getFullYear();
+  const defaultMonth = defaultDate.getMonth();
   const [currentDate, setCurrentDate] = useState(() => {
     const d = new Date(defaultDate);
     d.setDate(1);
     d.setHours(0, 0, 0, 0);
     return d;
   });
+
+  useEffect(() => {
+    setCurrentDate(new Date(defaultYear, defaultMonth, 1));
+  }, [defaultYear, defaultMonth]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

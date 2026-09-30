@@ -125,7 +125,7 @@ describe('useMypageData', () => {
       expect(result.current.nextTrips[0].id).toBe(2);
       expect(result.current.nextTrips[0].title).toBe('京都旅行');
       // モック日付 2025-01-01 JST から 2025-01-15 まで15日間（1日から15日）
-      expect(result.current.nextTrips[0].daysUntil).toBe(15);
+      expect(result.current.nextTrips[0].daysUntil).toBe(14);
     });
 
     it('未来のプランがない場合は空配列が返される', () => {
