@@ -62,7 +62,8 @@ Issue: https://github.com/ju-ki/moptabi/issues/232
 
 - [ ] 🟢 `backend/src/db/schema.ts` に `userLimit` テーブルを追加
   - `userId varchar(255) PK, FK -> User.id (onDelete: cascade)`
-  - 上記 5 カラム（`integer notNull`）、`createdAt` / `updatedAt`
+  - 上記 5 カラム（`integer notNull`）
+  - `createdAt` / `updatedAt`（`timestamp({ precision: 3, mode: 'string' }) notNull`）。既存テーブルに合わせ、`createdAt` は DB default `CURRENT_TIMESTAMP`、`updatedAt` はアプリ側 default（`$defaultFn`）のため、手動 SQL では両列に `CURRENT_TIMESTAMP` を指定する
 - [ ] 🟢 `bun run db:generate` でマイグレーション（`backend/drizzle/0016_add_user_limit.sql` 想定）を生成
 - [ ] 🟢 `bun run db:push` / `bun run db:push:test` で dev / test DB に反映
 - [ ] 🟢 `backend/src/tests/db-helper.ts` / `reset-test-db.ts` に `UserLimit` のクリーンアップと、テスト用に上限を設定するヘルパー（例: `upsertUserLimit(userId, partial)`）を追加
@@ -105,12 +106,12 @@ Issue: https://github.com/ju-ki/moptabi/issues/232
 ### Step 6. Frontend: 判定ロジックと上限取得フック
 
 - [ ] 🔴 `frontend/src/tests/lib/limits.spec.ts` を書き換え（観点 F-1〜F-3）
-- [ ] 🔴 `frontend/src/tests/hooks/use-user-limits.spec.ts` を作成（観点 F-4, F-5）
+- [ ] 🔴 `frontend/src/tests/hooks/use-user-limits.spec.ts` を作成（観点 F-4, F-5a, F-5b）
 - [ ] 🟢 `frontend/src/lib/limits.ts` の判定関数に `limit` 引数を追加し、判定を backend と同じ `current >= limit`（追加不可）に揃える（Q6）
   - `isWishlistLimitReached(current, limit)` / `isPlanLimitReached` / `isSpotsPerDayLimitReached`
   - `isPlanDaysLimitReached(days, limit)` は「日数が上限を超えているか」なので `days > limit` のまま（backend の `plans.length > MAX_PLAN_DAYS` と同じ）
   - `LIMIT_ERROR_MESSAGES` 定数 → `getLimitErrorMessage(type, limit)`（内部で `buildLimitErrorMessage` を使用）
-- [ ] 🟢 `frontend/src/hooks/use-user-limits.ts` を新規作成（SWR で `GET /api/user/limits`、取得前は `DEFAULT_USER_LIMITS` をフォールバック）
+- [ ] 🟢 `frontend/src/hooks/use-user-limits.ts` を新規作成（SWR で `GET /api/user/limits`。取得中は `DEFAULT_USER_LIMITS` をフォールバックし、取得エラー時は `error` を返す。エラー時、上限に依存する追加操作は非活性にし、エラー表示と再試行を出す）
 
 ### Step 7. Frontend: 画面の定数参照を置き換え
 
@@ -180,7 +181,8 @@ Issue: https://github.com/ju-ki/moptabi/issues/232
 | F-2 | `isPlanDaysLimitReached` | `days = limit` / `= limit + 1` | `false` / `true` |
 | F-3 | `getLimitErrorMessage` | 任意の上限値 | 渡した上限値がメッセージに含まれる |
 | F-4 | `useUserLimits` | API 応答あり | API の値が返る |
-| F-5 | `useUserLimits` | 取得中 / エラー | `DEFAULT_USER_LIMITS` が返る |
+| F-5a | `useUserLimits` | 取得中 | `DEFAULT_USER_LIMITS` が返る |
+| F-5b | `useUserLimits` | 取得エラー | `error` が返り、上限依存の追加操作が非活性・エラー表示と再試行ボタンが出る |
 | F-6 | `SpotSelectionDialog` | スポット数 = 上限 | 追加不可・上限メッセージに上限値が表示される |
 | F-7 | `SpotSelectionDialog` | 残り 3 件以下 | 残り件数の警告が表示される |
 | F-8 | `DateRangePicker` | 上限日数を超える範囲を選択 | 選択できない |
@@ -216,8 +218,8 @@ cd frontend && pnpm run dev                     # 別ターミナル
 
 ```sql
 -- 上限値を変更する（確認用。値は適宜変更）
-INSERT INTO "UserLimit" ("userId", "maxWishlistSpots", "maxPlans", "maxSpotsPerDay", "maxPlanDays", "maxUserLocations")
-VALUES ('<自分の User.id>', 2, 1, 2, 2, 1)
+INSERT INTO "UserLimit" ("userId", "maxWishlistSpots", "maxPlans", "maxSpotsPerDay", "maxPlanDays", "maxUserLocations", "createdAt", "updatedAt")
+VALUES ('<自分の User.id>', 2, 1, 2, 2, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT ("userId") DO UPDATE SET
   "maxWishlistSpots" = EXCLUDED."maxWishlistSpots",
   "maxPlans"         = EXCLUDED."maxPlans",
