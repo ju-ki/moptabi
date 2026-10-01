@@ -8,9 +8,9 @@
 注意: 詳細なスキーマは `backend/src/models/*.ts` に定義されています。ここでは開発者が素早く API を参照できることを目的とした要約を記載します。
 
 ## 共通
-- ベースパス: `/api`（実際のエンドポイントは `backend/src/index.ts` を確認してください）
+- ベースパス: `/api`（各エンドポイントの見出しは `/api` を含むフルパスで記載。実装は `backend/src/index.ts` の `app.route` を参照）
 - コンテンツタイプ: `application/json`
-- 認証: 一部エンドポイントは認証が必要（Clerk）。認証が必要な場合は `Authorization: Bearer <token>` ヘッダを付与してください。
+- 認証: 一部エンドポイントは認証が必要です。認証が必要な場合は `X-User-Id: <user-id>` ヘッダを付与してください（`backend/src/middleware/auth.ts` の `requireAuth`。ヘッダがない場合は 401）。
 
 ---
 
@@ -18,7 +18,7 @@
 
 ベースパス: `/api/auth`
 
-### GET /auth/
+### GET /api/auth/
 - 概要: ユーザーの存在チェック（ログイン時の初回登録処理を兼ねる）
 - 認証: 必須
 - ステータス:
@@ -27,7 +27,7 @@
   - 401: ユーザー登録失敗
   - 500: サーバーエラー
 
-### GET /auth/list
+### GET /api/auth/list
 - 概要: 登録ユーザー一覧を取得（ページネーション・検索・ソート対応）
 - 認証: 必須（管理者のみ）
 - クエリパラメータ: `UserListQuerySchema` 参照
@@ -38,7 +38,7 @@
   - 403: 権限エラー
   - 500: サーバーエラー
 
-### GET /auth/dashboard
+### GET /api/auth/dashboard
 - 概要: ダッシュボード用の統計情報を取得（ユーザー数・アクティブユーザー数・総プラン数・行きたいリスト数など）
 - 認証: 必須（管理者のみ）
 - レスポンス 200: `StatsSchema`
@@ -53,12 +53,12 @@
 
 ベースパス: `/api/wishlist`
 
-### GET /wishlist/
+### GET /api/wishlist/
 - 概要: ユーザーの行きたいリスト一覧を取得
 - 認証: 必須
 - レスポンス 200: `WishlistListResponseSchema`
 
-### POST /wishlist/
+### POST /api/wishlist/
 - 概要: 行きたいリストにスポットを追加
 - 認証: 必須
 - リクエストボディ: `WishlistCreateSchema`
@@ -70,7 +70,7 @@
   - 201: 追加成功
   - 500: サーバーエラー
 
-### PATCH /wishlist/{id}
+### PATCH /api/wishlist/{id}
 - 概要: 指定 ID の行きたいリストを更新
 - 認証: 必須
 - パスパラメータ: id
@@ -81,7 +81,7 @@
   - 404: 指定IDが存在しない
   - 500: サーバーエラー
 
-### DELETE /wishlist/{id}
+### DELETE /api/wishlist/{id}
 - 概要: 行きたいリストから削除
 - 認証: 必須
 - パスパラメータ: id
@@ -90,7 +90,7 @@
   - 404: 指定IDが存在しない
   - 500: サーバーエラー
 
-### GET /wishlist/count
+### GET /api/wishlist/count
 - 概要: 行きたいリストの登録数と上限を取得
 - 認証: 必須
 - レスポンス 200: `{ count: number, limit: number }`
@@ -111,20 +111,20 @@
 
 ## Trip（旅行計画）
 
-ベースパス: `/api/trip`
+ベースパス: `/api/trips`（画像は `/api/images`）
 
-### GET /trip/
+### GET /api/trips/
 - 概要: 旅行計画一覧を取得
 - 認証: 必須
 - レスポンス 200: `TripSchema[]`
 
-### GET /trip/count
+### GET /api/trips/count
 - 概要: プランの作成数と上限を取得
 - 認証: 必須
 - レスポンス 200: `{ count: number, limit: number }`
 - 備考: 上限 20件
 
-### GET /trip/{id}
+### GET /api/trips/{id}
 - 概要: 特定の旅行計画詳細を取得
 - 認証: 必須
 - パスパラメータ: id（数値文字列）
@@ -134,7 +134,7 @@
   - 404: 旅行計画が存在しない
   - 500: サーバーエラー
 
-### POST /trip/create
+### POST /api/trips/create
 - 概要: 新しい旅行計画を作成
 - 認証: 必須
 - リクエストボディ: `TripSchema`
@@ -145,7 +145,7 @@
 - レスポンス 201: `TripSchema`
 - 備考: 最寄駅情報はプラン作成と同時に一括登録。駅名・歩行時間はDBに保存しない（Google Maps ToS準拠）
 
-### PATCH /trip/{id}
+### PATCH /api/trips/{id}
 - 概要: 旅行計画を更新
 - 認証: 必須
 - パスパラメータ: id（数値文字列）
@@ -155,7 +155,7 @@
   - 200: 更新成功
   - 500: サーバーエラー
 
-### DELETE /trip/{id}
+### DELETE /api/trips/{id}
 - 概要: 旅行計画を削除
 - 認証: 必須
 - パスパラメータ: id（数値文字列）
@@ -165,12 +165,12 @@
   - 404: 旅行計画が存在しない
   - 500: サーバーエラー
 
-### POST /trip/upload
+### POST /api/images/upload
 - 概要: 旅行計画のサムネイル画像をアップロード
 - 認証: 必須
 - レスポンス 201: `{ url: string }`
 
-### GET /trip/{fileName}
+### GET /api/images/{fileName}
 - 概要: アップロード済み画像を取得
 - パスパラメータ: fileName
 - レスポンス 200: 画像データ
@@ -189,9 +189,9 @@
 
 ## Spot
 
-ベースパス: `/api/spot`
+ベースパス: `/api/spots`
 
-### GET /spot/unvisited
+### GET /api/spots/unvisited
 - 概要: 未訪問の行きたいリストに登録しているスポットを取得
 - 認証: 必須
 - クエリパラメータ: `UnvisitedSpotsQuerySchema`（都道府県・優先度フィルタ、優先度・追加日ソート）
@@ -201,7 +201,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### GET /spot/visited
+### GET /api/spots/visited
 - 概要: 訪問済みのスポットと過去の旅行計画に登録したスポットを取得（重複除外）
 - 認証: 必須
 - クエリパラメータ: `VisitedSpotsQuerySchema`（都道府県フィルタ、訪問日・追加日ソート）
@@ -215,9 +215,9 @@
 
 ## UserLocation（お気に入り地点）
 
-ベースパス: `/api/user-location`
+ベースパス: `/api/userLocation`
 
-### GET /user-location/
+### GET /api/userLocation/
 - 概要: ユーザーのお気に入り地点一覧を取得
 - 認証: 必須
 - レスポンス 200: `UserLocationListSchema`
@@ -225,7 +225,7 @@
   - 200: 取得成功
   - 500: サーバーエラー
 
-### POST /user-location/
+### POST /api/userLocation/
 - 概要: お気に入り地点を追加
 - 認証: 必須
 - リクエストボディ: `CreateUserLocationSchema`
@@ -234,7 +234,7 @@
   - 201: 追加成功
   - 500: サーバーエラー
 
-### PATCH /user-location/{id}
+### PATCH /api/userLocation/{id}
 - 概要: お気に入り地点の内容を更新
 - 認証: 必須
 - パスパラメータ: id
@@ -245,7 +245,7 @@
   - 404: 指定IDが存在しない
   - 500: サーバーエラー
 
-### DELETE /user-location/{id}
+### DELETE /api/userLocation/{id}
 - 概要: お気に入り地点から削除
 - 認証: 必須
 - パスパラメータ: id
@@ -258,9 +258,10 @@
 
 ## PlanLocation（出発地・目的地履歴）
 
-ベースパス: `/api/plan-locations`
+ベースパス: `/api/plan-location`
 
-### GET /plan-locations/
+### GET /api/plan-location/
+- ⚠️ ルート定義（`backend/src/routes/planLocation.ts`）はあるが `backend/src/index.ts` で未登録のため、現状は利用できない
 - 概要: プラン作成時の出発地・目的地履歴を取得
 - 認証: 必須
 - クエリパラメータ: `locationType?: 'DEPARTURE' | 'DESTINATION'`
@@ -270,7 +271,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### GET /plan-locations/candidates
+### GET /api/plan-location/candidates
 - 概要: 出発地・目的地の候補を取得（お気に入り地点 + 履歴の両方を返す）
 - 認証: 必須
 - クエリパラメータ: `PlanLocationCandidateQuerySchema`
@@ -280,7 +281,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### POST /plan-locations/
+### POST /api/plan-location/
 - 概要: 出発地・目的地履歴を登録（または使用回数を更新）
 - 認証: 必須
 - リクエストボディ: `CreatePlanLocationSchema`
@@ -300,7 +301,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### DELETE /plan-locations/{id}
+### DELETE /api/plan-location/{id}
 - 概要: 出発地・目的地履歴を削除
 - 認証: 必須
 - パスパラメータ: id
@@ -317,7 +318,7 @@
 
 ベースパス: `/api/notification`
 
-### GET /notification/
+### GET /api/notification/
 - 概要: ユーザーのお知らせ一覧を取得（公開日時が現在以前のもの、公開日時降順）
 - 認証: 必須
 - レスポンス 200: `NotificationListResponseSchema`
@@ -326,7 +327,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### GET /notification/admin
+### GET /api/notification/admin
 - 概要: 管理者向けお知らせ一覧を取得（未来の公開日も含む・既読率情報付き）
 - 認証: 必須（管理者のみ）
 - クエリパラメータ: `NotificationAdminQuerySchema`（ページネーション・検索・フィルター・ソート）
@@ -337,7 +338,7 @@
   - 403: 権限エラー
   - 500: サーバーエラー
 
-### GET /notification/unread-count
+### GET /api/notification/unread-count
 - 概要: 未読のお知らせ件数を取得（ヘッダーのバッジ表示などに使用）
 - 認証: 必須
 - レスポンス 200: `UnreadCountResponseSchema` → `{ count: number }`
@@ -346,7 +347,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### POST /notification/
+### POST /api/notification/
 - 概要: お知らせを作成し全ユーザーに配信（管理者向け）
 - 認証: 必須（管理者のみ）
 - リクエストボディ: `NotificationCreateSchema`
@@ -357,7 +358,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### PATCH /notification/{id}/read
+### PATCH /api/notification/{id}/read
 - 概要: 指定IDのお知らせを既読にする
 - 認証: 必須
 - パスパラメータ: id (notificationId)
@@ -368,7 +369,7 @@
   - 404: お知らせが見つからない
   - 500: サーバーエラー
 
-### PATCH /notification/read-all
+### PATCH /api/notification/read-all
 - 概要: 全ての未読お知らせを一括既読にする
 - 認証: 必須
 - レスポンス 200: `MarkAllReadResponseSchema` → `{ success: true, count: number }`
@@ -377,7 +378,7 @@
   - 401: 認証エラー
   - 500: サーバーエラー
 
-### PATCH /notification/{id}
+### PATCH /api/notification/{id}
 - 概要: お知らせを更新し全ユーザーに再配信（管理者向け）
 - 認証: 必須（管理者のみ）
 - パスパラメータ: id (notificationId)
@@ -390,7 +391,7 @@
   - 404: お知らせが見つからない
   - 500: サーバーエラー
 
-### DELETE /notification/{id}
+### DELETE /api/notification/{id}
 - 概要: お知らせを削除（関連する UserNotification も削除。管理者向け）
 - 認証: 必須（管理者のみ）
 - パスパラメータ: id (notificationId)

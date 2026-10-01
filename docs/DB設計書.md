@@ -119,7 +119,7 @@ User (1)
 | planSpotId | INTEGER | NOT NULL, FK, UNIQUE | PlanSpot ID（1スポット1最寄駅） |
 | placeId | TEXT | NOT NULL | 最寄駅のGoogle Place ID |
 | stationType | StationType | NOT NULL | 駅種別（BUS / TRAIN / OTHER） |
-| transitTime | INTEGER | NULL | 徒歩移動時間（分単位） |
+| transitTime | INTEGER | NULL | 最寄駅間の移動時間（分単位）。下記注記の「歩行時間」とは別 |
 | scheduledDepartureTime | VARCHAR(5) | NULL | 予定出発時刻（HH:MM） |
 | memo | TEXT | NULL | メモ |
 
@@ -168,7 +168,7 @@ User (1)
 | planLocationId | INTEGER | NOT NULL, FK, UNIQUE | PlanLocation ID（1地点1最寄駅） |
 | placeId | TEXT | NOT NULL | 最寄駅のGoogle Place ID |
 | stationType | StationType | NOT NULL | 駅種別（BUS / TRAIN / OTHER） |
-| transitTime | INTEGER | NULL | 徒歩移動時間（分単位） |
+| transitTime | INTEGER | NULL | 最寄駅間の移動時間（分単位）。下記注記の「歩行時間」とは別 |
 | scheduledDepartureTime | VARCHAR(5) | NULL | 予定出発時刻（HH:MM） |
 | memo | TEXT | NULL | メモ |
 
