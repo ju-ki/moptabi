@@ -11,7 +11,7 @@ import { postgresDbLifecycle } from '@/middleware/db';
  * env.DATABASE_URL と executionCtx がある状態をリクエストごとに再現する
  */
 function createWorkersContext() {
-  const waitUntil = mock((_promise: Promise<unknown>) => {});
+  const waitUntil = mock((promise: Promise<unknown>) => void promise);
   const c = {
     env: { DATABASE_URL: process.env.DATABASE_URL },
     executionCtx: { waitUntil, passThroughOnException: () => {} },

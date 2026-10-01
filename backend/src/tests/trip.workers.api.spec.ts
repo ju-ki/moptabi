@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it, mock } from 'bun:test';
-import { testClient } from 'hono/testing';
 
 import app from '..';
 import { clearUserTestData, createTestUser, deleteTripsByUser } from './db-helper';
@@ -8,18 +7,29 @@ import { mockPlanData, mockTripData } from './libs/data';
 
 const TEST_USER_ID = 'trip_workers_api_test_user';
 
+type WorkersExecutionContext = NonNullable<Parameters<typeof app.request>[3]>;
+
 /**
- * Cloudflare Workers と同じく env.DATABASE_URL と executionCtx を渡したクライアントを作成
+ * Cloudflare Workers と同じく env.DATABASE_URL と executionCtx を渡してリクエストする
  * waitUntil に渡された処理（接続プールの終了）をリクエストごとに確認できるようにする
  */
-function createWorkersClient() {
-  const waitUntil = mock((_promise: Promise<unknown>) => {});
-  const client = testClient(app, { DATABASE_URL: process.env.DATABASE_URL }, {
-    waitUntil,
-    passThroughOnException: () => {},
-  } as any) as any;
-  return { client, waitUntil };
+async function requestOnWorkers(path: string, method: 'POST' | 'PATCH', body: unknown) {
+  const waitUntil = mock((promise: Promise<unknown>) => void promise);
+  const executionCtx: WorkersExecutionContext = { waitUntil, passThroughOnException: () => {} };
+  const res = await app.request(
+    path,
+    {
+      method,
+      headers: { ...createAuthHeaders(TEST_USER_ID), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    { DATABASE_URL: process.env.DATABASE_URL },
+    executionCtx,
+  );
+  return { res, waitUntil };
 }
+
+const createTripBody = () => ({ ...structuredClone(mockTripData), plans: structuredClone(mockPlanData) });
 
 beforeAll(async () => {
   await clearUserTestData(TEST_USER_ID);
@@ -32,14 +42,9 @@ afterAll(async () => {
 });
 
 describe('Cloudflare Workers 環境での旅行計画の作成・更新', () => {
-  describe('POST /trips/create', () => {
+  describe('POST /api/trips/create', () => {
     it('作成後にリクエスト専用の接続プールを閉じること', async () => {
-      const { client, waitUntil } = createWorkersClient();
-
-      const res = await client.api.trips.create.$post(
-        { json: { ...structuredClone(mockTripData), plans: structuredClone(mockPlanData) } },
-        { headers: createAuthHeaders(TEST_USER_ID) },
-      );
+      const { res, waitUntil } = await requestOnWorkers('/api/trips/create', 'POST', createTripBody());
 
       expect(res.status).toBe(201);
       expect(waitUntil).toHaveBeenCalledTimes(1);
@@ -47,21 +52,17 @@ describe('Cloudflare Workers 環境での旅行計画の作成・更新', () => 
     });
   });
 
-  describe('PATCH /trips/:id', () => {
+  describe('PATCH /api/trips/:id', () => {
     it('連続で更新しても毎回成功し、リクエストごとに接続プールを閉じること', async () => {
-      const { client: createClient } = createWorkersClient();
-      const created = await createClient.api.trips.create.$post(
-        { json: { ...structuredClone(mockTripData), plans: structuredClone(mockPlanData) } },
-        { headers: createAuthHeaders(TEST_USER_ID) },
-      );
-      const { id } = await created.json();
+      const { res: created } = await requestOnWorkers('/api/trips/create', 'POST', createTripBody());
+      const { id } = (await created.json()) as { id: number };
 
       for (const title of ['1回目の更新', '2回目の更新', '3回目の更新']) {
-        const { client, waitUntil } = createWorkersClient();
-        const res = await client.api.trips[id].$patch(
-          { json: { ...structuredClone(mockTripData), id, title, plans: structuredClone(mockPlanData) } },
-          { headers: createAuthHeaders(TEST_USER_ID) },
-        );
+        const { res, waitUntil } = await requestOnWorkers(`/api/trips/${id}`, 'PATCH', {
+          ...createTripBody(),
+          id,
+          title,
+        });
 
         expect(res.status).toBe(200);
         expect(waitUntil).toHaveBeenCalledTimes(1);

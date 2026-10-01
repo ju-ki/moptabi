@@ -41,9 +41,9 @@
 
 ### 方針（採用）: リクエストごとに Pool を作成し、レスポンス後に閉じる
 
-- `getPostgresDb(c)` が Workers 上（`c.env.DATABASE_URL` あり）で呼ばれたら、そのリクエスト専用の `Pool`（`max: 1`）を作る。
+- `getPostgresDb(c)` が Workers 上（`c.env.DATABASE_URL` あり）で呼ばれたら、そのリクエスト専用の `Pool` を作る。
 - 作った Pool はリクエスト（`c.req.raw`）をキーにした `WeakMap` に保持し、同一リクエスト内で `getPostgresDb(c)` が複数回呼ばれても同じ Pool を返す。
-- レスポンス後に `c.executionCtx.waitUntil(pool.end())` で閉じる。閉じる処理は `trips` ルートに付ける middleware で `await next()` の後に行う。
+- レスポンス後に `c.executionCtx.waitUntil(pool.end())` で閉じる。閉じる処理は全ルート共通の middleware（`backend/src/middleware/db.ts` の `postgresDbLifecycle`）で `await next()` の後に行う。
 - ローカル・テスト（`c.env.DATABASE_URL` なし、または `executionCtx` がない）では今のグローバル Pool のままにする。Hono は Node 上で `c.executionCtx` を参照すると例外を投げるため、取得は try/catch でガードする。
 
 ### 検討したが採用しない案
@@ -58,13 +58,14 @@
 
 - `getPostgresDb(c)` を以下の挙動にする。
   1. `WeakMap` に `c.req.raw` の Pool があればそれを使って drizzle を返す。
-  2. `c.env.DATABASE_URL` があり、`executionCtx` が取れる（= Workers）なら、新しい `Pool({ connectionString, max: 1 })` を作って `WeakMap` に登録して返す。
+  2. `c.env.DATABASE_URL` があり、`executionCtx` が取れる（= Workers）なら、新しい `Pool({ connectionString })` を作って `WeakMap` に登録して返す。
   3. それ以外（ローカル・テスト）は現行どおり `createDevDb()`。
-- リクエスト終了時に Pool を閉じるヘルパー（例: `closeRequestPgPool(c)`）を追加する。
+- リクエスト終了時に Pool を閉じるヘルパー`closeRequestPostgresDb(c)` を追加する。
 
-### 4-2. `backend/src/routes/trip.ts`（または `backend/src/index.ts` の `/trips` ルート）
+### 4-2. `backend/src/middleware/db.ts`（新規）と `backend/src/index.ts`
 
-- `await next()` の後で `closeRequestPgPool(c)` を呼ぶ middleware を追加する。例外時も閉じるよう `try/finally` にする。
+- `await next()` の後で `closeRequestPostgresDb(c)` を呼ぶ middleware `postgresDbLifecycle` を追加する。例外時も閉じるよう `try/finally` にする。
+- `backend/src/index.ts` で `app.use('*', postgresDbLifecycle)` として全ルートに適用する（Pool を作っていないリクエストでは何もしない）。
 
 ### 4-3. `backend/src/controllers/trip.ts`
 
@@ -81,14 +82,18 @@
 1. `c.env.DATABASE_URL` と `executionCtx` があるとき、`getPostgresDb(c)` がグローバル Pool ではなくリクエスト専用 Pool を返すこと。
 2. 同一コンテキストで2回呼んだら同じ Pool を返すこと。
 3. 別コンテキストでは別の Pool になること（リクエスト間で共有しない回帰テスト）。
-4. `closeRequestPgPool(c)` で `waitUntil` に `pool.end()` が渡されること。
+4. `postgresDbLifecycle` が、レスポンス後（例外時も含む）に `waitUntil` で `pool.end()` を呼ぶこと。
 5. `executionCtx` がない（Node / テスト）ときは現行のグローバル Pool を返すこと。
 
-### 5-2. 既存テスト
+### 5-2. API テスト（`backend/src/tests/trip.workers.api.spec.ts` を新規作成）
+
+- `env.DATABASE_URL` と `executionCtx` を渡して `POST /api/trips/create` と `PATCH /api/trips/:id`（3回連続）を呼び、毎回成功してリクエストごとに接続プールが閉じられること。
+
+### 5-3. 既存テスト
 
 - `npm --prefix backend run test -- trip` で作成・更新の既存テストが通ること（ローカル経路は変わらない）。
 
-### 5-3. Workers 上の動作確認（手動）
+### 5-4. Workers 上の動作確認（手動）
 
 1. `npm --prefix backend run wrangler:dev` を起動する。
 2. 同じプランを連続で編集（`PATCH /trips/:id`）し、すべて 200 になること。
