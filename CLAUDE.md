@@ -66,6 +66,11 @@ make restart  # Full restart
 - 簡潔に回答し、自明な説明は省略する
 - 簡易的な修正であっても、先に実装計画書(md形式)を作成して、レビューをもらってから実装に移ること
 
+## ブランチ戦略
+- 基本的にはPRは手動で作成しない(CI上でfeatureブランチを作成すればPRが自動生成されるため)
+- ブランチ名はfeaturexxx(issue番号)とする
+- 複数機能に跨るまたは規模多くなる場合はまず大本となるfeaturexxxブランチをリモートで作成する
+- その後大本のfeaturexxxからブランチを切り、featurexxx-somethingという命名でブランチを作成する(CI上でfeaturexxxブランチに向いたPRが作成)
 
 ## Documentation & Planning
 
