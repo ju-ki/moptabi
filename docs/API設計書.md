@@ -1,82 +1,100 @@
 # API ドキュメント（簡易版）
 
-最終更新: 2025-11-24
+最終更新: 2026-09-30
 
 このファイルは、Swagger UI が動作しない／参照できない場合の代替として作成した簡易 API ドキュメントです。
-バックエンドの `backend/src/routes` と `backend/src/models` に基づき、主要エンドポイント、リクエスト/レスポンスのスキーマ、実行例、認証要件をまとめています。
+バックエンドの `backend/src/routes` と `backend/src/models` に基づき、主要エンドポイント、リクエスト/レスポンスのスキーマ、認証要件をまとめています。
 
 注意: 詳細なスキーマは `backend/src/models/*.ts` に定義されています。ここでは開発者が素早く API を参照できることを目的とした要約を記載します。
 
 ## 共通
-- ベースパス: `/api`（アプリの実装により違う場合があります。実際のエンドポイントは `backend/src/index.ts` を確認してください）
-- コンテンツタイプ: application/json
-- 認証: 一部エンドポイントは認証が必要（Clerk などを利用）。認証が必要な場合は `Authorization: Bearer <token>` ヘッダを付与してください。
+- ベースパス: `/api`（各エンドポイントの見出しは `/api` を含むフルパスで記載。実装は `backend/src/index.ts` の `app.route` を参照）
+- コンテンツタイプ: `application/json`
+- 認証: 一部エンドポイントは認証が必要です。認証が必要な場合は `X-User-Id: <user-id>` ヘッダを付与してください（`backend/src/middleware/auth.ts` の `requireAuth`。ヘッダがない場合は 401）。
 
-
+---
 
 ## Auth
 
-ベースパス: `/api/auth`（実際の prefix はアプリ側ルーティングに依存）
+ベースパス: `/api/auth`
 
-- GET /auth/
-  - 概要: ユーザーの存在チェック
-  - ステータス:
-    - 200: ユーザーが存在
-    - 201: 新規ユーザー登録完了
-    - 401: ユーザー登録失敗
-    - 500: サーバーエラー
-  - 備考: 実装では Clerk 等の外部認証連携を行っているため、リクエストには認証ヘッダが必要な可能性があります。詳細は `backend/src/controllers/auth.ts` を参照してください。
+### GET /api/auth/
+- 概要: ユーザーの存在チェック（ログイン時の初回登録処理を兼ねる）
+- 認証: 必須
+- ステータス:
+  - 200: ユーザーが存在する
+  - 201: 新規ユーザー登録完了
+  - 401: ユーザー登録失敗
+  - 500: サーバーエラー
 
-- GET /auth/list
-  - 概要: 登録ユーザーの取得
-  - ステータス:
-    - 200: ユーザー一覧取得
-    - 401: 認証エラー
-    - 500: サーバーエラー
-  - 備考: 実装では Clerk 等の外部認証連携を行っているため、リクエストには認証ヘッダが必要な可能性があります。詳細は `backend/src/controllers/auth.ts` を参照してください。
+### GET /api/auth/list
+- 概要: 登録ユーザー一覧を取得（ページネーション・検索・ソート対応）
+- 認証: 必須（管理者のみ）
+- クエリパラメータ: `UserListQuerySchema` 参照
+- レスポンス 200: `UserListResponseSchema`
+- ステータス:
+  - 200: ユーザー一覧取得成功
+  - 401: 認証エラー
+  - 403: 権限エラー
+  - 500: サーバーエラー
 
-- GET /auth/dashboard
-  - 概要: ダッシュボードに必要なユーザー数とプラン数と行きたいリスト総数とお知らせ数を取得する(前月比も合わせて)
-  - ステータス:
-    - 200: 情報取得(ユーザー数とアクティブユーザー数(最近1ヶ月)と総プラン数と行きたいリスト)
-    - 401: 認証エラー
-    - 500: サーバーエラー
-  - 備考: 実装では Clerk 等の外部認証連携を行っているため、リクエストには認証ヘッダが必要な可能性があります。詳細は `backend/src/controllers/auth.ts` を参照してください。
+### GET /api/auth/dashboard
+- 概要: ダッシュボード用の統計情報を取得（ユーザー数・アクティブユーザー数・総プラン数・行きたいリスト数など）
+- 認証: 必須（管理者のみ）
+- レスポンス 200: `StatsSchema`
+- ステータス:
+  - 200: 統計情報取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
+
 ---
 
-## Wishlist (行きたいリスト)
+## Wishlist（行きたいリスト）
 
-ベースパス: `/api/wishlist`（実際の prefix はアプリ側ルーティングに依存）
+ベースパス: `/api/wishlist`
 
-- GET /
-  - 概要: ユーザーの行きたいリスト一覧を取得
-  - レスポンス 200: `WishlistListResponseSchema` (配列)
+### GET /api/wishlist/
+- 概要: ユーザーの行きたいリスト一覧を取得
+- 認証: 必須
+- レスポンス 200: `WishlistListResponseSchema`
 
-- POST /
-  - 概要: 行きたいリストにスポットを追加
-  - リクエストボディ: `WishlistCreateSchema`
-    - spotId: string
-    - spot: SpotSchema
-    - memo?: string | null
-    - priority: number (1-5)
-  - レスポンス 201: 作成した `WishlistSchema`
+### POST /api/wishlist/
+- 概要: 行きたいリストにスポットを追加
+- 認証: 必須
+- リクエストボディ: `WishlistCreateSchema`
+  - spotId: string
+  - memo?: string | null
+  - priority: number (1-5)
+- レスポンス 201: `WishlistSchema`
+- ステータス:
+  - 201: 追加成功
+  - 500: サーバーエラー
 
-- PATCH /{id}
-  - 概要: 指定 ID の wishlist を更新
-  - パスパラメータ: id
-  - リクエストボディ: `WishlistUpdateSchema`
-  - レスポンス 200: 更新された `WishlistSchema`
+### PATCH /api/wishlist/{id}
+- 概要: 指定 ID の行きたいリストを更新
+- 認証: 必須
+- パスパラメータ: id
+- リクエストボディ: `WishlistUpdateSchema`
+- レスポンス 200: `WishlistSchema`
+- ステータス:
+  - 200: 更新成功
   - 404: 指定IDが存在しない
+  - 500: サーバーエラー
 
-- DELETE /{id}
-  - 概要: wishlist を削除
-  - パスパラメータ: id
-  - レスポンス 204: 削除成功
+### DELETE /api/wishlist/{id}
+- 概要: 行きたいリストから削除
+- 認証: 必須
+- パスパラメータ: id
+- ステータス:
+  - 204: 削除成功
+  - 404: 指定IDが存在しない
+  - 500: サーバーエラー
 
-- GET /count
-  - 概要: 行きたいリストの登録数と上限を取得
-  - レスポンス 200: { count: number, limit: number }
-  - 備考: 上限チェックに使用（上限: 100件）
+### GET /api/wishlist/count
+- 概要: 行きたいリストの登録数と上限を取得
+- 認証: 必須
+- レスポンス 200: `{ count: number, limit: number }`
+- 備考: 上限 100件
 
 モデル（主要フィールド）:
 - WishlistSchema
@@ -86,102 +104,213 @@
   - memo: string | null
   - priority: number
   - visited: number
-  - visitedAt: date | null
+  - visitedAt: string | null
   - spot: SpotSchema
 
 ---
 
 ## Trip（旅行計画）
 
-ベースパス: `/api/trip`（実際の prefix はアプリ側ルーティングに依存）
+ベースパス: `/api/trips`（画像は `/api/images`）
 
-- GET /
-  - 概要: 旅行計画一覧を取得
-  - レスポンス 200: `TripSchema[]`
+### GET /api/trips/
+- 概要: 旅行計画一覧を取得
+- 認証: 必須
+- レスポンス 200: `TripSchema[]`
 
-- GET /{id}
-  - 概要: 特定の旅行計画詳細を取得
-  - パスパラメータ: id（数値文字列）
-  - レスポンス 200: `TripSchema`
-  - 404: 取得できない
+### GET /api/trips/count
+- 概要: プランの作成数と上限を取得
+- 認証: 必須
+- レスポンス 200: `{ count: number, limit: number }`
+- 備考: 上限 20件
 
-- POST /create
-  - 概要: 新しい旅行計画を作成
-  - リクエストボディ: `TripSchema`（作成に必要なフィールド）
-  - レスポンス 201: 作成された計画の`tripId`
+### GET /api/trips/{id}
+- 概要: 特定の旅行計画詳細を取得
+- 認証: 必須
+- パスパラメータ: id（数値文字列）
+- レスポンス 200: `TripSchema`
+- ステータス:
+  - 200: 取得成功
+  - 404: 旅行計画が存在しない
+  - 500: サーバーエラー
 
-- PATCH /{id}
-  - 概要: 既存の旅行計画を更新
-  - リクエストボディ: `TripSchema`（更新に必要なフィールド）
-  - レスポンス 201: 作成された計画の`tripId`
+### POST /api/trips/create
+- 概要: 新しい旅行計画を作成
+- 認証: 必須
+- リクエストボディ: `TripSchema`
+  - plans[].spots[] 内に以下を含む:
+    - nearestStation: { placeId, stationType } （任意。スポットの最寄駅）
+  - plans[].departure / destination 内に以下を含む:
+    - nearestStation: { placeId, stationType } （任意）
+- レスポンス 201: `TripSchema`
+- 備考: 最寄駅情報はプラン作成と同時に一括登録。駅名・歩行時間はDBに保存しない（Google Maps ToS準拠）
 
-- DELETE /{id}
-  - 概要: 旅行計画を削除
-  - レスポンス 200: { message: string }
+### PATCH /api/trips/{id}
+- 概要: 旅行計画を更新
+- 認証: 必須
+- パスパラメータ: id（数値文字列）
+- リクエストボディ: `TripSchema`
+- レスポンス 200: `TripSchema`
+- ステータス:
+  - 200: 更新成功
+  - 500: サーバーエラー
 
-- GET /count
-  - 概要: プランの作成数と上限を取得
-  - レスポンス 200: { count: number, limit: number }
-  - 備考: 上限チェックに使用（上限: 20件）
+### DELETE /api/trips/{id}
+- 概要: 旅行計画を削除
+- 認証: 必須
+- パスパラメータ: id（数値文字列）
+- レスポンス 200: `{ message: string }`
+- ステータス:
+  - 200: 削除成功
+  - 404: 旅行計画が存在しない
+  - 500: サーバーエラー
 
-Image 関連
-- POST /upload
-  - 概要: 画像アップロード
-  - レスポンス 201: { url: string }
+### POST /api/images/upload
+- 概要: 旅行計画のサムネイル画像をアップロード
+- 認証: 必須
+- レスポンス 201: `{ url: string }`
 
-- GET /{fileName}
-  - 概要: 画像取得
-  - レスポンス 200: 画像データ
+### GET /api/images/{fileName}
+- 概要: アップロード済み画像を取得
+- パスパラメータ: fileName
+- レスポンス 200: 画像データ
 
-モデル（主要フィールド / TripSchema 抜粋）:
+モデル（TripSchema 主要フィールド）:
 - title: string (1-50)
 - imageUrl?: string
-- startDate, endDate: string
-- plans: array of { date, spots[], departure, destination }
-  - spot: { id, location: { name, lat, lng }, stayStart, stayEnd, stayDuration?, transports: { transportMethodIds[], fromType, toType, travelTime?, cost? }, order, nearestStation? }
-  - spot.nearestStation: { placeId?, stationType?, name, walkingTime, latitude, longitude }
-  - departure / destination: { name, latitude, longitude, ... , nearestStation? }
-  - departure.nearestStation / destination.nearestStation: { placeId, stationType }
-
-No.229 追記（最寄駅情報の保存/取得）:
-- 保存対象（DB）
-  - 出発地・目的地: placeId, stationType を保存
-  - スポット: placeId, stationType を保存
-- 取得レスポンス
-  - departure.nearestStation, destination.nearestStation は { placeId, stationType } を返却
-  - spots[].nearestStation は { placeId, stationType } を返却
-- 注意
-  - Google Maps ToS順守のため、駅名・徒歩分数・緯度経度はDB永続化しない
-
-注: `fromType` / `toType` は Prisma の enum (`TransportNodeType`) を使用するため、テスト環境では enum を mock する必要があります。
+- startDate, endDate: string (YYYY-MM-DD)
+- plans[]:
+  - date: string
+  - spots[]: { id, stayStart, stayEnd, stayDuration, transportMethodId, travelTime, order, memo, nearestStation? }
+  - departure: { name, latitude, longitude, time, transportMethodId, travelTime, nearestStation? }
+  - destination: { name, latitude, longitude, time }
 
 ---
-
-## Image
-- 画像アップロードと配信は上記 Trip の Image のエンドポイントで提供されます。
-
----
-
 
 ## Spot
-ベースパス: `/api/spot`（実際の prefix はアプリ側ルーティングに依存）
+
+ベースパス: `/api/spots`
+
+### GET /api/spots/unvisited
+- 概要: 未訪問の行きたいリストに登録しているスポットを取得
+- 認証: 必須
+- クエリパラメータ: `UnvisitedSpotsQuerySchema`（都道府県・優先度フィルタ、優先度・追加日ソート）
+- レスポンス 200: `UnvisitedSpotsResponseSchema`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
+
+### GET /api/spots/visited
+- 概要: 訪問済みのスポットと過去の旅行計画に登録したスポットを取得（重複除外）
+- 認証: 必須
+- クエリパラメータ: `VisitedSpotsQuerySchema`（都道府県フィルタ、訪問日・追加日ソート）
+- レスポンス 200: `VisitedSpotsResponseSchema`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
+
 ---
- - GET /{wishlist}
-  - 概要: ユーザーが行きたいリストに登録しているスポットの一覧を取得
-  - レスポンス 200 {`WishlistSchema[]`}: 行きたいリストに登録している未訪問のスポット情報といきたいリストのプロパティ情報
-- GET /{visited}
-  - 概要: ユーザーが訪問済みまたは過去に計画に追加したスポットの一覧を取得
-  - レスポンス 200 {`WishlistSchema[]`}: いきたいリストに登録している訪問済みのスポット情報と過去に計画に追加したスポット情報
-  - レスポンス 200 {`WishlistSchema[] + `}: いきたいリストに登録している訪問済みのスポット情報と過去に計画に追加したスポット情報
 
+## UserLocation（お気に入り地点）
+
+ベースパス: `/api/userLocation`
+
+### GET /api/userLocation/
+- 概要: ユーザーのお気に入り地点一覧を取得
+- 認証: 必須
+- レスポンス 200: `UserLocationListSchema`
+- ステータス:
+  - 200: 取得成功
+  - 500: サーバーエラー
+
+### POST /api/userLocation/
+- 概要: お気に入り地点を追加
+- 認証: 必須
+- リクエストボディ: `CreateUserLocationSchema`
+- レスポンス 201: `UserLocationListSchema`
+- ステータス:
+  - 201: 追加成功
+  - 500: サーバーエラー
+
+### PATCH /api/userLocation/{id}
+- 概要: お気に入り地点の内容を更新
+- 認証: 必須
+- パスパラメータ: id
+- リクエストボディ: `UpdateUserLocationSchema`
+- レスポンス 200: `UserLocationListSchema`
+- ステータス:
+  - 200: 更新成功
+  - 404: 指定IDが存在しない
+  - 500: サーバーエラー
+
+### DELETE /api/userLocation/{id}
+- 概要: お気に入り地点から削除
+- 認証: 必須
+- パスパラメータ: id
+- ステータス:
+  - 204: 削除成功
+  - 404: 指定IDが存在しない
+  - 500: サーバーエラー
 
 ---
 
-## スキーマ参照（モデルファイル）
-- Spot: `backend/src/models/spot.ts`
-- Trip: `backend/src/models/trip.ts`
-- Wishlist: `backend/src/models/wishlist.ts`
-- Notification: `backend/src/models/notification.ts`
+## PlanLocation（出発地・目的地履歴）
+
+ベースパス: `/api/plan-location`
+
+### GET /api/plan-location/
+- ⚠️ ルート定義（`backend/src/routes/planLocation.ts`）はあるが `backend/src/index.ts` で未登録のため、現状は利用できない
+- 概要: プラン作成時の出発地・目的地履歴を取得
+- 認証: 必須
+- クエリパラメータ: `locationType?: 'DEPARTURE' | 'DESTINATION'`
+- レスポンス 200: `PlanLocationListSchema`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
+
+### GET /api/plan-location/candidates
+- 概要: 出発地・目的地の候補を取得（お気に入り地点 + 履歴の両方を返す）
+- 認証: 必須
+- クエリパラメータ: `PlanLocationCandidateQuerySchema`
+- レスポンス 200: `PlanLocationCandidateResponseSchema`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
+
+### POST /api/plan-location/
+- 概要: 出発地・目的地履歴を登録（または使用回数を更新）
+- 認証: 必須
+- リクエストボディ: `CreatePlanLocationSchema`
+  - name: string
+  - latitude: number
+  - longitude: number
+  - time: string (HH:MM) — DEPARTURE: 出発時刻, DESTINATION: 到着予定時刻
+  - locationType: 'DEPARTURE' | 'DESTINATION'
+  - planId: number
+  - transportMethodId?: number
+  - travelTime?: number
+  - nearestStation?: { placeId: string, stationType: StationType }
+- レスポンス 201: `PlanLocationSchema`
+- ステータス:
+  - 201: 登録成功
+  - 400: リクエストが不正
+  - 401: 認証エラー
+  - 500: サーバーエラー
+
+### DELETE /api/plan-location/{id}
+- 概要: 出発地・目的地履歴を削除
+- 認証: 必須
+- パスパラメータ: id
+- レスポンス 200: `PlanLocationSchema`
+- ステータス:
+  - 200: 削除成功
+  - 401: 認証エラー
+  - 404: 指定されたIDが存在しない
+  - 500: サーバーエラー
 
 ---
 
@@ -189,45 +318,89 @@ No.229 追記（最寄駅情報の保存/取得）:
 
 ベースパス: `/api/notification`
 
-- GET /
-  - 概要: ユーザーのお知らせ一覧を取得（公開日時が現在以前のもの）
-  - レスポンス 200: `NotificationListResponseSchema` (配列)
-  - 備考: 未読/既読状態を含む。公開日時降順でソート
+### GET /api/notification/
+- 概要: ユーザーのお知らせ一覧を取得（公開日時が現在以前のもの、公開日時降順）
+- 認証: 必須
+- レスポンス 200: `NotificationListResponseSchema`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
 
-- GET /admin
-  - 概要: お知らせ一覧を取得（公開日時が現在以前のもの）
-  - レスポンス 200: `NotificationListResponseSchema` (配列)
-  - 備考: 未来の公開日も含めて取得
+### GET /api/notification/admin
+- 概要: 管理者向けお知らせ一覧を取得（未来の公開日も含む・既読率情報付き）
+- 認証: 必須（管理者のみ）
+- クエリパラメータ: `NotificationAdminQuerySchema`（ページネーション・検索・フィルター・ソート）
+- レスポンス 200: `NotificationAdminPaginatedResponseSchema`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 403: 権限エラー
+  - 500: サーバーエラー
 
-- GET /unread-count
-  - 概要: 未読のお知らせ件数を取得
-  - レスポンス 200: { count: number }
+### GET /api/notification/unread-count
+- 概要: 未読のお知らせ件数を取得（ヘッダーのバッジ表示などに使用）
+- 認証: 必須
+- レスポンス 200: `UnreadCountResponseSchema` → `{ count: number }`
+- ステータス:
+  - 200: 取得成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
 
-- POST /
-  - 概要: 管理者向けのお知らせ作成をし、全ユーザーに配信をする
-  - レスポンス 201: なし(mutateを使用して一覧再取得する)
+### POST /api/notification/
+- 概要: お知らせを作成し全ユーザーに配信（管理者向け）
+- 認証: 必須（管理者のみ）
+- リクエストボディ: `NotificationCreateSchema`
+- レスポンス 201: `NotificationResponseSchema`
+- ステータス:
+  - 201: 作成成功
+  - 400: バリデーションエラー
+  - 401: 認証エラー
+  - 500: サーバーエラー
 
-- PATCH /{id}/read
-  - 概要: 指定IDのお知らせを既読にする
-  - パスパラメータ: id (notificationId)
-  - レスポンス 200: { success: true }
-  - 404: 指定IDが存在しない
+### PATCH /api/notification/{id}/read
+- 概要: 指定IDのお知らせを既読にする
+- 認証: 必須
+- パスパラメータ: id (notificationId)
+- レスポンス 200: `MarkReadResponseSchema` → `{ success: true }`
+- ステータス:
+  - 200: 既読更新成功
+  - 401: 認証エラー
+  - 404: お知らせが見つからない
+  - 500: サーバーエラー
 
-- PATCH /{id}
-  - 概要: お知らせを更新し、全ユーザーに再配信する
-  - パスパラメータ: id (notificationId)
-  - レスポンス 200: { success: true }
-  - 404: 指定IDが存在しない
+### PATCH /api/notification/read-all
+- 概要: 全ての未読お知らせを一括既読にする
+- 認証: 必須
+- レスポンス 200: `MarkAllReadResponseSchema` → `{ success: true, count: number }`
+- ステータス:
+  - 200: 全て既読更新成功
+  - 401: 認証エラー
+  - 500: サーバーエラー
 
-- PATCH /read-all
-  - 概要: 全てのお知らせを既読にする
-  - レスポンス 200: { success: true, count: number }
+### PATCH /api/notification/{id}
+- 概要: お知らせを更新し全ユーザーに再配信（管理者向け）
+- 認証: 必須（管理者のみ）
+- パスパラメータ: id (notificationId)
+- リクエストボディ: `NotificationUpdateSchema`
+- レスポンス 200: `NotificationResponseSchema`
+- ステータス:
+  - 200: 更新成功
+  - 400: バリデーションエラー
+  - 401: 認証エラー
+  - 404: お知らせが見つからない
+  - 500: サーバーエラー
 
-- DELETE /{id}
-  - 概要: お知らせの削除
-  - パスパラメータ: id (notificationId)
-  - レスポンス 200: { success: true }
-  - 404: 指定IDが存在しない
+### DELETE /api/notification/{id}
+- 概要: お知らせを削除（関連する UserNotification も削除。管理者向け）
+- 認証: 必須（管理者のみ）
+- パスパラメータ: id (notificationId)
+- レスポンス 200: `{ success: boolean }`
+- ステータス:
+  - 200: 削除成功
+  - 401: 認証エラー
+  - 404: お知らせが見つからない
+  - 500: サーバーエラー
 
 モデル（主要フィールド）:
 - NotificationSchema
@@ -240,15 +413,21 @@ No.229 追記（最寄駅情報の保存/取得）:
   - isRead: boolean
   - readAt: string | null (ISO8601)
 
-将来対応（リアルタイム通知）:
-- WebSocket接続用エンドポイント: `/api/notification/ws`
-- イベント: `notification:new`, `notification:read`
+---
+
+## スキーマ参照（モデルファイル）
+- Spot: `backend/src/models/spot.ts`
+- Trip: `backend/src/models/trip.ts`
+- Wishlist: `backend/src/models/wishlist.ts`
+- Notification: `backend/src/models/notification.ts`
+- UserLocation: `backend/src/models/userLocation.ts`
+- PlanLocation: `backend/src/models/planLocation.ts`
+- User: `backend/src/models/user.ts`
+- Auth: `backend/src/models/auth.ts`
 
 ---
 
 ## 上限設定
-
-アプリケーション全体で以下の上限値が設定されています:
 
 | 項目 | 上限値 | 説明 |
 |------|--------|------|
@@ -261,64 +440,26 @@ No.229 追記（最寄駅情報の保存/取得）:
 - バックエンド: 400エラーを返し、適切なエラーメッセージを含む
 - フロントエンド: ユーザーに通知を表示し、操作を制限
 
+---
+
 ## エラーとステータスコード
-- 200: 成功
-- 201: 作成成功
-- 204: 削除成功（No Content）
-- 400: リクエスト不正（バリデーションエラー、上限超過）
-- 401: 認証失敗（認証が必要な場合）
-- 404: リソースが見つからない
-- 500: サーバー内部エラー
 
-
-作成者: 自動生成（リポジトリ内の route/model 定義を元に要約作成）
-
----
-
-## No.229 / No.225 データ保存方針（専用エンドポイントなし）
-
-No.229 で追加した最寄駅関連データは専用APIを作成せず、
-`POST /trip/create` に一括登録データとして内包する。
-
-No.225 で `spotRoutes` は契約対象から削除する。
-
-### POST /trip/create への追加データ
-
-`plans[].spots[]` の既存データに加えて、以下を受け取る。
-
-1. `planSpotNearestStations`
-  - 役割: PlanSpotごとの最寄駅（Place ID）を保存
-  - 例:
-  ```json
-  [
-    {
-      "planSpotRef": "temp-spot-1",
-      "placeId": "ChIJN1t_tDeuEmsRUsoyG83frY4",
-      "stationType": "TRAIN"
-    }
-  ]
-  ```
-
-補足:
-- 最寄駅はプラン作成フローと同時に登録する想定のため、一覧取得API・更新APIは今回提供しない。
-- No.225 で `spotRoutes` は契約対象から削除済み。
-- 駅名・歩行時間はフロントエンドが `placeId` をもとにGoogle Places APIから取得する。
+| コード | 意味 |
+|--------|------|
+| 200 | 成功 |
+| 201 | 作成成功 |
+| 204 | 削除成功（No Content） |
+| 400 | リクエスト不正（バリデーションエラー、上限超過） |
+| 401 | 認証失敗 |
+| 403 | 権限エラー（認証済みだが権限不足） |
+| 404 | リソースが見つからない |
+| 500 | サーバー内部エラー |
 
 ---
 
-## PlanLocation ※No.229: timeカラム追加
+## データ保存方針（Google Maps ToS準拠）
 
-既存エンドポイントへの変更点:
+駅名・歩行時間・緯度経度などの場所詳細情報はDBに保存しない（Google Maps Platform利用規約準拠）。
+保存するのは `placeId` と `stationType` のみで、表示時にフロントエンドがGoogle Places APIから都度取得する。
 
-| エンドポイント | 変更内容 |
-|--------------|---------|
-| POST /plan-locations | リクエスト・レスポンスに `time: "HH:MM"` フィールドを追加 |
-| PATCH /plan-locations/:id | `time` の更新が可能になった |
-| GET /plan-locations | レスポンスに `time` フィールドが含まれる |
-
-### timeフィールドの役割
-
-| locationType | time の意味 |
-|-------------|------------|
-| DEPARTURE | 出発地からの出発時刻（例: "09:00"） |
-| DESTINATION | 目的地への到着予定時刻（例: "18:00"） |
+対象テーブル: `PlanSpotNearestStation`, `PlanLocationNearestStation`, `UserLocationNearestStation`
