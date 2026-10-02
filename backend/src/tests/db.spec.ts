@@ -1,5 +1,6 @@
 import { describe, expect, it, mock } from 'bun:test';
 import { Context } from 'hono';
+import { sql } from 'drizzle-orm';
 import { Pool } from 'pg';
 
 import { getPostgresDb } from '@/db';
@@ -59,7 +60,7 @@ describe('getPostgresDb', () => {
       const db = getPostgresDb(c);
 
       const result = await db.transaction(async (tx) => {
-        const rows = await tx.execute('select 1 as value');
+        const rows = await tx.execute(sql`select 1 as value`);
         return rows.rows[0];
       });
 
@@ -85,7 +86,7 @@ describe('postgresDbLifecycle', () => {
 
     await postgresDbLifecycle(c, async () => {
       pool = getPool(getPostgresDb(c));
-      await getPostgresDb(c).execute('select 1');
+      await getPostgresDb(c).execute(sql`select 1`);
     });
 
     expect(waitUntil).toHaveBeenCalledTimes(1);
