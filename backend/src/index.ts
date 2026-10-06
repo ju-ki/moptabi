@@ -41,6 +41,7 @@ import {
 } from './routes/notification';
 import { notificationHandler } from './controllers/notification';
 import { requireAuth, optionalAuth } from './middleware/auth';
+import { postgresDbLifecycle } from './middleware/db';
 import { userLocationHandler } from './controllers/userLocation';
 import {
   createUserLocationRoute,
@@ -128,6 +129,9 @@ app.use('*', async (c, next) => {
 
   return corsMiddleware(c, next);
 });
+
+// getPostgresDb がリクエスト内で作成した接続プールをレスポンス後に閉じる
+app.use('*', postgresDbLifecycle);
 
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {

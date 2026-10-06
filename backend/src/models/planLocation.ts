@@ -96,6 +96,13 @@ export const PlanLocationCandidateResponseSchema = z.object({
         planName: z.string().nullable(),
         userLocationId: z.number().nullable(),
         planLocationId: z.number().nullable(),
+        nearestStation: z
+          .object({
+            placeId: z.string(),
+            stationType: z.enum(['TRAIN', 'BUS', 'OTHER']),
+          })
+          .optional()
+          .nullable(),
       }),
     )
     .openapi({ description: 'お気に入り地点（UserLocationから）' }),

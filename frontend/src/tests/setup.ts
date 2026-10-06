@@ -6,4 +6,6 @@ class MockResizeObserver {
   disconnect() {}
 }
 
+window.HTMLElement.prototype.scrollIntoView = function () {};
+
 global.ResizeObserver = MockResizeObserver;

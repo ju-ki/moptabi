@@ -2,8 +2,18 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockResetPlanningStore } = vi.hoisted(() => ({
+import TravelPlanCreate from '@/app/plan/create/page';
+
+import type { PlanLocationCandidateResponseType } from '@shared/user/types';
+
+const { mockResetPlanningStore, mockAddDateWithDefaultLocation, mockCandidatesState } = vi.hoisted(() => ({
   mockResetPlanningStore: vi.fn(),
+  mockAddDateWithDefaultLocation: vi.fn(),
+  // 候補APIの戻り値をテストごとに切り替えるための状態
+  mockCandidatesState: {
+    candidates: null as PlanLocationCandidateResponseType | null,
+    isLoading: true,
+  },
 }));
 
 vi.mock('@/lib/plan', () => ({
@@ -12,7 +22,7 @@ vi.mock('@/lib/plan', () => ({
     endDate: '2026-06-01',
     errors: {},
     resetPlanningStore: mockResetPlanningStore,
-    addDateWithDefaultLocation: vi.fn(),
+    addDateWithDefaultLocation: mockAddDateWithDefaultLocation,
     setDepartureList: vi.fn(),
     setDestinationList: vi.fn(),
     setFields: vi.fn(),
@@ -22,8 +32,8 @@ vi.mock('@/lib/plan', () => ({
 
 vi.mock('@/hooks/use-plan-location', () => ({
   usePlanLocationCandidates: () => ({
-    candidates: null,
-    isLoading: true,
+    candidates: mockCandidatesState.candidates,
+    isLoading: mockCandidatesState.isLoading,
   }),
 }));
 
@@ -50,11 +60,11 @@ vi.mock('@/components/ui/tabs', () => ({
   TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-import TravelPlanCreate from '@/app/plan/create/page';
-
 describe('plan/create page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCandidatesState.candidates = null;
+    mockCandidatesState.isLoading = true;
   });
 
   it('画面を離脱した場合、プラン作成ストアを初期化すること', () => {
@@ -69,5 +79,50 @@ describe('plan/create page', () => {
     render(<TravelPlanCreate />);
 
     expect(mockResetPlanningStore).toHaveBeenCalled();
+  });
+
+  it('最寄駅付きのデフォルト出発地がある場合、最寄駅が選択された状態で出発地をセットすること', () => {
+    mockCandidatesState.isLoading = false;
+    mockCandidatesState.candidates = {
+      favorites: [
+        {
+          name: '自宅',
+          latitude: 35.6895,
+          longitude: 139.6917,
+          label: null,
+          isDefault: true,
+          locationType: 'DEPARTURE',
+          usageCount: 0,
+          planId: null,
+          planName: null,
+          userLocationId: 10,
+          planLocationId: null,
+          nearestStation: {
+            placeId: 'station-place-id',
+            stationType: 'TRAIN',
+            latitude: 35.6905,
+            longitude: 139.7004,
+            name: '新宿駅',
+            transitTime: 0,
+            walkingTime: 8,
+          },
+        },
+      ],
+      history: [],
+    };
+
+    render(<TravelPlanCreate />);
+
+    expect(mockAddDateWithDefaultLocation).toHaveBeenCalledWith(
+      '2026-06-01',
+      expect.objectContaining({
+        name: '自宅',
+        userLocationId: 10,
+        transportMethod: 'TRANSIT',
+        isSetSelectedNearestStation: true,
+        nearestStation: expect.objectContaining({ placeId: 'station-place-id', name: '新宿駅' }),
+      }),
+      expect.objectContaining({ locationType: 'DESTINATION' }),
+    );
   });
 });
