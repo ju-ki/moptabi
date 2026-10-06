@@ -2,11 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { PlanLocationCandidateItemType } from '@shared/user/types';
 
 import { buildDepartureFromCandidate, buildDestinationFromCandidate } from '@/lib/plan-location';
-import {
-  DEFAULT_ARRIVAL_TIME,
-  DEFAULT_DEPARTURE_AND_DESTINATION,
-  DEFAULT_DEPARTURE_TIME,
-} from '@/data/constants';
+import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPARTURE_TIME } from '@/data/constants';
 import { calculateDistance } from '@/data/mockNearestStation';
 import { TransportNodeType } from '@/types/plan';
 
@@ -46,7 +42,6 @@ describe('buildDepartureFromCandidate', () => {
       name: '自宅',
       latitude: 35.6895,
       longitude: 139.6917,
-      planId: undefined,
       locationType: TransportNodeType.DEPARTURE,
       time: DEFAULT_DEPARTURE_TIME,
       travelTime: 0,
@@ -93,22 +88,41 @@ describe('buildDepartureFromCandidate', () => {
 });
 
 describe('buildDestinationFromCandidate', () => {
-  it('お気に入りから目的地を作り、最寄駅は反映しないこと', () => {
+  it('最寄駅付きのお気に入りから、最寄駅が選択済みの目的地を作ること', () => {
     const destination = buildDestinationFromCandidate(candidateWithStation);
 
     expect(destination).toEqual({
       name: '自宅',
       latitude: 35.6895,
       longitude: 139.6917,
-      planId: undefined,
       locationType: TransportNodeType.DESTINATION,
       time: DEFAULT_ARRIVAL_TIME,
       travelTime: 0,
       userLocationId: 10,
-      transportMethod: 'DEFAULT',
-      transportMethodId: 0,
+      transportMethod: 'TRANSIT',
+      transportMethodId: 4,
+      isSetSelectedNearestStation: true,
+      nearestStation: {
+        placeId: 'station-place-id',
+        stationType: 'TRAIN',
+        latitude: 35.6905,
+        longitude: 139.7004,
+        name: '新宿駅',
+        walkingTime: 8,
+        distance: calculateDistance(35.6895, 139.6917, 35.6905, 139.7004),
+        transitTime: 0,
+      },
       alternateRoutes: [],
     });
+  });
+
+  it('最寄駅のないお気に入りでは、移動手段がDEFAULTで最寄駅なしの目的地を作ること', () => {
+    const destination = buildDestinationFromCandidate(baseCandidate);
+
+    expect(destination.userLocationId).toBe(10);
+    expect(destination.transportMethod).toBe('DEFAULT');
+    expect(destination.isSetSelectedNearestStation).toBe(false);
+    expect(destination.nearestStation).toBeUndefined();
   });
 
   it('候補がない場合は既定の地点で目的地を作ること', () => {

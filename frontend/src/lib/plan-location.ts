@@ -7,12 +7,12 @@ import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } f
 type CandidateNearestStation = NonNullable<PlanLocationCandidateItemType['nearestStation']>;
 
 /**
- * お気に入り候補の最寄駅を出発地用の最寄駅データに変換する
+ * お気に入り候補の最寄駅をプラン用の最寄駅データに変換する
  * @param candidate - お気に入り候補
  * @param nearestStation - 候補に登録された最寄駅
- * @returns 出発地にセットする最寄駅
+ * @returns 出発地・目的地にセットする最寄駅
  */
-function toDepartureNearestStation(
+function toNearestStation(
   candidate: PlanLocationCandidateItemType,
   nearestStation: CandidateNearestStation,
 ): ExtendNearestStationType {
@@ -34,30 +34,42 @@ function toDepartureNearestStation(
 }
 
 /**
- * お気に入り候補から出発地データを組み立てる
+ * お気に入り候補から出発地・目的地データを組み立てる
  * 最寄駅が登録されていれば、最寄駅を選択済みにして移動手段を公共交通機関にする
  * @param candidate - お気に入り候補（未指定なら既定の地点を使う）
- * @returns 出発地データ
+ * @param locationType - 出発地か目的地か
+ * @param time - 出発・到着時刻
+ * @returns 出発地・目的地データ
  */
-export function buildDepartureFromCandidate(candidate?: PlanLocationCandidateItemType): ExtendPlanLocationType {
+function buildPlanLocationFromCandidate(
+  candidate: PlanLocationCandidateItemType | undefined,
+  locationType: TransportNodeType.DEPARTURE | TransportNodeType.DESTINATION,
+  time: string,
+): ExtendPlanLocationType {
   const hasNearestStation = !!candidate?.nearestStation;
   return {
     name: candidate?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
     latitude: candidate?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
     longitude: candidate?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
-    planId: candidate?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
-    locationType: TransportNodeType.DEPARTURE,
-    time: DEFAULT_DEPARTURE_TIME,
+    locationType,
+    time,
     travelTime: 0,
     userLocationId: candidate?.userLocationId ?? undefined,
     transportMethod: hasNearestStation ? 'TRANSIT' : 'DEFAULT',
     transportMethodId: hasNearestStation ? 4 : 0,
     isSetSelectedNearestStation: hasNearestStation,
-    nearestStation: candidate?.nearestStation
-      ? toDepartureNearestStation(candidate, candidate.nearestStation)
-      : undefined,
+    nearestStation: candidate?.nearestStation ? toNearestStation(candidate, candidate.nearestStation) : undefined,
     alternateRoutes: [],
   };
+}
+
+/**
+ * お気に入り候補から出発地データを組み立てる
+ * @param candidate - お気に入り候補（未指定なら既定の地点を使う）
+ * @returns 出発地データ
+ */
+export function buildDepartureFromCandidate(candidate?: PlanLocationCandidateItemType): ExtendPlanLocationType {
+  return buildPlanLocationFromCandidate(candidate, TransportNodeType.DEPARTURE, DEFAULT_DEPARTURE_TIME);
 }
 
 /**
@@ -66,17 +78,5 @@ export function buildDepartureFromCandidate(candidate?: PlanLocationCandidateIte
  * @returns 目的地データ
  */
 export function buildDestinationFromCandidate(candidate?: PlanLocationCandidateItemType): ExtendPlanLocationType {
-  return {
-    name: candidate?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
-    latitude: candidate?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
-    longitude: candidate?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
-    planId: candidate?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
-    locationType: TransportNodeType.DESTINATION,
-    time: DEFAULT_ARRIVAL_TIME,
-    travelTime: 0,
-    userLocationId: candidate?.userLocationId ?? undefined,
-    transportMethod: 'DEFAULT',
-    transportMethodId: 0,
-    alternateRoutes: [],
-  };
+  return buildPlanLocationFromCandidate(candidate, TransportNodeType.DESTINATION, DEFAULT_ARRIVAL_TIME);
 }

@@ -1,6 +1,9 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import TravelPlanCreate from '@/app/plan/create/page';
+
 import type { PlanLocationCandidateResponseType } from '@shared/user/types';
 
 const { mockResetPlanningStore, mockAddDateWithDefaultLocation, mockCandidatesState } = vi.hoisted(() => ({
@@ -56,8 +59,6 @@ vi.mock('@/components/ui/tabs', () => ({
   TabsTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
   TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
-
-import TravelPlanCreate from '@/app/plan/create/page';
 
 describe('plan/create page', () => {
   beforeEach(() => {
