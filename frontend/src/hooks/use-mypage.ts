@@ -2,19 +2,13 @@ import useSWR from 'swr';
 
 import { useFetcher } from '@/hooks/use-fetcher';
 import { CreateUserLocationRequest, UpdateUserLocationRequest, UserLocation } from '@/models/userLocation';
-import { CountResponse, MypageData, NextTrip, RecentTrip, TripSummary, WishlistSummary } from '@/models/mypage';
+import { CountResponse, MypageData, NextTrip, TripSummary, WishlistSummary } from '@/models/mypage';
 import { calculateDistance, estimateWalkingTime } from '@/data/mockNearestStation';
 
 import { fetchRequiredPlaceDetails } from './use-trip';
 
 export type { MypageData };
 
-/**
- * 日付間の日数を計算する関数
- * @param startDate 開始日（YYYY-MM-DD形式）
- * @param endDate 終了日（YYYY-MM-DD形式）
- * @returns 日数（endDate - startDate + 1）
- */
 function calculateDays(startDate: string, endDate: string): number {
   const start = new Date(startDate);
   const end = new Date(endDate);
@@ -23,24 +17,14 @@ function calculateDays(startDate: string, endDate: string): number {
   return diffDays;
 }
 
-/**
- * 今日からの日数を計算する関数
- * @param targetDate 対象日（YYYY-MM-DD形式）
- * @returns 今日からの日数
- */
 function calculateDaysUntil(targetDate: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const target = new Date(targetDate);
   const diffTime = target.getTime() - today.getTime();
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24));
 }
 
-/**
- * 日付が今日より前かどうかを判定する関数
- * @param dateStr 日付文字列（YYYY-MM-DD形式）
- * @returns 今日より前ならtrue
- */
 function isPastDate(dateStr: string): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -48,11 +32,6 @@ function isPastDate(dateStr: string): boolean {
   return date < today;
 }
 
-/**
- * 日付が今日より後かどうかを判定する関数
- * @param dateStr 日付文字列（YYYY-MM-DD形式）
- * @returns 今日より後ならtrue
- */
 function isFutureDate(dateStr: string): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -101,7 +80,6 @@ export function useMypageData(): MypageData {
   // セッションが確立されている場合のみAPIリクエストを発行
   const shouldFetch = isAuthenticated && !isSessionLoading;
 
-  // APIからデータを取得
   const {
     data: trips,
     error: tripsError,
@@ -191,7 +169,6 @@ export function useMypageData(): MypageData {
     return response;
   };
 
-  // ローディング状態（セッションローディングも含める）
   const isLoading =
     isSessionLoading ||
     tripsLoading ||
@@ -200,29 +177,33 @@ export function useMypageData(): MypageData {
     wishlistCountLoading ||
     userLocationsLoading;
 
-  // エラー状態
   const error = tripsError || tripsCountError || wishlistError || wishlistCountError || userLocationsError || null;
 
-  // 次の旅の計算
-  const nextTrip: NextTrip | null = (() => {
-    if (!trips || trips.length === 0) return null;
+  // 次の旅（未来のプランを開始日昇順で最大3件）
+  const nextTrips: NextTrip[] = (() => {
+    if (!trips || trips.length === 0) return [];
 
-    const futureTrips = trips
+    return trips
       .filter((trip) => isFutureDate(trip.startDate))
-      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-
-    if (futureTrips.length === 0) return null;
-
-    const nearest = futureTrips[0];
-    return {
-      id: nearest.id,
-      title: nearest.title,
-      startDate: nearest.startDate,
-      daysUntil: calculateDaysUntil(nearest.startDate),
-    };
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+      .slice(0, 3)
+      .map((trip) => ({
+        id: trip.id,
+        title: trip.title,
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        daysUntil: calculateDaysUntil(trip.startDate),
+      }));
   })();
 
-  // 旅した総日数の計算
+  // カレンダーデフォルト表示月：次の旅がある場合はその月、なければ現在月
+  const defaultCalendarDate: Date = (() => {
+    if (nextTrips.length > 0) {
+      return new Date(nextTrips[0].startDate);
+    }
+    return new Date();
+  })();
+
   const totalTripDays: number = (() => {
     if (!trips || trips.length === 0) return 0;
 
@@ -233,37 +214,22 @@ export function useMypageData(): MypageData {
     }, 0);
   })();
 
-  // 訪問済みスポット数
   const visitedCount: number = (() => {
     if (!wishlist || wishlist.length === 0) return 0;
     return wishlist.filter((item) => item.visited === 1).length;
   })();
 
-  // 未訪問スポット数（行きたいスポット数）
   const wishlistUnvisitedCount: number = (() => {
     if (!wishlist || wishlist.length === 0) return 0;
     return wishlist.filter((item) => item.visited === 0).length;
   })();
 
-  // 最近の旅（過去のプラン、最大3件）
-  const recentTrips: RecentTrip[] = (() => {
-    if (!trips || trips.length === 0) return [];
-
-    return trips
-      .filter((trip) => isPastDate(trip.endDate))
-      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-      .slice(0, 3)
-      .map((trip) => ({
-        id: trip.id,
-        title: trip.title,
-        startDate: trip.startDate,
-      }));
-  })();
-
   return {
     isLoading,
     error,
-    nextTrip,
+    trips: trips ?? [],
+    nextTrips,
+    defaultCalendarDate,
     visitedCount,
     wishlistCount: wishlistUnvisitedCount,
     totalTripDays,
@@ -271,7 +237,6 @@ export function useMypageData(): MypageData {
     planLimit: tripsCount?.limit ?? 20,
     wishlistTotalCount: wishlistCount?.count ?? 0,
     wishlistLimit: wishlistCount?.limit ?? 100,
-    recentTrips,
     userLocations: userLocations ?? [],
     postUserLocation,
     updateUserLocation,
