@@ -3,10 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import MyPage from '@/app/mypage/page';
 import { ProfileSection } from '@/components/mypage/ProfileSection';
-import { NextTripSection } from '@/components/mypage/NextTripSection';
 import { TripSummaryCards } from '@/components/mypage/TripSummaryCards';
 import { UsageStatus } from '@/components/mypage/UsageStatus';
-import { RecentTrips } from '@/components/mypage/RecentTrips';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 const mockSignOut = vi.fn();
@@ -38,6 +36,16 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
     toast: mockToast,
   }),
+}));
+
+// TripCalendarはjsdomでの描画を避けるためモック化する
+vi.mock('@/components/mypage/TripCalendar', () => ({
+  TripCalendar: () => <div data-testid="trip-calendar" />,
+}));
+
+// next/linkのモック
+vi.mock('next/link', () => ({
+  default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 
 function renderWithProviders(ui: React.ReactElement) {
@@ -90,6 +98,25 @@ vi.mock('swr', () => ({
   }),
 }));
 
+const defaultMypageData = {
+  isLoading: false,
+  error: null,
+  trips: [],
+  nextTrips: [],
+  defaultCalendarDate: new Date('2025-01-01'),
+  visitedCount: 0,
+  wishlistCount: 0,
+  totalTripDays: 0,
+  planCount: 0,
+  planLimit: 20,
+  wishlistLimit: 100,
+  wishlistTotalCount: 0,
+  userLocations: [],
+  postUserLocation: vi.fn(),
+  updateUserLocation: vi.fn(),
+  deleteUserLocation: vi.fn(),
+};
+
 describe('マイページ', () => {
   beforeEach(() => {
     mockUseMypageData.mockReset();
@@ -100,17 +127,8 @@ describe('マイページ', () => {
   describe('MyPage ページコンポーネント', () => {
     it('ローディング中は読み込み中表示が出る', () => {
       mockUseMypageData.mockReturnValue({
+        ...defaultMypageData,
         isLoading: true,
-        error: null,
-        nextTrip: null,
-        visitedCount: 0,
-        wishlistCount: 0,
-        totalTripDays: 0,
-        planCount: 0,
-        planLimit: 20,
-        wishlistLimit: 100,
-        wishlistTotalCount: 0,
-        recentTrips: [],
       });
 
       render(<MyPage />);
@@ -120,17 +138,8 @@ describe('マイページ', () => {
 
     it('エラー時はエラー表示が出る', () => {
       mockUseMypageData.mockReturnValue({
-        isLoading: false,
+        ...defaultMypageData,
         error: new Error('API Error'),
-        nextTrip: null,
-        visitedCount: 0,
-        wishlistCount: 0,
-        totalTripDays: 0,
-        planCount: 0,
-        planLimit: 20,
-        wishlistLimit: 100,
-        wishlistTotalCount: 0,
-        recentTrips: [],
       });
 
       render(<MyPage />);
@@ -140,23 +149,21 @@ describe('マイページ', () => {
 
     it('データ取得成功時はマイページが表示される', () => {
       mockUseMypageData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        nextTrip: {
-          id: 1,
-          title: '京都日帰り旅行',
-          startDate: '2025-01-15',
-          daysUntil: 24,
-        },
+        ...defaultMypageData,
+        nextTrips: [
+          {
+            id: 1,
+            title: '京都日帰り旅行',
+            startDate: '2025-01-15',
+            endDate: '2025-01-15',
+            daysUntil: 24,
+          },
+        ],
         visitedCount: 12,
         wishlistCount: 32,
         totalTripDays: 8,
         planCount: 5,
-        planLimit: 20,
-        wishlistLimit: 100,
         wishlistTotalCount: 32,
-        userLocations: [],
-        recentTrips: [{ id: 1, title: '東京散策', startDate: '2024-12-10' }],
       });
 
       renderWithProviders(<MyPage />);
@@ -165,20 +172,7 @@ describe('マイページ', () => {
     });
 
     it('ログアウト押下でトップへ遷移するredirectTo付きsignOutが呼ばれる', async () => {
-      mockUseMypageData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        nextTrip: null,
-        visitedCount: 0,
-        wishlistCount: 0,
-        totalTripDays: 0,
-        planCount: 0,
-        planLimit: 20,
-        wishlistLimit: 100,
-        wishlistTotalCount: 0,
-        userLocations: [],
-        recentTrips: [],
-      });
+      mockUseMypageData.mockReturnValue(defaultMypageData);
       mockSignOut.mockResolvedValue(undefined);
 
       renderWithProviders(<MyPage />);
@@ -190,20 +184,7 @@ describe('マイページ', () => {
     });
 
     it('ログアウト失敗時はエラートーストを表示する', async () => {
-      mockUseMypageData.mockReturnValue({
-        isLoading: false,
-        error: null,
-        nextTrip: null,
-        visitedCount: 0,
-        wishlistCount: 0,
-        totalTripDays: 0,
-        planCount: 0,
-        planLimit: 20,
-        wishlistLimit: 100,
-        wishlistTotalCount: 0,
-        userLocations: [],
-        recentTrips: [],
-      });
+      mockUseMypageData.mockReturnValue(defaultMypageData);
       mockSignOut.mockRejectedValue(new Error('signout failed'));
 
       renderWithProviders(<MyPage />);
@@ -233,40 +214,8 @@ describe('マイページ', () => {
 
     it('ユーザーアイコン（アバター）が表示される', () => {
       render(<ProfileSection />);
-      // Avatarコンポーネントはフォールバック時にユーザー名の頭文字を表示
       const avatarFallback = screen.getByText('テ');
       expect(avatarFallback).toBeInTheDocument();
-    });
-  });
-
-  describe('NextTripSection', () => {
-    it('次の旅がある場合、プラン情報が表示される', () => {
-      const nextTrip = {
-        id: 1,
-        title: '京都日帰り旅行',
-        startDate: '2025-01-15',
-        daysUntil: 24,
-      };
-      render(<NextTripSection nextTrip={nextTrip} wishlistCount={10} />);
-
-      expect(screen.getByText('京都日帰り旅行')).toBeInTheDocument();
-      expect(screen.getByText(/あと24日/)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /詳細を見る/i })).toBeInTheDocument();
-    });
-
-    it('次の旅がない場合、プラン作成を促すメッセージが表示される', () => {
-      render(<NextTripSection nextTrip={null} wishlistCount={32} />);
-
-      expect(screen.getByText(/次の旅を計画しませんか/)).toBeInTheDocument();
-      expect(screen.getByText(/32件/)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /プランを作成/i })).toBeInTheDocument();
-    });
-
-    it('行きたいリストが0件の場合も適切に表示される', () => {
-      render(<NextTripSection nextTrip={null} wishlistCount={0} />);
-
-      expect(screen.getByText(/次の旅を計画しませんか/)).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /プランを作成/i })).toBeInTheDocument();
     });
   });
 
@@ -324,41 +273,6 @@ describe('マイページ', () => {
       render(<UsageStatus {...mockData} />);
       const progressBars = screen.getAllByRole('progressbar');
       expect(progressBars).toHaveLength(2);
-    });
-  });
-
-  describe('RecentTrips', () => {
-    const mockTrips = [
-      { id: 1, title: '東京散策', startDate: '2024-12-10' },
-      { id: 2, title: '箱根温泉旅行', startDate: '2024-11-23' },
-      { id: 3, title: '鎌倉日帰り', startDate: '2024-11-03' },
-    ];
-
-    it('最近の旅のリストが表示される', () => {
-      render(<RecentTrips trips={mockTrips} />);
-
-      expect(screen.getByText('東京散策')).toBeInTheDocument();
-      expect(screen.getByText('箱根温泉旅行')).toBeInTheDocument();
-      expect(screen.getByText('鎌倉日帰り')).toBeInTheDocument();
-    });
-
-    it('日付が表示される', () => {
-      render(<RecentTrips trips={mockTrips} />);
-
-      expect(screen.getByText('2024-12-10')).toBeInTheDocument();
-      expect(screen.getByText('2024-11-23')).toBeInTheDocument();
-    });
-
-    it('「すべて見る」リンクが表示される', () => {
-      render(<RecentTrips trips={mockTrips} />);
-
-      expect(screen.getByRole('link', { name: /すべて見る/i })).toHaveAttribute('href', '/plan/list');
-    });
-
-    it('旅がない場合、適切なメッセージが表示される', () => {
-      render(<RecentTrips trips={[]} />);
-
-      expect(screen.getByText(/まだ旅の記録がありません/)).toBeInTheDocument();
     });
   });
 });
