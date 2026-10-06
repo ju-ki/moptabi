@@ -67,6 +67,17 @@ export const PlanLocationCandidateItemSchema = z.object({
   planName: z.string().nullable(),
   userLocationId: z.number().nullable(),
   planLocationId: z.number().nullable(),
+  nearestStation: z
+    .object({
+      placeId: z.string(),
+      stationType: z.enum(['TRAIN', 'BUS', 'OTHER']),
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      name: z.string(),
+      transitTime: z.number().min(0),
+      walkingTime: z.number().min(0).optional(),
+    })
+    .nullable(),
 });
 
 // 候補取得APIレスポンススキーマ

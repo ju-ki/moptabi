@@ -17,6 +17,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const lastSpot = fields.getSpotInfo(date, null).slice(-1)[0];
   const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
+  const isSetSelectedNearestStation = destinationData?.isSetSelectedNearestStation || false;
   const buildInitialDepartureCandidates = (): string[] => {
     const candidates = destinationData?.nearestStation?.scheduledDepartureTimes?.slice(0, 3) ?? [];
     if (candidates.length > 0) {
@@ -250,6 +251,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                 </div>
                 <div className="flex items-center gap-1 sm:ml-2">
                   <Checkbox
+                    disabled={isSetSelectedNearestStation}
                     checked={excludeBusStop}
                     onCheckedChange={() => setExcludeBusStop((prev) => !prev)}
                     onClick={(e) => e.stopPropagation()}
@@ -263,6 +265,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
               <div className="flex items-center gap-3 self-end sm:self-auto">
                 <div onClick={(e) => e.stopPropagation()}>
                   <Switch
+                    disabled={isSetSelectedNearestStation}
                     checked={useDestinationNearestStation}
                     onCheckedChange={handleUseDestinationNearestStationChange}
                   />
@@ -297,6 +300,7 @@ const NearestStationDestination = ({ date }: { date: string }) => {
                           <Select
                             value={selectedDestinationStationId || ''}
                             onValueChange={handleDestinationStationSelect}
+                            disabled={isSetSelectedNearestStation}
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="目的地の最寄駅を選択" />

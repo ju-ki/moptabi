@@ -19,8 +19,8 @@ import { ExtendNearestStationType, ExtendPlanLocationType, TransportNodeType } f
 const NearestStationDeparture = ({ date }: { date: string }) => {
   const fields = useStoreForPlanning();
   const firstSpot = fields.getSpotInfo(date, null)[0];
-
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
+  const isSetSelectedNearestStation = departureData?.isSetSelectedNearestStation || false;
   const buildInitialDepartureCandidates = (): string[] => {
     const candidates = departureData?.nearestStation?.scheduledDepartureTimes?.slice(0, 3) ?? [];
     if (candidates.length > 0) {
@@ -249,6 +249,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                 </div>
                 <div className="flex items-center gap-1 sm:ml-2">
                   <Checkbox
+                    disabled={isSetSelectedNearestStation}
                     checked={excludeBusStop}
                     onCheckedChange={() => setExcludeBusStop((prev) => !prev)}
                     onClick={(e) => e.stopPropagation()}
@@ -262,6 +263,7 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
               <div className="flex items-center gap-3 self-end sm:self-auto">
                 <div onClick={(e) => e.stopPropagation()}>
                   <Switch
+                    disabled={isSetSelectedNearestStation}
                     checked={useDepartureNearestStation}
                     onCheckedChange={handleUseDepartureNearestStationChange}
                   />
@@ -293,7 +295,11 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
                       </div>
                       {departureNearestStations.length > 0 ? (
                         <div className="space-y-2">
-                          <Select value={selectedDepartureStationId || ''} onValueChange={handleDepartureStationSelect}>
+                          <Select
+                            value={selectedDepartureStationId || ''}
+                            onValueChange={handleDepartureStationSelect}
+                            disabled={isSetSelectedNearestStation}
+                          >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="出発地の最寄駅を選択" />
                             </SelectTrigger>

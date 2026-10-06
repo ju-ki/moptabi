@@ -12,6 +12,7 @@ import {
   planLocation,
   planSpotNearestStation,
   planLocationNearestStation,
+  userLocationNearestStation,
 } from './schema';
 
 export const planRelations = relations(plan, ({ one, many }) => ({
@@ -81,6 +82,10 @@ export const userLocationRelations = relations(userLocation, ({ one }) => ({
   user: one(user, {
     fields: [userLocation.userId],
     references: [user.id],
+  }),
+  nearestStation: one(userLocationNearestStation, {
+    fields: [userLocation.id],
+    references: [userLocationNearestStation.userLocationId],
   }),
 }));
 

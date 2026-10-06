@@ -3,6 +3,8 @@
  */
 import { LOCATION_LABELS, MAX_USER_LOCATIONS } from '@shared/user/types';
 
+import { ExtendNearestStationType } from '@/types/plan';
+
 import type { CreateUserLocationType, LocationLabel, UpdateUserLocationType } from '@shared/user/types';
 
 export { LOCATION_LABELS, MAX_USER_LOCATIONS };
@@ -20,10 +22,11 @@ export interface UserLocation {
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;
+  nearestStation?: ExtendNearestStationType;
 }
 
 // 作成時のリクエスト
-export type CreateUserLocationRequest = CreateUserLocationType;
+export type CreateUserLocationRequest = CreateUserLocationType & { nearestStation?: ExtendNearestStationType };
 
 // 更新時のリクエスト（id は URL パスパラメータから取得するため追加）
 export type UpdateUserLocationRequest = UpdateUserLocationType & { id: number };
