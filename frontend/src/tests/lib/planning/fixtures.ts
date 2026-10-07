@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 
 import { getRoute } from '@/lib/plan';
 import { type PlanningParams } from '@/lib/planning';
-import { ExtendPlanLocationType } from '@/types/plan';
+import { ExtendNearestStationType, ExtendPlanLocationType } from '@/types/plan';
 
 // プランニングテスト共通のデータ作成ヘルパー。
 // getRoute は各 spec ファイルで vi.mock しておくこと（Google Maps API を呼ばないため）。
@@ -223,4 +223,24 @@ export function setupDeterministicRouteMock(): void {
     if (mode === 'DRIVING') return createRouteResult('DRIVING', 8, 2000);
     throw new Error(`unexpected mode: ${mode}`);
   });
+}
+
+/**
+ * 最寄駅のテストデータを作る。徒歩 10 分・乗車 10 分・発車時間候補なしが既定値。
+ */
+export function createStation(
+  placeId: string,
+  overrides: Partial<ExtendNearestStationType> = {},
+): ExtendNearestStationType {
+  return {
+    placeId,
+    name: `${placeId}駅`,
+    stationType: 'TRAIN',
+    walkingTime: 10,
+    latitude: 35.68,
+    longitude: 139.7,
+    transitTime: 10,
+    scheduledDepartureTimes: [],
+    ...overrides,
+  };
 }

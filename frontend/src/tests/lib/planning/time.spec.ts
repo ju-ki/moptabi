@@ -5,7 +5,7 @@ vi.mock('@/lib/plan', () => ({
   getRoute: vi.fn(),
 }));
 
-import { executePlanning, timeToMinutes } from '@/lib/planning';
+import { executePlanning, hasPlanningError, timeToMinutes } from '@/lib/planning';
 import { PLANNING_MESSAGE_SEGMENT } from '@/data/constants';
 
 import {
@@ -272,5 +272,64 @@ describe('planning.ts: 時刻・滞在時間・余裕時間', () => {
         expect(result.routes.length).toBeGreaterThan(0);
       },
     );
+  });
+
+  describe('23:59 を超えるプラン（B5）', () => {
+    function createOverflowParams() {
+      const params = createTwoSpotParams(90);
+      params.spots[1].stayDuration = 90;
+      params.departure.time = '22:00';
+      params.destination.time = '23:30';
+      return params;
+    }
+
+    it('T8: 到着が23:59を超えるとエラーを最上位に出し、到着超過として扱う', async () => {
+      setupDeterministicRouteMock();
+
+      // 22:00 + 15分 → 滞在 90分 → 15分 → 滞在 90分 → 15分 = 翌 01:45
+      const result = await executePlanning(createOverflowParams());
+
+      expect(result.messages[0]).toEqual({
+        level: 'ERROR',
+        segmentKey: PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW,
+        message: '到着時刻が23:59を超えています。出発時間を早めるか、スポットや滞在時間を見直してください。',
+      });
+      expect(result.isOverTime).toBe(true);
+      expect(result.overTimeMinutes).toBe(135);
+      expect(result.extraTimeMinutes).toBe(0);
+      const segmentKeys = result.messages.map((message) => message.segmentKey);
+      expect(segmentKeys).not.toContain(PLANNING_MESSAGE_SEGMENT.EXTRA_TIME);
+      expect(segmentKeys).not.toContain(PLANNING_MESSAGE_SEGMENT.OVER_TIME);
+      expect(hasPlanningError(result)).toBe(true);
+    });
+
+    it('到着がちょうど23:59のときはエラーにしない', async () => {
+      setupDeterministicRouteMock();
+      const params = createBaseParams();
+      params.transportMethodIds = [1];
+      // 21:59 + 15分 → 滞在 90分 → 15分 = 23:59
+      params.departure.time = '21:59';
+      params.destination.time = '23:59';
+      params.spots[0].stayDuration = 90;
+
+      const result = await executePlanning(params);
+
+      expect(result.arrivalTime).toBe('23:59');
+      expect(result.messages.map((message) => message.segmentKey)).not.toContain(PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW);
+      expect(hasPlanningError(result)).toBe(false);
+    });
+
+    it('hasPlanningError は結果が無いときと警告だけのときは false を返す', async () => {
+      setupDeterministicRouteMock();
+      const params = createBaseParams();
+      params.transportMethodIds = [1];
+      params.destination.time = '09:30';
+
+      const result = await executePlanning(params);
+
+      expect(result.messages.some((message) => message.level === 'WARNING')).toBe(true);
+      expect(hasPlanningError(result)).toBe(false);
+      expect(hasPlanningError(undefined)).toBe(false);
+    });
   });
 });
