@@ -1238,9 +1238,12 @@ export function buildPreferredSelections(params: {
     const segmentKey = buildPlanningSegmentKey(fromSpot?.id, toSpot?.id);
     preferredTransportMethodIds[segmentKey] = methodId;
 
-    // 最寄駅の発車時間は区間の出発側ノードが持っている
+    // 最寄駅の発車時間は区間の出発側ノードが持っている。
+    // 候補が配列（空配列を含む）のときの採用値は、候補由来かプランニングの自動設定値のため引き継がない。
+    // 候補が未設定（保存済みプラン）のときだけ、採用済みの発車時間を引き継ぐ
     const departureTime = fromNode.nearestStation?.scheduledDepartureTime;
-    if (isStationTransportMethod(methodId) && departureTime) {
+    const hasCandidateList = fromNode.nearestStation?.scheduledDepartureTimes !== undefined;
+    if (isStationTransportMethod(methodId) && departureTime && !hasCandidateList) {
       preferredDepartureTimes[segmentKey] = departureTime;
     }
   }

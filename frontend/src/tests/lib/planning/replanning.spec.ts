@@ -397,9 +397,12 @@ describe('planning.ts: 再プランニング', () => {
       expect(result.preferredTransportMethodIds).toEqual({ 'SPOT_spot-1_TO_DESTINATION': 2 });
     });
 
-    it('前回が最寄駅経由で両端に最寄駅があるときは、手段と発車時間を引き継ぐ', () => {
+    it('前回が最寄駅経由で両端に最寄駅があるときは、手段を引き継ぐ。保存済みプラン（候補が未設定）なら発車時間も引き継ぐ', () => {
       const params = createBaseParams();
-      params.departure.nearestStation = createStation('dep-station', { scheduledDepartureTime: '09:20' });
+      params.departure.nearestStation = createStation('dep-station', {
+        scheduledDepartureTime: '09:20',
+        scheduledDepartureTimes: undefined,
+      });
       params.spots[0].nearestStation = createStation('spot-station');
       const result = buildPreferredSelections({
         spots: params.spots,
@@ -414,6 +417,47 @@ describe('planning.ts: 再プランニング', () => {
 
       expect(result.preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT).toBe(4);
       expect(result.preferredDepartureTimes).toEqual({ DEPARTURE_TO_FIRST_SPOT: '09:20' });
+    });
+
+    it('候補が空配列のときは、自動設定された発車時間を引き継がない', () => {
+      const params = createBaseParams();
+      // 候補未入力でプランニングすると、駅到着+1分の時刻が scheduledDepartureTime に書き戻される
+      params.departure.nearestStation = createStation('dep-station', {
+        scheduledDepartureTime: '09:11',
+        scheduledDepartureTimes: [],
+      });
+      params.spots[0].nearestStation = createStation('spot-station');
+      const result = buildPreferredSelections({
+        spots: params.spots,
+        departure: params.departure,
+        destination: params.destination,
+        previousResult: createPreviousResult([
+          createRoute('departure', 'spot-1', 4, [4, 3, 2, 1]),
+          createRoute('spot-1', 'destination', 1, [1, 2, 3]),
+        ]),
+        transportMethodIds: [1, 2, 3],
+      });
+
+      expect(result.preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT).toBe(4);
+      expect(result.preferredDepartureTimes).toEqual({});
+    });
+
+    it('候補未入力で再プランニングしたとき、発車時間は新しい駅到着時刻に合わせて設定し直す', async () => {
+      setupDeterministicRouteMock();
+      const params = createBaseParams();
+      params.departure.nearestStation = createStation('dep-station');
+      params.spots[0].nearestStation = createStation('spot-station');
+      const first = await executePlanning(params);
+      // 09:00 + 徒歩 10分 → 駅到着 09:10、発車 09:11
+      expect(first.updatedDeparture.nearestStation?.scheduledDepartureTime).toBe('09:11');
+
+      const replanParams = switchRoute(params, first, 0, 4);
+      replanParams.departure = { ...replanParams.departure, time: '08:30' };
+      const second = await executePlanning(replanParams);
+
+      // 前回の 09:11 に固定されず、駅到着 08:40 の1分後になる
+      expect(second.updatedDeparture.nearestStation?.scheduledDepartureTime).toBe('08:41');
+      expect(second.updatedDeparture.nearestStation?.waitingTime).toBe(1);
     });
 
     it('前回が最寄駅経由でも、片側の最寄駅が外されたときは優先手段を作らない', () => {
@@ -500,7 +544,10 @@ describe('planning.ts: 再プランニング', () => {
       params.departure.transportMethodId = 2;
       params.spots[0].transportMethodId = 0;
       params.spots[1].transportMethodId = 4;
-      params.spots[1].nearestStation = createStation('spot2-station', { scheduledDepartureTime: '12:10' });
+      params.spots[1].nearestStation = createStation('spot2-station', {
+        scheduledDepartureTime: '12:10',
+        scheduledDepartureTimes: undefined,
+      });
       params.destination.nearestStation = createStation('dest-station');
 
       const result = buildPreferredSelections({
