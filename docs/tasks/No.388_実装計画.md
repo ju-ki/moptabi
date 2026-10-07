@@ -81,8 +81,7 @@ async function planSegment(input: SegmentInput): Promise<SegmentResult>
 - 計算用の候補（`[preferredDepartureTime]` などの補完を含む）と、ノードに保存する `scheduledDepartureTimes` を分ける。保存するのは**ユーザーが入力した配列そのまま**（空なら空のまま）。書き戻すのは `scheduledDepartureTime`（採用した時刻）と `waitingTime` だけにする。
 - 目的地区間も出発側ノード（最終スポット）の候補を使う（B2）。今の UI では、最後の区間の発車時間の入力欄は最終スポットの `PlanSpotSettingCard` にしかなく、`NearestStationDestination` には入力欄が無いため。
 
-> **設計書との差分（要確認）**: `docs/pages/plan-create.md` の NearestStationDestination の表（132〜136 行目）は「最後のスポット → 目的地の移動情報フォーム（発車時間候補など）は目的地側に出す」という書き方になっており、PlanSpotSettingCard の表（154 行目）も「次のスポット（目的地は除く）」となっている。実装は逆で、最終スポットのカードにフォームが出ている。
-> この計画では**実装に合わせて設計書を直す**ことをデフォルトにする（全区間で「出発側ノードが乗車時間と発車時間を持つ」に統一でき、UI の変更も要らないため）。設計書どおり目的地側にフォームを移す場合は、手順 4 の B2 修正の参照先が目的地ノードに変わり、`NearestStationDestination` に入力欄の追加が必要になる。
+> **設計書との差分（決定済み 2026-10-07）**: `docs/pages/plan-create.md` の NearestStationDestination の表（132〜136 行目）と PlanSpotSettingCard の表（154 行目）は、「最後の区間のフォームは目的地側」という書き方になっている。これを**実装に合わせて直す**ことに決まった。全区間で「出発側ノードが乗車時間と発車時間を持つ」に統一する。UI は変更しない。
 
 ### 2.3 再プランニングの preferred を作り直す（B4・B6・B7）
 
@@ -183,14 +182,14 @@ frontend/src/tests/lib/planning/
 6. **設計書の更新**: `docs/pages/plan-create.md`
    - 「表示メッセージ一覧」に `DAY_OVERFLOW`（優先度 0）と `NEAREST_STATION_ONE_SIDE` を追加し、優先度を振り直す
    - 「再プランニング時の移動手段優先ルール」に 2.3 のルール 1〜3 を追記する
-   - 2.2 の差分（最後の区間のフォームの位置）を、決定した方に合わせて直す
+   - NearestStationDestination の表（132〜136 行目）と PlanSpotSettingCard の表（154 行目）を、最後の区間のフォームは最終スポットのカードに出す形に直す（2.2）
 7. **確認**: `pnpm run lint` / `pnpm run typecheck` / frontend の全テスト。手動では、最寄駅あり → 車に切り替え → 再プランニング → 最寄駅に戻せること、22:00 出発のプランでエラーが出ることを確認する。
 
 各ステップでコミットを分ける（テスト移設／Red／Green／設計書）。
 
 ## 5. 確認したいこと
 
-1. **最後の区間の移動情報フォームの位置**（2.2）: 実装に合わせて設計書を直す（推奨）か、設計書どおり目的地側に移すか。
+1. ~~最後の区間の移動情報フォームの位置~~ → 最終スポット側に決定（2026-10-07）
 2. **23:59 超過時の保存**（2.4）: エラー表示だけにする（推奨。既存の警告と同じ扱い）か、保存も止めるか。
 3. **メッセージ文言**: `DAY_OVERFLOW` と `NEAREST_STATION_ONE_SIDE` の文言は案なので、変えたい場合は指定してください。
 
