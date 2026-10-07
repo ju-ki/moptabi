@@ -14,6 +14,8 @@ export function useCurrentLocation(): UseCurrentLocationResult {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!navigator.geolocation) {
       setError('このブラウザは位置情報をサポートしていません');
       return;
@@ -23,6 +25,7 @@ export function useCurrentLocation(): UseCurrentLocationResult {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (cancelled) return;
         setCurrentLocation({
           id: 'current-location',
           name: '現在地',
@@ -32,11 +35,16 @@ export function useCurrentLocation(): UseCurrentLocationResult {
         setIsLocating(false);
       },
       () => {
+        if (cancelled) return;
         setError('位置情報の取得に失敗しました');
         setIsLocating(false);
       },
       { timeout: 10000 },
     );
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { currentLocation, isLocating, error };

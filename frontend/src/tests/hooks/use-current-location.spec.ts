@@ -14,7 +14,7 @@ describe('useCurrentLocation', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('位置情報の取得に成功した場合', () => {

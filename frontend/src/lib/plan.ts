@@ -782,7 +782,10 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     const request: google.maps.places.SearchByTextRequest = {
       textQuery: params.searchWord,
       fields: fields,
-      locationRestriction: params.center ? new google.maps.LatLngBounds(params.center) : undefined,
+      locationBias: params.center
+        ? { center: { lat: params.center.lat, lng: params.center.lng }, radius: params.radius * 1000 }
+        : undefined,
+      includedType: searchCategoryList.length > 0 ? searchCategoryList[0] : undefined,
       maxResultCount: params.maxResultLimit,
       rankPreference:
         params.sortOption === 'distance' ? SearchByTextRankPreference.DISTANCE : SearchByTextRankPreference.RELEVANCE,

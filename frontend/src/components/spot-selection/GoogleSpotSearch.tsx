@@ -97,8 +97,8 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
 
   // モード・選択変化時に searchCenter を同期
   useEffect(() => {
-    if (centerMode === 'current-location' && currentLocation) {
-      setSearchCenter(currentLocation);
+    if (centerMode === 'current-location') {
+      setSearchCenter(currentLocation ?? undefined);
     } else if (centerMode === 'plan-location') {
       const selected = planPoints.filter((p) => planSpotSelection.includes(p.id));
       const toCoord = (p: PlanPoint): Coordination => ({ id: p.id, name: p.name, lat: p.lat, lng: p.lng });
@@ -106,6 +106,8 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
         setSearchCenter(toCoord(selected[0]));
       } else if (selected.length === 2) {
         setSearchCenter(calcMidpoint(toCoord(selected[0]), toCoord(selected[1])));
+      } else {
+        setSearchCenter(undefined);
       }
     }
   }, [centerMode, currentLocation, planPoints, planSpotSelection]);

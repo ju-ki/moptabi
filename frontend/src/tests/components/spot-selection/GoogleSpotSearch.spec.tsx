@@ -19,6 +19,7 @@ import SpotSelection from '@/components/spot-selection/SpotSelectionDialog';
 // Mock store functions
 const mockSetSpots = vi.fn();
 const mockSearchSpots = vi.fn();
+const mockSetSearchKeyword = vi.fn();
 
 // 動的モックデータ（参照を保持するため）
 const mockData = {
@@ -112,9 +113,7 @@ vi.mock('@/store/planning/spotSearchStore', () => ({
     searchCategories: [],
     setSearchCategories: vi.fn(),
     searchKeyword: mockData.searchKeyword,
-    setSearchKeyword: (keyword: string) => {
-      mockData.searchKeyword = keyword;
-    },
+    setSearchKeyword: mockSetSearchKeyword,
     searchResults: mockData.searchResults,
     setSearchResults: (results: any[]) => {
       mockData.searchResults = results;
@@ -388,8 +387,7 @@ describe('GoogleSpotSearch', () => {
 
       const keywordInput = screen.getByTestId('keyword-input');
       fireEvent.change(keywordInput, { target: { value: '東京タワー' } });
-      // モックストアはコントロールドなので、入力値変更ではなくchangeイベント発火を確認
-      expect(keywordInput).toBeInTheDocument();
+      expect(mockSetSearchKeyword).toHaveBeenCalledWith('東京タワー');
     });
   });
 
