@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AI Travel Planner — a full-stack web app for creating and managing travel itineraries, leveraging Google Maps API. Monorepo with a Next.js frontend, Hono backend, and a shared types package.
 
+## Concepts
+旅行をいつでも楽しめるように、「旅行前（計画・準備）」、「旅行中（実行・ナビゲーション）」、「旅行後（思い出・振り返り）」と循環し、旅の楽しさを常に感じられるアプリケーションを目指します。
+
+## Targets
+- 一人旅から少人数での旅行計画を立てるユーザー。
+- じっくり計画を練りたいユーザー
+- 年に数回とかではなく、常に旅をしているユーザー(社会人とかであれば、月2~4とかのレベル(日帰りも含む))
+- 週末や連休にふらっと出かけたいユーザー
+
+## Device
+- smartphone (iphone or android(now only web))
+- PC
+
 ## Commands
 
 ### Root (both projects)

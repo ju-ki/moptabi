@@ -19,6 +19,7 @@ import SpotSelection from '@/components/spot-selection/SpotSelectionDialog';
 // Mock store functions
 const mockSetSpots = vi.fn();
 const mockSearchSpots = vi.fn();
+const mockSetSearchKeyword = vi.fn();
 
 // 動的モックデータ（参照を保持するため）
 const mockData = {
@@ -69,7 +70,36 @@ vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
     setSpots: mockSetSpots,
     planErrors: {},
-    plans: [{ date: '2025-12-15', spots: [] }],
+    plans: [
+      {
+        date: '2025-12-15',
+        spots: [
+          { id: 'plan-spot-1', name: '東京タワー', latitude: 35.6586, longitude: 139.7454 },
+          { id: 'plan-spot-2', name: '浅草寺', latitude: 35.7147, longitude: 139.7966 },
+        ],
+        departure: { name: '東京駅', latitude: 35.6812, longitude: 139.7671 },
+        destination: { name: '新宿駅', latitude: 35.6896, longitude: 139.7006 },
+      },
+    ],
+  }),
+}));
+
+// Mock geo utility
+vi.mock('@/lib/geo', () => ({
+  calcMidpoint: (a: any, b: any) => ({
+    id: `midpoint-${a.id}-${b.id}`,
+    name: `${a.name}と${b.name}の中間`,
+    lat: (a.lat + b.lat) / 2,
+    lng: (a.lng + b.lng) / 2,
+  }),
+}));
+
+// Mock current location hook
+vi.mock('@/hooks/spot-search/use-current-location', () => ({
+  useCurrentLocation: () => ({
+    currentLocation: { id: 'current-location', name: '現在地', lat: 35.6812, lng: 139.7671 },
+    isLocating: false,
+    error: null,
   }),
 }));
 
@@ -83,9 +113,7 @@ vi.mock('@/store/planning/spotSearchStore', () => ({
     searchCategories: [],
     setSearchCategories: vi.fn(),
     searchKeyword: mockData.searchKeyword,
-    setSearchKeyword: (keyword: string) => {
-      mockData.searchKeyword = keyword;
-    },
+    setSearchKeyword: mockSetSearchKeyword,
     searchResults: mockData.searchResults,
     setSearchResults: (results: any[]) => {
       mockData.searchResults = results;
@@ -96,6 +124,11 @@ vi.mock('@/store/planning/spotSearchStore', () => ({
     setHighRating: (value: boolean) => {
       mockData.highRating = value;
     },
+    selectedThemes: [],
+    setSelectedThemes: vi.fn(),
+    planSpotSelection: [],
+    togglePlanSpotSelection: vi.fn(),
+    clearPlanSpotSelection: vi.fn(),
     wishlistPrefectureFilter: 'all',
     setWishlistPrefectureFilter: vi.fn(),
     wishlistPriorityFilter: 99,
@@ -331,7 +364,7 @@ describe('GoogleSpotSearch', () => {
   });
 
   describe('キーワード検索', () => {
-    it('キーワード検索タブに切り替えられること', async () => {
+    it('キーワード入力欄が表示されること', async () => {
       renderWithSWR(<SpotSelection date="2025-12-15" />);
       const triggerButton = screen.getByRole('button', { name: /観光地を選択/ });
       fireEvent.click(triggerButton);
@@ -340,13 +373,75 @@ describe('GoogleSpotSearch', () => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
       });
 
-      // Google検索タブ内のキーワード検索タブに切り替え
-      const keywordTab = screen.getByRole('tab', { name: /キーワード/i });
-      await clickRadixTab(keywordTab);
+      expect(screen.getByTestId('keyword-input')).toBeInTheDocument();
+    });
+
+    it('キーワード入力欄に変更イベントが発火すること', async () => {
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+      const triggerButton = screen.getByRole('button', { name: /観光地を選択/ });
+      fireEvent.click(triggerButton);
 
       await waitFor(() => {
-        expect(keywordTab).toHaveAttribute('data-state', 'active');
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
       });
+
+      const keywordInput = screen.getByTestId('keyword-input');
+      fireEvent.change(keywordInput, { target: { value: '東京タワー' } });
+      expect(mockSetSearchKeyword).toHaveBeenCalledWith('東京タワー');
+    });
+  });
+
+  describe('検索中心点モード', () => {
+    it('2つのモード選択ラジオボタンが表示されること', async () => {
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+      const triggerButton = screen.getByRole('button', { name: /観光地を選択/ });
+      fireEvent.click(triggerButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      expect(screen.getByLabelText(/現在地/i)).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: /地点付近/i })).toBeInTheDocument();
+    });
+
+    it('プランの地点付近モードを選択すると出発地・目的地・スポットのバッジ一覧が表示されること', async () => {
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+      const triggerButton = screen.getByRole('button', { name: /観光地を選択/ });
+      fireEvent.click(triggerButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const planLocRadio = screen.getByRole('radio', { name: /地点付近/i });
+      fireEvent.click(planLocRadio);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('plan-spot-badges')).toBeInTheDocument();
+      });
+
+      // 出発地・目的地・スポットが全てバッジとして表示される
+      expect(screen.getByTestId('plan-spot-badge-departure')).toBeInTheDocument();
+      expect(screen.getByTestId('plan-spot-badge-destination')).toBeInTheDocument();
+      expect(screen.getByTestId('plan-spot-badge-plan-spot-1')).toBeInTheDocument();
+      expect(screen.getByTestId('plan-spot-badge-plan-spot-2')).toBeInTheDocument();
+    });
+  });
+
+  describe('テーマチップ', () => {
+    it('テーマチップが表示されること', async () => {
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+      const triggerButton = screen.getByRole('button', { name: /観光地を選択/ });
+      fireEvent.click(triggerButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('theme-chips')).toBeInTheDocument();
+      expect(screen.getByTestId('theme-chip-gourmet')).toBeInTheDocument();
+      expect(screen.getByTestId('theme-chip-sightseeing')).toBeInTheDocument();
     });
   });
 

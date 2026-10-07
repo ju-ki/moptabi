@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "skill-creator@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "Bash(pnpm run test*)",
@@ -19,7 +16,17 @@
       "Bash(gh issue view *)",
       "Bash(git status)",
       "Bash(git diff *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Title:', d['title']\\); print\\('State:', d['state']\\); print\\('Body:', d['body'][:3000]\\)\")",
+      "Bash(python3 -c \" import sys,json d=json.load\\(sys.stdin\\) print\\('Title:', d['title']\\) print\\('State:', d['state']\\) \")",
+      "Bash(python3 -c \" import sys,json d=json.load\\(sys.stdin\\) threads = d.get\\('reviewThreads', []\\) print\\(f'Total threads: {len\\(threads\\)}'\\) for i, t in enumerate\\(threads\\): print\\(f'\\\\n--- Thread {i+1} ---'\\) print\\('isResolved:', t.get\\('isResolved'\\)\\) for c in t.get\\('comments', []\\)[:2]: print\\('Author:', c.get\\('author', {}\\).get\\('login'\\)\\) print\\('Body:', c.get\\('body', ''\\)[:500]\\) print\\('Path:', c.get\\('path'\\)\\) print\\('Line:', c.get\\('line'\\)\\) \")",
+      "Bash(gh api *)",
+      "Bash(python3 -c ' *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.dev.*)"
     ],
     "ask": [
       "Bash(git push *)",
@@ -27,13 +34,11 @@
       "Bash(sudo *)",
       "Bash(bun run db:*)",
       "Bash(pnpm run deploy*)"
-    ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./.dev.*)"
     ]
   },
-  "showTurnDuration": true,
-  "language": "japanese"
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": true
+  },
+  "language": "japanese",
+  "showTurnDuration": true
 }
