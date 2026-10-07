@@ -2,6 +2,7 @@
 
 - 元資料: `docs/tasks/No.388_プランニングアルゴリズムの見直し_調査報告.md`（以下「調査報告」）。バグ番号 B1〜B9、テスト観点 T1〜T14 は調査報告のものをそのまま使う。
 - 計画時点のコード: `dev`（c5202a2）。調査時点（2eea03d）からプランニング関連のファイル（`planning.ts` / `plan.ts` / `use-planning.ts` / `travel-plan/*`）は変わっていない。
+- 関連資料: 実装後の処理フローは `docs/tasks/No.388_プランニング処理フロー.md`、手動の動作確認手順は `docs/test/No.388_動作確認手順.md`。
 - ブランチ: `feature388`。実装前に `dev` を merge して最新化する（`Departure.tsx` が No.427 で `plan-location.ts` に切り出されているだけで、衝突はない見込み）。PR は `dev` 向け（#435 に積む）。
 
 ## 1. スコープ
@@ -14,7 +15,7 @@
 | B2 | 最後のスポットの発車時間候補が無視され `['']` で上書きされる | 対応 |
 | B3 | `scheduledDepartureTimes: ['']` がストアに保存される | 対応（#371 の前提） |
 | B4 | プランの移動手段から外した手段が採用され続ける | 対応 |
-| B5 | 23:59 を超えると到着超過が判定されない | 23:59 超過でエラーメッセージ |
+| B5 | 23:59 を超えると到着超過が判定されない | 23:59 超過でエラーメッセージを出し、保存もできなくする |
 | B6 | 後から最寄駅を設定しても前回の手段が残る | B1 と一緒に対応 |
 | B7 | 並び替え後に手段・発車時間が別の区間に引き継がれる | 対応 |
 | B9 | 片側だけ最寄駅がある区間が黙って直接移動になる | 警告メッセージを追加 |
@@ -109,26 +110,52 @@ export function buildPreferredSelections(params: {
 3. **前回の候補に ID4 が無かった区間で、今回は両端に最寄駅がある場合は preferred を渡さない（B6）**。後から最寄駅を設定した区間は、最寄駅経由が自動で選ばれる。ユーザーが ID4 のある状態で別の手段を選んだ区間は、設計書「再プランニング時の移動手段優先ルール」どおり、その手段を優先する。
 4. `0`（DEFAULT）や `undefined` は「指定なし」として扱い、キー自体を作らない（調査報告 B6 付随）。
 
-### 2.4 時刻を通算分で扱い、23:59 超過でエラーを出す（B5）
+### 2.4 時刻を通算分で扱い、23:59 超過をエラーにする（B5）
 
 - `runForwardPlanning` 内の時刻は通算分（24*60 を超えてよい）のまま積み上げる。`minutesToTime` で HH:mm にするのは書き戻し・表示のときだけ。
 - 最終到着、またはいずれかの滞在終了が 23:59（1439 分）を超えたら、`PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW` のメッセージを出す。
-  - 文言（案）: 「到着時刻が23:59を超えています。出発時間を早めるか、スポットや滞在時間を見直してください。」
-  - レベルは `WARNING`（`PlanningWarningList` では赤表示）。優先度は最上位（0）にし、`OVER_TIME` より上に出す。
+  - 文言: 「到着時刻が23:59を超えています。出発時間を早めるか、スポットや滞在時間を見直してください。」
+  - 優先度は最上位（0）にし、`OVER_TIME` より上に出す。
   - 日付を跨いだ場合、`isOverTime` は通算分で判定する（`true` になる）。余裕時間メッセージは出さない。
-- 保存はブロックしない（設計書「注意喚起／警告が表示されていても、プラン保存は常に可能」に合わせる）。保存も止めたい場合は `CreatePlanButton.tsx` にチェックを足す（別途判断）。
 - 日付ごとに独立して計算しているので、他の日付への影響はない。
+- 時刻として不整合なデータになるため、**保存もできなくする**（2.7）。
 
 ### 2.5 片側だけ最寄駅がある区間の警告（B9）
 
 - 区間の片側だけに `nearestStation` があるとき、`PLANNING_MESSAGE_SEGMENT.NEAREST_STATION_ONE_SIDE` を出す。
-  - 文言（案）: 「{未設定側の名前}の最寄駅が未設定のため、最寄駅を使わないルートで計算しました。」
+  - 文言: 「{未設定側の名前}の最寄駅が未設定のため、最寄駅を使わないルートで計算しました。」
   - レベル `WARNING`、優先度は「発車時間が全て空」の次（6）。長距離徒歩は 7、余裕時間は 8 に繰り下げる。
 - 同じ区間では、長距離徒歩メッセージ（「最寄駅を推奨します」）は出さない。最寄駅を設定済みのユーザーに同じことを言わないため。
 
 ### 2.6 `calcDistance2` の置き換え
 
 - `planning.ts` の `calcDistance2` を `calcDistance`（`frontend/src/lib/algorithm.ts`、中身は同じ）に置き換え、`calcDistance2` を削除する。他に使っている箇所は無い（`rg calcDistance2` で確認済み）。
+
+### 2.7 メッセージに「エラー」レベルを追加し、エラーがあれば保存できなくする（B5）
+
+今はメッセージが `INFO` と `WARNING` の 2 段階で、`WARNING` は赤枠（`destructive`）で表示されている。保存を止めるメッセージと止めないメッセージを見分けられるように、3 段階にする。
+
+| レベル | 対象 | 表示 | 保存 |
+| --- | --- | --- | --- |
+| `ERROR`（新規） | `DAY_OVERFLOW` | 赤枠（今の `WARNING` の見た目を引き継ぐ） | できない |
+| `WARNING` | 既存の警告すべて、`NEAREST_STATION_ONE_SIDE` | 黄色枠（amber 系の枠・背景・アイコン） | できる |
+| `INFO` | 余裕時間 | 青枠（変更なし） | できる |
+
+変更箇所:
+
+- `frontend/src/lib/planning.ts`
+  - `PlanningMessageLevel` に `'ERROR'` を追加する。
+  - `hasPlanningError(result?: PlanningResult): boolean` を追加する（`messages` に `ERROR` が 1 件でもあれば `true`）。
+- `frontend/src/data/constants.ts`
+  - 保存ブロック時の文言 `PLANNING_ERROR_BLOCK_MESSAGE` を `PLANNING_DIRTY_BLOCK_MESSAGE` の隣に追加する。
+    - title: 「プランニング結果にエラーがあります」
+    - description: 「エラーのある日程があるため保存できません。エラーメッセージを確認し、修正してから再プランニングしてください。」
+- `frontend/src/components/travel-plan/PlanningWarningList.tsx`
+  - `ERROR` は今の赤枠（`variant="destructive"`）、`WARNING` は黄色枠（`border-amber-300 bg-amber-50`、アイコンも amber）、`INFO` は今の青枠にする。`data-testid` は `planning-message-error` / `-warning` / `-info`。
+  - `hasPlanningError(result)` が `true` のとき、一覧の先頭に「エラーがあるため、このプランニング結果は保存できません。」というバナー（`data-testid="planning-save-blocked"`）を出す。アコーディオンを閉じていても表示する。
+- `frontend/src/components/CreatePlanButton.tsx`
+  - `checkValidation` の dirty チェックの直後に、日程ごとの `hasPlanningError(fields.getPlanningResult(date))` をチェックする。1 日でも `true` なら `PLANNING_ERROR_BLOCK_MESSAGE` をトーストで出し、`'error-blocked'` を返して保存しない。戻り値の型に `'error-blocked'` を足し、`handleCreatePlan` で dirty と同じく早期 return する。
+- 設計書 `docs/pages/plan-create.md`: 「注意喚起／警告が表示されていても、プラン保存は常に可能」に「ただしエラー（23:59 超過）があるときは保存できない」を追記し、表示メッセージ一覧にレベル列を足す。
 
 ## 3. テスト構造の組み直し
 
@@ -143,7 +170,7 @@ frontend/src/tests/lib/planning/
   replanning.spec.ts           # preferred・往復シナリオ（T1〜T3, T7, T11）、buildPreferredSelections（T6）
   output.spec.ts               # 出力形式、合計値、RouteInfo の整合（マトリクス）
   time.spec.ts                 # 滞在時刻、到着超過、余裕時間、日付跨ぎ（T8）
-  messages.spec.ts             # メッセージ優先度、取得失敗、長距離徒歩
+  messages.spec.ts             # メッセージ優先度・レベル、取得失敗、長距離徒歩
   dirty.spec.ts                # dirty 判定
 ```
 
@@ -167,30 +194,38 @@ frontend/src/tests/lib/planning/
      - T5: 候補なしで計算しても、保存される `scheduledDepartureTimes` は空配列のまま（B3）
      - 片側だけ最寄駅で `NEAREST_STATION_ONE_SIDE` が出て、同じ区間の長距離徒歩メッセージは出ない（B9）
    - `time.spec.ts`
-     - T8: 22:00 出発・滞在 90 分×2 → `DAY_OVERFLOW` が最上位、`isOverTime=true`、余裕時間メッセージなし（B5）
+     - T8: 22:00 出発・滞在 90 分×2 → `DAY_OVERFLOW`（レベル `ERROR`）が最上位、`isOverTime=true`、余裕時間メッセージなし、`hasPlanningError` が `true`（B5）
+   - `frontend/src/tests/components/travel-plan/PlanningWarningList.spec.tsx`
+     - `ERROR` は赤枠、`WARNING` は黄色枠で表示される。`ERROR` があるときだけ `planning-save-blocked` が表示される（2.7）
+   - `frontend/src/tests/components/CreatePlanButton.spec.tsx`
+     - エラーのある日程があると保存 API が呼ばれず、`PLANNING_ERROR_BLOCK_MESSAGE` のトーストが出る。警告だけなら保存できる（2.7）
    - 既存テストのうち、B2 の前提で書かれている「travelTime+nearestStation の項目の検証(最寄駅あり) > 目的地」は、候補を最終スポット側に置く形に直す。
 4. **Green: `planning.ts` を修正**
    - `planSegment` を追加して `runForwardPlanning` を書き換える（2.1・2.2）
    - 通算分での時刻計算と `DAY_OVERFLOW`（2.4）
    - `NEAREST_STATION_ONE_SIDE`（2.5）
    - `calcDistance2` → `calcDistance`（2.6）
-   - `frontend/src/data/constants.ts`: `PLANNING_MESSAGE_SEGMENT` に `DAY_OVERFLOW` / `NEAREST_STATION_ONE_SIDE` を追加し、`PLANNING_MESSAGE_PRIORITY` を 2.4・2.5 の順に更新
-5. **Green: preferred の組み立てを差し替え**
+   - `frontend/src/data/constants.ts`: `PLANNING_MESSAGE_SEGMENT` に `DAY_OVERFLOW` / `NEAREST_STATION_ONE_SIDE` を追加し、`PLANNING_MESSAGE_PRIORITY` を 2.4・2.5 の順に更新。`PLANNING_ERROR_BLOCK_MESSAGE` を追加
+   - `PlanningMessageLevel` に `ERROR` を追加し、`hasPlanningError` を追加（2.7）
+5. **Green: 表示と保存ブロック**（2.7）
+   - `PlanningWarningList.tsx` のレベル別の見た目と保存不可バナー
+   - `CreatePlanButton.tsx` の `checkValidation` にエラーチェックを追加
+6. **Green: preferred の組み立てを差し替え**
    - `planning.ts` に `buildPreferredSelections` を追加（2.3）
    - `frontend/src/hooks/use-planning.ts`: 67〜97 行目の preferred 組み立てを `buildPreferredSelections` の呼び出しに置き換える。`previousResult` は `fields.getPlanningResult(date)`、`transportMethodIds` は `fields.getPlanningInfo(date)?.transportationMethodId`
    - `use-planning.spec.ts` に「前回結果から preferred が作られて `executePlanning` に渡る」ケースを 1 件追加
-6. **設計書の更新**: `docs/pages/plan-create.md`
+7. **設計書の更新**: `docs/pages/plan-create.md`
    - 「表示メッセージ一覧」に `DAY_OVERFLOW`（優先度 0）と `NEAREST_STATION_ONE_SIDE` を追加し、優先度を振り直す
    - 「再プランニング時の移動手段優先ルール」に 2.3 のルール 1〜3 を追記する
    - NearestStationDestination の表（132〜136 行目）と PlanSpotSettingCard の表（154 行目）を、最後の区間のフォームは最終スポットのカードに出す形に直す（2.2）
-7. **確認**: `pnpm run lint` / `pnpm run typecheck` / frontend の全テスト。手動では、最寄駅あり → 車に切り替え → 再プランニング → 最寄駅に戻せること、22:00 出発のプランでエラーが出ることを確認する。
+   - 表示メッセージ一覧にレベル（エラー／警告／情報）と色を足し、エラーがあると保存できないことを追記する（2.7）
+   - `docs/tasks/No.388_プランニング処理フロー.md` を実装に合わせて最終化する（実装中に変わった点を反映）
+8. **確認**: `pnpm run lint` / `pnpm run typecheck` / frontend の全テスト。手動確認は `docs/test/No.388_動作確認手順.md` の手順で行い、結果を同ファイルの結果欄に記入する。
 
-各ステップでコミットを分ける（テスト移設／Red／Green／設計書）。
+各ステップでコミットを分ける（テスト移設／Red／Green／表示と保存ブロック／設計書）。
 
-## 5. 確認したいこと
+## 5. 決定事項
 
-1. ~~最後の区間の移動情報フォームの位置~~ → 最終スポット側に決定（2026-10-07）
-2. **23:59 超過時の保存**（2.4）: エラー表示だけにする（推奨。既存の警告と同じ扱い）か、保存も止めるか。
-3. **メッセージ文言**: `DAY_OVERFLOW` と `NEAREST_STATION_ONE_SIDE` の文言は案なので、変えたい場合は指定してください。
-
-返事を待つ間は推奨の方で進める。
+1. 最後の区間の移動情報フォームの位置 → 最終スポット側（2026-10-07）
+2. 23:59 超過時 → エラー（赤枠）とし、保存もできなくする。他の警告は黄色枠にする（2026-10-07、2.7）
+3. メッセージ文言 → 2.4・2.5 の文言で進める（2026-10-07）
