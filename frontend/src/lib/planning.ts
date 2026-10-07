@@ -20,7 +20,7 @@ import {
 } from '@/data/constants';
 
 import { getRoute } from './plan';
-import { calcDistance2 } from './algorithm';
+import { calcDistance } from './algorithm';
 
 export type ArrivalWarning = {
   exceededMinutes: number;
@@ -73,7 +73,7 @@ export type PlanningResult = {
   updatedDestination: ExtendPlanLocationType;
 };
 
-export type PlanningMessageLevel = 'INFO' | 'WARNING';
+export type PlanningMessageLevel = 'INFO' | 'WARNING' | 'ERROR';
 
 export type PlanningMessage = {
   level: PlanningMessageLevel;
@@ -179,13 +179,6 @@ export type CandidateSelectionState = {
   selectedTransport?: TransportMethodType;
   selectedDepartureTime?: string;
   [key: string]: unknown;
-};
-
-type NearestStationDurationInfo = {
-  walkToStation: number;
-  waitingTime: number;
-  transitMinutes: number;
-  walkFromStation: number;
 };
 
 export function timeToMinutes(time: string): number {
@@ -338,34 +331,6 @@ export function updateCandidateSelectionState<T extends CandidateSelectionState>
   };
 }
 
-function calculatePathDistanceMeters(path: google.maps.LatLngLiteral[]): number {
-  if (!path || path.length < 2) return 0;
-
-  let totalDistance = 0;
-
-  for (let index = 1; index < path.length; index += 1) {
-    const from = path[index - 1];
-    const to = path[index];
-    const latitudeDelta = ((to.lat - from.lat) * Math.PI) / 180;
-    const longitudeDelta = ((to.lng - from.lng) * Math.PI) / 180;
-    const fromLatRad = (from.lat * Math.PI) / 180;
-    const toLatRad = (to.lat * Math.PI) / 180;
-
-    const haversineA =
-      Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2) +
-      Math.cos(fromLatRad) * Math.cos(toLatRad) * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2);
-    const haversineC = 2 * Math.atan2(Math.sqrt(haversineA), Math.sqrt(1 - haversineA));
-
-    totalDistance += 6371000 * haversineC;
-  }
-
-  return Math.round(totalDistance);
-}
-
-function getRouteDistanceMeters(route: RouteResult & { transportMethodId: number }): number {
-  return route.distance || calculatePathDistanceMeters(route.path);
-}
-
 export function calcStayDurationMinutes(stayStart: string, stayEnd: string): number {
   return Math.max(timeToMinutes(stayEnd) - timeToMinutes(stayStart), 0);
 }
@@ -512,11 +477,9 @@ function buildOverTimeSuggestionMessage(overMinutes: number): string {
 
 function createArrivalWarning(
   departureTime: string,
-  destinationTime: string,
-  arrivalTime: string,
+  deadlineMinutes: number,
+  arrivalMinutes: number,
 ): ArrivalWarning | null {
-  const arrivalMinutes = timeToMinutes(arrivalTime);
-  const deadlineMinutes = timeToMinutes(destinationTime);
   const exceededMinutes = arrivalMinutes - deadlineMinutes;
 
   if (exceededMinutes <= 0) return null;
@@ -608,17 +571,6 @@ function isStationTransportMethod(methodId?: number): boolean {
 }
 
 /**
- * 再プランニング時に直接移動候補として優先採用できる移動手段IDを返す。
- * 公共交通手段が選ばれている場合は、最寄駅経由の判定へ委ねるため未設定扱いにする。
- * @param methodId 現在選択中の移動手段ID
- * @returns 直接移動候補として使う移動手段ID
- */
-function getPreferredDirectTransportMethodId(methodId?: number): number | undefined {
-  if (!methodId || isStationTransportMethod(methodId)) return undefined;
-  return methodId;
-}
-
-/**
  * 変更前後のスポットを比較し、dirty対象項目に差分があるかを判定する。
  * @param previousSpot 変更前のスポット
  * @param nextSpot 変更後のスポット
@@ -684,55 +636,45 @@ type RouteResult = {
   transportMethod: TravelModeType;
 };
 
+type RouteWithMethod = RouteResult & { transportMethodId: number };
+
 /**
  * ルート選択結果（選択ルート + 代替ルート）
  */
 type RouteSelectionResult = {
   /** 選択されたルート */
-  selectedRoute: RouteResult & { transportMethodId: number };
-  /** 代替ルート一覧（選択されなかったルート） */
-  alternativeRoutes: Array<RouteResult & { transportMethodId: number }>;
+  selectedRoute: RouteWithMethod;
+  /** 代替ルート一覧（選択ルートを先頭に、取得できた他の手段と最寄駅経由を含む） */
+  alternativeRoutes: RouteWithMethod[];
   /** ルート取得失敗した交通手段 */
   failedRoutes?: RouteFailureInfo[];
   /** 徒歩でフォールバックしたか */
   isFallbackToWalking?: boolean;
-  /** 選択された最寄駅のルート */
-  selectedNearestStationRoute?: Array<RouteResult & { transportMethodId: number }>;
 };
 
+/** 23:59 を通算分で表した値。到着がこれを超えるとエラーにする */
+const DAY_END_MINUTES = 24 * 60 - 1;
+
+const MINUTES_PER_DAY = 24 * 60;
+
 /**
- * 2点間のルートを取得（複数の移動手段で比較し、最適なものを選択）
- * 代替ルートも含めて返却
- *
+ * 直接手段（徒歩・自転車・車）のルートを取得し、優先度順（車＞自転車＞徒歩）に並べる。
  * @param from 出発地点
  * @param to 到着地点
- * @param transportMethodIds 利用可能な移動手段のID配列
- * @param preferredTransportMethodId 優先的に使用する移動手段ID(transportMethodIdsにも含まれていること)
+ * @param transportMethodIds 取得する移動手段ID（1〜3 以外は無視する）
+ * @returns 取得できたルートと、取得に失敗した手段
  */
-export async function getOptimalRouteWithAlternatives(
+async function fetchDirectRoutes(
   from: { lat: number; lng: number },
   to: { lat: number; lng: number },
   transportMethodIds: number[],
-  useNearestStation: boolean = false,
-  currentPlanningTime: number,
-  preferredTransportMethodId?: number,
-  originNearestStation?: ExtendNearestStationType,
-  destinationNearestStation?: ExtendNearestStationType,
-  preferredSegmentDepartureTime?: string,
-): Promise<RouteSelectionResult> {
-  // 利用可能な移動手段でルートを取得
-  const routes: Array<RouteResult & { transportMethodId: number }> = [];
-  // 最寄駅用のルート情報を格納する配列
-  let mainRoute: Array<RouteResult & { transportMethodId: number }> = [];
-  // 失敗した移動手段を記録
+): Promise<{ sortedRoutes: RouteWithMethod[]; failedRoutes: RouteFailureInfo[] }> {
+  const routes: RouteWithMethod[] = [];
   const failedRoutes: RouteFailureInfo[] = [];
 
-  // preferredと現在プランニングで選んでいる交通手段が被っている場合、重複するので除去する
-  const uniqueTransportMethodIds = Array.from(new Set(transportMethodIds));
-
-  for (const methodId of uniqueTransportMethodIds) {
-    if (methodId == 0 || methodId == 4) continue; // 無効な移動手段IDはスキップ
-    const mode = getTravelModeFromId(methodId);
+  for (const methodId of Array.from(new Set(transportMethodIds))) {
+    const mode = TRAVEL_MODE_MAP[methodId];
+    if (!mode) continue; // 最寄駅経由(4)や未設定(0)は直接手段ではない
 
     try {
       const result = await getRoute(from, to, mode);
@@ -761,210 +703,280 @@ export async function getOptimalRouteWithAlternatives(
       getTransportMethodPriority(right.transportMethodId) - getTransportMethodPriority(left.transportMethodId),
   );
 
-  if (useNearestStation && originNearestStation && destinationNearestStation) {
-    mainRoute = buildNearestStationRouteInfo(
-      originNearestStation,
-      destinationNearestStation,
-      from,
-      to,
-      currentPlanningTime,
-      preferredSegmentDepartureTime,
-    );
-  }
+  return { sortedRoutes, failedRoutes };
+}
 
-  let selectedRoute: RouteResult & { transportMethodId: number };
-
-  if (useNearestStation && preferredTransportMethodId !== undefined) {
-    selectedRoute =
-      sortedRoutes.find((route) => route.transportMethodId === preferredTransportMethodId) ?? sortedRoutes[0];
-  } else if (useNearestStation && preferredTransportMethodId === undefined) {
-    const totalDistance = mainRoute.reduce((accum, current) => {
-      return accum + getRouteDistanceMeters(current);
-    }, 0);
-    const totalDuration = mainRoute.reduce((accum, current) => {
-      return accum + current.duration;
-    }, 0);
-    selectedRoute = {
-      path: [],
-      distance: totalDistance,
-      duration: totalDuration,
-      transportMethod: 'TRANSIT',
-      transportMethodId: 4,
-    }; // 仮の最寄駅ルート
-  } else if (!useNearestStation && preferredTransportMethodId !== undefined) {
-    selectedRoute =
-      sortedRoutes.find((route) => route.transportMethodId === preferredTransportMethodId) ?? sortedRoutes[0];
-  } else {
-    selectedRoute = sortedRoutes[0];
+/**
+ * 直接手段が1件も取得できなかったときに、徒歩でルートを取り直す。
+ * 徒歩でも取得できなければ距離0・所要0のルートを返す。
+ */
+async function fetchWalkingFallback(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  failedRoutes: RouteFailureInfo[],
+): Promise<RouteSelectionResult> {
+  try {
+    const fallback = await getRoute(from, to, 'WALKING');
+    return {
+      selectedRoute: { ...fallback, transportMethodId: 1 },
+      alternativeRoutes: [],
+      failedRoutes: failedRoutes.length > 0 ? failedRoutes : undefined,
+      isFallbackToWalking: failedRoutes.length > 0,
+    };
+  } catch (error) {
+    // 徒歩でも取得できなかった場合（非常にレアなケース）
+    console.error('徒歩ルートも取得できませんでした:', error);
+    return {
+      selectedRoute: {
+        path: [from, to],
+        distance: 0,
+        duration: 0,
+        transportMethod: 'WALKING',
+        transportMethodId: 1,
+      },
+      alternativeRoutes: [],
+      failedRoutes: [
+        ...failedRoutes,
+        {
+          transportMethodId: 1,
+          reason: error instanceof Error ? error.message : '徒歩ルートも取得できませんでした',
+          failed: true,
+        },
+      ],
+      isFallbackToWalking: true,
+    };
   }
-  const alternativeRoutes = [selectedRoute, ...sortedRoutes.filter((route) => route !== selectedRoute)];
+}
+
+/**
+ * 2点間の直接手段のルートを取得し、最適なものを選択する（最寄駅経由は planSegment で扱う）。
+ * 代替ルートも含めて返却
+ *
+ * @param from 出発地点
+ * @param to 到着地点
+ * @param transportMethodIds 利用可能な移動手段のID配列
+ * @param preferredTransportMethodId 優先的に使用する移動手段ID（transportMethodIds に含まれるときだけ採用される）
+ */
+export async function getOptimalRouteWithAlternatives(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+  transportMethodIds: number[],
+  preferredTransportMethodId?: number,
+): Promise<RouteSelectionResult> {
+  const { sortedRoutes, failedRoutes } = await fetchDirectRoutes(from, to, transportMethodIds);
+  const selectedRoute =
+    sortedRoutes.find((route) => route.transportMethodId === preferredTransportMethodId) ?? sortedRoutes[0];
 
   // ルートが取得できなかった場合は徒歩でフォールバック
   if (selectedRoute === undefined) {
-    try {
-      const fallback = await getRoute(from, to, 'WALKING');
-      return {
-        selectedRoute: { ...fallback, transportMethodId: 1 },
-        alternativeRoutes: [],
-        failedRoutes: failedRoutes.length > 0 ? failedRoutes : undefined,
-        isFallbackToWalking: failedRoutes.length > 0,
-      };
-    } catch (error) {
-      // 徒歩でも取得できなかった場合（非常にレアなケース）
-      console.error('徒歩ルートも取得できませんでした:', error);
-      failedRoutes.push({
-        transportMethodId: 1,
-        reason: error instanceof Error ? error.message : '徒歩ルートも取得できませんでした',
-        failed: true,
-      });
-      // 空のルートを返す（エラーとして処理）
-      return {
-        selectedRoute: {
-          path: [from, to],
-          distance: 0,
-          duration: 0,
-          transportMethod: 'WALKING',
-          transportMethodId: 1,
-        },
-        alternativeRoutes: [],
-        failedRoutes,
-        isFallbackToWalking: true,
-      };
-    }
+    return fetchWalkingFallback(from, to, failedRoutes);
   }
 
   return {
     selectedRoute,
-    alternativeRoutes,
+    alternativeRoutes: [selectedRoute, ...sortedRoutes.filter((route) => route !== selectedRoute)],
     failedRoutes: failedRoutes.length > 0 ? failedRoutes : undefined,
     isFallbackToWalking: false,
-    selectedNearestStationRoute: mainRoute.length > 0 ? mainRoute : undefined,
   };
 }
 
 /**
- * 最寄駅経由の移動時間を計算する
+ * 最寄駅経由の計算結果
  */
-function calculateTotalNearestStationDuration(
-  originNearestStation: ExtendNearestStationType,
-  destinationNearestStation: ExtendNearestStationType,
-  currentPlanningTime: number,
-  preferredFirstSegmentDepartureTime?: string,
-): NearestStationDurationInfo {
-  const walkToStation = Math.max(originNearestStation.walkingTime ?? 0, 0);
-  const transitMinutes = Math.max(originNearestStation.transitTime ?? 0, 0);
-  const walkFromStation = Math.max(destinationNearestStation.walkingTime ?? 0, 0);
-  const stationArrivalTime = currentPlanningTime + walkToStation;
-  // 出発地の発車時間候補
-  const departureCandidates =
-    originNearestStation.scheduledDepartureTimes && originNearestStation.scheduledDepartureTimes.length > 0
-      ? originNearestStation.scheduledDepartureTimes
-      : [preferredFirstSegmentDepartureTime ?? ''];
-  const candidatesResult = selectDepartureCandidate(stationArrivalTime, departureCandidates);
-  const selectedDepartureMinutes = timeToMinutes(candidatesResult.selectedTime);
-  const waitingTime = Math.max(selectedDepartureMinutes - stationArrivalTime, 0);
+type NearestStationSegment = {
+  /** 徒歩→電車→徒歩をまとめた1候補（移動手段ID 4） */
+  route: RouteWithMethod;
+  scheduledDepartureTime: string;
+  waitingTime: number;
+  transitTime: number;
+  candidateSelection: DepartureCandidateSelection;
+};
 
-  return {
-    walkToStation,
-    waitingTime,
-    transitMinutes,
-    walkFromStation,
-  };
+/**
+ * 駅到着から採用した発車時間までの待ち時間（分）を返す。
+ * 駅到着は通算分（24*60 を超えてよい）、発車時間は HH:mm のため、同じ日の中で比較する。
+ */
+function calculateWaitingMinutes(stationArrivalMinutes: number, selectedTime: string): number {
+  const dayOffset = Math.floor(stationArrivalMinutes / MINUTES_PER_DAY) * MINUTES_PER_DAY;
+  let departureMinutes = timeToMinutes(selectedTime) + dayOffset;
+  if (departureMinutes < stationArrivalMinutes) departureMinutes += MINUTES_PER_DAY;
+  return departureMinutes - stationArrivalMinutes;
 }
 
 /**
- * 最寄り駅経由を想定したルート情報を作成する
- * @param origin 起点となる場所
- * @param destination 目的地となる場所
- * @returns
+ * 最寄駅経由のルートを計算する。乗車時間と発車時間候補は出発側の最寄駅のものを使う。
+ * @param originStation 出発側ノードの最寄駅
+ * @param destinationStation 到着側ノードの最寄駅
+ * @param originCoord 出発側ノードの座標
+ * @param destinationCoord 到着側ノードの座標
+ * @param currentMinutes 区間の開始時刻（通算分）
+ * @param preferredDepartureTime 発車時間候補が空のときに使う前回の発車時間
  */
-function buildNearestStationRouteInfo(
-  originNearestStation: ExtendNearestStationType,
-  destinationNearestStation: ExtendNearestStationType,
+function calculateNearestStationSegment(
+  originStation: ExtendNearestStationType,
+  destinationStation: ExtendNearestStationType,
   originCoord: { lat: number; lng: number },
   destinationCoord: { lat: number; lng: number },
-  currentPlanningTime: number,
-  preferredSegmentDepartureTime?: string,
-): Array<RouteResult & { transportMethodId: number }> {
-  if (!originNearestStation || !destinationNearestStation) {
-    throw new Error('最寄駅情報が不足しています。');
+  currentMinutes: number,
+  preferredDepartureTime?: string,
+): NearestStationSegment {
+  const walkToStation = Math.max(originStation.walkingTime ?? 0, 0);
+  const transitTime = Math.max(originStation.transitTime ?? 0, 0);
+  const walkFromStation = Math.max(destinationStation.walkingTime ?? 0, 0);
+  const stationArrivalMinutes = currentMinutes + walkToStation;
+
+  // 計算用の候補。ユーザーの入力が無ければ前回の発車時間を使う（ノードには書き戻さない）
+  const inputCandidates = originStation.scheduledDepartureTimes ?? [];
+  const candidates =
+    inputCandidates.length > 0 ? inputCandidates : preferredDepartureTime ? [preferredDepartureTime] : [];
+  const candidateSelection = selectDepartureCandidate(stationArrivalMinutes, candidates);
+  const waitingTime = calculateWaitingMinutes(stationArrivalMinutes, candidateSelection.selectedTime);
+
+  const originStationCoord = { lat: originStation.latitude, lng: originStation.longitude };
+  const destinationStationCoord = { lat: destinationStation.latitude, lng: destinationStation.longitude };
+  const distance =
+    calcDistance(originCoord, originStationCoord) +
+    calcDistance(originStationCoord, destinationStationCoord) +
+    calcDistance(destinationStationCoord, destinationCoord);
+
+  return {
+    route: {
+      path: [],
+      distance,
+      duration: walkToStation + waitingTime + transitTime + walkFromStation,
+      transportMethod: 'TRANSIT',
+      transportMethodId: 4,
+    },
+    scheduledDepartureTime: candidateSelection.selectedTime,
+    waitingTime,
+    transitTime,
+    candidateSelection,
+  };
+}
+
+/**
+ * 区間の端点
+ */
+type SegmentNode = {
+  name: string;
+  latitude: number;
+  longitude: number;
+  nearestStation?: ExtendNearestStationType;
+};
+
+type SegmentInput = {
+  segmentKey: string;
+  from: SegmentNode;
+  to: SegmentNode;
+  /** 区間開始時刻（通算分。24*60 を超えてよい） */
+  currentMinutes: number;
+  /** プランで選んだ移動手段 */
+  transportMethodIds: number[];
+  preferredMethodId?: number;
+  preferredDepartureTime?: string;
+};
+
+type SegmentResult = {
+  routeResult: RouteSelectionResult;
+  /** 区間の移動時間（分）。routeResult.selectedRoute.duration と常に一致する */
+  travelMinutes: number;
+  /** 両端に最寄駅があるときの最寄駅経由の計算結果 */
+  stationSegment?: NearestStationSegment;
+  messages: PlanningMessage[];
+};
+
+/**
+ * 1区間のルートを計算する。出発地 → スポット1、スポット間、最終スポット → 目的地のすべてで使う。
+ * 選択ルール:
+ * 1. 優先手段が徒歩・自転車・車で、プランの移動手段に含まれていて取得できたら、それを選ぶ。
+ * 2. それ以外で両端に最寄駅があれば、最寄駅経由（ID 4）を選ぶ。
+ * 3. それ以外は優先度が最も高い手段（車＞自転車＞徒歩）。1件も取れなければ徒歩で取り直す。
+ * 最寄駅経由のルートは、選ばれなくても代替ルートに必ず含める。
+ */
+async function planSegment(input: SegmentInput): Promise<SegmentResult> {
+  const fromCoord = { lat: input.from.latitude, lng: input.from.longitude };
+  const toCoord = { lat: input.to.latitude, lng: input.to.longitude };
+  const fromStation = input.from.nearestStation;
+  const toStation = input.to.nearestStation;
+  const messages: PlanningMessage[] = [];
+
+  const { sortedRoutes, failedRoutes } = await fetchDirectRoutes(fromCoord, toCoord, input.transportMethodIds);
+  const stationSegment =
+    fromStation && toStation
+      ? calculateNearestStationSegment(
+          fromStation,
+          toStation,
+          fromCoord,
+          toCoord,
+          input.currentMinutes,
+          input.preferredDepartureTime,
+        )
+      : undefined;
+
+  const preferredRoute = sortedRoutes.find((route) => route.transportMethodId === input.preferredMethodId);
+  const selectedRoute = preferredRoute ?? stationSegment?.route ?? sortedRoutes[0];
+
+  let routeResult: RouteSelectionResult;
+  if (selectedRoute) {
+    const otherRoutes = [...sortedRoutes, ...(stationSegment ? [stationSegment.route] : [])].filter(
+      (route) => route !== selectedRoute,
+    );
+    routeResult = {
+      selectedRoute,
+      alternativeRoutes: [selectedRoute, ...otherRoutes],
+      failedRoutes: failedRoutes.length > 0 ? failedRoutes : undefined,
+      isFallbackToWalking: false,
+    };
+  } else {
+    routeResult = await fetchWalkingFallback(fromCoord, toCoord, failedRoutes);
   }
-  const { walkToStation, transitMinutes, walkFromStation, waitingTime } = calculateTotalNearestStationDuration(
-    originNearestStation,
-    destinationNearestStation,
-    currentPlanningTime,
-    preferredSegmentDepartureTime,
-  );
 
-  const originStationCoord = {
-    lat: originNearestStation.latitude,
-    lng: originNearestStation.longitude,
-  };
+  const selectedMethodId = routeResult.selectedRoute.transportMethodId;
+  const candidateSelection = stationSegment?.candidateSelection;
+  if (isStationTransportMethod(selectedMethodId) && candidateSelection?.level && candidateSelection.message) {
+    messages.push({
+      level: candidateSelection.level,
+      segmentKey: buildSegmentKey(
+        candidateSelection.segmentType ?? PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED,
+        input.segmentKey,
+      ),
+      message: candidateSelection.message,
+    });
+  }
 
-  const destinationStationCoord = {
-    lat: destinationNearestStation.latitude,
-    lng: destinationNearestStation.longitude,
-  };
+  pushRouteFailureMessages(messages, input.segmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
 
-  // 出発地から最寄駅
-  const routeToStation: RouteResult & { transportMethodId: number } = {
-    path: [
-      { lat: originCoord.lat, lng: originCoord.lng },
-      { lat: originStationCoord.lat, lng: originStationCoord.lng },
-    ],
-    distance: calcDistance2(originCoord, originStationCoord),
-    duration: walkToStation,
-    transportMethod: 'WALKING',
-    transportMethodId: 1,
-  };
+  const isOneSideStation = !!fromStation !== !!toStation;
+  if (isOneSideStation) {
+    // 最寄駅を設定済みの側があるため、長距離徒歩の「最寄駅を推奨します」は出さない
+    const missingSideName = fromStation ? input.to.name : input.from.name;
+    messages.push({
+      level: 'WARNING',
+      segmentKey: buildSegmentKey(PLANNING_MESSAGE_SEGMENT.NEAREST_STATION_ONE_SIDE, input.segmentKey),
+      message: `${missingSideName}の最寄駅が未設定のため、最寄駅を使わないルートで計算しました。`,
+    });
+  } else if (selectedMethodId === 1) {
+    // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
+    pushLongWalkMessage(
+      messages,
+      input.segmentKey,
+      routeResult.selectedRoute.duration,
+      routeResult.selectedRoute.distance,
+      input.from.name,
+      input.to.name,
+    );
+  }
 
-  // 最寄駅間
-  const transitRoute: RouteResult & { transportMethodId: number } = {
-    path: [
-      { lat: originStationCoord.lat, lng: originStationCoord.lng },
-      { lat: destinationStationCoord.lat, lng: destinationStationCoord.lng },
-    ],
-    distance: calcDistance2(originStationCoord, destinationStationCoord),
-    duration: transitMinutes + waitingTime,
-    transportMethod: 'TRANSIT',
-    transportMethodId: 4,
+  return {
+    routeResult,
+    travelMinutes: routeResult.selectedRoute.duration,
+    stationSegment,
+    messages,
   };
-
-  // 最寄り駅から目的地
-  const routeFromStation: RouteResult & { transportMethodId: number } = {
-    path: [
-      { lat: destinationStationCoord.lat, lng: destinationStationCoord.lng },
-      { lat: destinationCoord.lat, lng: destinationCoord.lng },
-    ],
-    distance: calcDistance2(destinationStationCoord, destinationCoord),
-    duration: walkFromStation,
-    transportMethod: 'WALKING',
-    transportMethodId: 1,
-  };
-  return [routeToStation, transitRoute, routeFromStation];
 }
 
 function buildRouteInfo(params: BuildRouteInfoParams): RouteInfo {
-  const isNearestStationRoute = params.routeResult.selectedRoute.transportMethodId === 4;
-  // selectedNearestStationRouteの情報を取得
-  const selectedNearestStationRoute = params.routeResult.selectedNearestStationRoute
-    ? params.routeResult.selectedNearestStationRoute
-    : null;
-  // すでにalternativeRoutesに同じルートが存在するか確認
-  if (
-    selectedNearestStationRoute?.length &&
-    !params.routeResult.alternativeRoutes.some((route) => route.transportMethodId === 4)
-  ) {
-    // selectedNearestStationRouteが存在する場合, alternativeRouteに情報を格納する
-    const nearestStationRoute: RouteResult & { transportMethodId: number } = {
-      path: [],
-      distance: selectedNearestStationRoute.reduce((acc, route) => acc + route.distance, 0),
-      duration: selectedNearestStationRoute.reduce((acc, route) => acc + route.duration, 0),
-      transportMethod: 'TRANSIT',
-      transportMethodId: 4,
-    };
-    params.routeResult.alternativeRoutes.push(nearestStationRoute);
-  }
+  const selectedRoute = params.routeResult.selectedRoute;
   return {
     id: `route-${params.fromSpotId}-to-${params.toSpotId}`,
     fromSpotId: params.fromSpotId,
@@ -972,33 +984,40 @@ function buildRouteInfo(params: BuildRouteInfoParams): RouteInfo {
     fromType: params.fromType,
     toType: params.toType,
     routeType: params.routeType,
-    transportMethod: params.routeResult.selectedRoute.transportMethod,
-    transportMethodId: params.routeResult.selectedRoute.transportMethodId,
-    distance: params.routeResult.selectedRoute.distance,
-    duration: params.routeResult.selectedRoute.duration,
-    polyline: encodePolyline(params.routeResult.selectedRoute.path),
-    useNearestStation: isNearestStationRoute,
+    transportMethod: selectedRoute.transportMethod,
+    transportMethodId: selectedRoute.transportMethodId,
+    distance: selectedRoute.distance,
+    duration: selectedRoute.duration,
+    polyline: encodePolyline(selectedRoute.path),
+    useNearestStation: isStationTransportMethod(selectedRoute.transportMethodId),
     alternativeRoutes: params.routeResult.alternativeRoutes,
   };
 }
 
 /**
+ * 区間キーを作る（DEPARTURE_TO_FIRST_SPOT / SPOT_{id}_TO_{id} / SPOT_{id}_TO_DESTINATION）。
+ * @param fromSpotId 出発側スポットのID（出発地のときは undefined）
+ * @param toSpotId 到着側スポットのID（目的地のときは undefined）
+ */
+export function buildPlanningSegmentKey(fromSpotId?: string, toSpotId?: string): string {
+  if (!fromSpotId) return 'DEPARTURE_TO_FIRST_SPOT';
+  if (!toSpotId) return `SPOT_${fromSpotId}_TO_DESTINATION`;
+  return `SPOT_${fromSpotId}_TO_${toSpotId}`;
+}
+
+/**
  * 出発時間からプランニングするアルゴリズム
  * 処理概要
- * 1. 出発地から最初のスポットへのルートと時間を計算（最寄駅経由の有無を考慮）
- * 2. 各スポット間のルートと時間を順番に計算（最寄駅経由の有無を考慮）
- * 3. 最後のスポットから目的地へのルートと時間を計算（最寄駅経由の有無を考慮）
- * 4. 各スポットの滞在時間を加算して、最終的な到着時間を算出
- * ルート選択ルール -
- * 1. 最適ルートの選択は、スポットの距離と時間を考慮して、最寄駅を考慮した経路、徒歩、自転車、車の順で優先する。
- * 2. 選択されなかったルートはプレビュー画面での切り替えように保持する。
- * 3. 最寄駅を経由する場合は、駅までの徒歩時間、駅での待ち時間、乗車時間、駅からの徒歩時間を考慮してルートと時間を計算する。
+ * 1. 区間（出発地 → スポット1、スポット間、最終スポット → 目的地）ごとに planSegment でルートと移動時間を計算する
+ * 2. 移動時間と各スポットの滞在時間を通算分で積み上げ、最終的な到着時間を算出する
+ * 3. 移動時間・移動手段・最寄駅の計算結果は、区間の出発側ノードに書き戻す
  * @param params PlanningParams
- * @returns ルート情報、到着時間、警告メッセージ、総移動時間、総移動距離
+ * @returns ルート情報、到着時間（通算分と HH:mm）、警告メッセージ、総移動時間、総移動距離
  */
 async function runForwardPlanning(params: PlanningParams): Promise<{
   routes: RouteInfo[];
   arrivalTime: string;
+  arrivalMinutes: number;
   messages: PlanningMessage[];
   totalDuration: number;
   totalDistance: number;
@@ -1018,6 +1037,7 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
   };
   const updatedDestination: ExtendPlanLocationType = {
     ...params.destination,
+    travelTime: 0,
     transportMethodId: 0,
     transportMethod: 'DEFAULT',
     nearestStation: params.destination.nearestStation
@@ -1027,373 +1047,104 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
       : params.destination.nearestStation,
   };
 
-  const updatedSpots = [];
-  const routes: RouteInfo[] = [];
   // スポットをorderでソートする
   const plannedSpots = [...params.spots].sort((a, b) => a.order - b.order);
+  const updatedSpots: ExtendSpotType[] = plannedSpots.map((spot) => ({ ...spot }));
+  const routes: RouteInfo[] = [];
   const messages: PlanningMessage[] = [];
-  let currentPlanningTime = timeToMinutes(params.departure.time ?? DEFAULT_DEPARTURE_TIME);
-  const firstSpot = plannedSpots[0];
-  let totalDuration = 0;
-  let useNearestStation = false;
-  const departureCoord = { lat: params.departure.latitude, lng: params.departure.longitude };
-  const firstSegmentKey = 'DEPARTURE_TO_FIRST_SPOT';
-  const preferredFirstSegmentMethodId = params.preferredTransportMethodIds?.[firstSegmentKey];
-  const preferredFirstSegmentDepartureTime = params.preferredDepartureTimes?.[firstSegmentKey];
-  if (
-    params.departure.nearestStation &&
-    firstSpot.nearestStation &&
-    (preferredFirstSegmentMethodId == 4 || preferredFirstSegmentMethodId == undefined)
-  ) {
-    useNearestStation = true;
-    const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
-      params.departure.nearestStation,
-      firstSpot.nearestStation,
-      currentPlanningTime,
-      preferredFirstSegmentDepartureTime,
-    );
+  let currentMinutes = timeToMinutes(params.departure.time ?? DEFAULT_DEPARTURE_TIME);
 
-    // 最寄駅到着時間
-    const stationArrivalTime = currentPlanningTime + walkToStation;
-    // 出発地の発車時間候補
-    const departureCandidates =
-      params.departure.nearestStation.scheduledDepartureTimes &&
-      params.departure.nearestStation.scheduledDepartureTimes.length > 0
-        ? params.departure.nearestStation.scheduledDepartureTimes
-        : [preferredFirstSegmentDepartureTime ?? ''];
-    const candidatesResult = selectDepartureCandidate(stationArrivalTime, departureCandidates);
-    const selectedDepartureMinutes = timeToMinutes(candidatesResult.selectedTime);
-    const waitingMinutes = Math.max(selectedDepartureMinutes - stationArrivalTime, 0);
-    const segmentKey = firstSegmentKey;
+  for (let index = 0; plannedSpots.length > 0 && index <= plannedSpots.length; index++) {
+    const fromSpot = index > 0 ? updatedSpots[index - 1] : undefined;
+    const toSpot = index < plannedSpots.length ? updatedSpots[index] : undefined;
 
-    totalDuration = walkToStation + waitingMinutes + transitMinutes + walkFromStation;
+    // 出発側がスポットなら、滞在時間を現在時刻に加算する
+    if (fromSpot) {
+      fromSpot.stayStart = minutesToTime(currentMinutes);
+      fromSpot.stayEnd = minutesToTime(currentMinutes + fromSpot.stayDuration);
+      currentMinutes += fromSpot.stayDuration;
+    }
 
-    if (updatedDeparture.nearestStation) {
-      updatedDeparture.nearestStation = {
-        ...updatedDeparture.nearestStation,
-        transitTime: transitMinutes,
-        waitingTime: waitingMinutes,
-        scheduledDepartureTime: candidatesResult.selectedTime,
-        scheduledDepartureTimes: departureCandidates,
+    const segmentKey = buildPlanningSegmentKey(fromSpot?.id, toSpot?.id);
+    const fromNode: SegmentNode = fromSpot
+      ? fromSpot
+      : {
+          name: DEPARTURE_NAME,
+          latitude: params.departure.latitude,
+          longitude: params.departure.longitude,
+          nearestStation: params.departure.nearestStation,
+        };
+    const toNode: SegmentNode = toSpot
+      ? toSpot
+      : {
+          name: DESTINATION_NAME,
+          latitude: params.destination.latitude,
+          longitude: params.destination.longitude,
+          nearestStation: params.destination.nearestStation,
+        };
+
+    const segment = await planSegment({
+      segmentKey,
+      from: fromNode,
+      to: toNode,
+      currentMinutes,
+      transportMethodIds: params.transportMethodIds,
+      preferredMethodId: params.preferredTransportMethodIds?.[segmentKey],
+      preferredDepartureTime: params.preferredDepartureTimes?.[segmentKey],
+    });
+    messages.push(...segment.messages);
+
+    // 移動時間・移動手段は区間の出発側ノードに書き戻す
+    const selectedMethodId = segment.routeResult.selectedRoute.transportMethodId;
+    const fromTarget: ExtendSpotType | ExtendPlanLocationType = fromSpot ?? updatedDeparture;
+    fromTarget.travelTime = segment.travelMinutes;
+    fromTarget.transportMethodId = selectedMethodId;
+    fromTarget.transportMethod = getTravelMethodName(selectedMethodId);
+    // 発車時間候補（scheduledDepartureTimes）はユーザーの入力のまま残し、計算結果だけを書き戻す
+    if (segment.stationSegment && fromTarget.nearestStation) {
+      fromTarget.nearestStation = {
+        ...fromTarget.nearestStation,
+        transitTime: segment.stationSegment.transitTime,
+        waitingTime: segment.stationSegment.waitingTime,
+        scheduledDepartureTime: segment.stationSegment.scheduledDepartureTime,
       };
     }
 
-    // メッセージを格納
-    if (candidatesResult.level && candidatesResult.message) {
-      messages.push({
-        level: candidatesResult.level,
-        segmentKey: buildSegmentKey(
-          candidatesResult.segmentType ?? PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED,
-          segmentKey,
-        ),
-        message: candidatesResult.message,
-      });
-    }
-  }
-  // 最寄駅を介さないあるいは最寄駅情報がない場合のルートと時間を計算
-  const routeResult = await getOptimalRouteWithAlternatives(
-    departureCoord,
-    {
-      lat: firstSpot.latitude,
-      lng: firstSpot.longitude,
-    },
-    [...params.transportMethodIds, preferredFirstSegmentMethodId ?? 0],
-    useNearestStation,
-    currentPlanningTime,
-    getPreferredDirectTransportMethodId(preferredFirstSegmentMethodId),
-    params.departure.nearestStation,
-    firstSpot.nearestStation,
-    preferredFirstSegmentDepartureTime,
-  );
-  pushRouteFailureMessages(messages, firstSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
-  // 出発地から最初のスポットまでの移動時間を更新
-  updatedDeparture.travelTime = useNearestStation ? totalDuration : routeResult.selectedRoute.duration;
-  updatedDeparture.transportMethodId = routeResult.selectedRoute.transportMethodId;
-  updatedDeparture.transportMethod = getTravelMethodName(updatedDeparture.transportMethodId);
+    currentMinutes += segment.travelMinutes;
 
-  currentPlanningTime += updatedDeparture.travelTime;
-
-  // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
-  if (routeResult.selectedRoute.transportMethodId === 1) {
-    const duration = routeResult.selectedRoute.duration;
-    const distance = routeResult.selectedRoute.distance;
-    pushLongWalkMessage(messages, firstSegmentKey, duration, distance, DEPARTURE_NAME, firstSpot.name);
-  }
-
-  routes.push(
-    buildRouteInfo({
-      fromSpotId: 'departure',
-      toSpotId: firstSpot.id,
-      fromType: 'DEPARTURE',
-      toType: 'SPOT',
-      routeType: useNearestStation ? 'TO_STATION' : 'DEPARTURE_TO_SPOT',
-      routeResult,
-    }),
-  );
-
-  // スポット間での時間調整
-  for (let i = 0; i < plannedSpots.length - 1; i++) {
-    useNearestStation = false;
-    const currentSpot = plannedSpots[i];
-    const stayStart = minutesToTime(currentPlanningTime);
-    const stayEnd = minutesToTime(currentPlanningTime + currentSpot.stayDuration);
-    let updatedCurrentSpot: ExtendSpotType = {
-      ...currentSpot,
-      stayStart,
-      stayEnd,
-    };
-    // 滞在時間
-    const stayDuration = currentSpot.stayDuration;
-
-    // 滞在時間を現在時刻に加算
-    currentPlanningTime += stayDuration;
-    if (i < plannedSpots.length - 1) {
-      const nextSpot = plannedSpots[i + 1];
-      totalDuration = 0;
-      const segmentKey = `SPOT_${currentSpot.id}_TO_${nextSpot.id}`;
-      const preferredSpotToSpotMethodId = params.preferredTransportMethodIds?.[segmentKey];
-      const preferredSpotToSpotDepartureTime = params.preferredDepartureTimes?.[segmentKey];
-      if (
-        currentSpot.nearestStation &&
-        nextSpot.nearestStation &&
-        (preferredSpotToSpotMethodId == 4 || preferredSpotToSpotMethodId == undefined)
-      ) {
-        useNearestStation = true;
-        const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
-          currentSpot.nearestStation,
-          nextSpot.nearestStation,
-          currentPlanningTime,
-          preferredSpotToSpotDepartureTime,
-        );
-        // 駅到着時間 = 現在の時間 + 駅までの徒歩時間
-        const stationArrival = currentPlanningTime + walkToStation;
-        // スポット間の最寄駅
-        const candidates =
-          currentSpot.nearestStation.scheduledDepartureTimes &&
-          currentSpot.nearestStation.scheduledDepartureTimes.length > 0
-            ? currentSpot.nearestStation.scheduledDepartureTimes
-            : [preferredSpotToSpotDepartureTime ?? ''];
-        // 発車時間候補から、駅到着時間を考慮して有効な発車時間を選択する
-        const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
-        const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
-        const waitingMinutes = Math.max(selectedMinutes - stationArrival, 0);
-        totalDuration = walkToStation + waitingMinutes + transitMinutes + walkFromStation;
-
-        if (selectedCandidates.level && selectedCandidates.message) {
-          messages.push({
-            level: selectedCandidates.level,
-            segmentKey: buildSegmentKey(
-              selectedCandidates.segmentType ?? PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED,
-              segmentKey,
-            ),
-            message: selectedCandidates.message,
-          });
-        }
-
-        updatedCurrentSpot = {
-          ...updatedCurrentSpot,
-          nearestStation: {
-            ...updatedCurrentSpot.nearestStation,
-            name: currentSpot.nearestStation.name,
-            latitude: currentSpot.nearestStation.latitude,
-            placeId: currentSpot.nearestStation.placeId,
-            stationType: currentSpot.nearestStation.stationType,
-            longitude: currentSpot.nearestStation.longitude,
-            spotId: currentSpot.nearestStation.spotId,
-            transitTime: transitMinutes,
-            waitingTime: waitingMinutes,
-            scheduledDepartureTime: selectedCandidates.selectedTime,
-            scheduledDepartureTimes: candidates,
-          },
-        };
-      }
-
-      const preferredDirectTransportMethodId = getPreferredDirectTransportMethodId(preferredSpotToSpotMethodId);
-
-      const routeResult = await getOptimalRouteWithAlternatives(
-        {
-          lat: currentSpot.latitude,
-          lng: currentSpot.longitude,
-        },
-        {
-          lat: nextSpot.latitude,
-          lng: nextSpot.longitude,
-        },
-        [...params.transportMethodIds, preferredSpotToSpotMethodId ?? 0],
-        useNearestStation,
-        currentPlanningTime,
-        preferredDirectTransportMethodId,
-        currentSpot.nearestStation,
-        nextSpot.nearestStation,
-        preferredSpotToSpotDepartureTime,
-      );
-      pushRouteFailureMessages(messages, segmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
-
-      updatedCurrentSpot.travelTime = useNearestStation ? totalDuration : routeResult.selectedRoute.duration;
-      updatedCurrentSpot.transportMethodId = routeResult.selectedRoute.transportMethodId;
-      updatedCurrentSpot.transportMethod = getTravelMethodName(updatedCurrentSpot.transportMethodId);
-      currentPlanningTime += updatedCurrentSpot.travelTime;
-
-      routes.push(
-        buildRouteInfo({
-          fromSpotId: currentSpot.id,
-          toSpotId: nextSpot.id,
-          fromType: 'SPOT',
-          toType: 'SPOT',
-          routeType: useNearestStation ? 'TO_STATION' : 'SPOT_TO_SPOT',
-          routeResult,
-        }),
-      );
-
-      // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
-      if (routeResult.selectedRoute.transportMethodId === 1) {
-        const duration = routeResult.selectedRoute.duration;
-        const distance = routeResult.selectedRoute.distance;
-        pushLongWalkMessage(messages, segmentKey, duration, distance, currentSpot.name, nextSpot.name);
-      }
-    }
-
-    updatedSpots.push(updatedCurrentSpot);
-  }
-
-  // 最後のスポットから目的地へのルートと時間を計算
-  if (plannedSpots.length > 0) {
-    useNearestStation = false;
-    totalDuration = 0;
-    const lastSpot = plannedSpots[plannedSpots.length - 1];
-    const destinationCoord = { lat: params.destination.latitude, lng: params.destination.longitude };
-    const lastSegmentKey = `SPOT_${lastSpot.id}_TO_DESTINATION`;
-    const preferredLastSegmentMethodId = params.preferredTransportMethodIds?.[lastSegmentKey];
-    const preferredLastSegmentDepartureTimes = params.preferredDepartureTimes?.[lastSegmentKey];
-    const stayStart = minutesToTime(currentPlanningTime);
-    const stayEnd = minutesToTime(currentPlanningTime + lastSpot.stayDuration);
-    // 読み取り専用プロパティへの直接割り当てを避けるため、新しいオブジェクトを作成
-    let updatedLastSpot: ExtendSpotType = { ...lastSpot, stayStart, stayEnd };
-    currentPlanningTime += updatedLastSpot.stayDuration;
-    if (
-      lastSpot.nearestStation &&
-      params.destination.nearestStation &&
-      (preferredLastSegmentMethodId == 4 || preferredLastSegmentMethodId == undefined)
-    ) {
-      useNearestStation = true;
-      const { walkToStation, transitMinutes, walkFromStation } = calculateTotalNearestStationDuration(
-        lastSpot.nearestStation,
-        params.destination.nearestStation,
-        currentPlanningTime,
-        preferredLastSegmentDepartureTimes,
-      );
-      const stationArrival = currentPlanningTime + walkToStation;
-      const candidates =
-        params.destination.nearestStation.scheduledDepartureTimes &&
-        params.destination.nearestStation.scheduledDepartureTimes?.length > 0
-          ? params.destination.nearestStation.scheduledDepartureTimes
-          : [preferredLastSegmentDepartureTimes ?? ''];
-      const selectedCandidates = selectDepartureCandidate(stationArrival, candidates);
-      const selectedMinutes = timeToMinutes(selectedCandidates.selectedTime);
-      const waitingMinutes = Math.max(selectedMinutes - stationArrival, 0);
-      totalDuration = walkToStation + waitingMinutes + transitMinutes + walkFromStation;
-
-      updatedLastSpot = {
-        ...updatedLastSpot,
-        nearestStation: {
-          ...lastSpot.nearestStation,
-          waitingTime: waitingMinutes,
-          scheduledDepartureTime: selectedCandidates.selectedTime,
-          scheduledDepartureTimes: candidates,
-        },
-      };
-
-      if (updatedDestination.nearestStation) {
-        updatedDestination.nearestStation = {
-          ...updatedDestination.nearestStation,
-          transitTime: 0,
-        };
-      }
-
-      if (selectedCandidates.level && selectedCandidates.message) {
-        messages.push({
-          level: selectedCandidates.level,
-          segmentKey: buildSegmentKey(
-            selectedCandidates.segmentType ?? PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED,
-            lastSegmentKey,
-          ),
-          message: selectedCandidates.message,
-        });
-      }
-    }
-
-    const routeResult = await getOptimalRouteWithAlternatives(
-      {
-        lat: updatedLastSpot.latitude,
-        lng: updatedLastSpot.longitude,
-      },
-      destinationCoord,
-      [...params.transportMethodIds, preferredLastSegmentMethodId ?? 0],
-      useNearestStation,
-      currentPlanningTime,
-      getPreferredDirectTransportMethodId(preferredLastSegmentMethodId),
-      updatedLastSpot.nearestStation,
-      params.destination.nearestStation,
-      preferredLastSegmentDepartureTimes,
-    );
-    pushRouteFailureMessages(messages, lastSegmentKey, routeResult.failedRoutes, routeResult.isFallbackToWalking);
-
-    updatedLastSpot = {
-      ...updatedLastSpot,
-      travelTime: useNearestStation ? totalDuration : routeResult.selectedRoute.duration,
-      transportMethodId: routeResult.selectedRoute.transportMethodId,
-      transportMethod: getTravelMethodName(routeResult.selectedRoute.transportMethodId),
-    };
-
-    updatedDestination.travelTime = 0;
-    updatedDestination.transportMethodId = 0;
-    updatedDestination.transportMethod = 'DEFAULT';
-    currentPlanningTime += updatedLastSpot.travelTime;
-    updatedSpots[plannedSpots.length - 1] = updatedLastSpot;
-
+    const isStationRoute = isStationTransportMethod(selectedMethodId);
     routes.push(
       buildRouteInfo({
-        fromSpotId: updatedLastSpot.id,
-        toSpotId: 'destination',
-        fromType: 'SPOT',
-        toType: 'DESTINATION',
-        routeType: useNearestStation ? 'TO_STATION' : 'SPOT_TO_DESTINATION',
-        routeResult,
+        fromSpotId: fromSpot?.id ?? 'departure',
+        toSpotId: toSpot?.id ?? 'destination',
+        fromType: fromSpot ? 'SPOT' : 'DEPARTURE',
+        toType: toSpot ? 'SPOT' : 'DESTINATION',
+        routeType: isStationRoute
+          ? 'TO_STATION'
+          : !fromSpot
+            ? 'DEPARTURE_TO_SPOT'
+            : !toSpot
+              ? 'SPOT_TO_DESTINATION'
+              : 'SPOT_TO_SPOT',
+        routeResult: segment.routeResult,
       }),
     );
-    // 移動手段が徒歩で1.5km以上離れている場合は、警告メッセージを格納する
-    if (routeResult.selectedRoute.transportMethodId === 1) {
-      const duration = routeResult.selectedRoute.duration;
-      const distance = routeResult.selectedRoute.distance;
-      pushLongWalkMessage(messages, lastSegmentKey, duration, distance, updatedLastSpot.name, DESTINATION_NAME);
-    }
   }
-  const destinationTime = minutesToTime(currentPlanningTime);
 
-  totalDuration = routes.reduce((sum, route) => sum + route.duration, 0);
+  const totalDuration = routes.reduce((sum, route) => sum + route.duration, 0);
   const totalDistance = routes.reduce((sum, route) => sum + route.distance, 0);
 
   return {
-    routes: routes,
-    arrivalTime: destinationTime,
-    messages: messages,
+    routes,
+    arrivalTime: minutesToTime(currentMinutes),
+    arrivalMinutes: currentMinutes,
+    messages,
     totalDuration,
     totalDistance,
     updatedSpots,
     updatedDeparture,
     updatedDestination,
   };
-}
-
-/**
- * 算出された到着時間が目標到着時間を超過しているかを判定
- * @param calculatedArrivalTime
- * @param targetArrivalTime
- * @returns 超過している場合はtrue、それ以外はfalse
- */
-function calculateIsOverTime(calculatedArrivalTime: string, targetArrivalTime?: string): boolean {
-  if (!targetArrivalTime || !isValidTimeFormat(targetArrivalTime)) return false;
-  return timeToMinutes(calculatedArrivalTime) > timeToMinutes(targetArrivalTime);
 }
 
 export function getPlanningMessagePriority(message: PlanningMessage): number {
@@ -1411,6 +1162,93 @@ export function sortPlanningMessages(messages: PlanningMessage[]): PlanningMessa
 }
 
 /**
+ * プランニング結果に保存を止めるエラー（23:59 超過など）があるかを判定する。
+ * @param result プランニング結果
+ * @returns エラーレベルのメッセージが1件でもあれば true
+ */
+export function hasPlanningError(result?: PlanningResult | null): boolean {
+  return !!result?.messages?.some((message) => message.level === 'ERROR');
+}
+
+/**
+ * 再プランニング時に優先手段として渡せる移動手段かを判定する。
+ * @param methodId 前回の移動手段ID
+ * @param transportMethodIds プランで選んだ移動手段
+ * @param hasBothStations 区間の両端に最寄駅があるか
+ */
+function isUsablePreferredMethod(
+  methodId: number | undefined,
+  transportMethodIds: number[],
+  hasBothStations: boolean,
+): methodId is number {
+  if (!methodId) return false; // 0(DEFAULT) や未設定は指定なし
+  if (isStationTransportMethod(methodId)) return hasBothStations;
+  return transportMethodIds.includes(methodId);
+}
+
+/**
+ * 再プランニング時に executePlanning へ渡す、区間ごとの優先手段と発車時間を作る。
+ * ルール:
+ * 1. 前回結果があるときは、出発側と到着側の組み合わせが同じ区間だけ前回の手段を引き継ぐ（並び替えた区間は自動選択）。
+ *    前回結果が無いとき（保存済みプランを開いた直後など）は、ノードの移動手段を使う。
+ * 2. プランの移動手段に含まれない手段、両端に最寄駅が無い区間の最寄駅経由、0 や未設定は渡さない。
+ * 3. 前回は最寄駅経由の候補が無く、今回は両端に最寄駅がある区間は渡さない（最寄駅経由が自動で選ばれる）。
+ * @returns 区間キーごとの優先移動手段IDと優先発車時間
+ */
+export function buildPreferredSelections(params: {
+  spots: ExtendSpotType[];
+  departure: ExtendPlanLocationType;
+  destination: ExtendPlanLocationType;
+  previousResult?: PlanningResult | null;
+  transportMethodIds: number[];
+}): {
+  preferredTransportMethodIds: Record<string, number>;
+  preferredDepartureTimes: Record<string, string>;
+} {
+  const preferredTransportMethodIds: Record<string, number> = {};
+  const preferredDepartureTimes: Record<string, string> = {};
+  const spots = [...params.spots].sort((a, b) => a.order - b.order);
+
+  for (let index = 0; spots.length > 0 && index <= spots.length; index++) {
+    const fromSpot = index > 0 ? spots[index - 1] : undefined;
+    const toSpot = index < spots.length ? spots[index] : undefined;
+    const fromNode = fromSpot ?? params.departure;
+    const toNode = toSpot ?? params.destination;
+    const hasBothStations = !!fromNode.nearestStation && !!toNode.nearestStation;
+
+    let methodId: number | undefined;
+    if (params.previousResult) {
+      const fromSpotId = fromSpot?.id ?? 'departure';
+      const toSpotId = toSpot?.id ?? 'destination';
+      const previousRoute = params.previousResult.routes.find(
+        (route) => route.fromSpotId === fromSpotId && route.toSpotId === toSpotId,
+      );
+      if (!previousRoute) continue;
+      const hadStationRoute =
+        isStationTransportMethod(previousRoute.transportMethodId) ||
+        previousRoute.alternativeRoutes.some((route) => isStationTransportMethod(route.transportMethodId));
+      if (!hadStationRoute && hasBothStations) continue;
+      methodId = previousRoute.transportMethodId;
+    } else {
+      methodId = fromNode.transportMethodId;
+    }
+
+    if (!isUsablePreferredMethod(methodId, params.transportMethodIds, hasBothStations)) continue;
+
+    const segmentKey = buildPlanningSegmentKey(fromSpot?.id, toSpot?.id);
+    preferredTransportMethodIds[segmentKey] = methodId;
+
+    // 最寄駅の発車時間は区間の出発側ノードが持っている
+    const departureTime = fromNode.nearestStation?.scheduledDepartureTime;
+    if (isStationTransportMethod(methodId) && departureTime) {
+      preferredDepartureTimes[segmentKey] = departureTime;
+    }
+  }
+
+  return { preferredTransportMethodIds, preferredDepartureTimes };
+}
+
+/**
  * メインプランニング関数
  */
 export async function executePlanning(params: PlanningParams): Promise<PlanningResult> {
@@ -1420,22 +1258,29 @@ export async function executePlanning(params: PlanningParams): Promise<PlanningR
 
   // 出発時間から順方向に計算
   const forwardResult = await runForwardPlanning(params);
+  const arrivalMinutes = forwardResult.arrivalMinutes;
+  const targetArrivalMinutes = timeToMinutes(arrivalTime);
   let extraTimeMessage: string | undefined;
 
-  // 到着時間を超過しているか確認
-  const isOverTime = calculateIsOverTime(forwardResult.arrivalTime, arrivalTime);
+  // 時刻は通算分で比較する（日付を跨いだ到着も超過として扱う）
+  const isDayOverflow = arrivalMinutes > DAY_END_MINUTES;
+  const isOverTime = isDayOverflow || (isValidTimeFormat(arrivalTime) && arrivalMinutes > targetArrivalMinutes);
   const arrivalWarning =
-    isOverTime && arrivalTime ? createArrivalWarning(departureTime, arrivalTime, forwardResult.arrivalTime) : null;
-  if (isOverTime && arrivalTime) {
-    // OVER_TIME は1件のみ表示する
-  }
-  const overTimeMinutes = isOverTime ? timeToMinutes(forwardResult.arrivalTime) - timeToMinutes(arrivalTime) : 0;
+    isOverTime && arrivalTime ? createArrivalWarning(departureTime, targetArrivalMinutes, arrivalMinutes) : null;
+  const overTimeMinutes = isOverTime ? arrivalMinutes - targetArrivalMinutes : 0;
 
   // 余裕時間を計算（到着時間より早く着く場合）
-  const extraTimeMinutes = !isOverTime ? timeToMinutes(arrivalTime) - timeToMinutes(forwardResult.arrivalTime) : 0;
+  const extraTimeMinutes = !isOverTime ? targetArrivalMinutes - arrivalMinutes : 0;
 
-  // 到着時間超過の警告を追加
-  if (isOverTime) {
+  if (isDayOverflow) {
+    // 時刻として不整合になるため、到着時間超過ではなくエラーとして扱う（保存もできない）
+    forwardResult.messages.push({
+      level: 'ERROR',
+      message: '到着時刻が23:59を超えています。出発時間を早めるか、スポットや滞在時間を見直してください。',
+      segmentKey: PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW,
+    });
+  } else if (isOverTime) {
+    // 到着時間超過の警告を追加
     forwardResult.messages.push({
       level: 'WARNING',
       message: buildOverTimeSuggestionMessage(overTimeMinutes),

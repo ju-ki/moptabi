@@ -27,8 +27,6 @@ describe('planning.ts: 移動手段の選択', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [1, 2, 3],
-        false,
-        540,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(3);
@@ -47,8 +45,6 @@ describe('planning.ts: 移動手段の選択', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [1, 2, 3],
-        false,
-        540,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(1);
@@ -68,8 +64,6 @@ describe('planning.ts: 移動手段の選択', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [2, 3],
-        false,
-        540,
       );
 
       expect(result.selectedRoute.transportMethodId).toBe(1);
@@ -89,8 +83,6 @@ describe('planning.ts: 移動手段の選択', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [1, 2, 3],
-        false,
-        540,
         2,
       );
 
@@ -109,7 +101,6 @@ describe('planning.ts: 移動手段の選択', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [1], // 利用可能な交通手段に2が含まれていない
-        false,
         2,
       );
 
@@ -136,8 +127,6 @@ describe('planning.ts: 移動手段の選択', () => {
         { lat: 35.681236, lng: 139.767125 },
         { lat: 35.6895, lng: 139.6917 },
         [...checkedTransportMethodIds, preferredTransportMethodId ?? 1],
-        false,
-        540,
         preferredTransportMethodId,
       );
 

@@ -334,13 +334,13 @@ describe('planning.ts: 再プランニング', () => {
       expect(first.routes[0].transportMethodId).toBe(4);
 
       const toCarParams = switchRoute(params, first, 0, 3);
-      expect(toCarParams.preferredTransportMethodIds).toEqual({ DEPARTURE_TO_FIRST_SPOT: 3 });
+      expect(toCarParams.preferredTransportMethodIds?.DEPARTURE_TO_FIRST_SPOT).toBe(3);
       const second = await executePlanning(toCarParams);
       expect(second.routes[0].transportMethodId).toBe(3);
       expect(second.routes[0].alternativeRoutes.map((alt) => alt.transportMethodId)).toContain(4);
 
       const backParams = switchRoute(toCarParams, second, 0, 4);
-      expect(backParams.preferredTransportMethodIds).toEqual({ DEPARTURE_TO_FIRST_SPOT: 4 });
+      expect(backParams.preferredTransportMethodIds?.DEPARTURE_TO_FIRST_SPOT).toBe(4);
       const third = await executePlanning(backParams);
       expect(third.routes[0].transportMethodId).toBe(4);
       expect(third.routes[0].duration).toBe(first.routes[0].duration);

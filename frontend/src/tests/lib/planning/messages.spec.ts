@@ -36,7 +36,7 @@ describe('planning.ts: メッセージ', () => {
       expect(overTimeIndex).toBeLessThan(longWalkIndex);
     });
 
-    it('[RED] 優先順位1-7の全パターンでソートされる', () => {
+    it('優先順位0-8の全パターンでソートされる', () => {
       const sorted = sortPlanningMessages([
         {
           level: 'INFO',
@@ -74,10 +74,21 @@ describe('planning.ts: メッセージ', () => {
           segmentKey: PLANNING_MESSAGE_SEGMENT.OVER_TIME,
           message: 'スポットの見直しをしてみましょう。',
         },
+        {
+          level: 'WARNING',
+          segmentKey: `${PLANNING_MESSAGE_SEGMENT.NEAREST_STATION_ONE_SIDE}:SPOT_A_TO_B`,
+          message: 'スポットBの最寄駅が未設定のため、最寄駅を使わないルートで計算しました。',
+        },
+        {
+          level: 'ERROR',
+          segmentKey: PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW,
+          message: '到着時刻が23:59を超えています。出発時間を早めるか、スポットや滞在時間を見直してください。',
+        },
       ]);
 
       const priorities = sorted.map((message) => getPlanningMessagePriority(message));
-      expect(priorities).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(priorities).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+      expect(sorted[0].level).toBe('ERROR');
     });
   });
 
