@@ -57,11 +57,37 @@ export const createDevDb = (databaseUrl: string): DbType => {
   return drizzlePg(globalForDb.pool, { schema: fullSchema });
 };
 
+// Cloudflare Workers用：リクエストごとの node-postgres 接続プール
+// Workers ではあるリクエストで開いた接続を別のリクエストから使えないため、グローバルに保持しない
+const requestPools = new WeakMap<Request, Pool>();
+
+/**
+ * Cloudflare Workers 上で実行されているか（executionCtx を持つか）を判定
+ * Node.js 上の Hono は executionCtx を参照すると例外を投げる
+ */
+const hasExecutionCtx = (c: Context): boolean => {
+  try {
+    return Boolean(c.executionCtx);
+  } catch {
+    return false;
+  }
+};
+
 /**
  * 意図的にPostgreSqlを使いたい場合に使用(対話型等)
  * 基本はgetDbFromContext
+ * Workers 上ではリクエスト専用の接続プールを返す（postgresDbLifecycle でレスポンス後に閉じる）
  */
 export const getPostgresDb = (c: Context): AnyDbType => {
+  if (c && c.env && c.env.DATABASE_URL && hasExecutionCtx(c)) {
+    let pool = requestPools.get(c.req.raw);
+    if (!pool) {
+      pool = new Pool({ connectionString: c.env.DATABASE_URL });
+      requestPools.set(c.req.raw, pool);
+    }
+    return drizzlePg(pool, { schema: fullSchema });
+  }
+
   if (c && c.env && c.env.DATABASE_URL) {
     return createDevDb(c.env.DATABASE_URL);
   }
@@ -69,6 +95,19 @@ export const getPostgresDb = (c: Context): AnyDbType => {
   const databaseUrl = process.env.DATABASE_URL || '';
 
   return createDevDb(databaseUrl);
+};
+
+/**
+ * getPostgresDb で作成したリクエスト専用の接続プールを閉じる
+ * レスポンスを返した後に終了させるため waitUntil に渡す
+ */
+export const closeRequestPostgresDb = (c: Context): void => {
+  const pool = requestPools.get(c.req.raw);
+  if (!pool) {
+    return;
+  }
+  requestPools.delete(c.req.raw);
+  c.executionCtx.waitUntil(pool.end());
 };
 
 /**

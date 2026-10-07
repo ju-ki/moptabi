@@ -25,21 +25,17 @@ export type NextTrip = {
   id: number;
   title: string;
   startDate: string;
+  endDate: string;
   daysUntil: number;
-};
-
-/** 最近の旅の表示型 */
-export type RecentTrip = {
-  id: number;
-  title: string;
-  startDate: string;
 };
 
 /** マイページデータの集約型 */
 export type MypageData = {
   isLoading: boolean;
   error: Error | null;
-  nextTrip: NextTrip | null;
+  trips: TripSummary[];
+  nextTrips: NextTrip[];
+  defaultCalendarDate: Date;
   visitedCount: number;
   wishlistCount: number;
   totalTripDays: number;
@@ -47,7 +43,6 @@ export type MypageData = {
   planLimit: number;
   wishlistTotalCount: number;
   wishlistLimit: number;
-  recentTrips: RecentTrip[];
   userLocations: UserLocation[];
   postUserLocation: (newUserLocation: CreateUserLocationRequest) => Promise<UserLocation>;
   updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
