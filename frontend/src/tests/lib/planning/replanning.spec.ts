@@ -7,6 +7,7 @@ vi.mock('@/lib/plan', () => ({
 
 import {
   buildPreferredSelections,
+  collectSavedTransportMethodIds,
   executePlanning,
   type PlanningParams,
   type PlanningResult,
@@ -562,6 +563,80 @@ describe('planning.ts: 再プランニング', () => {
         'SPOT_spot-2_TO_DESTINATION': 4,
       });
       expect(result.preferredDepartureTimes).toEqual({ 'SPOT_spot-2_TO_DESTINATION': '12:10' });
+    });
+  });
+
+  describe('collectSavedTransportMethodIds: 保存済みプランの移動手段からチェック状態を復元する', () => {
+    it('出発地と各スポットの移動手段を重複なく昇順で返す', () => {
+      const params = createTwoSpotParams(30);
+      params.departure.transportMethodId = 3;
+      params.spots[0].transportMethodId = 1;
+      params.spots[1].transportMethodId = 3;
+
+      expect(collectSavedTransportMethodIds({ departure: params.departure, spots: params.spots })).toEqual([1, 3]);
+    });
+
+    it('電車/バス（4）と指定なし（0）はチェックボックスが無いため含めない', () => {
+      const params = createTwoSpotParams(30);
+      params.departure.transportMethodId = 4;
+      params.spots[0].transportMethodId = 0;
+      params.spots[1].transportMethodId = 2;
+
+      expect(collectSavedTransportMethodIds({ departure: params.departure, spots: params.spots })).toEqual([2]);
+    });
+
+    it('全区間が電車/バスのときは空配列を返す', () => {
+      const params = createTwoSpotParams(30);
+      params.departure.transportMethodId = 4;
+      params.spots[0].transportMethodId = 4;
+      params.spots[1].transportMethodId = 4;
+
+      expect(collectSavedTransportMethodIds({ departure: params.departure, spots: params.spots })).toEqual([]);
+    });
+
+    it('復元した手段を渡すと、保存済みプランの車の区間は車を優先手段にする（動作確認 9-2）', () => {
+      const params = createTwoSpotParams(30);
+      params.departure.transportMethodId = 3;
+      params.spots[0].transportMethodId = 3;
+      params.spots[1].transportMethodId = 3;
+
+      const result = buildPreferredSelections({
+        spots: params.spots,
+        departure: params.departure,
+        destination: params.destination,
+        transportMethodIds: collectSavedTransportMethodIds({ departure: params.departure, spots: params.spots }),
+      });
+
+      expect(result.preferredTransportMethodIds).toEqual({
+        DEPARTURE_TO_FIRST_SPOT: 3,
+        'SPOT_spot-1_TO_spot-2': 3,
+        'SPOT_spot-2_TO_DESTINATION': 3,
+      });
+    });
+
+    it('復元した手段を渡すと、両端に最寄駅がある区間でも保存時の車を優先手段にする（動作確認の追記）', () => {
+      const params = createBaseParams();
+      params.departure.transportMethodId = 3;
+      params.departure.nearestStation = createStation('dep-station', {
+        scheduledDepartureTime: '09:20',
+        scheduledDepartureTimes: undefined,
+      });
+      params.spots[0].transportMethodId = 3;
+      params.spots[0].nearestStation = createStation('spot-station');
+      params.destination.nearestStation = createStation('dest-station');
+
+      const result = buildPreferredSelections({
+        spots: params.spots,
+        departure: params.departure,
+        destination: params.destination,
+        transportMethodIds: collectSavedTransportMethodIds({ departure: params.departure, spots: params.spots }),
+      });
+
+      expect(result.preferredTransportMethodIds).toEqual({
+        DEPARTURE_TO_FIRST_SPOT: 3,
+        'SPOT_spot-1_TO_DESTINATION': 3,
+      });
+      expect(result.preferredDepartureTimes).toEqual({});
     });
   });
 });

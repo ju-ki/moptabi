@@ -17,6 +17,7 @@ import {
   PLANNING_MESSAGE_PRIORITY,
   PLANNING_MESSAGE_SEGMENT,
   THRESHOLD_FOR_DISTANCE,
+  TransportMethods,
 } from '@/data/constants';
 
 import { getRoute } from './plan';
@@ -1168,6 +1169,21 @@ export function sortPlanningMessages(messages: PlanningMessage[]): PlanningMessa
  */
 export function hasPlanningError(result?: PlanningResult | null): boolean {
   return !!result?.messages?.some((message) => message.level === 'ERROR');
+}
+
+/**
+ * 保存済みプランで使っている移動手段（徒歩・自転車・車）を集める。
+ * 編集画面を開いたときに、移動手段のチェック状態を復元するために使う。
+ * 電車/バス（4）と指定なし（0）はチェックボックスが無いため含めない。
+ * @param plan 保存済みプラン（出発地と各スポットが区間の移動手段を持つ）
+ * @returns 移動手段IDの昇順の配列
+ */
+export function collectSavedTransportMethodIds(plan: Pick<TravelPlanType, 'departure' | 'spots'>): number[] {
+  const selectableIds = Object.values(TransportMethods).map((method) => method.id);
+  const usedIds = [plan.departure.transportMethodId, ...plan.spots.map((spot) => spot.transportMethodId)];
+  return Array.from(new Set(usedIds.filter((id): id is number => id !== undefined && selectableIds.includes(id)))).sort(
+    (a, b) => a - b,
+  );
 }
 
 /**
