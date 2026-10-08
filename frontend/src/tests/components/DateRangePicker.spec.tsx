@@ -499,4 +499,50 @@ describe('DateRangePicker', () => {
       expect(screen.getByText(/日付を減らすには、開始または終了日を選択してください/)).toBeInTheDocument();
     });
   });
+
+  /**
+   * No.439 ヒントの文言によってカレンダーの幅が変わらないこと
+   * jsdom ではレイアウト計算ができないため、幅・高さを決めるクラス名で検証する
+   */
+  describe('レイアウト', () => {
+    const cases = [
+      { label: '未選択', startDate: undefined, endDate: undefined, trigger: /日付範囲を選択/ },
+      { label: '開始日のみ', startDate: '2025-12-01', endDate: undefined, trigger: /2025-12-01/ },
+      { label: '日帰り', startDate: '2025-12-01', endDate: '2025-12-01', trigger: /2025-12-01 ~ 2025-12-01/ },
+      { label: '複数日', startDate: '2025-12-01', endDate: '2025-12-05', trigger: /2025-12-01 ~ 2025-12-05/ },
+    ];
+
+    const openPopover = async (startDate: string | undefined, endDate: string | undefined, trigger: RegExp) => {
+      const user = userEvent.setup();
+      const utils = render(
+        <DateRangePicker startDate={startDate} endDate={endDate} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+      );
+      await user.click(screen.getByRole('button', { name: trigger }));
+      return { ...utils, popover: screen.getByRole('dialog') };
+    };
+
+    it.each(cases)('$label の状態でポップオーバーの幅がカレンダー1か月分に固定されていること', async (c) => {
+      const { popover } = await openPopover(c.startDate, c.endDate, c.trigger);
+
+      expect(popover).toHaveClass('w-[278px]');
+      expect(popover).not.toHaveClass('w-auto');
+    });
+
+    it.each(cases)('$label の状態でヒントの高さが2行分確保されていること', async (c) => {
+      await openPopover(c.startDate, c.endDate, c.trigger);
+
+      expect(screen.getByTestId('date-range-hint')).toHaveClass('min-h-8');
+    });
+
+    it('選択状態が変わってもポップオーバーのクラス名が変わらないこと', async () => {
+      const classNames: string[] = [];
+      for (const c of cases) {
+        const { popover, unmount } = await openPopover(c.startDate, c.endDate, c.trigger);
+        classNames.push(popover.className);
+        unmount();
+      }
+
+      expect(new Set(classNames).size).toBe(1);
+    });
+  });
 });
