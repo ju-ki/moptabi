@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
@@ -497,6 +497,98 @@ describe('DateRangePicker', () => {
       );
       await user.click(screen.getByRole('button', { name: /2025-12-01 ~ 2025-12-05/ }));
       expect(screen.getByText(/日付を減らすには、開始または終了日を選択してください/)).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * No.439 ヒントの文言によってカレンダーの幅が変わらないこと
+   * jsdom ではレイアウト計算ができないため、幅を決める描画構造（全ヒントの重ね描き）とクラス名で検証する
+   */
+  describe('レイアウト', () => {
+    const cases = [
+      {
+        label: '未選択',
+        startDate: undefined,
+        endDate: undefined,
+        trigger: /日付範囲を選択/,
+        hint: '開始日を選んでください（最大 7 日間）',
+      },
+      {
+        label: '開始日のみ',
+        startDate: '2025-12-01',
+        endDate: undefined,
+        trigger: /2025-12-01/,
+        hint: '終了日を選ぶか、同じ日を選んで「日帰り」にしてください',
+      },
+      {
+        label: '日帰り',
+        startDate: '2025-12-01',
+        endDate: '2025-12-01',
+        trigger: /2025-12-01 ~ 2025-12-01/,
+        hint: '同じ日を選ぶと選択を解除できます',
+      },
+      {
+        label: '複数日',
+        startDate: '2025-12-01',
+        endDate: '2025-12-05',
+        trigger: /2025-12-01 ~ 2025-12-05/,
+        hint: '日付を減らすには、開始または終了日を選択してください',
+      },
+    ];
+
+    const openPopover = async (startDate: string | undefined, endDate: string | undefined, trigger: RegExp) => {
+      const user = userEvent.setup();
+      const utils = render(
+        <DateRangePicker startDate={startDate} endDate={endDate} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+      );
+      await user.click(screen.getByRole('button', { name: trigger }));
+      return { ...utils, popover: screen.getByRole('dialog') };
+    };
+
+    const allHints = [
+      '開始日を選んでください（最大 7 日間）',
+      '終了日を選ぶか、同じ日を選んで「日帰り」にしてください',
+      '同じ日を選ぶと選択を解除できます',
+      '日付を減らすには、開始または終了日を選択してください',
+    ];
+
+    it.each(cases)(
+      '$label の状態で全ヒントが同じ位置に重ねて描画され、ポップオーバーの幅が最長のヒントで決まること',
+      async (c) => {
+        const { popover } = await openPopover(c.startDate, c.endDate, c.trigger);
+
+        allHints.forEach((hint) => {
+          const element = within(popover).getByText(hint);
+          expect(element).toHaveClass('col-start-1', 'row-start-1');
+        });
+      },
+    );
+
+    it.each(cases)('$label の状態で現在のヒントだけが表示され、他のヒントは非表示になること', async (c) => {
+      const { popover } = await openPopover(c.startDate, c.endDate, c.trigger);
+      const current = screen.getByTestId('date-range-hint');
+
+      expect(current).toHaveTextContent(c.hint);
+      expect(current).not.toHaveClass('invisible');
+      expect(current).not.toHaveAttribute('aria-hidden', 'true');
+      allHints
+        .filter((hint) => hint !== c.hint)
+        .forEach((hint) => {
+          const element = within(popover).getByText(hint);
+          expect(element).toHaveClass('invisible');
+          expect(element).toHaveAttribute('aria-hidden', 'true');
+        });
+    });
+
+    it('選択状態が変わってもポップオーバーのクラス名が変わらないこと', async () => {
+      const classNames: string[] = [];
+      for (const c of cases) {
+        const { popover, unmount } = await openPopover(c.startDate, c.endDate, c.trigger);
+        classNames.push(popover.className);
+        unmount();
+      }
+
+      expect(new Set(classNames).size).toBe(1);
     });
   });
 });
