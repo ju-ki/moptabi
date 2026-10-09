@@ -537,4 +537,43 @@ describe('PlanSpotSettingCard', () => {
     const latestCall = onSettingChange.mock.calls.at(-1)?.[0];
     expect(latestCall.nearestStation).toMatchObject({ transitTime: 45 });
   });
+
+  it.each([
+    ['候補が空配列のとき（プランニングで自動設定された発車時間）は空欄にする', [], ''],
+    ['候補が未設定のとき（保存済みプラン）は採用済みの発車時間を表示する', undefined, '12:10'],
+  ])('発車時間候補の初期表示: %s', (_label, scheduledDepartureTimes, expected) => {
+    const nearestStation = {
+      placeId: 'st-1',
+      spotId: 'spot-1',
+      stationType: 'TRAIN' as const,
+      name: '渋谷駅',
+      walkingTime: 5,
+      latitude: 35.66,
+      longitude: 139.7,
+      transitTime: 0,
+      scheduledDepartureTime: '12:10',
+      scheduledDepartureTimes,
+    };
+    const nextSpot = createSpot({
+      id: 'next-1',
+      nearestStation: {
+        placeId: 'next-st',
+        spotId: 'next-1',
+        stationType: 'TRAIN' as const,
+        name: '新宿駅',
+        transitTime: 0,
+        walkingTime: 3,
+        latitude: 35.69,
+        longitude: 139.7,
+      },
+    });
+
+    render(
+      <TooltipProvider>
+        <PlanSpotSettingCard {...baseProps} spot={createSpot({ nearestStation })} nextSpot={nextSpot} />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByTestId('scheduled-departure-1')).toHaveValue(expected);
+  });
 });

@@ -1,18 +1,29 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown, ChevronUp, Route, AlertTriangle, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Route, AlertTriangle, Info, Ban } from 'lucide-react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useStoreForPlanning } from '@/lib/plan';
+import { hasPlanningError, PlanningMessageLevel } from '@/lib/planning';
 import { TransportNodeType } from '@/types/plan';
 
 interface PlanningWarningListProps {
   date: string;
 }
+
+// エラーは保存を止めるため赤枠、警告は黄色枠、情報は青枠で表示する
+const MESSAGE_STYLES: Record<
+  PlanningMessageLevel,
+  { variant: 'default' | 'destructive'; className: string; iconClassName: string }
+> = {
+  ERROR: { variant: 'destructive', className: '', iconClassName: 'text-destructive' },
+  WARNING: { variant: 'default', className: 'border-amber-300 bg-amber-50', iconClassName: 'text-amber-500' },
+  INFO: { variant: 'default', className: 'border-blue-200 bg-blue-50', iconClassName: 'text-blue-500' },
+};
 
 export default function PlanningWarningList({ date }: PlanningWarningListProps) {
   const fields = useStoreForPlanning();
@@ -27,6 +38,7 @@ export default function PlanningWarningList({ date }: PlanningWarningListProps) 
   }
 
   const routeSummary = [departureData?.name, destinationData?.name].filter(Boolean).join(' → ');
+  const isSaveBlocked = hasPlanningError(result);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} data-testid="planning-message-list">
@@ -46,26 +58,35 @@ export default function PlanningWarningList({ date }: PlanningWarningListProps) 
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {isSaveBlocked && (
+            <div
+              className="flex items-center gap-2 rounded-md border border-destructive/50 bg-red-50 p-3 text-sm font-medium text-destructive"
+              data-testid="planning-save-blocked"
+            >
+              <Ban className="h-4 w-4 shrink-0" />
+              エラーがあるため、このプランニング結果は保存できません。
+            </div>
+          )}
           {isOpen ? (
-            messages.map((message, index) => (
-              <Alert
-                key={`${message.segmentKey}-${index}`}
-                variant={message.level === 'WARNING' ? 'destructive' : 'default'}
-                className={message.level === 'INFO' ? 'border-blue-200 bg-blue-50' : ''}
-                data-testid={`planning-message-${message.level.toLowerCase()}`}
-              >
-                <div className="flex items-start gap-3">
-                  {message.level === 'WARNING' ? (
-                    <AlertTriangle className="h-5 w-5 shrink-0 text-orange-500 mt-0.5" />
-                  ) : (
-                    <Info className="h-5 w-5 shrink-0 text-blue-500 mt-0.5" />
-                  )}
-                  <div className="flex-1">
-                    <AlertDescription className="text-sm">{message.message}</AlertDescription>
+            messages.map((message, index) => {
+              const style = MESSAGE_STYLES[message.level] ?? MESSAGE_STYLES.WARNING;
+              const Icon = message.level === 'INFO' ? Info : AlertTriangle;
+              return (
+                <Alert
+                  key={`${message.segmentKey}-${index}`}
+                  variant={style.variant}
+                  className={style.className}
+                  data-testid={`planning-message-${message.level.toLowerCase()}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Icon className={`h-5 w-5 shrink-0 mt-0.5 ${style.iconClassName}`} />
+                    <div className="flex-1">
+                      <AlertDescription className="text-sm">{message.message}</AlertDescription>
+                    </div>
                   </div>
-                </div>
-              </Alert>
-            ))
+                </Alert>
+              );
+            })
           ) : (
             <div
               className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-3"

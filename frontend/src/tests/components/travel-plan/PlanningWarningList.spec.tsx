@@ -61,4 +61,48 @@ describe('PlanningWarningList', () => {
     expect(screen.getByTestId('planning-route-summary')).toBeInTheDocument();
     expect(screen.getByText('東京駅 → 羽田空港')).toBeInTheDocument();
   });
+
+  it('エラーは赤枠、警告は黄色枠、情報は青枠で表示する', () => {
+    mockGetPlanningResult.mockReturnValue({
+      messages: [
+        { level: 'ERROR', segmentKey: 'DAY_OVERFLOW', message: '到着時刻が23:59を超えています。' },
+        { level: 'WARNING', segmentKey: 'OVER_TIME', message: '到着時間を超過しています' },
+        { level: 'INFO', segmentKey: 'EXTRA_TIME', message: '余裕時間があります' },
+      ],
+    });
+
+    render(<PlanningWarningList date={date} />);
+
+    // 枠の色は Tailwind のクラスでしか判別できないため、クラス名で確認する
+    expect(screen.getByTestId('planning-message-error').className).toContain('text-destructive');
+    expect(screen.getByTestId('planning-message-warning').className).toContain('border-amber-300');
+    expect(screen.getByTestId('planning-message-warning').className).not.toContain('text-destructive');
+    expect(screen.getByTestId('planning-message-info').className).toContain('border-blue-200');
+  });
+
+  it('エラーがあるときは保存できない旨を表示し、一覧を閉じても残す', () => {
+    mockGetPlanningResult.mockReturnValue({
+      messages: [{ level: 'ERROR', segmentKey: 'DAY_OVERFLOW', message: '到着時刻が23:59を超えています。' }],
+    });
+
+    render(<PlanningWarningList date={date} />);
+
+    expect(screen.getByTestId('planning-save-blocked')).toHaveTextContent(
+      'エラーがあるため、このプランニング結果は保存できません。',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '警告メッセージ一覧' }));
+
+    expect(screen.getByTestId('planning-save-blocked')).toBeInTheDocument();
+  });
+
+  it('警告だけのときは保存できない旨を表示しない', () => {
+    mockGetPlanningResult.mockReturnValue({
+      messages: [{ level: 'WARNING', segmentKey: 'OVER_TIME', message: '到着時間を超過しています' }],
+    });
+
+    render(<PlanningWarningList date={date} />);
+
+    expect(screen.queryByTestId('planning-save-blocked')).not.toBeInTheDocument();
+  });
 });

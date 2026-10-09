@@ -20,6 +20,7 @@ import { TransportNodeType, TravelPlanType } from '@/types/plan';
 import { Button } from '@/components/ui/button';
 import { usePlanning } from '@/hooks/use-planning';
 import { useFetchTripDetail } from '@/hooks/use-trip';
+import { collectSavedTransportMethodIds } from '@/lib/planning';
 
 const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
@@ -56,6 +57,8 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
       fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
+      // 移動手段のチェック状態は保存していないため、保存済みプランで使っている手段から復元する
+      fields.setPlanningInfo(plan.date, { transportationMethodId: collectSavedTransportMethodIds(plan) });
     });
   }, [trip, error, id]);
 
