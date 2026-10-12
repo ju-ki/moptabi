@@ -32,6 +32,7 @@ const createFavoriteLocationWithDefault = (): PlanLocationCandidateItemType => (
   planLocationId: null,
   planName: null,
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -49,6 +50,7 @@ const createFavoriteLocationWithoutDefault = (): PlanLocationCandidateItemType =
   planLocationId: null,
   planName: null,
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -66,6 +68,7 @@ const createHistoryLocation = (): PlanLocationCandidateItemType => ({
   planLocationId: 100,
   planName: '過去の旅行プラン',
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -83,6 +86,7 @@ const createMapClickedLocation = (lat: number, lng: number): PlanLocationCandida
   planLocationId: null,
   planName: null,
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -100,6 +104,7 @@ const createAddressSearchLocation = (): PlanLocationCandidateItemType => ({
   planLocationId: null,
   planName: null,
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -117,6 +122,7 @@ const createSpotBasedLocation = (): PlanLocationCandidateItemType => ({
   planLocationId: null,
   planName: null,
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -134,6 +140,7 @@ const createCurrentLocation = (): PlanLocationCandidateItemType => ({
   planLocationId: null,
   planName: null,
   planId: null,
+  nearestStation: null,
 });
 
 /**
@@ -465,6 +472,7 @@ describe('DepartureAndDestination', () => {
             transportMethod: 'DEFAULT',
             userLocationId: 2,
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -488,6 +496,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -509,6 +518,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -532,6 +542,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -554,6 +565,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -576,6 +588,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -665,6 +678,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -692,6 +706,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -716,6 +731,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -741,6 +757,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -765,6 +782,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -789,6 +807,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -819,6 +838,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
           store.setDepartureAndDestination(day1, TransportNodeType.DESTINATION, {
             name: favoriteLocation.name,
@@ -829,6 +849,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -844,6 +865,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
           store.setDepartureAndDestination(day2, TransportNodeType.DESTINATION, {
             name: historyLocation.name,
@@ -854,6 +876,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -883,6 +906,7 @@ describe('DepartureAndDestination', () => {
               transportMethodId: 0,
               transportMethod: 'DEFAULT',
               locationType: TransportNodeType.DEPARTURE,
+              alternateRoutes: [],
             },
             {
               name: newDestination.name,
@@ -893,6 +917,7 @@ describe('DepartureAndDestination', () => {
               transportMethodId: 0,
               transportMethod: 'DEFAULT',
               locationType: TransportNodeType.DESTINATION,
+              alternateRoutes: [],
             },
           );
         });
@@ -944,6 +969,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -972,6 +998,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -996,6 +1023,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1020,6 +1048,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1044,6 +1073,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1068,6 +1098,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1092,6 +1123,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1118,6 +1150,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1144,6 +1177,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1168,6 +1202,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1192,6 +1227,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1216,6 +1252,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1240,6 +1277,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1264,6 +1302,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1307,6 +1346,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1337,6 +1377,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1361,6 +1402,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1385,6 +1427,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1409,6 +1452,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1433,6 +1477,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1457,6 +1502,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DESTINATION,
+            alternateRoutes: [],
           });
         });
 
@@ -1488,6 +1534,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1518,6 +1565,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1544,6 +1592,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1570,6 +1619,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1596,6 +1646,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1622,6 +1673,7 @@ describe('DepartureAndDestination', () => {
             transportMethodId: 0,
             transportMethod: 'DEFAULT',
             locationType: TransportNodeType.DEPARTURE,
+            alternateRoutes: [],
           });
         });
 
@@ -1631,6 +1683,234 @@ describe('DepartureAndDestination', () => {
         expect(day2Departure.latitude).toBe(35.71);
         expect(day1DestinationAfter.latitude).toBe(day1DestinationBefore.latitude);
       });
+    });
+  });
+  describe('チェックボックス ON/OFF 時の即時同期', () => {
+    const singleDate = '2026-03-08';
+
+    beforeEach(() => {
+      resetStore();
+    });
+
+    it('T1: 単日・ON → 出発地の座標・名前が目的地へ即時コピーされること', () => {
+      // 出発地と目的地を異なる値でセット
+      const store = useStoreForPlanning.getState();
+      initializeStore(singleDate, singleDate);
+
+      act(() => {
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE, {
+          name: '会社',
+          latitude: 35.68,
+          longitude: 139.76,
+          time: DEFAULT_DEPARTURE_TIME,
+          travelTime: 0,
+          transportMethodId: 0,
+          transportMethod: 'DEFAULT',
+          locationType: TransportNodeType.DEPARTURE,
+          alternateRoutes: [],
+        });
+        // 連動OFF状態で目的地だけ別の値にしておく
+        store.setIsLocationLinked(false);
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DESTINATION, {
+          name: '東京タワー',
+          latitude: 35.6586,
+          longitude: 139.7454,
+          time: DEFAULT_ARRIVAL_TIME,
+          travelTime: 0,
+          transportMethodId: 0,
+          transportMethod: 'DEFAULT',
+          locationType: TransportNodeType.DESTINATION,
+          alternateRoutes: [],
+        });
+      });
+
+      // チェックON → 即時同期されるはず
+      act(() => {
+        store.setIsLocationLinked(true);
+      });
+
+      const destination = store.getDepartureAndDestination(singleDate, TransportNodeType.DESTINATION);
+      expect(destination.latitude).toBe(35.68);
+      expect(destination.longitude).toBe(139.76);
+      expect(destination.name).toBe('会社');
+    });
+
+    it('T2: 単日・ON → 目的地の travelTime/transportMethod は保持されること', () => {
+      const store = useStoreForPlanning.getState();
+      initializeStore(singleDate, singleDate);
+
+      // 目的地に経路情報をセット（連動OFF状態で）
+      act(() => {
+        store.setIsLocationLinked(false);
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DESTINATION, {
+          name: '東京タワー',
+          latitude: 35.6586,
+          longitude: 139.7454,
+          time: DEFAULT_ARRIVAL_TIME,
+          travelTime: 60,
+          transportMethodId: 3,
+          transportMethod: 'DRIVING',
+          locationType: TransportNodeType.DESTINATION,
+          alternateRoutes: [],
+        });
+      });
+
+      // チェックON
+      act(() => {
+        store.setIsLocationLinked(true);
+      });
+
+      const destination = store.getDepartureAndDestination(singleDate, TransportNodeType.DESTINATION);
+      // 座標は出発地に合わせて更新されるが、経路情報は保持
+      expect(destination.travelTime).toBe(60);
+      expect(destination.transportMethod).toBe('DRIVING');
+      expect(destination.transportMethodId).toBe(3);
+    });
+
+    it('T3: 単日・ON → 出発地名が既定名（出発地_日付）のとき目的地名は 目的地_日付 になること', () => {
+      const store = useStoreForPlanning.getState();
+      initializeStore(singleDate, singleDate);
+
+      act(() => {
+        store.setIsLocationLinked(false);
+        // 出発地を地図クリック（name=''）でセット → 既定名 '出発地_日付' になる
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE, {
+          name: '',
+          latitude: 35.68,
+          longitude: 139.76,
+          time: DEFAULT_DEPARTURE_TIME,
+          travelTime: 0,
+          transportMethodId: 0,
+          transportMethod: 'DEFAULT',
+          locationType: TransportNodeType.DEPARTURE,
+          alternateRoutes: [],
+        });
+      });
+
+      act(() => {
+        store.setIsLocationLinked(true);
+      });
+
+      const destination = store.getDepartureAndDestination(singleDate, TransportNodeType.DESTINATION);
+      expect(destination.name).toBe(`目的地_${singleDate}`);
+    });
+
+    it('T4: 複数日・ON → day1目的地の座標がday2出発地へ即時コピーされること', () => {
+      const startDate = '2026-03-08';
+      const endDate = '2026-03-09';
+      const day1 = '2026-03-08';
+      const day2 = '2026-03-09';
+
+      const store = useStoreForPlanning.getState();
+      initializeStore(startDate, endDate);
+
+      // day1目的地を別の値に変更（連動OFF）
+      act(() => {
+        store.setIsLocationLinked(false);
+        store.setDepartureAndDestination(day1, TransportNodeType.DESTINATION, {
+          name: '会社',
+          latitude: 35.68,
+          longitude: 139.76,
+          time: DEFAULT_ARRIVAL_TIME,
+          travelTime: 0,
+          transportMethodId: 0,
+          transportMethod: 'DEFAULT',
+          locationType: TransportNodeType.DESTINATION,
+          alternateRoutes: [],
+        });
+      });
+
+      // チェックON → day2出発地がday1目的地に即時同期されるはず
+      act(() => {
+        store.setIsLocationLinked(true);
+      });
+
+      const day2Departure = store.getDepartureAndDestination(day2, TransportNodeType.DEPARTURE);
+      expect(day2Departure.latitude).toBe(35.68);
+      expect(day2Departure.longitude).toBe(139.76);
+    });
+
+    it('T5: 単日 ON・departure→destinationの順で setDepartureAndDestination 後も出発地の travelTime は上書きされないこと', () => {
+      const store = useStoreForPlanning.getState();
+      initializeStore(singleDate, singleDate);
+
+      act(() => {
+        store.setIsLocationLinked(true);
+      });
+
+      // use-planning.ts の書き戻し順（departure → destination）を再現
+      // バグ: destination 設定時に連動が働き、destination の travelTime が departure へ上書きされる
+      act(() => {
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE, {
+          name: '自宅',
+          latitude: 35.7,
+          longitude: 139.8,
+          time: DEFAULT_DEPARTURE_TIME,
+          travelTime: 30,
+          transportMethodId: 1,
+          transportMethod: 'WALKING',
+          locationType: TransportNodeType.DEPARTURE,
+          alternateRoutes: [],
+        });
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DESTINATION, {
+          name: '東京タワー',
+          latitude: 35.6586,
+          longitude: 139.7454,
+          time: DEFAULT_ARRIVAL_TIME,
+          travelTime: 120,
+          transportMethodId: 3,
+          transportMethod: 'DRIVING',
+          locationType: TransportNodeType.DESTINATION,
+          alternateRoutes: [],
+        });
+      });
+
+      const departure = store.getDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE);
+      // 出発地の travelTime が目的地の値(120)で上書きされていないこと
+      expect(departure.travelTime).toBe(30);
+      expect(departure.transportMethod).toBe('WALKING');
+    });
+
+    it('T6: 単日・OFF → 出発地・目的地ともに変わらないこと', () => {
+      const store = useStoreForPlanning.getState();
+      initializeStore(singleDate, singleDate);
+
+      // 出発地を別の値に変更しておく
+      act(() => {
+        store.setIsLocationLinked(false);
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE, {
+          name: '会社',
+          latitude: 35.68,
+          longitude: 139.76,
+          time: DEFAULT_DEPARTURE_TIME,
+          travelTime: 0,
+          transportMethodId: 0,
+          transportMethod: 'DEFAULT',
+          locationType: TransportNodeType.DEPARTURE,
+          alternateRoutes: [],
+        });
+        store.setDepartureAndDestination(singleDate, TransportNodeType.DESTINATION, {
+          name: '東京タワー',
+          latitude: 35.6586,
+          longitude: 139.7454,
+          time: DEFAULT_ARRIVAL_TIME,
+          travelTime: 0,
+          transportMethodId: 0,
+          transportMethod: 'DEFAULT',
+          locationType: TransportNodeType.DESTINATION,
+          alternateRoutes: [],
+        });
+      });
+
+      // OFF にしても値は変わらない
+      act(() => {
+        store.setIsLocationLinked(false);
+      });
+
+      const departure = store.getDepartureAndDestination(singleDate, TransportNodeType.DEPARTURE);
+      const destination = store.getDepartureAndDestination(singleDate, TransportNodeType.DESTINATION);
+      expect(departure.latitude).toBe(35.68);
+      expect(destination.latitude).toBe(35.6586);
     });
   });
 }); // DepartureAndDestination

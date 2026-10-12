@@ -4,6 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import { TripType } from '@shared/trip/types';
 
 import {
+  ExtendNearestStationType,
   ExtendPlanLocationType,
   ExtendSpotType,
   PlanErrorType,
@@ -103,12 +104,8 @@ function createPlanningInitialState(): PlanningInitialState {
 }
 
 /**
- * 地点連動時に、元の地点情報を引き継ぎつつ時刻だけは現在値を保持した地点情報を作る。
- * @param source 連動元の地点情報
- * @param current 時刻を保持したい現在の地点情報
- * @param name 連動後に設定する地点名
- * @param locationType 上書きしたい地点種別
- * @returns 時刻を保持した連動後の地点情報
+ * 地点連動時に、地点座標のみコピーし時刻・経路情報は連動先の現在値を保持した地点情報を作る。
+ * travelTime / transportMethod / alternateRoutes は出発地と目的地で意味が異なるため保持する。
  */
 function copyLinkedLocationPreservingTime(
   source: ExtendPlanLocationType,
@@ -116,12 +113,38 @@ function copyLinkedLocationPreservingTime(
   name: string,
   locationType?: TransportNodeType,
 ): ExtendPlanLocationType {
+  // 最寄駅: 地点情報(placeId/name/座標/徒歩時間等)のみコピー、発車時刻・メモは現在値を保持
+  const nearestStation: ExtendNearestStationType | undefined = source.nearestStation
+    ? {
+        ...(current.nearestStation ?? ({} as ExtendNearestStationType)),
+        placeId: source.nearestStation.placeId,
+        stationType: source.nearestStation.stationType,
+        name: source.nearestStation.name,
+        latitude: source.nearestStation.latitude,
+        longitude: source.nearestStation.longitude,
+        walkingTime: source.nearestStation.walkingTime,
+        distance: source.nearestStation.distance,
+      }
+    : current.nearestStation;
+
   return {
-    ...source,
+    ...current, // 経路情報(travelTime/transportMethod/alternateRoutes)は current を保持
+    latitude: source.latitude,
+    longitude: source.longitude,
+    userLocationId: source.userLocationId,
+    isSetSelectedNearestStation: source.isSetSelectedNearestStation,
+    nearestStation,
     name,
-    time: current.time,
     locationType: locationType ?? source.locationType,
   };
+}
+
+/** 既定名(出発地_日付 / 目的地_日付)または空のとき、連動先の種別に合わせた既定名を返す */
+function resolveLinkedName(sourceName: string, targetType: TransportNodeType, date: string): string {
+  if (!sourceName || /^(出発地|目的地)_/.test(sourceName)) {
+    return targetType === TransportNodeType.DEPARTURE ? `出発地_${date}` : `目的地_${date}`;
+  }
+  return sourceName;
 }
 
 type SpotCoordinationResult = {
@@ -314,7 +337,49 @@ export const useStoreForPlanning = create<FormState>()(
       },
       setDepartureList: (list) => set((state) => ({ ...state, departureList: list })),
       setDestinationList: (list) => set((state) => ({ ...state, destinationList: list })),
-      setIsLocationLinked: (isLinked) => set((state) => ({ ...state, isLocationLinked: isLinked })),
+      setIsLocationLinked: (isLinked) =>
+        set((state) => {
+          state.isLocationLinked = isLinked;
+          if (!isLinked) return;
+
+          const dates = getDatesBetween(new Date(state.startDate), new Date(state.endDate));
+          const isSingleDay = dates.length === 1;
+
+          if (isSingleDay) {
+            const plan = state.plans.find((p) => p.date === dates[0]);
+            if (!plan) return;
+            const destName = resolveLinkedName(plan.departure.name, TransportNodeType.DESTINATION, dates[0]);
+            plan.destination = copyLinkedLocationPreservingTime(
+              plan.departure,
+              plan.destination,
+              destName,
+              TransportNodeType.DESTINATION,
+            );
+            if (state.planningSpotSnapshots[dates[0]]) {
+              state.dirtyPlanningDates[dates[0]] = true;
+            }
+          } else {
+            for (let i = 0; i < dates.length - 1; i++) {
+              const currentPlan = state.plans.find((p) => p.date === dates[i]);
+              const nextPlan = state.plans.find((p) => p.date === dates[i + 1]);
+              if (!currentPlan || !nextPlan) continue;
+              const depName = resolveLinkedName(
+                currentPlan.destination.name,
+                TransportNodeType.DEPARTURE,
+                dates[i + 1],
+              );
+              nextPlan.departure = copyLinkedLocationPreservingTime(
+                currentPlan.destination,
+                nextPlan.departure,
+                depName,
+                TransportNodeType.DEPARTURE,
+              );
+              if (state.planningSpotSnapshots[dates[i + 1]]) {
+                state.dirtyPlanningDates[dates[i + 1]] = true;
+              }
+            }
+          }
+        }),
       getSpotInfo: (date, type: TransportNodeType | null = null) => {
         const plansForDate = get().plans.filter((plan) => plan.date === date);
         if (plansForDate.length > 0) {
@@ -411,23 +476,10 @@ export const useStoreForPlanning = create<FormState>()(
           if (isSingleDay && state.isLocationLinked) {
             const oppositeType = type === TransportNodeType.DEPARTURE ? 'destination' : 'departure';
             const currentOppositeLocation = state.plans[existingPlansIndex][oppositeType];
-            const linkedLocationName =
-              value.name === '' ? (oppositeType === 'departure' ? '出発地_' + date : '目的地_' + date) : value.name;
             const linkedLocationType =
               oppositeType === 'departure' ? TransportNodeType.DEPARTURE : TransportNodeType.DESTINATION;
+            const linkedLocationName = resolveLinkedName(value.name, linkedLocationType, date);
 
-            // 名前が空の場合は、登録値に合わせたデフォルトの名前を入れる
-            if (value.name === '') {
-              state.plans[existingPlansIndex][oppositeType] = copyLinkedLocationPreservingTime(
-                value,
-                currentOppositeLocation,
-                linkedLocationName,
-                linkedLocationType,
-              );
-              return;
-            }
-
-            // 連動ONの場合でも、出発時間または到着時間は連動させない
             state.plans[existingPlansIndex][oppositeType] = copyLinkedLocationPreservingTime(
               value,
               currentOppositeLocation,
@@ -440,11 +492,10 @@ export const useStoreForPlanning = create<FormState>()(
             const nextDate = dates[currentDayIndex + 1];
             const nextDayPlanIndex = state.plans.findIndex((plan) => plan.date === nextDate);
             if (!isSingleDay && nextDayPlanIndex > 0) {
-              // 連動ONの場合でも、出発時間または到着時間は連動させない
               state.plans[nextDayPlanIndex].departure = copyLinkedLocationPreservingTime(
                 value,
                 state.plans[nextDayPlanIndex].departure,
-                value.name === '' ? '出発地_' + nextDate : value.name,
+                resolveLinkedName(value.name, TransportNodeType.DEPARTURE, nextDate),
                 TransportNodeType.DEPARTURE,
               );
             }

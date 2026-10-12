@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "skill-creator@claude-plugins-official": true
-  },
   "permissions": {
     "allow": [
       "Bash(pnpm run test*)",
@@ -19,7 +16,13 @@
       "Bash(gh issue view *)",
       "Bash(git status)",
       "Bash(git diff *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(gh pr *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.dev.*)"
     ],
     "ask": [
       "Bash(git push *)",
@@ -27,13 +30,11 @@
       "Bash(sudo *)",
       "Bash(bun run db:*)",
       "Bash(pnpm run deploy*)"
-    ],
-    "deny": [
-      "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(./.dev.*)"
     ]
   },
-  "showTurnDuration": true,
-  "language": "japanese"
+  "enabledPlugins": {
+    "skill-creator@claude-plugins-official": true
+  },
+  "language": "japanese",
+  "showTurnDuration": true
 }
