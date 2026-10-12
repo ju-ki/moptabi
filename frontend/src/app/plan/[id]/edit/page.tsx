@@ -12,18 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import {
-  APP_LIMITS,
-  DEFAULT_ARRIVAL_TIME,
-  DEFAULT_DEPARTURE_AND_DESTINATION,
-  DEFAULT_DEPARTURE_TIME,
-} from '@/data/constants';
+import { APP_LIMITS } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
+import { buildDepartureFromCandidate, buildDestinationFromCandidate } from '@/lib/plan-location';
 import { TransportNodeType, TravelPlanType } from '@/types/plan';
 import { Button } from '@/components/ui/button';
 import { usePlanning } from '@/hooks/use-planning';
 import { useFetchTripDetail } from '@/hooks/use-trip';
+import { collectSavedTransportMethodIds } from '@/lib/planning';
 
 const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
@@ -60,6 +57,8 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
       fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
+      // 移動手段のチェック状態は保存していないため、保存済みプランで使っている手段から復元する
+      fields.setPlanningInfo(plan.date, { transportationMethodId: collectSavedTransportMethodIds(plan) });
     });
   }, [trip, error, id]);
 
@@ -80,30 +79,8 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
       dates.forEach((date) => {
         fields.addDateWithDefaultLocation(
           date,
-          {
-            name: defaultDeparture?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
-            latitude: defaultDeparture?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
-            longitude: defaultDeparture?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
-            planId: defaultDeparture?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
-            locationType: TransportNodeType.DEPARTURE,
-            transportMethodId: 0, // デフォルトの移動手段IDを設定（例: 0はDEFAULT）
-            transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
-            travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
-            time: DEFAULT_DEPARTURE_TIME,
-            alternateRoutes: [],
-          },
-          {
-            name: defaultDestination?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
-            latitude: defaultDestination?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
-            longitude: defaultDestination?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
-            planId: defaultDestination?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
-            locationType: TransportNodeType.DESTINATION,
-            transportMethodId: 0, // デフォルトの移動手段IDを設定（例: 0はDEFAULT）
-            transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
-            travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
-            time: DEFAULT_ARRIVAL_TIME,
-            alternateRoutes: [],
-          },
+          buildDepartureFromCandidate(defaultDeparture),
+          buildDestinationFromCandidate(defaultDestination),
         );
       });
 

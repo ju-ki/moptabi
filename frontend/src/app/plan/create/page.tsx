@@ -5,20 +5,16 @@ import { useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getDatesBetween } from '@/lib/utils';
+import { getDatesBetween, getTomorrowDateString } from '@/lib/utils';
 import { useStoreForPlanning } from '@/lib/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import {
-  APP_LIMITS,
-  DEFAULT_DEPARTURE_AND_DESTINATION,
-  DEFAULT_DEPARTURE_TIME,
-  DEFAULT_ARRIVAL_TIME,
-} from '@/data/constants';
+import { APP_LIMITS } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
+import { buildDepartureFromCandidate, buildDestinationFromCandidate } from '@/lib/plan-location';
 import { TransportNodeType } from '@/types/plan';
 
 /**
@@ -58,30 +54,8 @@ const TravelPlanCreate = () => {
       dates.forEach((date) => {
         fields.addDateWithDefaultLocation(
           date,
-          {
-            name: defaultDeparture?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
-            latitude: defaultDeparture?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
-            longitude: defaultDeparture?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
-            planId: defaultDeparture?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
-            locationType: TransportNodeType.DEPARTURE,
-            transportMethodId: 0, // デフォルトの移動手段IDを設定（例: 0はDEFAULT）
-            transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
-            travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
-            time: DEFAULT_DEPARTURE_TIME,
-            alternateRoutes: [],
-          },
-          {
-            name: defaultDestination?.name ?? DEFAULT_DEPARTURE_AND_DESTINATION.name,
-            latitude: defaultDestination?.latitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.latitude,
-            longitude: defaultDestination?.longitude ?? DEFAULT_DEPARTURE_AND_DESTINATION.longitude,
-            planId: defaultDestination?.planId ?? DEFAULT_DEPARTURE_AND_DESTINATION.planId,
-            locationType: TransportNodeType.DESTINATION,
-            transportMethodId: 0, // デフォルトの移動手段IDを設定（例: 0はDEFAULT）
-            transportMethod: 'DEFAULT', // デフォルトの移動手段を設定
-            travelTime: 0, // デフォルトの移動時間を設定（例: 0分）
-            time: DEFAULT_ARRIVAL_TIME,
-            alternateRoutes: [],
-          },
+          buildDepartureFromCandidate(defaultDeparture),
+          buildDestinationFromCandidate(defaultDestination),
         );
       });
 
@@ -90,9 +64,10 @@ const TravelPlanCreate = () => {
     }
   }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
 
-  // コンポーネントのマウント時にストアを初期化
+  // コンポーネントのマウント時にストアを初期化し、開始日のデフォルトとして翌日をセットする
   useEffect(() => {
     fields.resetPlanningStore();
+    fields.setFields('startDate', getTomorrowDateString());
   }, []);
 
   return (

@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AI Travel Planner — a full-stack web app for creating and managing travel itineraries, leveraging Google Maps API. Monorepo with a Next.js frontend, Hono backend, and a shared types package.
 
+## Concepts
+旅行をいつでも楽しめるように、「旅行前（計画・準備）」、「旅行中（実行・ナビゲーション）」、「旅行後（思い出・振り返り）」と循環し、旅の楽しさを常に感じられるアプリケーションを目指します。
+
+## Targets
+- 一人旅から少人数での旅行計画を立てるユーザー。
+- じっくり計画を練りたいユーザー
+- 年に数回とかではなく、常に旅をしているユーザー(社会人とかであれば、月2~4とかのレベル(日帰りも含む))
+- 週末や連休にふらっと出かけたいユーザー
+
+## Device
+- smartphone (iphone or android(now only web))
+- PC
+
 ## Commands
 
 ### Root (both projects)
@@ -15,32 +28,6 @@ npm run format:check  # Format check both
 npm run typecheck     # Type check both
 ```
 
-### Backend (`cd backend`, uses Bun)
-```bash
-bun run dev           # Dev server on port 8787
-bun run test          # Run all tests
-bun run test <file>   # Run a single test file (e.g. bun run test trip.service.spec.ts)
-bun run test:coverage
-bun run lint
-bun run typecheck
-bun run db:generate   # Generate Drizzle migrations
-bun run db:push       # Apply schema to dev DB
-bun run db:studio     # Drizzle Studio UI
-bun run db:push:test  # Apply schema to test DB
-bun run db:reset:test # Reset test DB
-```
-
-### Frontend (`cd frontend`, uses pnpm)
-```bash
-pnpm run dev          # Dev server on port 3000
-pnpm run test         # Run all tests
-pnpm run test -- <file>  # Run a single test file
-pnpm run test:watch
-pnpm run test:coverage
-pnpm run lint
-pnpm run typecheck
-pnpm run build
-```
 
 ### Local Environment
 ```bash
@@ -87,22 +74,16 @@ make restart  # Full restart
 
 **Backend deployment**: Hono runs on Node.js locally and can deploy to Cloudflare Workers (`wrangler.toml`).
 
-## Testing Guidelines
+## コミュニケーション
+- 日本語で応答する（コード・変数名は英語）
+- 簡潔に回答し、自明な説明は省略する
+- 簡易的な修正であっても、先に実装計画書(md形式)を作成して、レビューをもらってから実装に移ること
 
-**Backend tests** (`backend/src/tests/*.spec.ts`):
-- Test schema/model first, then API responses
-- Use `describe('GET /api/path')` naming for API tests
-- Base assertions on types defined in `models/`
-- Run `bun run test` before finishing any task
-
-**Frontend tests** (`frontend/src/tests/`):
-- Use Vitest + React Testing Library
-- Write `describe`/`it` labels in Japanese
-- Avoid mocks where possible; if needed, leave a comment explaining why
-- Use `data-testid` attributes when element selection is otherwise difficult
-- Do not refactor source files during testing — leave a comment instead
-
-**Always run type check as final step**: `bun run typecheck` (backend) or `pnpm run typecheck` (frontend).
+## ブランチ戦略
+- 基本的にはPRは手動で作成しない(CI上でfeatureブランチを作成すればPRが自動生成されるため)
+- ブランチ名はfeaturexxx(issue番号)とする
+- 複数機能に跨るまたは規模多くなる場合はまず大本となるfeaturexxxブランチをリモートで作成する
+- その後大本のfeaturexxxからブランチを切り、featurexxx-somethingという命名でブランチを作成する(CI上でfeaturexxxブランチに向いたPRが作成)
 
 ## Documentation & Planning
 

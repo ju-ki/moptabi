@@ -78,6 +78,16 @@ export function updatedTime(baseTime: string, diffTime: string): string {
  * @param end   終了日付
  * @returns 間の日付を含んだ日付のリスト
  */
+/**
+ * 基準日の翌日を YYYY-MM-DD 形式（ローカル時刻）で返す。
+ * @param baseDate 基準日（省略時は現在日時）
+ * @returns 翌日の日付文字列
+ */
+export const getTomorrowDateString = (baseDate: Date = new Date()): string => {
+  const tomorrow = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate() + 1);
+  return tomorrow.toLocaleDateString('sv-SE');
+};
+
 export const getDatesBetween = (start: Date, end: Date) => {
   if (!start || !end) {
     return [];

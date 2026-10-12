@@ -1,10 +1,23 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockResetPlanningStore } = vi.hoisted(() => ({
-  mockResetPlanningStore: vi.fn(),
-}));
+import TravelPlanCreate from '@/app/plan/create/page';
+
+import type { PlanLocationCandidateResponseType } from '@shared/user/types';
+
+const { mockResetPlanningStore, mockAddDateWithDefaultLocation, mockSetFields, mockCandidatesState } = vi.hoisted(
+  () => ({
+    mockResetPlanningStore: vi.fn(),
+    mockAddDateWithDefaultLocation: vi.fn(),
+    mockSetFields: vi.fn(),
+    // 候補APIの戻り値をテストごとに切り替えるための状態
+    mockCandidatesState: {
+      candidates: null as PlanLocationCandidateResponseType | null,
+      isLoading: true,
+    },
+  }),
+);
 
 vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
@@ -12,18 +25,18 @@ vi.mock('@/lib/plan', () => ({
     endDate: '2026-06-01',
     errors: {},
     resetPlanningStore: mockResetPlanningStore,
-    addDateWithDefaultLocation: vi.fn(),
+    addDateWithDefaultLocation: mockAddDateWithDefaultLocation,
     setDepartureList: vi.fn(),
     setDestinationList: vi.fn(),
-    setFields: vi.fn(),
+    setFields: mockSetFields,
     setRangeDate: vi.fn(),
   }),
 }));
 
 vi.mock('@/hooks/use-plan-location', () => ({
   usePlanLocationCandidates: () => ({
-    candidates: null,
-    isLoading: true,
+    candidates: mockCandidatesState.candidates,
+    isLoading: mockCandidatesState.isLoading,
   }),
 }));
 
@@ -50,11 +63,31 @@ vi.mock('@/components/ui/tabs', () => ({
   TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
-import TravelPlanCreate from '@/app/plan/create/page';
-
 describe('plan/create page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCandidatesState.candidates = null;
+    mockCandidatesState.isLoading = true;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('画面をマウントした際、ストアを初期化した後に開始日へ翌日の日付をセットすること', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 8, 10, 0, 0));
+
+    render(<TravelPlanCreate />);
+
+    expect(mockSetFields).toHaveBeenCalledWith('startDate', '2026-10-09');
+    expect(mockResetPlanningStore.mock.invocationCallOrder[0]).toBeLessThan(mockSetFields.mock.invocationCallOrder[0]);
+  });
+
+  it('画面をマウントした際、終了日はセットしないこと', () => {
+    render(<TravelPlanCreate />);
+
+    expect(mockSetFields).not.toHaveBeenCalledWith('endDate', expect.anything());
   });
 
   it('画面を離脱した場合、プラン作成ストアを初期化すること', () => {
@@ -69,5 +102,50 @@ describe('plan/create page', () => {
     render(<TravelPlanCreate />);
 
     expect(mockResetPlanningStore).toHaveBeenCalled();
+  });
+
+  it('最寄駅付きのデフォルト出発地がある場合、最寄駅が選択された状態で出発地をセットすること', () => {
+    mockCandidatesState.isLoading = false;
+    mockCandidatesState.candidates = {
+      favorites: [
+        {
+          name: '自宅',
+          latitude: 35.6895,
+          longitude: 139.6917,
+          label: null,
+          isDefault: true,
+          locationType: 'DEPARTURE',
+          usageCount: 0,
+          planId: null,
+          planName: null,
+          userLocationId: 10,
+          planLocationId: null,
+          nearestStation: {
+            placeId: 'station-place-id',
+            stationType: 'TRAIN',
+            latitude: 35.6905,
+            longitude: 139.7004,
+            name: '新宿駅',
+            transitTime: 0,
+            walkingTime: 8,
+          },
+        },
+      ],
+      history: [],
+    };
+
+    render(<TravelPlanCreate />);
+
+    expect(mockAddDateWithDefaultLocation).toHaveBeenCalledWith(
+      '2026-06-01',
+      expect.objectContaining({
+        name: '自宅',
+        userLocationId: 10,
+        transportMethod: 'TRANSIT',
+        isSetSelectedNearestStation: true,
+        nearestStation: expect.objectContaining({ placeId: 'station-place-id', name: '新宿駅' }),
+      }),
+      expect.objectContaining({ locationType: 'DESTINATION' }),
+    );
   });
 });

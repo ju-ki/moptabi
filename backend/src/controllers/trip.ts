@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { eq, and, count, sql, inArray } from 'drizzle-orm';
-import { getDbFromContext, trip, planLocation, userLocation, getPostgresDb } from '@db';
+import { eq, and, count } from 'drizzle-orm';
+import { getDbFromContext, trip, getPostgresDb } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 import { createTrip, getTripDetailById, updateTrip } from '@/services/trip';
@@ -11,7 +11,7 @@ import { APP_LIMITS } from '../constants/limits';
 export const getTripHandler = {
   // 全ての旅行計画を取得
   getTrips: async (c: Context) => {
-    const db = getPostgresDb(c);
+    const db = getDbFromContext(c);
     const userId = getUserId(c);
 
     if (!userId) {
@@ -85,20 +85,12 @@ export const getTripHandler = {
   // 新しい旅行計画を登録
   createTrip: async (c: Context) => {
     const db = getPostgresDb(c);
-    try {
-      const createdTripId = await createTrip(db, c);
-      // 作成した旅行計画のidを渡してリダイレクト用に使用させる
-      if (!createdTripId) {
-        throw new HTTPException(500, { message: 'Failed to create trip' });
-      }
-      return c.json({ id: createdTripId }, 201);
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('No transactions support in neon-http driver')) {
-        console.error('Transaction is not supported by the neon-http driver.');
-        throw new HTTPException(500, { message: 'Failed to create trip' });
-      }
-      throw error;
+    const createdTripId = await createTrip(db, c);
+    // 作成した旅行計画のidを渡してリダイレクト用に使用させる
+    if (!createdTripId) {
+      throw new HTTPException(500, { message: 'Failed to create trip' });
     }
+    return c.json({ id: createdTripId }, 201);
   },
   // 旅行計画の更新
   updateTrip: async (c: Context) => {

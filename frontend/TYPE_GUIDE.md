@@ -18,25 +18,14 @@ API の request / response 契約として frontend / backend で共通利用す
 
 ### `frontend/src/models`
 
-frontend で複数箇所から参照する「画面・hook・store の共通型」を置く。
-shared 契約型をそのまま使えない場合は、ここで frontend 用の補強型を定義する。
-
-例:
-
-* `models/admin.ts`: 管理画面の一覧・クエリ型
-* `models/mypage.ts`: マイページ集約データ型
-* `models/trip.ts`: Trip 作成型、一覧型、detail 補強型
+- zodを使用したバリデーションで使用するものを定義する
+- shared-typesを拡張したスキーマを作成したい場合もここで使用する
 
 ### `frontend/src/types`
 
 frontend 専用で、主に UI 状態・地図表示・検索条件・描画補助に使う型を置く。
-API 契約型の再定義は置かない。
+API 契約型の再定義は置かないが拡張した場合は新たに定義するのではなく、&で型を拡張して使う(例:Extend*Typeのような)
 
-例:
-
-* `types/plan.ts`: 計画作成画面の状態型、地図・経路表示型
-* `types/spot.ts`: Google Places 補助型
-* `types/wishlist.ts`: view/filter/sort など UI 状態型
 
 ### component / hook ローカル
 
@@ -45,9 +34,9 @@ API 契約型の再定義は置かない。
 
 ## 判断基準
 
-1. backend と共有したい契約か
+1. frontend/backend と共有したい契約か
    `packages/shared-types` を使う
-2. frontend 内で複数ファイルが参照するか
+2. frontend 内でフォームバリデーション用に使う
    `frontend/src/models` に置く
 3. UI 状態や表示専用か
    `frontend/src/types` に置く
@@ -70,5 +59,4 @@ API 契約型の再定義は置かない。
 
 * まず shared 契約型で足りるか確認する
 * 足りない場合は frontend のどこで再利用されるか確認する
-* `models` へ置くなら API 補強理由をコメントで短く残す
 * `types` へ置くなら UI 専用であることを意識する

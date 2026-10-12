@@ -186,15 +186,16 @@ jobs:
           name: backend-junit
           path: backend/coverage/junit.xml
 
+      # Dependabot が起動したワークフローには secrets.GH_TOKEN が渡らず認証エラーになるためスキップする
       - name: 'Report Coverage'
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
         uses: romeovs/lcov-reporter-action@v0.2.16
         with:
           github-token: ${{ secrets.GH_TOKEN }}
           lcov-file: backend/coverage/lcov.info
 
       - name: Post or update PR comment with test summary
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' && github.actor != 'dependabot[bot]' }}
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_TOKEN }}
@@ -328,7 +329,15 @@ jobs:
               exit 0
             fi
 
-            # 4. PRが存在しない場合は新規作成
+            # 4. ベースブランチとの差分コミットがない場合（ブランチ作成直後など）はスキップ
+            AHEAD_BY=$(gh api "repos/${{ github.repository }}/compare/${BASE_BRANCH}...${CURRENT_BRANCH}" --jq '.ahead_by')
+            if [ "$AHEAD_BY" = "0" ]; then
+              echo "pr_url=" >> $GITHUB_OUTPUT
+              echo "$BASE_BRANCH との差分コミットがないため、PR作成をスキップします。"
+              exit 0
+            fi
+
+            # 5. PRが存在しない場合は新規作成
             echo "新規PRを作成します: $CURRENT_BRANCH -> $BASE_BRANCH"
 
 

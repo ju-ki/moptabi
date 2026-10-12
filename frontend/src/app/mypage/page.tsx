@@ -6,10 +6,9 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ProfileSection } from '@/components/mypage/ProfileSection';
-import { NextTripSection } from '@/components/mypage/NextTripSection';
+import { TripScheduleSection } from '@/components/mypage/TripScheduleSection';
 import { TripSummaryCards } from '@/components/mypage/TripSummaryCards';
 import { UsageStatus } from '@/components/mypage/UsageStatus';
-import { RecentTrips } from '@/components/mypage/RecentTrips';
 import { useMypageData } from '@/hooks/use-mypage';
 import LoadingState from '@/components/common/LoadingState';
 import { UserLocation } from '@/components/mypage';
@@ -21,7 +20,9 @@ import { useToast } from '@/hooks/use-toast';
  */
 export default function MyPage() {
   const {
-    nextTrip,
+    trips,
+    nextTrips,
+    defaultCalendarDate,
     visitedCount,
     wishlistCount,
     totalTripDays,
@@ -29,7 +30,6 @@ export default function MyPage() {
     planLimit,
     wishlistLimit,
     wishlistTotalCount,
-    recentTrips,
     userLocations,
     isLoading,
     error,
@@ -76,8 +76,13 @@ export default function MyPage() {
           deleteUserLocation={deleteUserLocation}
         />
 
-        {/* 次の旅セクション */}
-        <NextTripSection nextTrip={nextTrip} wishlistCount={wishlistCount} />
+        {/* 次の旅・カレンダーセクション */}
+        <TripScheduleSection
+          nextTrips={nextTrips}
+          wishlistCount={wishlistCount}
+          trips={trips}
+          defaultCalendarDate={defaultCalendarDate}
+        />
 
         {/* 旅のサマリーカード */}
         <TripSummaryCards visitedCount={visitedCount} wishlistCount={wishlistCount} totalTripDays={totalTripDays} />
@@ -89,9 +94,6 @@ export default function MyPage() {
           wishlistCount={wishlistTotalCount}
           wishlistLimit={wishlistLimit}
         />
-
-        {/* 最近の旅 */}
-        <RecentTrips trips={recentTrips} />
 
         {/* アカウントセクション */}
         <Card>

@@ -121,14 +121,14 @@ describe('useMypageData', () => {
 
       const { result } = renderHook(() => useMypageData());
 
-      expect(result.current.nextTrip).not.toBeNull();
-      expect(result.current.nextTrip?.id).toBe(2);
-      expect(result.current.nextTrip?.title).toBe('京都旅行');
+      expect(result.current.nextTrips).toHaveLength(2);
+      expect(result.current.nextTrips[0].id).toBe(2);
+      expect(result.current.nextTrips[0].title).toBe('京都旅行');
       // モック日付 2025-01-01 JST から 2025-01-15 まで15日間（1日から15日）
-      expect(result.current.nextTrip?.daysUntil).toBe(15);
+      expect(result.current.nextTrips[0].daysUntil).toBe(14);
     });
 
-    it('未来のプランがない場合はnullが返される', () => {
+    it('未来のプランがない場合は空配列が返される', () => {
       const mockTrips = [{ id: 1, title: '過去の旅行', startDate: '2024-12-01', endDate: '2024-12-03' }];
 
       mockUseSWR.mockImplementation((key: string | null) => {
@@ -179,7 +179,7 @@ describe('useMypageData', () => {
 
       const { result } = renderHook(() => useMypageData());
 
-      expect(result.current.nextTrip).toBeNull();
+      expect(result.current.nextTrips).toHaveLength(0);
     });
   });
 
@@ -381,29 +381,22 @@ describe('useMypageData', () => {
     });
   });
 
-  describe('最近の旅', () => {
-    it('過去のプランが開始日降順で最大3件取得される', () => {
+  describe('次の旅の件数上限', () => {
+    it('未来のプランが3件を超える場合でも最大3件のみ返される', () => {
       const mockTrips = [
-        { id: 1, title: '最新の旅行', startDate: '2024-12-20', endDate: '2024-12-21' },
-        { id: 2, title: '2番目の旅行', startDate: '2024-12-10', endDate: '2024-12-11' },
-        { id: 3, title: '3番目の旅行', startDate: '2024-11-20', endDate: '2024-11-21' },
-        { id: 4, title: '4番目の旅行', startDate: '2024-11-10', endDate: '2024-11-11' }, // 含まれない
-        { id: 5, title: '未来の旅行', startDate: '2025-02-01', endDate: '2025-02-02' }, // 含まれない
+        { id: 1, title: '旅行A', startDate: '2025-01-15', endDate: '2025-01-16' },
+        { id: 2, title: '旅行B', startDate: '2025-02-01', endDate: '2025-02-02' },
+        { id: 3, title: '旅行C', startDate: '2025-03-01', endDate: '2025-03-02' },
+        { id: 4, title: '旅行D', startDate: '2025-04-01', endDate: '2025-04-02' },
       ];
 
       mockUseSWR.mockImplementation((key: string | null) => {
         if (key?.includes('/trips') && !key?.includes('count')) {
-          return {
-            data: mockTrips,
-            error: undefined,
-            isLoading: false,
-            isValidating: false,
-            mutate: vi.fn(),
-          };
+          return { data: mockTrips, error: undefined, isLoading: false, isValidating: false, mutate: vi.fn() };
         }
         if (key?.includes('/trips/count')) {
           return {
-            data: { count: 5, limit: 20 },
+            data: { count: 4, limit: 20 },
             error: undefined,
             isLoading: false,
             isValidating: false,
@@ -411,13 +404,7 @@ describe('useMypageData', () => {
           };
         }
         if (key?.includes('/wishlist') && !key?.includes('count')) {
-          return {
-            data: [],
-            error: undefined,
-            isLoading: false,
-            isValidating: false,
-            mutate: vi.fn(),
-          };
+          return { data: [], error: undefined, isLoading: false, isValidating: false, mutate: vi.fn() };
         }
         if (key?.includes('/wishlist/count')) {
           return {
@@ -428,75 +415,15 @@ describe('useMypageData', () => {
             mutate: vi.fn(),
           };
         }
-        return {
-          data: [],
-          error: undefined,
-          isLoading: false,
-          isValidating: false,
-          mutate: vi.fn(),
-        };
+        return { data: [], error: undefined, isLoading: false, isValidating: false, mutate: vi.fn() };
       });
 
       const { result } = renderHook(() => useMypageData());
 
-      expect(result.current.recentTrips).toHaveLength(3);
-      expect(result.current.recentTrips[0].title).toBe('最新の旅行');
-      expect(result.current.recentTrips[1].title).toBe('2番目の旅行');
-      expect(result.current.recentTrips[2].title).toBe('3番目の旅行');
-    });
-
-    it('過去のプランがない場合は空配列が返される', () => {
-      const mockTrips = [{ id: 1, title: '未来の旅行', startDate: '2025-02-01', endDate: '2025-02-02' }];
-
-      mockUseSWR.mockImplementation((key: string | null) => {
-        if (key?.includes('/trips') && !key?.includes('count')) {
-          return {
-            data: mockTrips,
-            error: undefined,
-            isLoading: false,
-            isValidating: false,
-            mutate: vi.fn(),
-          };
-        }
-        if (key?.includes('/trips/count')) {
-          return {
-            data: { count: 1, limit: 20 },
-            error: undefined,
-            isLoading: false,
-            isValidating: false,
-            mutate: vi.fn(),
-          };
-        }
-        if (key?.includes('/wishlist') && !key?.includes('count')) {
-          return {
-            data: [],
-            error: undefined,
-            isLoading: false,
-            isValidating: false,
-            mutate: vi.fn(),
-          };
-        }
-        if (key?.includes('/wishlist/count')) {
-          return {
-            data: { count: 0, limit: 100 },
-            error: undefined,
-            isLoading: false,
-            isValidating: false,
-            mutate: vi.fn(),
-          };
-        }
-        return {
-          data: [],
-          error: undefined,
-          isLoading: false,
-          isValidating: false,
-          mutate: vi.fn(),
-        };
-      });
-
-      const { result } = renderHook(() => useMypageData());
-
-      expect(result.current.recentTrips).toHaveLength(0);
+      expect(result.current.nextTrips).toHaveLength(3);
+      expect(result.current.nextTrips[0].title).toBe('旅行A');
+      expect(result.current.nextTrips[1].title).toBe('旅行B');
+      expect(result.current.nextTrips[2].title).toBe('旅行C');
     });
   });
 
