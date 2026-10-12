@@ -141,7 +141,7 @@ function copyLinkedLocationPreservingTime(
 
 /** 既定名(出発地_日付 / 目的地_日付)または空のとき、連動先の種別に合わせた既定名を返す */
 function resolveLinkedName(sourceName: string, targetType: TransportNodeType, date: string): string {
-  if (!sourceName || /^(出発地|目的地)_/.test(sourceName)) {
+  if (!sourceName || /^(出発地|目的地)_\d{4}-\d{2}-\d{2}$/.test(sourceName)) {
     return targetType === TransportNodeType.DEPARTURE ? `出発地_${date}` : `目的地_${date}`;
   }
   return sourceName;
