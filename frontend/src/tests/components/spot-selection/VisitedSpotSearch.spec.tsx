@@ -67,7 +67,33 @@ vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
     setSpots: mockSetSpots,
     planErrors: {},
-    plans: [{ date: '2025-12-15', spots: [] }],
+    plans: [
+      {
+        date: '2025-12-15',
+        spots: [],
+        departure: { name: '東京駅', latitude: 35.6812, longitude: 139.7671 },
+        destination: { name: '新宿駅', latitude: 35.6896, longitude: 139.7006 },
+      },
+    ],
+  }),
+}));
+
+// Mock geo utility
+vi.mock('@/lib/geo', () => ({
+  calcMidpoint: (a: any, b: any) => ({
+    id: `midpoint-${a.id}-${b.id}`,
+    name: `${a.name}と${b.name}の中間`,
+    lat: (a.lat + b.lat) / 2,
+    lng: (a.lng + b.lng) / 2,
+  }),
+}));
+
+// Mock current location hook
+vi.mock('@/hooks/spot-search/use-current-location', () => ({
+  useCurrentLocation: () => ({
+    currentLocation: { id: 'current-location', name: '現在地', lat: 35.6812, lng: 139.7671 },
+    isLocating: false,
+    error: null,
   }),
 }));
 
@@ -94,6 +120,11 @@ vi.mock('@/store/planning/spotSearchStore', () => ({
     setHighRating: (value: boolean) => {
       mockData.highRating = value;
     },
+    selectedThemes: [],
+    setSelectedThemes: vi.fn(),
+    planSpotSelection: [],
+    togglePlanSpotSelection: vi.fn(),
+    clearPlanSpotSelection: vi.fn(),
     wishlistPrefectureFilter: 'all',
     setWishlistPrefectureFilter: vi.fn(),
     wishlistPriorityFilter: 99,

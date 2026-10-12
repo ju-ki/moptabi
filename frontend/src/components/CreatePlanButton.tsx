@@ -8,7 +8,8 @@ import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
 import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
 import { useFetchTripDetail } from '@/hooks/use-trip';
-import { PLANNING_DIRTY_BLOCK_MESSAGE } from '@/data/constants';
+import { PLANNING_DIRTY_BLOCK_MESSAGE, PLANNING_ERROR_BLOCK_MESSAGE } from '@/data/constants';
+import { hasPlanningError } from '@/lib/planning';
 
 import { Button } from './ui/button';
 
@@ -26,10 +27,10 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
   const { postTrip, patchTrip } = useFetchTripDetail();
 
   /**
-   * 保存前にフォーム入力とdirty状態を検証する。
+   * 保存前にフォーム入力とdirty状態、プランニング結果のエラーを検証する。
    * @returns 検証結果の種別
    */
-  const checkValidation = (): 'success' | 'dirty-blocked' | 'validation-error' => {
+  const checkValidation = (): 'success' | 'dirty-blocked' | 'error-blocked' | 'validation-error' => {
     let isError = false;
 
     if (fields.title === '') {
@@ -52,6 +53,16 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
         variant: 'destructive',
       });
       return 'dirty-blocked';
+    }
+
+    // 23:59 超過などエラーのあるプランニング結果は保存できない
+    if (dates.some((date) => hasPlanningError(fields.getPlanningResult(date)))) {
+      toast({
+        title: PLANNING_ERROR_BLOCK_MESSAGE.title,
+        description: PLANNING_ERROR_BLOCK_MESSAGE.description,
+        variant: 'destructive',
+      });
+      return 'error-blocked';
     }
 
     // プラン日数の上限チェック
@@ -110,6 +121,10 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
   const handleCreatePlan = async () => {
     try {
       const validationResult = checkValidation();
+      // トーストは1件しか表示されないため、ブロック理由のトーストを上書きしない
+      if (validationResult === 'dirty-blocked' || validationResult === 'error-blocked') {
+        return;
+      }
       if (validationResult != 'success') {
         toast({
           title: '入力項目に一部不備があります',

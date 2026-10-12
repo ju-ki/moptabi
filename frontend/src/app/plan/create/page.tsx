@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getDatesBetween } from '@/lib/utils';
+import { getDatesBetween, getTomorrowDateString } from '@/lib/utils';
 import { useStoreForPlanning } from '@/lib/plan';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
@@ -64,9 +64,10 @@ const TravelPlanCreate = () => {
     }
   }, [isDepartureCandidatesLoading, departureCandidates, isDestinationCandidatesLoading, destinationCandidates, dates]);
 
-  // コンポーネントのマウント時にストアを初期化
+  // コンポーネントのマウント時にストアを初期化し、開始日のデフォルトとして翌日をセットする
   useEffect(() => {
     fields.resetPlanningStore();
+    fields.setFields('startDate', getTomorrowDateString());
   }, []);
 
   return (

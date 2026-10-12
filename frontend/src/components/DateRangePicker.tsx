@@ -125,13 +125,21 @@ export const DateRangePicker = ({
     });
   };
 
-  // ユーザー向けメッセージ
-  const getHintMessage = () => {
-    if (!fromDate) return `開始日を選んでください（最大 ${maxDays} 日間）`;
-    if (fromDate && !toDate) return '終了日を選ぶか、同じ日を選んで「日帰り」にしてください';
-    if (toDate && fromDate.getTime() === toDate.getTime()) return '同じ日を選ぶと選択を解除できます';
-    return '日付を減らすには、開始または終了日を選択してください';
+  // ユーザー向けメッセージ（選択状態ごとの全パターン）
+  const hintMessages = {
+    notSelected: `開始日を選んでください（最大 ${maxDays} 日間）`,
+    startOnly: '終了日を選ぶか、同じ日を選んで「日帰り」にしてください',
+    dayTrip: '同じ日を選ぶと選択を解除できます',
+    multiDay: '日付を減らすには、開始または終了日を選択してください',
   };
+
+  const getHintMessage = () => {
+    if (!fromDate) return hintMessages.notSelected;
+    if (fromDate && !toDate) return hintMessages.startOnly;
+    if (toDate && fromDate.getTime() === toDate.getTime()) return hintMessages.dayTrip;
+    return hintMessages.multiDay;
+  };
+  const currentHint = getHintMessage();
 
   /**
    * 削除ボタン押下維持の処理
@@ -198,9 +206,29 @@ export const DateRangePicker = ({
             <Info className="h-3.5 w-3.5 text-blue-500" />
             <span>日付選択のヒント</span>
           </div>
-          <div className="text-xs text-muted-foreground">{getHintMessage()}</div>
+          {/*
+            全ヒントを同じセルに重ねて描画し、現在の文言以外は非表示にする。
+            ポップオーバーの幅が常に最長のヒントで決まるため、選択状態が変わってもカレンダーの幅が変わらない。
+          */}
+          <div className="grid text-xs text-muted-foreground">
+            {Object.values(hintMessages).map((message) => {
+              const isCurrent = message === currentHint;
+              return (
+                <div
+                  key={message}
+                  data-testid={isCurrent ? 'date-range-hint' : undefined}
+                  aria-hidden={!isCurrent}
+                  className={cn('col-start-1 row-start-1', !isCurrent && 'invisible')}
+                >
+                  {message}
+                </div>
+              );
+            })}
+          </div>
         </div>
         <Calendar
+          // ポップオーバーの幅に合わせて曜日・日付の列を均等に広げる
+          className="[&_td]:flex-1 [&_td_button]:w-full [&_th]:flex-1"
           locale={ja}
           initialFocus
           mode="range"

@@ -12,6 +12,12 @@ interface SpotSearchState {
   searchKeyword: string;
   highRating: boolean;
 
+  // Google検索用テーマフィルター（searchCategories とは独立）
+  selectedThemes: string[];
+
+  // プランスポット基準検索: 選択中スポットID（最大2件）
+  planSpotSelection: string[];
+
   // スポット検索条件(行きたいリスト)
   wishlistPrefectureFilter: string;
   wishlistPriorityFilter: number;
@@ -62,6 +68,9 @@ interface SpotSearchState {
   setMapCenter: (center: Coordination) => void;
   setMapSelectOpen: (open: boolean) => void;
   setSelectedSpot: (spot: Spot | null) => void;
+  setSelectedThemes: (themes: string[]) => void;
+  togglePlanSpotSelection: (spotId: string) => void;
+  clearPlanSpotSelection: () => void;
   resetFilters: () => void;
 }
 
@@ -81,6 +90,8 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       searchCategories: [],
       searchKeyword: '',
       highRating: false,
+      selectedThemes: [],
+      planSpotSelection: [],
       searchResults: [],
       filteredWishlistSpot: [],
       filteredVisitedSpot: [],
@@ -232,6 +243,29 @@ export const useSpotSearchStore = create<SpotSearchState>()(
           state.visitedSortOrder = order;
         });
       },
+      setSelectedThemes: (themes) => {
+        set((state) => {
+          state.selectedThemes = themes;
+        });
+      },
+
+      togglePlanSpotSelection: (spotId) => {
+        set((state) => {
+          const idx = state.planSpotSelection.indexOf(spotId);
+          if (idx >= 0) {
+            state.planSpotSelection.splice(idx, 1);
+          } else if (state.planSpotSelection.length < 2) {
+            state.planSpotSelection.push(spotId);
+          }
+        });
+      },
+
+      clearPlanSpotSelection: () => {
+        set((state) => {
+          state.planSpotSelection = [];
+        });
+      },
+
       resetFilters: () => {
         set((state) => {
           state.searchCenter = defaultCenter;
@@ -239,6 +273,8 @@ export const useSpotSearchStore = create<SpotSearchState>()(
           state.searchCategories = [];
           state.searchKeyword = '';
           state.highRating = false;
+          state.selectedThemes = [];
+          state.planSpotSelection = [];
         });
       },
     })),
