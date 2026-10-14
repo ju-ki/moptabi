@@ -21,10 +21,10 @@ import { GoogleMap, Marker } from '@react-google-maps/api';
 import {
   UserLocation,
   LOCATION_LABELS,
-  MAX_USER_LOCATIONS,
   CreateUserLocationRequest,
   UpdateUserLocationRequest,
 } from '@/models/userLocation';
+import { useUserLimits } from '@/hooks/use-user-limits';
 import { useGeocoding } from '@/hooks/use-geocoding';
 import { cn } from '@/lib/utils';
 import { searchNearestStation } from '@/lib/google-maps';
@@ -64,6 +64,7 @@ export function UserLocationSection({
   updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
   deleteUserLocation: (id: number) => Promise<Response>;
 }) {
+  const { limits } = useUserLimits();
   const firstWithLocation = userLocationList?.find((s) => s.isDefault);
   const mapCenter = firstWithLocation
     ? { lat: firstWithLocation.latitude, lng: firstWithLocation.longitude }
@@ -178,7 +179,7 @@ export function UserLocationSection({
     setSelectedLocation(null);
   }
 
-  const canAddMore = locations.length < MAX_USER_LOCATIONS;
+  const canAddMore = locations.length < limits.maxUserLocations;
 
   return (
     <Card>
@@ -198,7 +199,7 @@ export function UserLocationSection({
                 </TooltipContent>
               </Tooltip>
               <Badge variant="outline" className="ml-2">
-                {locations.length} / {MAX_USER_LOCATIONS}
+                {locations.length} / {limits.maxUserLocations}
               </Badge>
             </CardTitle>
           </div>

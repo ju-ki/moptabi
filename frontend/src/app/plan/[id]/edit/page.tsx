@@ -12,8 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS } from '@/data/constants';
 import DateRangePicker from '@/components/DateRangePicker';
+import { useUserLimits } from '@/hooks/use-user-limits';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { buildDepartureFromCandidate, buildDestinationFromCandidate } from '@/lib/plan-location';
 import { TransportNodeType, TravelPlanType } from '@/types/plan';
@@ -26,6 +26,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
   const { handlePreprocessingPlanning } = usePlanning();
   const fields = useStoreForPlanning();
+  const { limits } = useUserLimits();
   const { trip, isLoading, error } = useFetchTripDetail(id);
 
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
@@ -151,7 +152,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 {fields.startDate && fields.endDate && (
                   <LimitDisplay
                     current={getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).length}
-                    limit={APP_LIMITS.MAX_PLAN_DAYS}
+                    limit={limits.maxPlanDays}
                     label="旅行日数"
                     unit="日"
                     size="sm"

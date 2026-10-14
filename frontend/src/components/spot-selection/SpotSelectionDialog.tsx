@@ -4,11 +4,11 @@ import React, { useState, useMemo } from 'react';
 import { AlertCircle, Asterisk, Heart, History, Search } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { APP_LIMITS } from '@/data/constants';
 import { isSpotsPerDayLimitReached, getLimitErrorMessage, getRemainingCount } from '@/lib/limits';
 import { getActualSpotCount } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ExtendSpotType, Spot } from '@/types/plan';
+import { useUserLimits } from '@/hooks/use-user-limits';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -26,6 +26,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const { setSpots, planErrors, plans } = useStoreForPlanning();
   const { toast } = useToast();
+  const { limits } = useUserLimits();
 
   // 現在の日のスポット数を取得（出発地と目的地は除外）
   const currentSpotCount = useMemo(() => {
@@ -34,8 +35,8 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   }, [plans, date]);
 
   // 上限に達しているかチェック
-  const isLimitReached = isSpotsPerDayLimitReached(currentSpotCount);
-  const remainingCount = getRemainingCount(currentSpotCount, APP_LIMITS.MAX_SPOTS_PER_DAY);
+  const isLimitReached = isSpotsPerDayLimitReached(currentSpotCount, limits.maxSpotsPerDay);
+  const remainingCount = getRemainingCount(currentSpotCount, limits.maxSpotsPerDay);
 
   // 選択済みスポットIDを取得
   const selectedSpotIds = useMemo(() => {
@@ -47,7 +48,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
     if (!isDeleted && isLimitReached) {
       toast({
         title: '追加上限に達しています',
-        description: getLimitErrorMessage('spotsPerDay'),
+        description: getLimitErrorMessage('spotsPerDay', limits.maxSpotsPerDay),
         variant: 'destructive',
       });
       return;
@@ -70,12 +71,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
           <Asterisk className="text-red-500 h-4 w-4" />
         </div>
         {/* スポット数表示 */}
-        <LimitDisplay
-          current={currentSpotCount}
-          limit={APP_LIMITS.MAX_SPOTS_PER_DAY}
-          label="本日のスポット"
-          size="sm"
-        />
+        <LimitDisplay current={currentSpotCount} limit={limits.maxSpotsPerDay} label="本日のスポット" size="sm" />
       </div>
 
       {planErrors[date]?.spots && <div className="text-sm text-red-600">{planErrors[date].spots}</div>}
@@ -93,7 +89,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
               {/* 上限表示とメッセージ */}
               <LimitDisplay
                 current={currentSpotCount}
-                limit={APP_LIMITS.MAX_SPOTS_PER_DAY}
+                limit={limits.maxSpotsPerDay}
                 label="本日のスポット"
                 data-testid="spot-count-display"
               />
@@ -108,7 +104,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
             <div className="my-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-2">
               <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
               <p className="text-sm text-red-600">
-                本日のスポット数が上限（{APP_LIMITS.MAX_SPOTS_PER_DAY}件）に達しています。
+                本日のスポット数が上限（{limits.maxSpotsPerDay}件）に達しています。
                 追加するには既存のスポットを削除してください。
               </p>
             </div>

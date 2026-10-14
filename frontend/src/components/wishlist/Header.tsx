@@ -2,7 +2,8 @@ import { Heart, List, Map } from 'lucide-react';
 import React from 'react';
 
 import { useWishlistStore } from '@/store/wishlist/wishlistStore';
-import { prefectures, APP_LIMITS } from '@/data/constants';
+import { prefectures } from '@/data/constants';
+import { useUserLimits } from '@/hooks/use-user-limits';
 
 import WishlistCreateModal from './WishlistCreateModal';
 import { LimitDisplay } from '../common/LimitDisplay';
@@ -10,6 +11,7 @@ import { LimitDisplay } from '../common/LimitDisplay';
 const WishlistHeader = () => {
   const wishlistStore = useWishlistStore();
   const currentCount = wishlistStore.wishlist?.length ?? 0;
+  const { limits } = useUserLimits();
 
   return (
     <div>
@@ -23,7 +25,7 @@ const WishlistHeader = () => {
             {/* 件数表示 */}
             <LimitDisplay
               current={currentCount}
-              limit={APP_LIMITS.MAX_WISHLIST_SPOTS}
+              limit={limits.maxWishlistSpots}
               label=""
               size="md"
               data-testid="wishlist-count-display"

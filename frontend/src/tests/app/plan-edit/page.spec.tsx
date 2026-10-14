@@ -14,6 +14,14 @@ const { mockSetPlanningInfo, mockHandlePreprocessingPlanning, mockTripState } = 
   },
 }));
 
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 // テスト環境の React 18 には use が無いため、params の Promise を解決した値を返すようにする
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>();

@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { WishlistType } from '@/types/wishlist';
 import { useFetchWishlist } from '@/hooks/use-wishlist';
 import { isWishlistLimitReached, getLimitErrorMessage } from '@/lib/limits';
+import { useUserLimits } from '@/hooks/use-user-limits';
 
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
@@ -26,6 +27,7 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
   const { postWishlist } = useFetchWishlist();
   const [memo, setMemo] = useState('');
   const [priority, setPriority] = useState<number>(3);
+  const { limits } = useUserLimits();
 
   useEffect(() => {
     if (spot?.id) {
@@ -52,10 +54,10 @@ const SpotPreview: React.FC<SpotPreviewProps> = ({ onBack }) => {
     // フロントエンドで上限チェック（楽観的チェック）
     // storeのwishlist状態を直接参照（安全にアクセス）
     const currentWishlistCount = wishlistStore.wishlist?.length ?? 0;
-    if (isWishlistLimitReached(currentWishlistCount)) {
+    if (isWishlistLimitReached(currentWishlistCount, limits.maxWishlistSpots)) {
       toast({
         title: '登録上限に達しています',
-        description: getLimitErrorMessage('wishlist'),
+        description: getLimitErrorMessage('wishlist', limits.maxWishlistSpots),
         variant: 'destructive',
       });
       return;

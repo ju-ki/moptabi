@@ -67,6 +67,33 @@ export const user = pgTable('User', {
   name: varchar({ length: 255 }),
 });
 
+export const userLimit = pgTable(
+  'UserLimit',
+  {
+    userId: varchar({ length: 255 }).primaryKey().notNull(),
+    maxWishlistSpots: integer().notNull(),
+    maxPlans: integer().notNull(),
+    maxSpotsPerDay: integer().notNull(),
+    maxPlanDays: integer().notNull(),
+    maxUserLocations: integer().notNull(),
+    createdAt: timestamp({ precision: 3, mode: 'string' })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: 'string' })
+      .$defaultFn(() => new Date().toISOString())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [user.id],
+      name: 'UserLimit_userId_fkey',
+    })
+      .onUpdate('cascade')
+      .onDelete('cascade'),
+  ],
+);
+
 export const userLocation = pgTable(
   'UserLocation',
   {

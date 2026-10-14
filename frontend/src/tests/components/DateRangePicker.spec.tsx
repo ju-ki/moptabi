@@ -229,6 +229,7 @@ describe('DateRangePicker', () => {
             endDate="2025-12-05"
             onDateChange={onDateChange}
             onDeletePlanData={onDeletePlanData}
+            maxDays={7}
           />,
         );
         const user = userEvent.setup();
@@ -266,6 +267,7 @@ describe('DateRangePicker', () => {
             endDate="2025-12-05"
             onDateChange={onDateChange}
             onDeletePlanData={onDeletePlanData}
+            maxDays={7}
           />,
         );
         await user.click(screen.getByRole('button', { name: /2025-12-01/ }));
@@ -403,6 +405,7 @@ describe('DateRangePicker', () => {
             endDate="2025-12-05"
             onDateChange={onDateChange}
             onDeletePlanData={onDeletePlanData}
+            maxDays={7}
           />,
         );
 
@@ -493,6 +496,7 @@ describe('DateRangePicker', () => {
           endDate="2025-12-05"
           onDateChange={vi.fn()}
           onDeletePlanData={vi.fn()}
+          maxDays={7}
         />,
       );
       await user.click(screen.getByRole('button', { name: /2025-12-01 ~ 2025-12-05/ }));
@@ -539,7 +543,13 @@ describe('DateRangePicker', () => {
     const openPopover = async (startDate: string | undefined, endDate: string | undefined, trigger: RegExp) => {
       const user = userEvent.setup();
       const utils = render(
-        <DateRangePicker startDate={startDate} endDate={endDate} onDateChange={vi.fn()} onDeletePlanData={vi.fn()} />,
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={vi.fn()}
+          onDeletePlanData={vi.fn()}
+          maxDays={7}
+        />,
       );
       await user.click(screen.getByRole('button', { name: trigger }));
       return { ...utils, popover: screen.getByRole('dialog') };

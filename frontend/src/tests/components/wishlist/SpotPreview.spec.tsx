@@ -2,6 +2,14 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 // mock next/image
 vi.mock('next/image', () => ({
   __esModule: true,

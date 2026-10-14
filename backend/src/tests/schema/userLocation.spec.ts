@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 
 import {
   UserLocationSchema,
@@ -7,7 +8,6 @@ import {
   UpdateUserLocationSchema,
   DeleteUserLocationParamSchema,
   UserLocationIdParamSchema,
-  MAX_USER_LOCATIONS,
 } from '@/models/userLocation';
 
 // 各スキーマに対応したモックデータ
@@ -31,8 +31,8 @@ const mockUserLocation = {
 describe('🧾 ユーザーお気に入り地点スキーマ検証', () => {
   // ---- 定数 ----
   describe('定数', () => {
-    it('最大登録数が5であること', () => {
-      expect(MAX_USER_LOCATIONS).toBe(5);
+    it('デフォルト最大登録数が2であること', () => {
+      expect(DEFAULT_USER_LIMITS.maxUserLocations).toBe(2);
     });
   });
 

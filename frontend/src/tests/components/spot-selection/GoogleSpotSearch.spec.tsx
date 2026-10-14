@@ -31,6 +31,14 @@ const mockData = {
 };
 
 // Mock Google Maps
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 vi.mock('@react-google-maps/api', () => ({
   GoogleMap: ({ children, onLoad }: any) => {
     React.useEffect(() => {

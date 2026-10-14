@@ -19,6 +19,14 @@ const { mockResetPlanningStore, mockAddDateWithDefaultLocation, mockSetFields, m
   }),
 );
 
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
     startDate: '2026-06-01',

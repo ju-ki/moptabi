@@ -3,13 +3,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { UserLocationSection } from '@/components/mypage/UserLocationSection';
-import { UserLocation, MAX_USER_LOCATIONS, LOCATION_LABELS } from '@/models/userLocation';
+import { UserLocation, LOCATION_LABELS } from '@/models/userLocation';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 // Google Maps APIのモック
 vi.mock('@react-google-maps/api', () => ({
   GoogleMap: ({ children }: { children: React.ReactNode }) => <div data-testid="google-map">{children}</div>,
   Marker: () => <div data-testid="map-marker" />,
+}));
+
+// useUserLimitsフックのモック（テスト用に上限を5件に設定）
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { ...DEFAULT_USER_LIMITS, maxUserLocations: 5 },
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 // Geocodingフックのモック
@@ -93,7 +103,7 @@ describe('UserLocationSection', () => {
         />,
       );
 
-      expect(screen.getByText(`${mockUserLocations.length} / ${MAX_USER_LOCATIONS}`)).toBeInTheDocument();
+      expect(screen.getByText(`${mockUserLocations.length} / 5`)).toBeInTheDocument();
     });
 
     it('登録された地点の名前が表示される', () => {
@@ -427,8 +437,8 @@ describe('UserLocationSection', () => {
     });
 
     it('最大件数に達した場合は追加ボタンが無効化される', () => {
-      // 最大5件のモックデータを作成
-      const maxLocations: UserLocation[] = Array.from({ length: MAX_USER_LOCATIONS }, (_, i) => ({
+      // 最大5件のモックデータを作成（モックのmaxUserLocationsは5）
+      const maxLocations: UserLocation[] = Array.from({ length: 5 }, (_, i) => ({
         id: i + 1,
         userId: 'user_001',
         name: `地点${i + 1}`,

@@ -3,6 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import WishlistHeader from '@/components/wishlist/Header';
 
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 // Prepare mocks for the zustand store used by Header
 const setViewModeMock = vi.fn();
 const setPriorityFilterMock = vi.fn();

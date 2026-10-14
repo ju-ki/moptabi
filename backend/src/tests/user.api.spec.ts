@@ -1,5 +1,8 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'bun:test';
 import { testClient } from 'hono/testing';
+import { eq } from 'drizzle-orm';
+import { createDevDb } from '@db';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 
 import app from '..';
 import {
@@ -10,6 +13,7 @@ import {
   upsertUser,
   createUserWithDetails,
   deleteUsersExcept,
+  userLimit,
 } from './db-helper';
 
 // 認証用のモックユーザーID
@@ -345,5 +349,45 @@ describe('🧾 ユーザーリストAPIサービス', () => {
       expect(data).toHaveProperty('pagination');
       expect(data.pagination.limit).toBe(10);
     });
+  });
+});
+
+describe('GET /api/auth - UserLimit自動作成', () => {
+  const NEW_USER_ID = 'test_auth_new_user';
+  const client = testClient(app) as any;
+  const db = createDevDb(process.env.DATABASE_URL!);
+
+  beforeAll(async () => {
+    await clearTestDataForUser(NEW_USER_ID);
+  });
+
+  afterAll(async () => {
+    await clearTestDataForUser(NEW_USER_ID);
+  });
+
+  it('初回ログイン時にUserLimitが既定値で作成される (B-4)', async () => {
+    const response = await client.api.auth.$get(
+      {},
+      { headers: { 'X-User-Id': NEW_USER_ID, 'X-User-Email': 'new@example.com', 'X-User-Name': 'New User' } },
+    );
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.status).toBe(201);
+
+    const [row] = await db.select().from(userLimit).where(eq(userLimit.userId, NEW_USER_ID)).limit(1);
+    expect(row).toBeDefined();
+    expect(row.maxWishlistSpots).toBe(DEFAULT_USER_LIMITS.maxWishlistSpots);
+    expect(row.maxPlans).toBe(DEFAULT_USER_LIMITS.maxPlans);
+    expect(row.maxSpotsPerDay).toBe(DEFAULT_USER_LIMITS.maxSpotsPerDay);
+    expect(row.maxPlanDays).toBe(DEFAULT_USER_LIMITS.maxPlanDays);
+    expect(row.maxUserLocations).toBe(DEFAULT_USER_LIMITS.maxUserLocations);
+  });
+
+  it('2回目以降のログインでUserLimitが重複作成されない (B-5)', async () => {
+    await client.api.auth.$get({}, { headers: { 'X-User-Id': NEW_USER_ID } });
+
+    const rows = await db.select().from(userLimit).where(eq(userLimit.userId, NEW_USER_ID));
+    expect(rows.length).toBe(1);
   });
 });

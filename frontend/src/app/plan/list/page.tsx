@@ -7,11 +7,12 @@ import { TripSearchForm } from '@/components/TripSearchForm';
 import { useFetcher } from '@/hooks/use-fetcher';
 import { TripListItem } from '@/models/trip';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS } from '@/data/constants';
 import LoadingState from '@/components/common/LoadingState';
+import { useUserLimits } from '@/hooks/use-user-limits';
 
 export default function TripsPage() {
   const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
+  const { limits } = useUserLimits();
 
   // セッションが確立されている場合のみAPIリクエストを発行
   const shouldFetch = isAuthenticated && !isSessionLoading;
@@ -36,7 +37,7 @@ export default function TripsPage() {
           {/* プラン数表示 */}
           <LimitDisplay
             current={tripCount}
-            limit={APP_LIMITS.MAX_PLANS}
+            limit={limits.maxPlans}
             label=""
             size="md"
             data-testid="plan-count-display"

@@ -85,3 +85,12 @@ export const PlanLocationCandidateResponseSchema = z.object({
   favorites: z.array(PlanLocationCandidateItemSchema),
   history: z.array(PlanLocationCandidateItemSchema),
 });
+
+// ユーザー上限スキーマ
+export const UserLimitSchema = z.object({
+  maxWishlistSpots: z.number().int().positive(),
+  maxPlans: z.number().int().positive(),
+  maxSpotsPerDay: z.number().int().positive(),
+  maxPlanDays: z.number().int().positive(),
+  maxUserLocations: z.number().int().positive(),
+});
