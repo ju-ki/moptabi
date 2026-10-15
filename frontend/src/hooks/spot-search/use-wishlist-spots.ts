@@ -85,6 +85,8 @@ export function useWishlistSpots(options?: WishlistSpotsQueryOptions) {
           address: meta?.address,
           catchphrase: meta?.catchphrase ?? undefined,
           regularOpeningHours: meta?.openingHours ?? undefined,
+          openingPeriods: meta?.openingPeriods,
+          businessStatus: meta?.businessStatus,
           priority: item.priority,
           memo: item.memo ?? undefined,
           visitedAt: item.visitedAt ?? undefined,

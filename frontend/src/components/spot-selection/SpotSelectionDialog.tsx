@@ -14,6 +14,8 @@ import { getActualSpotCount } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ExtendSpotType, Spot } from '@/types/plan';
 import { useUserLimits } from '@/hooks/use-user-limits';
+import { buildOpeningStatusMessage, checkOpeningStatus } from '@/lib/opening-hours';
+import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -77,6 +79,19 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
       order: selectedSpots.length + 1, // 追加するスポットの順番は現在のスポット数 + 1
     };
     setSpots(date, updatedSpot, isDeleted);
+
+    // 定休日・閉業・臨時休業のスポットは確認を促す。追加は止めない（No.158）
+    if (!isDeleted) {
+      const status = checkOpeningStatus({
+        openingPeriods: spot.openingPeriods,
+        businessStatus: spot.businessStatus,
+        date,
+      });
+      const message = buildOpeningStatusMessage(status, { name: spot.name });
+      if (message) {
+        toast({ title: OPENING_HOURS_MESSAGE.TOAST_TITLE, description: message });
+      }
+    }
   };
 
   return (

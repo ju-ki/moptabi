@@ -6,6 +6,7 @@ import { TripType } from '@shared/trip/types';
 import { AlternativeRouteInfo } from '@/lib/planning';
 import type { CoordinationType } from '@/models/plan';
 import { placeTypeMap } from '@/data/constants';
+import type { OpeningInfo } from '@/types/spot';
 
 export type Coordination = CoordinationType;
 
@@ -75,6 +76,8 @@ export type Spot = {
   address?: string;
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;
+  openingPeriods?: OpeningInfo['openingPeriods']; // 営業時間の判定用
+  businessStatus?: OpeningInfo['businessStatus']; // 営業状況（閉業・臨時休業の判定用）
   nearestStation?: ExtendNearestStationType; // 最寄駅
   routeToNext?: SpotRouteDraft;
   alternateRoutes?: AlternativeRouteInfo[]; // 代替ルートの候補
@@ -90,7 +93,8 @@ export type Spot = {
 };
 
 export type ExtendSpotType = TripSpotType &
-  SpotMetaType & {
+  SpotMetaType &
+  OpeningInfo & {
     routeToNext?: SpotRouteDraft;
     nearestStation?: ExtendNearestStationType;
     alternateRoutes?: AlternativeRouteInfo[];

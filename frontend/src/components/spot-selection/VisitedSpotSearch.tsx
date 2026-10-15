@@ -10,8 +10,11 @@ import { useVisitedSpots } from '@/hooks/spot-search/use-visited-spots';
 import { prefectures } from '@/data/constants';
 import { ExtendSpotType, Spot } from '@/types/plan';
 import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
+import { isOpenOnPlanDate } from '@/lib/opening-hours';
+import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 
-// TODO: dateは営業時間のフィルターで使用予定
+import { OpenOnPlanDateFilter } from './OpenOnPlanDateFilter';
+
 type VisitedSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
@@ -44,6 +47,11 @@ export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: Visit
       order: 0,
     }));
   };
+
+  // 計画日に営業しているスポットのみ表示する（No.158）
+  const visibleSpots = spotSearchStore.openOnPlanDate
+    ? (spots ?? []).filter((spot) => isOpenOnPlanDate(spot, date))
+    : (spots ?? []);
 
   const handleSpotClick = (spot: ExtendSpotType) => {
     const isSelected = selectedSpotIds.includes(spot.spotId);
@@ -174,15 +182,20 @@ export function VisitedSpotSearch({ date, selectedSpotIds, onSpotSelect }: Visit
       </div>
 
       {/* 検索結果 */}
+      <OpenOnPlanDateFilter />
       <SearchResultsView
-        spots={convertToExtendSpotType(spots)}
+        spots={convertToExtendSpotType(visibleSpots)}
         selectedSpotIds={selectedSpotIds}
         onSpotClick={handleSpotClick}
+        planDate={date}
         cardType="visited"
       />
 
       {spots.length === 0 && !isLoading && (
         <div className="text-center text-gray-500 py-8">過去に訪問・計画したスポットがありません</div>
+      )}
+      {spots.length > 0 && visibleSpots.length === 0 && (
+        <div className="text-center text-gray-500 py-8">{OPENING_HOURS_MESSAGE.FILTER_EMPTY}</div>
       )}
     </div>
   );

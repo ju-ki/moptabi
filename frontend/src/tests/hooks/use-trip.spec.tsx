@@ -354,5 +354,40 @@ describe('useFetchTripDetail', () => {
       expect(spot?.nearestStation).toBeDefined();
       expect(spot?.nearestStation?.name).toMatch(/名前_spot-station-1/);
     });
+
+    it('スポットの営業時間（表示用・判定用）と営業状況が引き継がれること', async () => {
+      const mockFetcher = vi.fn().mockResolvedValue(mockTripWithSpot);
+      (useFetcher as any).mockReturnValue(createMockFetcher({ getFetcher: mockFetcher }));
+
+      const openingHours = [{ day: '月', hours: '10:00-17:00' }];
+      const openingPeriods = [{ open: { day: 1, hour: 10, minute: 0 }, close: { day: 1, hour: 17, minute: 0 } }];
+      (fetchPlaceDetailsWithRetry as any).mockImplementation(async (placeId: string) => ({
+        hasError: false,
+        data: {
+          spotId: placeId,
+          name: `名前_${placeId}`,
+          latitude: 35.6762,
+          longitude: 139.6503,
+          rating: 4.5,
+          openingHours,
+          openingPeriods,
+          businessStatus: 'OPERATIONAL',
+        },
+      }));
+
+      const { result } = renderHook(() => useFetchTripDetail('trip-123'), {
+        wrapper: createWrapper(),
+      });
+
+      await waitFor(() => {
+        expect(result.current.trip?.plans[0].spots.length).toBe(1);
+      });
+
+      const spot = result.current.trip?.plans[0].spots[0];
+      // 編集・詳細画面のカードは regularOpeningHours を表示に使うため、openingHours から引き継ぐ
+      expect(spot?.regularOpeningHours).toEqual(openingHours);
+      expect(spot?.openingPeriods).toEqual(openingPeriods);
+      expect(spot?.businessStatus).toBe('OPERATIONAL');
+    });
   });
 });

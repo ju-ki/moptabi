@@ -10,6 +10,8 @@ import { placeTypeMap } from '@/data/constants';
 import { useStoreForPlanning } from '@/lib/plan';
 import RouteSummaryNearestStation from '@/components/travel-plan/nearestStation/RouteSummaryNearestStation';
 import { formatDurationAsHourMinute } from '@/lib/planning';
+import { checkOpeningStatus } from '@/lib/opening-hours';
+import { HolidayNote, OpeningHoursDetail, OpeningStatusBadge } from '@/components/common/OpeningHoursInfo';
 
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
@@ -113,6 +115,14 @@ export default function SpotDetailCard({
   }
 
   const routeInfo = planningResult?.routes?.find((r) => r.fromSpotId === spot.id);
+  // 営業時間の判定（No.158）。プランニング結果の滞在時間で判定する
+  const openingStatus = checkOpeningStatus({
+    openingPeriods: spot.openingPeriods,
+    businessStatus: spot.businessStatus,
+    date,
+    stayStart: spot.stayStart,
+    stayEnd: spot.stayEnd,
+  });
 
   return (
     <div
@@ -141,6 +151,7 @@ export default function SpotDetailCard({
         <div className="flex items-center space-x-2">
           <MapPin className="text-blue-500 w-6 h-6" style={{ color: '#3b82f6' }} />
           <h3 className="font-semibold text-lg">{spot.name}</h3>
+          <OpeningStatusBadge status={openingStatus} />
         </div>
 
         {/* 滞在時間 */}
@@ -150,6 +161,15 @@ export default function SpotDetailCard({
             {spot.stayStart} - {spot.stayEnd}
           </span>
         </p>
+
+        {/* 計画日の営業時間（No.158） */}
+        <OpeningHoursDetail
+          status={openingStatus}
+          openingPeriods={spot.openingPeriods}
+          date={date}
+          url={spot.url}
+          className="mt-1"
+        />
 
         {/* 最寄駅情報 */}
         {spot.nearestStation && (
@@ -247,6 +267,7 @@ export default function SpotDetailCard({
                       </li>
                     ))}
                   </ul>
+                  <HolidayNote className="mt-2" />
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

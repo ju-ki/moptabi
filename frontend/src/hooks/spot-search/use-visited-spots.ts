@@ -90,6 +90,8 @@ export function useVisitedSpots(options?: VisitedSpotsQueryOptions) {
           address: meta?.address,
           catchphrase: meta?.catchphrase ?? undefined,
           regularOpeningHours: meta?.openingHours ?? undefined,
+          openingPeriods: meta?.openingPeriods,
+          businessStatus: meta?.businessStatus,
           visitedAt: item.visitedAt ?? undefined,
           visitCount: item.visitCount ?? undefined,
           planDate: item.planDate,
