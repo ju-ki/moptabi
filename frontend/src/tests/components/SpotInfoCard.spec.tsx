@@ -348,3 +348,56 @@ describe('SpotInfoCard', () => {
     });
   });
 });
+
+describe('SpotInfoCard の営業時間（No.158）', () => {
+  // 2026-10-12 は月曜日、2026-10-13 は火曜日
+  // 月曜定休・火〜日 10:00-17:00
+  const openingPeriods = [0, 2, 3, 4, 5, 6].map((day) => ({
+    open: { day, hour: 10, minute: 0 },
+    close: { day, hour: 17, minute: 0 },
+  }));
+
+  it('計画日が定休日のとき、バッジと営業時間の 1 行を表示すること', () => {
+    render(<SpotInfoCard spot={createMockSpot({ openingPeriods })} date="2026-10-12" />);
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('定休日の可能性');
+    expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(月)の営業時間: 定休日');
+  });
+
+  it('滞在時間が営業時間外のとき、営業時間外のバッジを表示すること', () => {
+    render(
+      <SpotInfoCard
+        spot={createMockSpot({ openingPeriods, stayStart: '16:00', stayEnd: '18:00' })}
+        date="2026-10-13"
+      />,
+    );
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('営業時間外の可能性');
+  });
+
+  it('閉業のとき、閉業のバッジを表示すること', () => {
+    render(
+      <SpotInfoCard
+        spot={createMockSpot({ openingPeriods, businessStatus: 'CLOSED_PERMANENTLY' })}
+        date="2026-10-13"
+      />,
+    );
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('閉業');
+  });
+
+  it('営業時間内のときはバッジを表示しないこと', () => {
+    render(<SpotInfoCard spot={createMockSpot({ openingPeriods })} date="2026-10-13" />);
+
+    expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(火)の営業時間: 10:00-17:00');
+  });
+
+  it('営業時間のアコーディオンを開くと末尾に祝日注記を表示すること', () => {
+    render(<SpotInfoCard spot={createMockSpot({ openingPeriods })} date="2026-10-13" />);
+
+    fireEvent.click(screen.getByText('営業時間'));
+
+    expect(screen.getByTestId('opening-hours-holiday-note')).toBeInTheDocument();
+  });
+});

@@ -29,11 +29,11 @@
   - [x] `spotSearchStore` に `openOnPlanDate`
   - [x] Google 検索 / 行きたいリスト / 過去のスポットの絞り込み
   - [x] lint / typecheck / test を通して push
-- [ ] Step 4: プランニング警告とカードの強調（`feature158-planning`）
-  - [ ] `PLANNING_MESSAGE_SEGMENT.OPENING_HOURS` と優先度
-  - [ ] `buildOpeningHoursMessages` と `executePlanning`
-  - [ ] `PlanSpotSettingCard` / `SpotDetailCard` / `SpotInfoCard`
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 4: プランニング警告とカードの強調（`feature158-planning`）
+  - [x] `PLANNING_MESSAGE_SEGMENT.OPENING_HOURS` と優先度
+  - [x] `buildOpeningHoursMessages` と `executePlanning`
+  - [x] `PlanSpotSettingCard` / `SpotDetailCard` / `SpotInfoCard`
+  - [x] lint / typecheck / test を通して push
 - [ ] 動作確認（[No.158_動作確認手順.md](./No.158_動作確認手順.md)）とスクリーンショット
 
 ## 1. スコープ
@@ -186,8 +186,8 @@ export type OpeningStatus =
 |---|---|
 | `frontend/src/data/constants.ts` | `PLANNING_MESSAGE_SEGMENT.OPENING_HOURS` を追加し、`PLANNING_MESSAGE_PRIORITY` では `OVER_TIME` の次（2）に置いて以降を 1 つずつ繰り下げる |
 | `frontend/src/lib/planning.ts` | `buildOpeningHoursMessages(date, spots)` を追加し、`executePlanning` で `sortPlanningMessages` の前に `forwardResult.updatedSpots` を渡して `WARNING` を追加。`segmentKey` は `OPENING_HOURS:<spotId>` |
-| `frontend/src/components/travel-plan/SpotSettingEditor.tsx` | `PlanSpotSettingCard` に `date` を渡す |
-| `frontend/src/components/travel-plan/PlanSpotSettingCard.tsx` | `date` prop を追加。`checkOpeningStatus` を `useMemo` で算出し、`OPEN` / `UNKNOWN` 以外ならカード枠を `border-amber-400`、スポット名の横に `OpeningStatusBadge`（`OUTSIDE_HOURS` は「営業時間外の可能性」）、下に営業時間の 1 行と祝日注記を表示。プランニング結果ではなくカード自身で算出するので、滞在時間を手で変えた直後にも追従する |
+| `frontend/src/components/travel-plan/SpotSettingEditor.tsx` | `PlanSpotSettingCard` に `date` と `isScheduled`（`getPlanningResult(date)` があるか）を渡す |
+| `frontend/src/components/travel-plan/PlanSpotSettingCard.tsx` | `date` prop を追加。`checkOpeningStatus` を `useMemo` で算出し、`OPEN` / `UNKNOWN` 以外ならカード枠を `border-amber-400`、スポット名の横に `OpeningStatusBadge`（`OUTSIDE_HOURS` は「営業時間外の可能性」）、下に営業時間の 1 行と祝日注記を表示。プランニング結果ではなくカード自身で算出するので、滞在時間を手で変えた直後にも追従する（終了時刻は `stayStart` + 現在の `stayDuration`）。プランニング前の `stayStart` は仮の値（09:00 など）なので、`isScheduled` が false の間は日単位でだけ判定する。1 行表示・祝日注記・公式サイトリンクは共通部品 `OpeningHoursDetail` にまとめた |
 | `frontend/src/components/travel-plan/SpotDetailCard.tsx` | 同じバッジ・1 行表示を追加。営業時間アコーディオンの末尾に祝日注記 |
 | `frontend/src/components/DayPlan.tsx` / `frontend/src/components/SpotInfoCard.tsx` | `SpotInfoCard` に `date` を渡し、同じバッジ・1 行表示・祝日注記を追加（プラン詳細画面） |
 

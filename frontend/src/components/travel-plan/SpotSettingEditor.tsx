@@ -22,6 +22,7 @@ type SpotSettingListProps = {
 export function SpotSettingList({ date }: SpotSettingListProps) {
   const fields = useStoreForPlanning();
   const spots = fields.getSpotInfo(date, null);
+  const isScheduled = !!fields.getPlanningResult(date);
   const departureData = fields.getDepartureAndDestination(date, TransportNodeType.DEPARTURE);
   const destinationData = fields.getDepartureAndDestination(date, TransportNodeType.DESTINATION);
   const [draggedSpotId, setDraggedSpotId] = useState<string | null>(null);
@@ -192,6 +193,8 @@ export function SpotSettingList({ date }: SpotSettingListProps) {
           <PlanSpotSettingCard
             key={spot.id}
             spot={spot}
+            date={date}
+            isScheduled={isScheduled}
             destinationData={index === spots.length - 1 ? destinationData : undefined}
             totalSpots={spots.length}
             onSettingChange={handleSettingChange}

@@ -1,8 +1,14 @@
-import { AlertTriangle, Clock } from 'lucide-react';
+import { AlertTriangle, Clock, ExternalLink } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { OPENING_HOURS_MESSAGE, OPENING_STATUS_BADGE_LABEL } from '@/data/constants';
-import { checkOpeningStatus, getOpeningHoursOfDay, getWeekdayLabel, OpeningStatus } from '@/lib/opening-hours';
+import {
+  checkOpeningStatus,
+  getOpeningHoursOfDay,
+  getWeekdayLabel,
+  hasOpeningWarning,
+  OpeningStatus,
+} from '@/lib/opening-hours';
 import { cn } from '@/lib/utils';
 import { OpeningInfo, OpeningPeriod } from '@/types/spot';
 
@@ -99,6 +105,42 @@ export function SpotOpeningSummary({ spot, planDate, className }: SpotOpeningSum
     <div className={cn('flex flex-col items-start gap-1', className)} data-testid="spot-opening-summary">
       <OpeningStatusBadge status={status} />
       <OpeningHoursOfDay openingPeriods={spot.openingPeriods} date={planDate} />
+    </div>
+  );
+}
+
+type OpeningHoursDetailProps = {
+  status: OpeningStatus;
+  openingPeriods?: OpeningPeriod[];
+  date?: string;
+  url?: string;
+  className?: string;
+};
+
+/**
+ * 計画作成・詳細のカード用: 計画日の営業時間の 1 行と、警告時の祝日注記・公式サイトリンクを表示する
+ */
+export function OpeningHoursDetail({ status, openingPeriods, date, url, className }: OpeningHoursDetailProps) {
+  const isWarning = hasOpeningWarning(status);
+  const hasHours = !!date && !!getOpeningHoursOfDay(openingPeriods, date);
+  if (!isWarning && !hasHours) return null;
+
+  return (
+    <div className={cn('flex flex-col items-start gap-1', className)} data-testid="opening-hours-detail">
+      <OpeningHoursOfDay openingPeriods={openingPeriods} date={date} />
+      {isWarning && <HolidayNote />}
+      {isWarning && url && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3 w-3" />
+          {OPENING_HOURS_MESSAGE.OFFICIAL_SITE_LINK}
+        </a>
+      )}
     </div>
   );
 }

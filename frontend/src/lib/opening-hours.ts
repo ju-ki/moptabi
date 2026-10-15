@@ -193,3 +193,8 @@ export function buildOpeningStatusMessage(
       return undefined;
   }
 }
+
+/** 営業時間の判定結果が警告対象（閉業・臨時休業中・定休日・営業時間外）か */
+export function hasOpeningWarning(status: OpeningStatus): boolean {
+  return status.kind !== 'OPEN' && status.kind !== 'UNKNOWN';
+}
