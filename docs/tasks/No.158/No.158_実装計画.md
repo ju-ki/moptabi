@@ -14,13 +14,13 @@
   - [x] `docs/画面設計書.md`
   - [x] `docs/pages/plan-create.md` / `plan-edit.md`
   - [x] `docs/pages/plan-detail.md`
-- [ ] Step 1: データの追加と判定関数（`feature158-core`）
-  - [ ] 型の追加（`types/spot.ts` / `types/plan.ts`）
-  - [ ] `opening-hours.ts` のテストを書く
-  - [ ] `opening-hours.ts` の実装
-  - [ ] `convertPlaceToSpotMeta` / `searchSpots` / 各 hook への反映とテスト
-  - [ ] `use-trip.ts` の `regularOpeningHours` 引き継ぎとテスト
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 1: データの追加と判定関数（`feature158-core`）
+  - [x] 型の追加（`types/spot.ts` / `types/plan.ts`）
+  - [x] `opening-hours.ts` のテストを書く
+  - [x] `opening-hours.ts` の実装
+  - [x] `convertPlaceToSpotMeta` / `searchSpots` / 各 hook への反映とテスト
+  - [x] `use-trip.ts` の `regularOpeningHours` 引き継ぎとテスト（テストで不具合を再現済み）
+  - [x] lint / typecheck / test を通して push
 - [ ] Step 2: 検索カードのバッジ・1 行表示と追加時トースト（`feature158-search`）
   - [ ] 文言定数 `OPENING_HOURS_MESSAGE`
   - [ ] `OpeningStatusBadge` と 3 種のカード
@@ -143,7 +143,7 @@ export type OpeningStatus =
 | `frontend/src/lib/opening-hours.ts`（新規） | 3 章の関数群 |
 | `frontend/src/lib/google-maps.ts` | `convertPlaceToSpotMeta` に `openingPeriods` / `businessStatus` を追加。`PLACE_DETAIL_FIELDS` に `'businessStatus'` を追加 |
 | `frontend/src/lib/plan.ts` | `searchSpots` の `placeToSpot` に `openingPeriods` / `businessStatus` を追加（`businessStatus` は既に `fields` で取得済み） |
-| `frontend/src/hooks/spot-search/use-wishlist-spots.ts` / `use-visited-spots.ts` / `frontend/src/hooks/use-wishlist.ts` | `meta` から `openingPeriods` / `businessStatus` を引き継ぐ |
+| `frontend/src/hooks/spot-search/use-wishlist-spots.ts` / `use-visited-spots.ts` | `meta` から `openingPeriods` / `businessStatus` を引き継ぐ（`frontend/src/hooks/use-wishlist.ts` は行きたいリスト画面専用で今回の機能では使わないため変更しない） |
 | `frontend/src/hooks/use-trip.ts` | `enrichTripWithPlaceDetails` で `regularOpeningHours: placeResult.openingHours` を明示的に設定する（下記） |
 | `frontend/src/types/spot.ts` / `frontend/src/types/plan.ts` | 2 章の型追加 |
 

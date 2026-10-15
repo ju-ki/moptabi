@@ -6,6 +6,8 @@ import { Coordination, ExtendNearestStationType } from '@/types/plan';
 import { SpotMetaType } from '@/types/spot';
 import { NearestStation } from '@/types/nearestStation';
 
+import { normalizeBusinessStatus, normalizeOpeningPeriods } from './opening-hours';
+
 const getDayName = (day: number): string => {
   const days = ['日', '月', '火', '水', '木', '金', '土', '全', '不明'];
   return days[day];
@@ -78,6 +80,8 @@ export const convertPlaceToSpotMeta = (place: google.maps.places.Place, placeId:
   catchphrase: '',
   description: place.editorialSummary ?? '',
   openingHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
+  openingPeriods: normalizeOpeningPeriods(place.regularOpeningHours?.periods),
+  businessStatus: normalizeBusinessStatus(place.businessStatus),
 });
 
 /** Place Details 取得時に使用するフィールド一覧 */
@@ -87,6 +91,7 @@ export const PLACE_DETAIL_FIELDS = [
   'rating',
   'types',
   'regularOpeningHours',
+  'businessStatus',
   'editorialSummary',
   'websiteURI',
   'userRatingCount',
