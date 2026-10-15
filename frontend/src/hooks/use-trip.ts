@@ -69,6 +69,8 @@ async function enrichTripWithPlaceDetails(trip: TripType): Promise<ExtendTripTyp
             ...spot,
             spotId: spot.id,
             rating: placeResult.rating ?? 0,
+            // カードは regularOpeningHours を表示に使うため、詳細取得結果の openingHours を引き継ぐ
+            regularOpeningHours: placeResult.openingHours,
             nearestStation: nearestStation,
           };
           return enrichedSpot;
