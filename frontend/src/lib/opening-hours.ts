@@ -132,17 +132,20 @@ export function checkOpeningStatus({
   if (!openingPeriods || openingPeriods.length === 0 || weekday === undefined) return { kind: 'UNKNOWN' };
   if (isAlwaysOpen(openingPeriods)) return { kind: 'OPEN' };
 
-  if (!openingPeriods.some((period) => period.open.day === weekday)) {
-    return { kind: 'CLOSED_DAY', weekdayLabel: WEEKDAY_LABELS[weekday] };
-  }
+  const closedDay: OpeningStatus = { kind: 'CLOSED_DAY', weekdayLabel: WEEKDAY_LABELS[weekday] };
+  const hasOpeningOnWeekday = openingPeriods.some((period) => period.open.day === weekday);
 
   const start = parseTime(stayStart);
   const end = parseTime(stayEnd);
   // 時間帯の指定がない・不正なときは日単位の判定だけで終える（警告を増やさない）
-  if (start === undefined || end === undefined || end <= start) return { kind: 'OPEN' };
+  if (start === undefined || end === undefined || end <= start) {
+    return hasOpeningOnWeekday ? { kind: 'OPEN' } : closedDay;
+  }
 
+  // 前日から続く営業区間に収まる滞在は、計画日に開店がなくても営業中とする
   const dayOffset = weekday * DAY_MINUTES;
   if (isStayWithinPeriods(openingPeriods, dayOffset + start, dayOffset + end)) return { kind: 'OPEN' };
+  if (!hasOpeningOnWeekday) return closedDay;
 
   return { kind: 'OUTSIDE_HOURS', hoursOfDay: getOpeningHoursOfDay(openingPeriods, date) ?? '' };
 }
