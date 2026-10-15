@@ -252,6 +252,22 @@ describe('SpotInfoCard', () => {
   });
 
   describe('最寄駅情報の表示', () => {
+    it.each([
+      [7, '待ち 7分'],
+      [0, '待ち 0分'],
+    ])('待ち時間が %i 分のとき「%s」を表示する（No.375）', (waitingTime, expected) => {
+      const spot = createMockSpot();
+      render(<SpotInfoCard spot={{ ...spot, nearestStation: { ...spot.nearestStation!, waitingTime } }} />);
+
+      expect(screen.getByTestId('nearest-station-waiting-time')).toHaveTextContent(expected);
+    });
+
+    it('待ち時間が未設定のときは表示しない（No.375）', () => {
+      render(<SpotInfoCard spot={createMockSpot()} />);
+
+      expect(screen.queryByTestId('nearest-station-waiting-time')).not.toBeInTheDocument();
+    });
+
     it('最寄駅情報が表示される', () => {
       const spot = createMockSpot();
       render(<SpotInfoCard spot={spot} />);

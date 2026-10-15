@@ -1101,19 +1101,23 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     fromTarget.travelTime = segment.travelMinutes;
     fromTarget.transportMethodId = selectedMethodId;
     fromTarget.transportMethod = getTravelMethodName(selectedMethodId);
+    const isStationRoute = isStationTransportMethod(selectedMethodId);
     // 発車時間候補（scheduledDepartureTimes）はユーザーの入力のまま残し、計算結果だけを書き戻す
     if (segment.stationSegment && fromTarget.nearestStation) {
       fromTarget.nearestStation = {
         ...fromTarget.nearestStation,
         transitTime: segment.stationSegment.transitTime,
-        waitingTime: segment.stationSegment.waitingTime,
+        // 待ち時間は最寄駅経由を選んだ区間でだけ表示・保存する
+        waitingTime: isStationRoute ? segment.stationSegment.waitingTime : undefined,
         scheduledDepartureTime: segment.stationSegment.scheduledDepartureTime,
       };
+    } else if (fromTarget.nearestStation) {
+      // 片側だけ最寄駅がある区間では、前回の待ち時間を残さない
+      fromTarget.nearestStation = { ...fromTarget.nearestStation, waitingTime: undefined };
     }
 
     currentMinutes += segment.travelMinutes;
 
-    const isStationRoute = isStationTransportMethod(selectedMethodId);
     routes.push(
       buildRouteInfo({
         fromSpotId: fromSpot?.id ?? 'departure',

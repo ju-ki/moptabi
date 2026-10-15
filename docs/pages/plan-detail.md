@@ -75,6 +75,7 @@ TravelMap および詳細画面で共通利用する凡例コンポーネント�
 | 最寄り駅アイコン | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanLocationNearestStationに登録されているstationTypeに基づいたアイコン(BUS:バス / TRAIN:電車 / OTHER:?) |
 | 最寄り駅からの所要時間 | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanLocationNearestStationに登録されているtransitTimeを表示 |
 | 最寄り駅の出発時間 | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanLocationNearestStationに登録されているscheduledDepartureTimeを表示(DepartureInfoCardのみ) |
+| 最寄り駅での待ち時間 | 初期表示,最寄駅経由の区間で待ち時間が登録されている場合 | プランニングで登録したPlanLocationNearestStationのwaitingTimeを「待ち X分」と表示(0分も表示、未登録なら非表示。DepartureInfoCardのみ。No.375) |
 | 最寄り駅のメモ | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanLocationNearestStationに登録されているmemoを表示(DepartureInfoCardのみ) |
 
 ### SpotInfoCard
@@ -93,6 +94,7 @@ TravelMap および詳細画面で共通利用する凡例コンポーネント�
 | 最寄り駅名 | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanSpotNearestStationに登録されているplaceIdを元にGoogle Map APIから取得した名前 |
 | 最寄り駅アイコン | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanSpotNearestStationに登録されているstationTypeに基づいたアイコン(BUS:バス / TRAIN:電車 / OTHER:?) |
 | 最寄り駅の出発時間 | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanSpotNearestStationに登録されているscheduledDepartureTimeを表示(現在のスポットの次のスポットまたは目的地に格納されている情報を表示) |
+| 最寄り駅での待ち時間 | 初期表示,最寄駅経由の区間で待ち時間が登録されている場合 | プランニングで登録したPlanSpotNearestStationのwaitingTimeを「待ち X分」と表示(0分も表示、未登録なら非表示。No.375) |
 | 最寄り駅からの所要時間 | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanSpotNearestStationに登録されているtransitTimeを表示(現在のスポットの次のスポットまたは目的地に格納されている情報を表示)|
 | 最寄り駅のメモ | 初期表示,最寄駅が設定されている場合 | プランニングで登録したPlanSpotNearestStationに登録されているmemoを表示(現在のスポットの次のスポットまたは目的地に格納されている情報を表示) |
 | 住所 | 初期表示 | GoogleMapのAPIから取得したスポットの住所を表示 |

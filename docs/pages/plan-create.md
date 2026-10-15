@@ -330,6 +330,17 @@
 | プレビュー表示 | simulationStatus が2相当で、出発地・スポット・目的地が揃っている | ArrivalTimeWarning、TravelMap、DepartureDetailCard、SpotDetailCard、DestinationDetailCard を順に表示 |
 | 到着時刻超過 | 到着時刻超過が算出された場合 | ArrivalTimeWarning を先頭に表示 |
 
+#### 最寄駅経由のルート概要（DepartureDetailCard / SpotDetailCard）
+最寄駅経由（移動手段ID 4）の区間で `RouteSummaryNearestStation` を表示する。
+
+| 項目名 | 条件 | 期待する出力・動作 |
+|---|---|---|
+| 出発側の徒歩 | 初期表示 | 出発側ノードから乗車駅までの徒歩時間と乗車駅名を表示 |
+| 待ち時間 | プランニング結果に待ち時間がある場合（0分を含む） | 「待ち X分」を表示（駅到着から採用した発車時間までの分数）。未設定なら表示しない（No.375） |
+| 電車/バス | 初期表示 | 乗車時間と採用した発車時間を表示 |
+| 到着側の徒歩 | 初期表示 | 降車駅名と、降車駅から到着側ノードまでの徒歩時間を表示 |
+| 路線メモ | メモがある場合 | 出発側の最寄駅のメモを表示 |
+
 #### ArrivalTimeWarning データ構造
 | 項目名 | 型 | 内容 |
 |---|---|---|
