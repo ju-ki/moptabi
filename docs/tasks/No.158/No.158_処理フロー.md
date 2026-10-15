@@ -31,7 +31,7 @@ flowchart TD
   A -->|"CLOSED_TEMPORARILY"| R2["臨時休業中"]
   A -->|"OPERATIONAL または なし"| B{"periods がある"}
   B -->|"なし"| R3["UNKNOWN: 何も表示しない"]
-  B -->|"あり"| C{"close のない区間がある"}
+  B -->|"あり"| C{"区間が1件だけで close がない"}
   C -->|"ある"| R4["OPEN: 24時間営業"]
   C -->|"ない"| D{"計画日の曜日に開店する区間がある"}
   D -->|"ない"| R5["CLOSED_DAY: 定休日の可能性"]

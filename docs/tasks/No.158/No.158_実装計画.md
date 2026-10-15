@@ -42,7 +42,7 @@ backend に送らない frontend 専用の値なので、`frontend/TYPE_GUIDE.md
 ```ts
 /** Google Places の営業時間の 1 区間（day: 0=日〜6=土） */
 export type OpeningPoint = { day: number; hour: number; minute: number };
-/** close がない区間は 24 時間営業を表す */
+/** close がない区間は、区間が 1 件だけなら 24 時間営業、複数ある中に混ざる場合はその日の 24:00 までの営業を表す */
 export type OpeningPeriod = { open: OpeningPoint; close?: OpeningPoint };
 export type BusinessStatus = 'OPERATIONAL' | 'CLOSED_TEMPORARILY' | 'CLOSED_PERMANENTLY';
 
@@ -84,7 +84,8 @@ export type OpeningStatus =
 
 1. `businessStatus` が `CLOSED_PERMANENTLY` / `CLOSED_TEMPORARILY` ならそれを返す（曜日より優先）。
 2. `periods` が `undefined` または空なら `UNKNOWN`。
-3. `close` のない区間がある場合は 24 時間営業として `OPEN`。
+3. 区間が 1 件だけで `close` がない場合は 24 時間営業として `OPEN`（Google の 24 時間営業の表現）。表示用の `formatOpeningHours` と同じ条件にそろえる。
+   - 複数の区間の中に `close` のない区間が混ざる異常データは 24 時間営業とはみなさず、その区間を「`open` の曜日の 24:00 まで営業」として手順 4・5 で扱う（`formatOpeningHours` が `xx:xx-24:00` と表示するのと同じ解釈）。
 4. `open.day` が計画日の曜日と一致する区間がなければ `CLOSED_DAY`。
 5. `stayStart` / `stayEnd` が渡された場合のみ時間帯を判定する。
    - 週を「日曜 0:00 起点の分（0〜10079）」に展開し、各区間を `[open, close)` とする。`close` が `open` より前（土曜 22:00〜日曜 02:00 など）は週を跨ぐものとして 10080 を足す。
@@ -119,7 +120,7 @@ export type OpeningStatus =
 `use-trip.ts` について: 現在は `placeResult`（frontend の `SpotMetaType`、キーは `openingHours`）をそのまま展開しているため、プラン編集・詳細画面のスポットには `regularOpeningHours` が入らず、営業時間のアコーディオンが表示されていない（コードを読んだうえでの推測。Step 1 のテストと動作確認で確かめる）。R3・R7 を編集・詳細画面でも効かせるため、ここで合わせて直す。
 
 テスト:
-- `frontend/src/tests/lib/opening-hours.spec.ts`（新規）: 通常営業・定休日・日跨ぎ・土曜→日曜の週跨ぎ・24 時間営業・昼休憩・情報なし・閉業・臨時休業・不正な滞在時間・タイムゾーン非依存の曜日算出。
+- `frontend/src/tests/lib/opening-hours.spec.ts`（新規）: 通常営業・定休日・日跨ぎ・土曜→日曜の週跨ぎ・24 時間営業・`close` なし区間と他曜日の区間が混在する異常データ・昼休憩・情報なし・閉業・臨時休業・不正な滞在時間・タイムゾーン非依存の曜日算出。
 - `frontend/src/tests/google-maps.spec.ts`: `convertPlaceToSpotMeta` が 2 項目を返すこと。
 
 ### Step 2: 検索カードのバッジ・1 行表示と追加時トースト（R1・R6・R7）
