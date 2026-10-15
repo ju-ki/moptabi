@@ -5,6 +5,7 @@
  * 計画日にスポットが営業しているか、滞在時間が営業時間内かを判定する。
  * UI に依存しない純粋関数だけを置く。祝日の営業は判定しない。
  */
+import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 import { BusinessStatus, OpeningInfo, OpeningPeriod, OpeningPoint } from '@/types/spot';
 
 export type OpeningStatus =
@@ -151,6 +152,41 @@ export function checkOpeningStatus({
  * 定休日・閉業・臨時休業は false、営業時間情報がないスポットは true（除外しない）
  */
 export function isOpenOnPlanDate(spot: OpeningInfo, date: string): boolean {
-  const status = checkOpeningStatus({ ...spot, date });
+  // スポットが滞在時間を持っていても、日単位で判定する
+  const status = checkOpeningStatus({
+    openingPeriods: spot.openingPeriods,
+    businessStatus: spot.businessStatus,
+    date,
+  });
   return status.kind === 'OPEN' || status.kind === 'UNKNOWN';
+}
+
+/** 計画日の曜日ラベル（日〜土）。不正な日付は undefined */
+export function getWeekdayLabel(date: string): string | undefined {
+  const weekday = getWeekday(date);
+  return weekday === undefined ? undefined : WEEKDAY_LABELS[weekday];
+}
+
+/**
+ * 判定結果から利用者向けのメッセージを作る。営業中・情報なしは undefined
+ */
+export function buildOpeningStatusMessage(
+  status: OpeningStatus,
+  spot: { name: string; stayStart?: string; stayEnd?: string },
+): string | undefined {
+  switch (status.kind) {
+    case 'CLOSED_PERMANENTLY':
+      return OPENING_HOURS_MESSAGE.CLOSED_PERMANENTLY.replace(':name', spot.name);
+    case 'CLOSED_TEMPORARILY':
+      return OPENING_HOURS_MESSAGE.CLOSED_TEMPORARILY.replace(':name', spot.name);
+    case 'CLOSED_DAY':
+      return OPENING_HOURS_MESSAGE.CLOSED_DAY.replace(':name', spot.name).replace(':weekday', status.weekdayLabel);
+    case 'OUTSIDE_HOURS':
+      return OPENING_HOURS_MESSAGE.OUTSIDE_HOURS.replace(':name', spot.name)
+        .replace(':stayStart', spot.stayStart ?? '')
+        .replace(':stayEnd', spot.stayEnd ?? '')
+        .replace(':hours', status.hoursOfDay);
+    default:
+      return undefined;
+  }
 }

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
 import {
+  buildOpeningStatusMessage,
   checkOpeningStatus,
+  getWeekdayLabel,
   getOpeningHoursOfDay,
   getWeekday,
   isOpenOnPlanDate,
@@ -266,8 +268,57 @@ describe('isOpenOnPlanDate', () => {
     expect(isOpenOnPlanDate({ businessStatus: 'CLOSED_TEMPORARILY' }, TUESDAY)).toBe(false);
   });
 
+  it('スポットが滞在時間を持っていても日単位で判定する', () => {
+    const spot = { openingPeriods: MUSEUM, stayStart: '08:00', stayEnd: '09:00' };
+    expect(isOpenOnPlanDate(spot, TUESDAY)).toBe(true);
+  });
+
   it('営業日と営業時間情報がないスポットは true を返す', () => {
     expect(isOpenOnPlanDate({ openingPeriods: MUSEUM }, TUESDAY)).toBe(true);
     expect(isOpenOnPlanDate({}, MONDAY)).toBe(true);
+  });
+});
+
+describe('getWeekdayLabel', () => {
+  it('計画日の曜日ラベルを返す', () => {
+    expect(getWeekdayLabel(MONDAY)).toBe('月');
+    expect(getWeekdayLabel(SUNDAY)).toBe('日');
+  });
+
+  it('不正な日付は undefined を返す', () => {
+    expect(getWeekdayLabel('invalid')).toBeUndefined();
+  });
+});
+
+describe('buildOpeningStatusMessage', () => {
+  it('定休日のメッセージにスポット名と曜日を入れる', () => {
+    expect(buildOpeningStatusMessage({ kind: 'CLOSED_DAY', weekdayLabel: '月' }, { name: '美術館' })).toBe(
+      '「美術館」はこの日（月）が定休日の可能性があります。公式サイト等で営業日をご確認ください。',
+    );
+  });
+
+  it('営業時間外のメッセージに滞在時間と営業時間を入れる', () => {
+    expect(
+      buildOpeningStatusMessage(
+        { kind: 'OUTSIDE_HOURS', hoursOfDay: '11:00-17:00' },
+        { name: '美術館', stayStart: '10:00', stayEnd: '12:00' },
+      ),
+    ).toBe(
+      '「美術館」の滞在予定（10:00〜12:00）に営業時間外の時間帯が含まれています（この日の営業時間: 11:00-17:00）。公式サイト等で営業時間をご確認ください。',
+    );
+  });
+
+  it('閉業・臨時休業のメッセージにスポット名を入れる', () => {
+    expect(buildOpeningStatusMessage({ kind: 'CLOSED_PERMANENTLY' }, { name: 'カフェ' })).toBe(
+      '「カフェ」は Google マップ上で閉業と登録されています。公式サイト等で最新情報をご確認ください。',
+    );
+    expect(buildOpeningStatusMessage({ kind: 'CLOSED_TEMPORARILY' }, { name: 'カフェ' })).toBe(
+      '「カフェ」は Google マップ上で臨時休業中と登録されています。公式サイト等で最新情報をご確認ください。',
+    );
+  });
+
+  it('営業中・情報なしは undefined を返す', () => {
+    expect(buildOpeningStatusMessage({ kind: 'OPEN' }, { name: 'カフェ' })).toBeUndefined();
+    expect(buildOpeningStatusMessage({ kind: 'UNKNOWN' }, { name: 'カフェ' })).toBeUndefined();
   });
 });

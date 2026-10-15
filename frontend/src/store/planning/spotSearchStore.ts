@@ -11,6 +11,8 @@ interface SpotSearchState {
   searchCategories: string[];
   searchKeyword: string;
   highRating: boolean;
+  // 計画日に営業しているスポットのみ表示する（3タブ共通。No.158）
+  openOnPlanDate: boolean;
 
   // Google検索用テーマフィルター（searchCategories とは独立）
   selectedThemes: string[];
@@ -62,6 +64,7 @@ interface SpotSearchState {
   setSearchCategories: (categoryId: string) => void; // トグル動作
   setSearchKeyword: (keyword: string) => void;
   setHighRating: (value: boolean) => void;
+  setOpenOnPlanDate: (value: boolean) => void;
   setSearchResults: (results: Spot[]) => void;
   setFilteredWishlistSpot: (spots: Spot[]) => void;
   setFilteredVisitedSpot: (spots: Spot[]) => void;
@@ -90,6 +93,7 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       searchCategories: [],
       searchKeyword: '',
       highRating: false,
+      openOnPlanDate: false,
       selectedThemes: [],
       planSpotSelection: [],
       searchResults: [],
@@ -151,6 +155,12 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       setHighRating: (value) => {
         set((state) => {
           state.highRating = value;
+        });
+      },
+
+      setOpenOnPlanDate: (value) => {
+        set((state) => {
+          state.openOnPlanDate = value;
         });
       },
 
@@ -273,6 +283,7 @@ export const useSpotSearchStore = create<SpotSearchState>()(
           state.searchCategories = [];
           state.searchKeyword = '';
           state.highRating = false;
+          state.openOnPlanDate = false;
           state.selectedThemes = [];
           state.planSpotSelection = [];
         });
