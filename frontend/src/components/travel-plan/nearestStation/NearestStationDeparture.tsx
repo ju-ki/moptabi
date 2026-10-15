@@ -26,6 +26,9 @@ const NearestStationDeparture = ({ date }: { date: string }) => {
     if (candidates.length > 0) {
       return [...candidates, ...Array(Math.max(0, 3 - candidates.length)).fill('')];
     }
+    // 候補が未設定（保存済みプランは採用済みの発車時間だけを持つ）のときだけ、採用済みの発車時間を初期値にする。
+    // 空配列はユーザーが候補を入力していない状態のため、プランニングで自動設定された時刻は表示しない
+    if (departureData?.nearestStation?.scheduledDepartureTimes !== undefined) return ['', '', ''];
     const fallback = departureData?.nearestStation?.scheduledDepartureTime ?? '';
     return [fallback, '', ''];
   };

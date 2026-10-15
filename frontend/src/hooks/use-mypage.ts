@@ -1,4 +1,5 @@
 import useSWR from 'swr';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 
 import { useFetcher } from '@/hooks/use-fetcher';
 import { CreateUserLocationRequest, UpdateUserLocationRequest, UserLocation } from '@/models/userLocation';
@@ -234,9 +235,9 @@ export function useMypageData(): MypageData {
     wishlistCount: wishlistUnvisitedCount,
     totalTripDays,
     planCount: tripsCount?.count ?? 0,
-    planLimit: tripsCount?.limit ?? 20,
+    planLimit: tripsCount?.limit ?? DEFAULT_USER_LIMITS.maxPlans,
     wishlistTotalCount: wishlistCount?.count ?? 0,
-    wishlistLimit: wishlistCount?.limit ?? 100,
+    wishlistLimit: wishlistCount?.limit ?? DEFAULT_USER_LIMITS.maxWishlistSpots,
     userLocations: userLocations ?? [],
     postUserLocation,
     updateUserLocation,

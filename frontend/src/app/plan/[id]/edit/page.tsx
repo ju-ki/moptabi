@@ -12,19 +12,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS } from '@/data/constants';
+import { LimitFetchError } from '@/components/common/LimitFetchError';
 import DateRangePicker from '@/components/DateRangePicker';
+import { useUserLimits } from '@/hooks/use-user-limits';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { buildDepartureFromCandidate, buildDestinationFromCandidate } from '@/lib/plan-location';
 import { TransportNodeType, TravelPlanType } from '@/types/plan';
 import { Button } from '@/components/ui/button';
 import { usePlanning } from '@/hooks/use-planning';
 import { useFetchTripDetail } from '@/hooks/use-trip';
+import { collectSavedTransportMethodIds } from '@/lib/planning';
 
 const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
   const { handlePreprocessingPlanning } = usePlanning();
   const fields = useStoreForPlanning();
+  const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
   const { trip, isLoading, error } = useFetchTripDetail(id);
 
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
@@ -56,6 +59,8 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
       fields.setPlanInfo(plan.date, plan);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DEPARTURE, plan.departure);
       fields.setDepartureAndDestination(plan.date, TransportNodeType.DESTINATION, plan.destination);
+      // 移動手段のチェック状態は保存していないため、保存済みプランで使っている手段から復元する
+      fields.setPlanningInfo(plan.date, { transportationMethodId: collectSavedTransportMethodIds(plan) });
     });
   }, [trip, error, id]);
 
@@ -145,15 +150,20 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
                   <Asterisk className="text-red-500" />
                 </div>
                 {/* 日数表示 */}
-                {fields.startDate && fields.endDate && (
-                  <LimitDisplay
-                    current={getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).length}
-                    limit={APP_LIMITS.MAX_PLAN_DAYS}
-                    label="旅行日数"
-                    unit="日"
-                    size="sm"
-                    data-testid="plan-days-display"
-                  />
+                {limitsError ? (
+                  <LimitFetchError onRetry={retryLimits} />
+                ) : (
+                  fields.startDate &&
+                  fields.endDate && (
+                    <LimitDisplay
+                      current={getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).length}
+                      limit={limits.maxPlanDays}
+                      label="旅行日数"
+                      unit="日"
+                      size="sm"
+                      data-testid="plan-days-display"
+                    />
+                  )
                 )}
               </div>
               <DateRangePicker
@@ -161,6 +171,7 @@ const TravelEditPage = ({ params }: { params: Promise<{ id: string }> }) => {
                 endDate={fields.endDate}
                 onDateChange={fields.setRangeDate}
                 onDeletePlanData={fields.deletePlanInfo}
+                maxDays={limits.maxPlanDays}
               />
               <div className="my-1">
                 {fields.errors.startDate && <span className="text-red-500">{fields.errors.startDate.toString()}</span>}

@@ -31,6 +31,20 @@ const mockData = {
 };
 
 // Mock Google Maps
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
+  }),
+}));
+
 vi.mock('@react-google-maps/api', () => ({
   GoogleMap: ({ children, onLoad }: any) => {
     React.useEffect(() => {
@@ -202,10 +216,25 @@ describe('GoogleSpotSearch', () => {
     mockData.searchResults = [];
     mockData.searchKeyword = '';
     mockData.highRating = false;
+    mockUserLimitsState.error = undefined;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('上限の取得に失敗している場合', () => {
+    it('スポット数の代わりにエラーと再試行ボタンを表示すること', async () => {
+      mockUserLimitsState.error = new Error('取得失敗');
+
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+
+      expect(screen.getByTestId('limit-fetch-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('limit-display')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+      expect(mockUserLimitsState.retry).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('ダイアログの基本動作', () => {

@@ -159,8 +159,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
 
   const tripData = result.data;
 
-  // 上限チェック
-  await validateLimit(transactionDb, userId, tripData);
+  // 上限チェック（更新時はプラン作成数チェックをスキップ）
+  await validateLimit(transactionDb, userId, tripData, { isUpdate: true });
 
   await transactionDb.transaction(async (tx) => {
     await tx

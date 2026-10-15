@@ -335,4 +335,34 @@ describe('NearestStationDeparture', () => {
       }),
     );
   });
+
+  it.each([
+    ['候補が空配列のとき（プランニングで自動設定された発車時間）は空欄にする', [], ''],
+    ['候補が未設定のとき（保存済みプラン）は採用済みの発車時間を表示する', undefined, '09:40'],
+  ])('%s', (_label, scheduledDepartureTimes, expected) => {
+    mockGetDepartureAndDestination.mockReturnValue({
+      name: '東京駅',
+      latitude: 35.6812,
+      longitude: 139.7671,
+      nearestStation: {
+        spotId: 'departure',
+        placeId: 'd-station',
+        stationType: 'TRAIN',
+        name: '東京駅',
+        walkingTime: 5,
+        latitude: 35.6812,
+        longitude: 139.7671,
+        scheduledDepartureTime: '09:40',
+        scheduledDepartureTimes,
+      },
+    });
+
+    render(
+      <TooltipProvider>
+        <NearestStationDeparture date="2026-04-25" />
+      </TooltipProvider>,
+    );
+
+    expect(screen.getByTestId('scheduled-departure-1')).toHaveValue(expected);
+  });
 });

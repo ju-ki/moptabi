@@ -1,13 +1,13 @@
 /**
  * ユーザーお気に入り地点の型定義
  */
-import { LOCATION_LABELS, MAX_USER_LOCATIONS } from '@shared/user/types';
+import { LOCATION_LABELS } from '@shared/user/types';
 
 import { ExtendNearestStationType } from '@/types/plan';
 
 import type { CreateUserLocationType, LocationLabel, UpdateUserLocationType } from '@shared/user/types';
 
-export { LOCATION_LABELS, MAX_USER_LOCATIONS };
+export { LOCATION_LABELS };
 export type { LocationLabel };
 
 // ユーザーお気に入り地点（フロントエンド表示用: 日付フィールドは文字列として扱う）

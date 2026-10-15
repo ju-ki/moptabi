@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { executePlanning, PlanningParams } from '@/lib/planning';
+import { buildPreferredSelections, executePlanning, PlanningParams } from '@/lib/planning';
 import { TransportNodeType } from '@/types/plan';
 
 export const usePlanning = () => {
@@ -64,44 +64,22 @@ export const usePlanning = () => {
     fields.setSimulationStatus({ date: date, status: 1 });
 
     try {
-      // プランニング再実施時に既に移動手段が設定されている場合のそのIDを取得する
-      const preferredTransportMethodIds: Record<string, number> = {};
-      // プランニング再実施時に既に発車時間が設定されている場合のその発車時間を取得する
-      const preferredDepartureTimes: Record<string, string> = {};
-
-      preferredTransportMethodIds.DEPARTURE_TO_FIRST_SPOT = departureData.transportMethodId;
-
-      if (departureData.transportMethodId == 4 && departureData.nearestStation?.scheduledDepartureTime) {
-        preferredDepartureTimes.DEPARTURE_TO_FIRST_SPOT = departureData.nearestStation.scheduledDepartureTime;
-      }
-
-      spotsData.forEach((spot, index) => {
-        if (index === spotsData.length - 1) return; // 最後のスポットは次のスポットがないためスキップ
-        const nextSpot = spotsData[index + 1];
-        if (!nextSpot) return;
-        if (!spot.transportMethodId) return;
-
-        preferredTransportMethodIds[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.transportMethodId;
-
-        // 最寄駅の情報は次のスポットに格納されているため
-        if (spot.transportMethodId != 4) return;
-        if (!spot.nearestStation?.scheduledDepartureTime) return;
-        preferredDepartureTimes[`SPOT_${spot.id}_TO_${nextSpot.id}`] = spot.nearestStation.scheduledDepartureTime;
+      const transportMethodIds = fields.getPlanningInfo(date)?.transportationMethodId || [];
+      // 再プランニング時は、前回結果で区間の組み合わせが同じ区間だけ移動手段と発車時間を引き継ぐ
+      const { preferredTransportMethodIds, preferredDepartureTimes } = buildPreferredSelections({
+        spots: spotsData,
+        departure: departureData,
+        destination: destinationData,
+        previousResult: fields.getPlanningResult(date),
+        transportMethodIds,
       });
-
-      const lastSpot = spotsData[spotsData.length - 1];
-      preferredTransportMethodIds[`SPOT_${lastSpot.id}_TO_DESTINATION`] = lastSpot.transportMethodId;
-
-      if (lastSpot.transportMethodId == 4 && lastSpot.nearestStation?.scheduledDepartureTime) {
-        preferredDepartureTimes[`SPOT_${lastSpot.id}_TO_DESTINATION`] = lastSpot.nearestStation.scheduledDepartureTime;
-      }
 
       const params: PlanningParams = {
         date,
         departure: departureData,
         destination: destinationData,
         spots: spotsData || [],
-        transportMethodIds: fields.getPlanningInfo(date)?.transportationMethodId || [],
+        transportMethodIds,
         preferredTransportMethodIds,
         preferredDepartureTimes,
       };

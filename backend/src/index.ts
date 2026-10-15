@@ -55,6 +55,8 @@ import {
   createPlanLocationRoute,
   deletePlanLocationRoute,
 } from './routes/planLocation';
+import { getUserLimitsRoute } from './routes/user';
+import { getUserLimitsHandler } from './controllers/user';
 import { getDbFromContext } from './db';
 
 // Cloudflare Workers用のBindings型
@@ -157,6 +159,7 @@ const wishListApp = new OpenAPIHono();
 const notificationApp = new OpenAPIHono();
 const userLocationApp = new OpenAPIHono();
 const planLocationApp = new OpenAPIHono();
+const userApp = new OpenAPIHono();
 
 // 認証が必要なルート
 tripApp.use('*', requireAuth);
@@ -166,6 +169,7 @@ wishListApp.use('*', requireAuth);
 notificationApp.use('*', requireAuth);
 userLocationApp.use('*', requireAuth);
 planLocationApp.use('*', requireAuth);
+userApp.use('*', requireAuth);
 
 // authAppは認証なしでアクセス可能（ユーザー登録・検索など）
 authApp.use('*', optionalAuth);
@@ -216,6 +220,9 @@ planLocationApp.openapi(getPlanLocationCandidatesRoute, planLocationHandler.getC
 planLocationApp.openapi(createPlanLocationRoute, planLocationHandler.create);
 planLocationApp.openapi(deletePlanLocationRoute, planLocationHandler.delete);
 
+// ユーザー上限ルートの登録
+userApp.openapi(getUserLimitsRoute, getUserLimitsHandler);
+
 app.route('/images', imageApp);
 app.route('/trips', tripApp);
 app.route('/spots', spotApp);
@@ -224,6 +231,7 @@ app.route('/wishlist', wishListApp);
 app.route('/notification', notificationApp);
 app.route('/userLocation', userLocationApp);
 app.route('/plan-location', planLocationApp);
+app.route('/user', userApp);
 
 // APIドキュメントの登録
 app

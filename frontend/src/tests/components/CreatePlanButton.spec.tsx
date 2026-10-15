@@ -3,12 +3,34 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockPush, mockToast, mockPostTrip, mockResetPlanningStore, mockGetDirtyPlanningDates } = vi.hoisted(() => ({
+const {
+  mockPush,
+  mockToast,
+  mockPostTrip,
+  mockResetPlanningStore,
+  mockGetDirtyPlanningDates,
+  mockGetPlanningMessages,
+} = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockToast: vi.fn(),
   mockPostTrip: vi.fn(),
   mockResetPlanningStore: vi.fn(),
   mockGetDirtyPlanningDates: vi.fn<() => string[]>(() => []),
+  mockGetPlanningMessages: vi.fn<() => { level: string; segmentKey: string; message: string }[]>(() => []),
+}));
+
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
+  }),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -62,6 +84,7 @@ vi.mock('@/lib/plan', () => {
         },
         arrivalTime: '18:00',
         departureTime: '08:00',
+        messages: mockGetPlanningMessages(),
       }),
 
       getDirtyPlanningDates: mockGetDirtyPlanningDates,
@@ -83,11 +106,28 @@ vi.mock('@/lib/plan', () => {
 });
 
 import CreatePlanButton from '@/components/CreatePlanButton';
+import { PLANNING_DIRTY_BLOCK_MESSAGE, PLANNING_ERROR_BLOCK_MESSAGE } from '@/data/constants';
+import { LIMIT_FETCH_ERROR_MESSAGE } from '@/lib/limits';
 
 describe('CreatePlanButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetDirtyPlanningDates.mockReturnValue([]);
+    mockGetPlanningMessages.mockReturnValue([]);
+    mockUserLimitsState.error = undefined;
+  });
+
+  it('上限の取得に失敗している場合は保存をブロックし、エラーのトーストを出すこと', async () => {
+    mockUserLimitsState.error = new Error('取得失敗');
+
+    render(<CreatePlanButton isEdit={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: LIMIT_FETCH_ERROR_MESSAGE.title }));
+    });
+    expect(mockPostTrip).not.toHaveBeenCalled();
   });
 
   it('保存成功で詳細画面へ遷移する場合、遷移前にストアを初期化すること', async () => {
@@ -132,5 +172,59 @@ describe('CreatePlanButton', () => {
 
     expect(mockPostTrip).not.toHaveBeenCalled();
     expect(mockResetPlanningStore).not.toHaveBeenCalled();
+  });
+
+  it('dirty日付が存在する場合は、dirty の理由のトーストだけを出すこと', async () => {
+    mockGetDirtyPlanningDates.mockReturnValue(['2026-06-01']);
+
+    render(<CreatePlanButton isEdit={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled();
+    });
+
+    // トーストは1件しか表示されないため、後から別のトーストで上書きしない
+    expect(mockToast).toHaveBeenCalledTimes(1);
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: PLANNING_DIRTY_BLOCK_MESSAGE.title }));
+  });
+
+  it('プランニング結果にエラーがある場合は保存をブロックし、エラーのトーストを出すこと', async () => {
+    mockGetPlanningMessages.mockReturnValue([
+      { level: 'ERROR', segmentKey: 'DAY_OVERFLOW', message: '到着時刻が23:59を超えています。' },
+    ]);
+
+    render(<CreatePlanButton isEdit={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalled();
+    });
+
+    expect(mockToast).toHaveBeenCalledTimes(1);
+    expect(mockToast).toHaveBeenCalledWith({
+      title: PLANNING_ERROR_BLOCK_MESSAGE.title,
+      description: PLANNING_ERROR_BLOCK_MESSAGE.description,
+      variant: 'destructive',
+    });
+    expect(mockPostTrip).not.toHaveBeenCalled();
+    expect(mockResetPlanningStore).not.toHaveBeenCalled();
+  });
+
+  it('プランニング結果が警告だけの場合は保存できること', async () => {
+    mockPostTrip.mockResolvedValue(123);
+    mockGetPlanningMessages.mockReturnValue([
+      { level: 'WARNING', segmentKey: 'OVER_TIME', message: '滞在時間を10分減らしてみましょう。' },
+    ]);
+
+    render(<CreatePlanButton isEdit={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '旅行計画を作成' }));
+
+    await waitFor(() => {
+      expect(mockPostTrip).toHaveBeenCalledTimes(1);
+    });
   });
 });

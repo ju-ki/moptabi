@@ -6,7 +6,9 @@ import { useStoreForPlanning } from '@/lib/plan';
 import { executePlanning } from '@/lib/planning';
 import { TransportNodeType } from '@/types/plan';
 
-vi.mock('@/lib/planning', () => ({
+// executePlanning は Google Maps API を呼ぶためモックする。優先手段の組み立て（buildPreferredSelections）は実物を使う
+vi.mock('@/lib/planning', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/planning')>()),
   executePlanning: vi.fn(),
 }));
 
@@ -65,6 +67,7 @@ describe('usePlanning', () => {
       setPlanErrors: vi.fn(),
       setSimulationStatus: vi.fn(),
       getPlanningInfo: vi.fn(() => ({ transportationMethodId: [1] })),
+      getPlanningResult: vi.fn(() => undefined),
       setErrors: vi.fn(),
       setPlanningResult: vi.fn(),
       setDepartureAndDestination: vi.fn(),
@@ -151,5 +154,39 @@ describe('usePlanning', () => {
     expect(setPlanErrorsMock).not.toHaveBeenCalled();
     // シミュレーション開始ステータスが設定されることを確認
     expect(mockState.setSimulationStatus).toHaveBeenCalledWith({ date: '2024-06-01', status: 1 });
+  });
+
+  it('前回のプランニング結果から区間ごとの優先手段を作って executePlanning に渡す', async () => {
+    const createRoute = (fromSpotId: string, toSpotId: string, transportMethodId: number) => ({
+      id: `route-${fromSpotId}-to-${toSpotId}`,
+      fromSpotId,
+      toSpotId,
+      transportMethodId,
+      alternativeRoutes: [{ transportMethodId: 3 }, { transportMethodId: 2 }, { transportMethodId: 1 }],
+    });
+    const mockState = createMockState({
+      getDepartureAndDestination: vi.fn((date, type) => {
+        return type === TransportNodeType.DEPARTURE ? { time: '10:00' } : { time: '18:00' };
+      }),
+      getSpotInfo: vi.fn(() => [{ id: '1', name: 'スポット1', order: 1, transportMethodId: 1 }]),
+      getPlanningInfo: vi.fn(() => ({ transportationMethodId: [1, 2] })),
+      getPlanningResult: vi.fn(() => ({
+        routes: [createRoute('departure', '1', 2), createRoute('1', 'destination', 3)],
+      })),
+    });
+
+    (useStoreForPlanning.getState as any).mockReturnValue(mockState);
+
+    const { result } = renderHook(() => usePlanning());
+    await result.current.handlePreprocessingPlanning({ date: '2024-06-01' });
+
+    // 前回の車(3)はプランの移動手段に含まれないため渡さない
+    expect(mockExecutePlanning).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transportMethodIds: [1, 2],
+        preferredTransportMethodIds: { DEPARTURE_TO_FIRST_SPOT: 2 },
+        preferredDepartureTimes: {},
+      }),
+    );
   });
 });

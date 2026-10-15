@@ -8,8 +8,6 @@ COPY packages ./packages
 
 RUN npm install -g pnpm
 
-WORKDIR /app/packages/shared-types
-RUN npm install
 
 WORKDIR /app/frontend
 

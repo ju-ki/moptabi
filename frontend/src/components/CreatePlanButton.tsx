@@ -6,9 +6,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useStoreForPlanning } from '@/lib/plan';
 import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
-import { isSpotsPerDayLimitReached, isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
+import { isPlanDaysLimitReached, getLimitErrorMessage, LIMIT_FETCH_ERROR_MESSAGE } from '@/lib/limits';
 import { useFetchTripDetail } from '@/hooks/use-trip';
-import { PLANNING_DIRTY_BLOCK_MESSAGE } from '@/data/constants';
+import { PLANNING_DIRTY_BLOCK_MESSAGE, PLANNING_ERROR_BLOCK_MESSAGE } from '@/data/constants';
+import { hasPlanningError } from '@/lib/planning';
+import { useUserLimits } from '@/hooks/use-user-limits';
 
 import { Button } from './ui/button';
 
@@ -24,22 +26,42 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
   const router = useRouter();
   const { toast } = useToast();
   const { postTrip, patchTrip } = useFetchTripDetail();
+  const { limits, error: limitsError } = useUserLimits();
 
   /**
-   * 保存前にフォーム入力とdirty状態を検証する。
+   * 保存前にフォーム入力とdirty状態、プランニング結果のエラーを検証する。
    * @returns 検証結果の種別
    */
-  const checkValidation = (): 'success' | 'dirty-blocked' | 'validation-error' => {
+  const checkValidation = (): 'success' | 'dirty-blocked' | 'error-blocked' | 'validation-error' => {
     let isError = false;
 
     if (fields.title === '') {
       fields.setErrors({ title: 'タイトルを入力してください' });
       isError = true;
+      toast({
+        title: '入力項目に一部不備があります',
+        description: '入力項目を見直してください',
+        variant: 'destructive',
+      });
+    }
+    if (fields.title && fields.title.length > 50) {
+      fields.setErrors({ title: 'タイトルは50文字以内で入力してください' });
+      isError = true;
+      toast({
+        title: '入力項目に一部不備があります',
+        description: '入力項目を見直してください',
+        variant: 'destructive',
+      });
     }
 
     if (!fields.startDate || !fields.endDate) {
       fields.setErrors({ startDate: 'プランの日付を入力してください' });
       isError = true;
+      toast({
+        title: '入力項目に一部不備があります',
+        description: '入力項目を見直してください',
+        variant: 'destructive',
+      });
     }
 
     const dates = getDatesBetween(new Date(fields.startDate), new Date(fields.endDate));
@@ -54,11 +76,31 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
       return 'dirty-blocked';
     }
 
+    // 23:59 超過などエラーのあるプランニング結果は保存できない
+    if (dates.some((date) => hasPlanningError(fields.getPlanningResult(date)))) {
+      toast({
+        title: PLANNING_ERROR_BLOCK_MESSAGE.title,
+        description: PLANNING_ERROR_BLOCK_MESSAGE.description,
+        variant: 'destructive',
+      });
+      return 'error-blocked';
+    }
+
+    // 上限を取得できていない場合は、上限チェックができないため保存を止める
+    if (limitsError) {
+      toast({
+        title: LIMIT_FETCH_ERROR_MESSAGE.title,
+        description: LIMIT_FETCH_ERROR_MESSAGE.description,
+        variant: 'destructive',
+      });
+      return 'validation-error';
+    }
+
     // プラン日数の上限チェック
-    if (isPlanDaysLimitReached(dates.length)) {
+    if (isPlanDaysLimitReached(dates.length, limits.maxPlanDays)) {
       toast({
         title: 'プラン日数が上限を超えています',
-        description: getLimitErrorMessage('planDays'),
+        description: getLimitErrorMessage('planDays', limits.maxPlanDays),
         variant: 'destructive',
       });
       return 'validation-error';
@@ -73,21 +115,36 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
           memo: 'メモは1000文字以内で入力してください。',
         });
         isError = true;
+        toast({
+          title: '入力項目に一部不備があります',
+          description: '入力項目を見直してください',
+          variant: 'destructive',
+        });
       }
       if (!spotsData || spotsData.length === 0) {
         fields.setPlanErrors(date, {
           spots: '観光地スポットは1つ以上選択してください',
         });
         isError = true;
+        toast({
+          title: '入力項目に一部不備があります',
+          description: '入力項目を見直してください',
+          variant: 'destructive',
+        });
       }
 
       // 1日あたりのスポット数の上限チェック（出発地・目的地は除外）
       const actualSpotCount = getActualSpotCount(spotsData);
-      if (isSpotsPerDayLimitReached(actualSpotCount)) {
+      if (actualSpotCount > limits.maxSpotsPerDay) {
         fields.setPlanErrors(date, {
-          spots: getLimitErrorMessage('spotsPerDay'),
+          spots: getLimitErrorMessage('spotsPerDay', limits.maxSpotsPerDay),
         });
         isError = true;
+        toast({
+          title: '入力項目に一部不備があります',
+          description: '入力項目を見直してください',
+          variant: 'destructive',
+        });
       }
 
       spotsData.map((spot) => {
@@ -96,6 +153,11 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
             memo: 'メモは1000文字以内で入力してください。',
           });
           isError = true;
+          toast({
+            title: '入力項目に一部不備があります',
+            description: '入力項目を見直してください',
+            variant: 'destructive',
+          });
         }
       });
     });
@@ -110,12 +172,11 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
   const handleCreatePlan = async () => {
     try {
       const validationResult = checkValidation();
+      // トーストは1件しか表示されないため、ブロック理由のトーストを上書きしない
+      if (validationResult === 'dirty-blocked' || validationResult === 'error-blocked') {
+        return;
+      }
       if (validationResult != 'success') {
-        toast({
-          title: '入力項目に一部不備があります',
-          description: '入力項目を見直してください',
-          variant: 'destructive',
-        });
         return;
       }
 
