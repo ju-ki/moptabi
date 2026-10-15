@@ -131,8 +131,16 @@ DB から次の組み合わせが分かると、自宅の位置はある程度�
 
 ### 「徒歩時間からの推測」への対応（推奨案に含める）
 - 対象範囲は `UserLocation` と `PlanLocation` の両方とする（出発地はほぼ自宅になるため）。
-- `PlanLocation.travelTime` と `UserLocationNearestStation.placeId` は、座標が暗号化されれば単体では「駅周辺の円」程度しか分からないため、**初回は平文のまま**とする。
-- より強くしたい場合は、`travelTime` と最寄駅の `placeId` も同じ暗号化 JSON に含める（後述の追加の提案 2）。
+- 座標だけを暗号化しても、次の情報が平文で残ると DB 流出後に位置を推測できる。
+  - `PlanLocation.travelTime`（出発地 → 最初のスポット）と、最初のスポットの `PlanSpot.spotId`・移動手段
+  - 最後のスポットの `PlanSpot.travelTime`（最後のスポット → 目的地。`backend/src/services/trip.ts:298`）
+  - `UserLocationNearestStation.placeId` / `PlanLocationNearestStation.placeId`（自宅の最寄駅）
+- 1 回分なら「スポットを中心とした円」程度だが、同じ自宅から何度もプランを作ると、最初のスポットが違う複数の円が重なり、交点から位置をかなり絞り込める（三辺測量）。対象ユーザーは月 2〜4 回旅行する想定なので、このリスクは無視できない。
+- そのため、**これらも暗号化の対象に含める**ことを推奨する（2026-10-15 CodeRabbit 指摘を受けて見直し）。いずれも検索条件や並び替えには使っていない。
+  - `PlanLocation`: 座標と `travelTime`、最寄駅の `placeId` を暗号化する
+  - `UserLocation`: 座標とラベル、最寄駅の `placeId` を暗号化する
+  - `PlanSpot.travelTime`: 最後のスポットの値だけを暗号化するのは扱いが複雑になるため、カラムごと暗号化するか、目的地までの移動時間を `PlanLocation`（DESTINATION）側に移すかを実装計画で決める
+- 平文で残す場合は、上記の推測リスクを要件として許容することを明記する必要がある。
 
 ## 4. 追加の提案
 1. **地点の名前・ラベルの扱い**: `UserLocation.name` / `label` に「自宅」「実家」などが平文で入る。座標を暗号化しても「自宅」というラベルと最寄駅が組み合わさると推測材料になるため、`name` / `label` も暗号化対象に含めるか検討したい。
@@ -168,7 +176,9 @@ DB から次の組み合わせが分かると、自宅の位置はある程度�
 ## 6. 本 Issue 以外のセキュリティ上の懸念（#441 を除く、2026-10-13 時点の dev で確認）
 | 優先度 | 内容 | 該当箇所 |
 |---|---|---|
-| 高 | `next` 15.5.20 / `next-auth` 5.0.0-beta.31 に critical の脆弱性（Image Optimization の未認証 RCE、認証チェック回避）。Dependabot の `next-15.5.24` ブランチあり | `frontend/pnpm-lock.yaml:4584`, `:4600` |
+| 高 | `next` 15.5.20 に critical の脆弱性。AVIF 画像最適化の未認証 RCE（GHSA-2xp9-vwfh-vxw4）など。15.5.24 で修正済み。15.5.27 未満には moderate のキャッシュ汚染（GHSA-4jqv-mc3x-m676 など）も残るため、**15.5.27 以上**に上げる | `frontend/pnpm-lock.yaml:4600` |
+| 高 | `next-auth` 5.0.0-beta.31 に、設定エラー時に `auth` の有無だけで判定する認証チェックが素通りになる問題（GHSA-8fpg-xm3f-6cx3、`pnpm audit` 上は critical）がある。このアプリの `frontend/src/middleware.ts` は `!req.auth` で判定しているので適用条件に当たる。修正版は 5.0.0-beta.32 | `frontend/pnpm-lock.yaml:4584` |
+| 低 | `next-auth` のその他の advisory。メールアドレス正規化（GHSA-7rqj-j65f-68wh）はメールプロバイダー用で、Google ログインだけのこのアプリでは該当しない。`getToken()` の例外（GHSA-xmf8-cvqr-rfgj）は `getToken` を使っていないので該当しない。OAuth の state/PKCE cookie（GHSA-x445-f3h2-j279、moderate）は複数プロバイダー前提で影響は小さい。いずれも 5.0.0-beta.32 で修正 | `frontend/auth.ts` |
 | 高 | 画像アップロードのファイル名にユーザー入力の `file.name` をそのまま使っており、`../` でパストラバーサルになり得る。MIME・サイズの検証もない | `backend/src/controllers/image.ts:22-25` |
 | 中 | 500 エラー時に `error.message`（SQL エラー文など）をそのまま返している。SQL エラーには値が含まれることがあり、座標が漏れる経路にもなり得る | `backend/src/index.ts:252-256` |
 | 中 | Swagger UI が本番でも公開されており、API 一覧が誰でも見られる | `backend/src/index.ts:230-234` |
@@ -180,5 +190,5 @@ DB から次の組み合わせが分かると、自宅の位置はある程度�
 ## 7. 次のステップ
 1. #441 の対応（先行）
 2. 本 Issue の実装計画を `docs/tasks/No.168/` に作成（実装計画・処理フロー・動作確認手順）
-   - 暗号化対象: `UserLocation`（座標・ラベル）、`PlanLocation`（座標）
+   - 暗号化対象: `UserLocation`（座標・ラベル・最寄駅）、`PlanLocation`（座標・移動時間・最寄駅）、最後のスポット → 目的地の移動時間
    - 既存データは一括変換スクリプトで暗号化し、その後に平文カラムを削除する
