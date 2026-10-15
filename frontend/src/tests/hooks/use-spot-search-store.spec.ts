@@ -78,3 +78,18 @@ describe('useSpotSearchStore — planSpotSelection', () => {
     expect(result.current.planSpotSelection).toEqual([]);
   });
 });
+
+describe('useSpotSearchStore — openOnPlanDate（No.158）', () => {
+  it('初期値は false である', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    expect(result.current.openOnPlanDate).toBe(false);
+  });
+
+  it('setOpenOnPlanDate で切り替えられ、resetFilters で false に戻る', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.setOpenOnPlanDate(true));
+    expect(result.current.openOnPlanDate).toBe(true);
+    act(() => result.current.resetFilters());
+    expect(result.current.openOnPlanDate).toBe(false);
+  });
+});

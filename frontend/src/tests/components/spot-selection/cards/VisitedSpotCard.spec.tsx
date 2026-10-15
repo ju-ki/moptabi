@@ -137,4 +137,53 @@ describe('VisitedSpotCard', () => {
       expect(onSpotClick).toHaveBeenCalledWith(spot);
     });
   });
+
+  describe('営業時間の表示（No.158）', () => {
+    // 2026-10-12 は月曜日。月曜定休・火〜日 10:00-17:00 のスポット
+    const MONDAY = '2026-10-12';
+    const TUESDAY = '2026-10-13';
+    const openingPeriods = [0, 2, 3, 4, 5, 6].map((day) => ({
+      open: { day, hour: 10, minute: 0 },
+      close: { day, hour: 17, minute: 0 },
+    }));
+
+    it('計画日が定休日のときは「定休日の可能性」バッジと営業時間を表示する', () => {
+      render(
+        <VisitedSpotCard place={createMockSpot({ openingPeriods })} isSpotSelected={() => false} planDate={MONDAY} />,
+      );
+      expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('定休日の可能性');
+      expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(月)の営業時間: 定休日');
+    });
+
+    it('計画日が営業日のときはバッジを表示せず、営業時間だけを表示する', () => {
+      render(
+        <VisitedSpotCard place={createMockSpot({ openingPeriods })} isSpotSelected={() => false} planDate={TUESDAY} />,
+      );
+      expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+      expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(火)の営業時間: 10:00-17:00');
+    });
+
+    it('閉業のスポットは「閉業」バッジを表示する', () => {
+      render(
+        <VisitedSpotCard
+          place={createMockSpot({ openingPeriods, businessStatus: 'CLOSED_PERMANENTLY' })}
+          isSpotSelected={() => false}
+          planDate={TUESDAY}
+        />,
+      );
+      expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('閉業');
+    });
+
+    it('営業時間情報がない・計画日がないときは何も表示しない', () => {
+      const { rerender } = render(
+        <VisitedSpotCard place={createMockSpot()} isSpotSelected={() => false} planDate={MONDAY} />,
+      );
+      expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('opening-hours-of-day')).not.toBeInTheDocument();
+
+      rerender(<VisitedSpotCard place={createMockSpot({ openingPeriods })} isSpotSelected={() => false} />);
+      expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('opening-hours-of-day')).not.toBeInTheDocument();
+    });
+  });
 });

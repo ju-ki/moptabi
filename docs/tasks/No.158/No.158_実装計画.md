@@ -21,14 +21,14 @@
   - [x] `convertPlaceToSpotMeta` / `searchSpots` / 各 hook への反映とテスト
   - [x] `use-trip.ts` の `regularOpeningHours` 引き継ぎとテスト（テストで不具合を再現済み）
   - [x] lint / typecheck / test を通して push
-- [ ] Step 2: 検索カードのバッジ・1 行表示と追加時トースト（`feature158-search`）
-  - [ ] 文言定数 `OPENING_HOURS_MESSAGE`
-  - [ ] `OpeningStatusBadge` と 3 種のカード
-  - [ ] `SpotSelectionDialog` のトースト
-- [ ] Step 3: 検索フィルター（`feature158-search`）
-  - [ ] `spotSearchStore` に `openOnPlanDate`
-  - [ ] Google 検索 / 行きたいリスト / 過去のスポットの絞り込み
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 2: 検索カードのバッジ・1 行表示と追加時トースト（`feature158-search`）
+  - [x] 文言定数 `OPENING_HOURS_MESSAGE`
+  - [x] `OpeningStatusBadge` と 3 種のカード
+  - [x] `SpotSelectionDialog` のトースト
+- [x] Step 3: 検索フィルター（`feature158-search`）
+  - [x] `spotSearchStore` に `openOnPlanDate`
+  - [x] Google 検索 / 行きたいリスト / 過去のスポットの絞り込み
+  - [x] lint / typecheck / test を通して push
 - [ ] Step 4: プランニング警告とカードの強調（`feature158-planning`）
   - [ ] `PLANNING_MESSAGE_SEGMENT.OPENING_HOURS` と優先度
   - [ ] `buildOpeningHoursMessages` と `executePlanning`
@@ -157,9 +157,9 @@ export type OpeningStatus =
 
 | ファイル | 変更 |
 |---|---|
-| `frontend/src/components/spot-selection/OpeningStatusBadge.tsx`（新規） | `OpeningStatus` を受けてバッジを描画する共通部品（`CLOSED_DAY`: 定休日の可能性 / `CLOSED_TEMPORARILY`: 臨時休業中 / `CLOSED_PERMANENTLY`: 閉業 / それ以外は何も描画しない）。Step 4 でも使う |
-| `frontend/src/components/spot-selection/cards/GoogleSpotCard.tsx` / `WishlistSpotCard.tsx` / `VisitedSpotCard.tsx` | `date` prop を追加し、バッジと「この日(土)の営業時間: 10:00-17:00」の 1 行を表示 |
-| `frontend/src/components/spot-selection/GoogleSpotSearch.tsx` / `WishlistSpotSearch.tsx` / `VisitedSpotSearch.tsx` | 各カードに `date` を渡す |
+| `frontend/src/components/common/OpeningHoursInfo.tsx`（新規） | Step 4 でも使う共通部品。`OpeningStatusBadge`（判定結果のバッジ。営業中・情報なしは何も描画しない）、`OpeningHoursOfDay`（計画日の営業時間 1 行）、`HolidayNote`（祝日注記）、`SpotOpeningSummary`（検索カード用にバッジと 1 行をまとめたもの。日単位で判定） |
+| `frontend/src/components/spot-selection/cards/GoogleSpotCard.tsx` / `WishlistSpotCard.tsx` / `VisitedSpotCard.tsx` | `planDate` prop を追加し、`SpotOpeningSummary` でバッジと「この日(土)の営業時間: 10:00-17:00」の 1 行を表示 |
+| `frontend/src/components/common/SearchResultsView.tsx` / `frontend/src/components/spot-selection/GoogleSpotSearch.tsx` / `WishlistSpotSearch.tsx` / `VisitedSpotSearch.tsx` | 計画日を `planDate` としてカードまで渡す |
 | `frontend/src/components/spot-selection/SpotSelectionDialog.tsx` | `handleSpotSelect` で追加時（`!isDeleted`）に `checkOpeningStatus` を呼び、`CLOSED_DAY` / `CLOSED_*` ならトースト（`variant: 'default'`）を出す。`setSpots` は必ず呼ぶ |
 | `frontend/src/data/constants.ts` | `OPENING_HOURS_MESSAGE`（6 章の文言）を追加 |
 
@@ -172,7 +172,8 @@ export type OpeningStatus =
 | ファイル | 変更 |
 |---|---|
 | `frontend/src/store/planning/spotSearchStore.ts` | `openOnPlanDate: boolean`（初期値 `false`）と setter を追加。3 タブ共通の 1 つの値にする |
-| `frontend/src/components/spot-selection/GoogleSpotSearch.tsx` | 高評価フィルターと同じ UI でチェックボックス「計画日に営業しているスポットのみ」を追加。`handleSearch` の絞り込み（`highRating` の直後）で `CLOSED_DAY` / `CLOSED_*` を除外 |
+| `frontend/src/components/spot-selection/OpenOnPlanDateFilter.tsx`（新規） | チェックボックス「計画日に営業しているスポットのみ」。3 タブ共通 |
+| `frontend/src/components/spot-selection/GoogleSpotSearch.tsx` | 検索結果の上にフィルターを置き、描画時に `isOpenOnPlanDate` で絞り込む。高評価フィルターのように検索時に絞り込むと、チェックを切り替えても再検索するまで反映されないため、描画時に絞り込む |
 | `frontend/src/components/spot-selection/WishlistSpotSearch.tsx` / `VisitedSpotSearch.tsx` | 同じチェックボックスを追加し、描画前に同じ条件で除外。`// TODO: dateは営業時間のフィルターで使用予定` を削除 |
 
 0 件になった場合は「計画日に営業しているスポットが見つかりませんでした」を表示する。

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { SpotOpeningSummary } from '@/components/common/OpeningHoursInfo';
 import { ExtendSpotType } from '@/types/plan';
 import { Badge } from '@/components/ui/badge';
 import { placeTypeMap } from '@/data/constants';
@@ -17,9 +18,11 @@ interface GoogleSpotCardProps {
   onSpotClick?: (spot: ExtendSpotType) => void;
   isSpotSelected: (spotId: string) => boolean;
   viewMode?: 'list' | 'split' | 'map';
+  /** 計画日（YYYY-MM-DD）。営業時間の判定に使う（No.158） */
+  planDate?: string;
 }
 
-const GoogleSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list' }: GoogleSpotCardProps) => {
+const GoogleSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list', planDate }: GoogleSpotCardProps) => {
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
 
   const handleClickSpot = (spot: ExtendSpotType) => {
@@ -126,6 +129,9 @@ const GoogleSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list' 
                 </div>
               )}
             </div>
+
+            {/* 営業時間（No.158） */}
+            <SpotOpeningSummary spot={place} planDate={planDate} className={isSplitMode ? 'mt-1.5' : 'mt-2'} />
 
             {/* カテゴリ */}
             <div>
