@@ -225,6 +225,40 @@ describe('checkOpeningStatus', () => {
       });
     });
 
+    describe('計画日に開店がなく、前日の営業が深夜まで続く店', () => {
+      // 土曜 20:00 〜 日曜 02:00 だけ営業（日曜は開店しない）
+      const SATURDAY_NIGHT_ONLY = [period(6, '20:00', 0, '02:00')];
+
+      it('前日から続く営業区間に収まる滞在は OPEN を返す', () => {
+        expect(
+          checkOpeningStatus({
+            openingPeriods: SATURDAY_NIGHT_ONLY,
+            date: SUNDAY,
+            stayStart: '00:30',
+            stayEnd: '01:30',
+          }),
+        ).toEqual({ kind: 'OPEN' });
+      });
+
+      it('前日から続く営業区間の外の滞在は CLOSED_DAY を返す', () => {
+        expect(
+          checkOpeningStatus({
+            openingPeriods: SATURDAY_NIGHT_ONLY,
+            date: SUNDAY,
+            stayStart: '10:00',
+            stayEnd: '11:00',
+          }),
+        ).toEqual({ kind: 'CLOSED_DAY', weekdayLabel: '日' });
+      });
+
+      it('滞在時間を渡さない日単位の判定は CLOSED_DAY を返す', () => {
+        expect(checkOpeningStatus({ openingPeriods: SATURDAY_NIGHT_ONLY, date: SUNDAY })).toEqual({
+          kind: 'CLOSED_DAY',
+          weekdayLabel: '日',
+        });
+      });
+    });
+
     it('24 時間営業はどの時間帯でも OPEN を返す', () => {
       expect(
         checkOpeningStatus({ openingPeriods: ALWAYS_OPEN, date: SUNDAY, stayStart: '03:00', stayEnd: '05:00' }),
