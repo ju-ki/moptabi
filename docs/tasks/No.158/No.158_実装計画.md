@@ -6,6 +6,36 @@
 - 動作確認手順: [No.158_動作確認手順.md](./No.158_動作確認手順.md)
 - 前提ブランチ: `dev`（eaccd2d を `feature158` に取り込み済み）
 
+## 0. 進捗
+
+作業が中断したときは、ここのチェックが付いていない最初の項目から再開する。チェックは作業ブランチへのコミットと一緒に更新する。
+
+- [x] Step 0: 設計書の更新（`feature158`）
+  - [x] `docs/画面設計書.md`
+  - [x] `docs/pages/plan-create.md` / `plan-edit.md`
+  - [x] `docs/pages/plan-detail.md`
+- [ ] Step 1: データの追加と判定関数（`feature158-core`）
+  - [ ] 型の追加（`types/spot.ts` / `types/plan.ts`）
+  - [ ] `opening-hours.ts` のテストを書く
+  - [ ] `opening-hours.ts` の実装
+  - [ ] `convertPlaceToSpotMeta` / `searchSpots` / 各 hook への反映とテスト
+  - [ ] `use-trip.ts` の `regularOpeningHours` 引き継ぎとテスト
+  - [ ] lint / typecheck / test を通して push
+- [ ] Step 2: 検索カードのバッジ・1 行表示と追加時トースト（`feature158-search`）
+  - [ ] 文言定数 `OPENING_HOURS_MESSAGE`
+  - [ ] `OpeningStatusBadge` と 3 種のカード
+  - [ ] `SpotSelectionDialog` のトースト
+- [ ] Step 3: 検索フィルター（`feature158-search`）
+  - [ ] `spotSearchStore` に `openOnPlanDate`
+  - [ ] Google 検索 / 行きたいリスト / 過去のスポットの絞り込み
+  - [ ] lint / typecheck / test を通して push
+- [ ] Step 4: プランニング警告とカードの強調（`feature158-planning`）
+  - [ ] `PLANNING_MESSAGE_SEGMENT.OPENING_HOURS` と優先度
+  - [ ] `buildOpeningHoursMessages` と `executePlanning`
+  - [ ] `PlanSpotSettingCard` / `SpotDetailCard` / `SpotInfoCard`
+  - [ ] lint / typecheck / test を通して push
+- [ ] 動作確認（[No.158_動作確認手順.md](./No.158_動作確認手順.md)）とスクリーンショット
+
 ## 1. スコープ
 
 ### 対応する
