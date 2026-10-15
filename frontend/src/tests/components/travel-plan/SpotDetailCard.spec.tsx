@@ -777,3 +777,61 @@ describe('SpotDetailCard', () => {
     });
   });
 });
+
+describe('SpotDetailCard の営業時間（No.158）', () => {
+  // 2026-10-12 は月曜日、2026-10-13 は火曜日
+  // 月曜定休・火〜日 10:00-17:00
+  const openingPeriods = [0, 2, 3, 4, 5, 6].map((day) => ({
+    open: { day, hour: 10, minute: 0 },
+    close: { day, hour: 17, minute: 0 },
+  }));
+
+  beforeEach(() => {
+    mockGetPlanningResult.mockReturnValue(undefined);
+  });
+
+  const renderCard = (date: string, overrides: Partial<ExtendSpotType>) =>
+    render(
+      <SpotDetailCard
+        date={date}
+        spot={createMockSpot({ openingPeriods, ...overrides })}
+        nextSpot={createMockNextSpot()}
+        index={0}
+        onDelete={vi.fn()}
+        onMemoChange={vi.fn()}
+      />,
+    );
+
+  it('滞在時間が営業時間外のとき、バッジ・営業時間・祝日注記・公式サイトリンクを表示すること', () => {
+    renderCard('2026-10-13', { stayStart: '16:00', stayEnd: '18:00' });
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('営業時間外の可能性');
+    expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(火)の営業時間: 10:00-17:00');
+    expect(screen.getAllByTestId('opening-hours-holiday-note').length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: '公式サイトを開く' })).toHaveAttribute(
+      'href',
+      'https://www.tokyotower.co.jp/',
+    );
+  });
+
+  it('計画日が定休日のとき、定休日のバッジを表示すること', () => {
+    renderCard('2026-10-12', {});
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('定休日の可能性');
+  });
+
+  it('滞在時間が営業時間内のときはバッジを表示しないこと', () => {
+    renderCard('2026-10-13', { stayStart: '10:00', stayEnd: '12:00' });
+
+    expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+    expect(screen.getByTestId('opening-hours-of-day')).toBeInTheDocument();
+  });
+
+  it('営業時間のアコーディオンを開くと末尾に祝日注記を表示すること', () => {
+    renderCard('2026-10-13', {});
+
+    fireEvent.click(screen.getByText('営業時間'));
+
+    expect(screen.getByTestId('opening-hours-holiday-note')).toBeInTheDocument();
+  });
+});

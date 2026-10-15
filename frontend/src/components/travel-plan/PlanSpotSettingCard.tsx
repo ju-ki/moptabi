@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Bus,
@@ -28,7 +28,10 @@ import {
   formatDuration,
   shouldRecommendNearestStation,
 } from '@/data/mockNearestStation';
+import { OpeningHoursDetail, OpeningStatusBadge } from '@/components/common/OpeningHoursInfo';
 import { searchNearestStation } from '@/lib/google-maps';
+import { checkOpeningStatus, hasOpeningWarning } from '@/lib/opening-hours';
+import { minutesToTime, timeToMinutes } from '@/lib/planning';
 import { cn } from '@/lib/utils';
 import { ExtendNearestStationType, ExtendPlanLocationType, ExtendSpotType } from '@/types/plan';
 
@@ -36,6 +39,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 
 export type PlanSpotSettingCardProps = {
   spot: ExtendSpotType;
+  /** 計画日（営業時間の判定に使う。No.158） */
+  date?: string;
+  /** プランニング済みか。未実施の stayStart は仮の値なので、滞在時間の判定はプランニング後だけ行う */
+  isScheduled?: boolean;
   nextSpot?: ExtendSpotType;
   destinationData?: ExtendPlanLocationType;
   totalSpots: number;
@@ -54,6 +61,8 @@ export type PlanSpotSettingCardProps = {
 
 export default function PlanSpotSettingCard({
   spot,
+  date,
+  isScheduled = false,
   nextSpot,
   destinationData,
   totalSpots,
@@ -285,6 +294,21 @@ export default function PlanSpotSettingCard({
     );
   }, [spot]);
 
+  // 営業時間の判定（No.158）。滞在時間を変えた直後にも追従するよう、開始時刻 + 現在の滞在時間で終了時刻を求める
+  const openingStatus = useMemo(() => {
+    if (!date) return undefined;
+    const stayStart = isScheduled ? spot.stayStart : undefined;
+    const stayEnd = stayStart ? minutesToTime(timeToMinutes(stayStart) + currentStayDuration) : undefined;
+    return checkOpeningStatus({
+      openingPeriods: spot.openingPeriods,
+      businessStatus: spot.businessStatus,
+      date,
+      stayStart,
+      stayEnd,
+    });
+  }, [date, isScheduled, spot.stayStart, spot.openingPeriods, spot.businessStatus, currentStayDuration]);
+  const isOpeningWarning = !!openingStatus && hasOpeningWarning(openingStatus);
+
   const orderOptions = Array.from({ length: totalSpots }, (_, i) => i + 1);
   const orderSelect = (
     <Select value={String(spot.order)} onValueChange={(value) => onOrderChange(spot.id, Number(value))}>
@@ -305,6 +329,7 @@ export default function PlanSpotSettingCard({
     <Card
       className={cn(
         'relative transition-all',
+        isOpeningWarning && 'border-amber-400',
         isDragging && 'opacity-50 ring-2 ring-primary',
         isDropTarget && 'ring-2 ring-blue-400 bg-blue-50',
       )}
@@ -352,6 +377,7 @@ export default function PlanSpotSettingCard({
           <div className="w-full min-w-0 flex-1 sm:w-auto">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-medium truncate">{spot.name}</h4>
+              {openingStatus && <OpeningStatusBadge status={openingStatus} />}
               {distanceFromPrevious !== undefined && (
                 <p className="text-sm text-gray-500">前のスポットから{(distanceFromPrevious / 1000).toFixed(1)} km</p>
               )}
@@ -369,6 +395,16 @@ export default function PlanSpotSettingCard({
                 </Tooltip>
               )}
             </div>
+
+            {openingStatus && (
+              <OpeningHoursDetail
+                status={openingStatus}
+                openingPeriods={spot.openingPeriods}
+                date={date}
+                url={spot.url}
+                className="mt-2"
+              />
+            )}
 
             <div className="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-4">
               <div className="flex items-center gap-2">

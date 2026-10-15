@@ -577,3 +577,90 @@ describe('PlanSpotSettingCard', () => {
     expect(screen.getByTestId('scheduled-departure-1')).toHaveValue(expected);
   });
 });
+
+describe('PlanSpotSettingCard の営業時間（No.158）', () => {
+  // 2026-10-12 は月曜日、2026-10-13 は火曜日
+  const MONDAY = '2026-10-12';
+  const TUESDAY = '2026-10-13';
+  // 月曜定休・火〜日 10:00-17:00
+  const openingPeriods = [0, 2, 3, 4, 5, 6].map((day) => ({
+    open: { day, hour: 10, minute: 0 },
+    close: { day, hour: 17, minute: 0 },
+  }));
+
+  const baseProps = {
+    totalSpots: 1,
+    onSettingChange: vi.fn(),
+    onOrderChange: vi.fn(),
+    onDragStart: vi.fn(),
+    onDragEnd: vi.fn(),
+    onDragOver: vi.fn(),
+    onDrop: vi.fn(),
+    onDragLeave: vi.fn(),
+    onDelete: vi.fn(),
+  };
+
+  const renderCard = (props: Partial<React.ComponentProps<typeof PlanSpotSettingCard>>) =>
+    render(<PlanSpotSettingCard {...baseProps} spot={createSpot({ openingPeriods })} {...props} />);
+
+  it('計画日が定休日のとき、枠をアンバーにしてバッジ・営業時間・祝日注記・公式サイトリンクを表示すること', () => {
+    const { container } = renderCard({
+      date: MONDAY,
+      spot: createSpot({ openingPeriods, url: 'https://example.com/' }),
+    });
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('定休日の可能性');
+    expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(月)の営業時間: 定休日');
+    expect(screen.getByTestId('opening-hours-holiday-note')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '公式サイトを開く' })).toHaveAttribute('href', 'https://example.com/');
+    // 枠の色は Tailwind のクラスでしか判別できないため、クラス名で確認する
+    expect(container.firstElementChild?.className).toContain('border-amber-400');
+  });
+
+  it('計画日が営業日のときは営業時間の 1 行だけを表示し、バッジ・注記は出さないこと', () => {
+    const { container } = renderCard({ date: TUESDAY });
+
+    expect(screen.getByTestId('opening-hours-of-day')).toHaveTextContent('この日(火)の営業時間: 10:00-17:00');
+    expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('opening-hours-holiday-note')).not.toBeInTheDocument();
+    expect(container.firstElementChild?.className).not.toContain('border-amber-400');
+  });
+
+  it('プランニング済みで滞在時間が営業時間外のとき、営業時間外のバッジを表示すること', () => {
+    renderCard({
+      date: TUESDAY,
+      isScheduled: true,
+      spot: createSpot({ openingPeriods, stayStart: '16:00', stayEnd: '17:00', stayDuration: 120 }),
+    });
+
+    // 16:00 + 滞在 2 時間 = 18:00 で 17:00 の閉店を過ぎる
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('営業時間外の可能性');
+  });
+
+  it('滞在時間を変更すると、プランニングを待たずに再判定すること', () => {
+    const spot = createSpot({ openingPeriods, stayStart: '16:00', stayEnd: '17:00', stayDuration: 60 });
+    const { rerender } = renderCard({ date: TUESDAY, isScheduled: true, spot });
+    expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+
+    // 親が滞在時間の変更をストアに反映し、stayDuration だけが変わった状態で再描画される
+    rerender(<PlanSpotSettingCard {...baseProps} date={TUESDAY} isScheduled spot={{ ...spot, stayDuration: 90 }} />);
+
+    expect(screen.getByTestId('opening-status-badge')).toHaveTextContent('営業時間外の可能性');
+  });
+
+  it('プランニング前は仮の開始時刻で判定せず、日単位で判定すること', () => {
+    renderCard({
+      date: TUESDAY,
+      spot: createSpot({ openingPeriods, stayStart: '09:00', stayEnd: '10:00' }),
+    });
+
+    expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+  });
+
+  it('営業時間情報がないスポットには何も表示しないこと', () => {
+    renderCard({ date: MONDAY, spot: createSpot() });
+
+    expect(screen.queryByTestId('opening-hours-detail')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('opening-status-badge')).not.toBeInTheDocument();
+  });
+});

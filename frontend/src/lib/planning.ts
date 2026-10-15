@@ -22,6 +22,7 @@ import {
 
 import { getRoute } from './plan';
 import { calcDistance } from './algorithm';
+import { buildOpeningStatusMessage, checkOpeningStatus } from './opening-hours';
 
 export type ArrivalWarning = {
   exceededMinutes: number;
@@ -1268,6 +1269,35 @@ export function buildPreferredSelections(params: {
 }
 
 /**
+ * 計画日・滞在時間に対する営業時間の警告を作る（No.158）
+ * 判定できない・営業中のスポットはメッセージを出さない
+ */
+export function buildOpeningHoursMessages(date: string, spots: ExtendSpotType[]): PlanningMessage[] {
+  return spots.flatMap((spot) => {
+    const status = checkOpeningStatus({
+      openingPeriods: spot.openingPeriods,
+      businessStatus: spot.businessStatus,
+      date,
+      stayStart: spot.stayStart,
+      stayEnd: spot.stayEnd,
+    });
+    const message = buildOpeningStatusMessage(status, {
+      name: spot.name,
+      stayStart: spot.stayStart,
+      stayEnd: spot.stayEnd,
+    });
+    if (!message) return [];
+    return [
+      {
+        level: 'WARNING' as const,
+        message,
+        segmentKey: `${PLANNING_MESSAGE_SEGMENT.OPENING_HOURS}:${spot.id}`,
+      },
+    ];
+  });
+}
+
+/**
  * メインプランニング関数
  */
 export async function executePlanning(params: PlanningParams): Promise<PlanningResult> {
@@ -1331,6 +1361,9 @@ export async function executePlanning(params: PlanningParams): Promise<PlanningR
       segmentKey: PLANNING_MESSAGE_SEGMENT.EXTRA_TIME,
     });
   }
+
+  // 営業時間の警告（保存はブロックしない）
+  forwardResult.messages.push(...buildOpeningHoursMessages(params.date, forwardResult.updatedSpots));
 
   const result = {
     routes: forwardResult.routes,

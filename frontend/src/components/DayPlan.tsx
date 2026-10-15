@@ -43,7 +43,7 @@ export function DayPlan({ plan, dayNumber }: DayPlanProps) {
           </h2>
           {departureData && <DepartureInfoCard departure={departureData} />}
           {allSpots.map((planSpot, _) => {
-            return <SpotInfoCard key={planSpot.id} spot={planSpot} />;
+            return <SpotInfoCard key={planSpot.id} spot={planSpot} date={plan.date} />;
           })}
           {destinationData && <DestinationInfoCard destination={destinationData} />}
           <RouteSummary date={plan.date} />
