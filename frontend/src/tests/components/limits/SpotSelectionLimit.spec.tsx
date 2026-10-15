@@ -1,55 +1,56 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
-import { APP_LIMITS } from '@/data/constants';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 import { isSpotsPerDayLimitReached, getRemainingCount } from '@/lib/limits';
 
 describe('スポット追加時の上限チェック - limits.ts', () => {
-  describe('isSpotsPerDayLimitReached', () => {
-    it('上限に達している場合はfalseを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(false);
+  const limit = DEFAULT_USER_LIMITS.maxSpotsPerDay;
+
+  describe('isSpotsPerDayLimitReached (F-6)', () => {
+    it('current = limit − 1 の場合はfalseを返す', () => {
+      expect(isSpotsPerDayLimitReached(limit - 1, limit)).toBe(false);
     });
 
-    it('上限を超えている場合はtrueを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY + 1)).toBe(true);
+    it('current = limit の場合はtrueを返す（backendと一致）', () => {
+      expect(isSpotsPerDayLimitReached(limit, limit)).toBe(true);
     });
 
-    it('上限未満の場合はfalseを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY - 1)).toBe(false);
+    it('current > limit の場合はtrueを返す', () => {
+      expect(isSpotsPerDayLimitReached(limit + 1, limit)).toBe(true);
     });
 
     it('0件の場合はfalseを返す', () => {
-      expect(isSpotsPerDayLimitReached(0)).toBe(false);
+      expect(isSpotsPerDayLimitReached(0, limit)).toBe(false);
     });
   });
 
   describe('getRemainingCount', () => {
     it('残り件数を正しく計算する', () => {
-      // MAX_SPOTS_PER_DAYが10の場合、現在5件なら残り5件
-      expect(getRemainingCount(5, APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(APP_LIMITS.MAX_SPOTS_PER_DAY - 5);
+      expect(getRemainingCount(2, limit)).toBe(limit - 2);
     });
 
     it('上限に達している場合は0を返す', () => {
-      expect(getRemainingCount(APP_LIMITS.MAX_SPOTS_PER_DAY, APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(0);
+      expect(getRemainingCount(limit, limit)).toBe(0);
     });
 
     it('上限を超えている場合は0を返す', () => {
-      expect(getRemainingCount(APP_LIMITS.MAX_SPOTS_PER_DAY + 5, APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(0);
+      expect(getRemainingCount(limit + 5, limit)).toBe(0);
     });
   });
 });
 
 describe('LimitDisplay統合テスト', () => {
+  const limit = DEFAULT_USER_LIMITS.maxSpotsPerDay;
+
   it('上限に近づいている場合（80%以上）は警告状態になる', () => {
-    const current = Math.ceil(APP_LIMITS.MAX_SPOTS_PER_DAY * 0.8);
-    const isWarning = current / APP_LIMITS.MAX_SPOTS_PER_DAY >= 0.8;
+    const current = Math.ceil(limit * 0.8);
+    const isWarning = current / limit >= 0.8;
     expect(isWarning).toBe(true);
   });
 
   it('上限に達している場合は追加不可状態になる', () => {
-    const current = APP_LIMITS.MAX_SPOTS_PER_DAY + 1;
-    const isLimitReached = isSpotsPerDayLimitReached(current);
+    const isLimitReached = isSpotsPerDayLimitReached(limit, limit);
     expect(isLimitReached).toBe(true);
   });
 });

@@ -4,12 +4,12 @@ import { CalendarIcon, Info } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { ja } from 'date-fns/locale';
 import { useState } from 'react';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn, getDatesBetween } from '@/lib/utils';
-import { APP_LIMITS } from '@/data/constants';
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from './ui/dialog';
 
@@ -32,7 +32,7 @@ export const DateRangePicker = ({
   onDateChange,
   onDeletePlanData,
   className,
-  maxDays = APP_LIMITS.MAX_PLAN_DAYS,
+  maxDays = DEFAULT_USER_LIMITS.maxPlanDays,
 }: DateRangePickerProps) => {
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
   const [pendingRange, setPendingRange] = useState<DateRange | undefined>(undefined);

@@ -1,10 +1,12 @@
 import { Context } from 'hono';
 import { eq, and, desc } from 'drizzle-orm';
 import { HTTPException } from 'hono/http-exception';
+import { buildLimitErrorMessage } from '@shared/user/types';
 
 import { userLocation, AnyDbType, userLocationNearestStation } from '@/db';
 import { getUserId } from '@/middleware/auth';
-import { CreateUserLocationSchema, MAX_USER_LOCATIONS, UpdateUserLocationSchema } from '@/models/userLocation';
+import { CreateUserLocationSchema, UpdateUserLocationSchema } from '@/models/userLocation';
+import { getUserLimits } from '@/services/userLimit';
 
 export const getUserLocationList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
@@ -35,10 +37,13 @@ export const createUserLocation = async (db: AnyDbType, c: Context) => {
     throw new HTTPException(400, { message: 'Invalid request body' });
   }
 
-  const existingUserLocation = await getUserLocationList(db, c);
+  const [existingUserLocation, limits] = await Promise.all([
+    getUserLocationList(db, c),
+    getUserLimits(db, getUserId(c)),
+  ]);
 
-  if (existingUserLocation.length >= MAX_USER_LOCATIONS) {
-    throw new HTTPException(400, { message: 'ユーザーのお気に入り地点は最大5件まで登録可能です' });
+  if (existingUserLocation.length >= limits.maxUserLocations) {
+    throw new HTTPException(400, { message: buildLimitErrorMessage('userLocations', limits.maxUserLocations) });
   }
 
   const userLocationData = userLocationResult.data;

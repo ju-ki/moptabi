@@ -3,9 +3,6 @@ import { StationTypeSchema } from '@shared/transports/schema';
 
 import type { CreateUserLocationType, UpdateUserLocationType, UserLocationType } from '@shared/user/types';
 
-// 定数: マイページでのお気に入り登録は最大5件
-export const MAX_USER_LOCATIONS = 5;
-
 // ユーザーのお気に入り地点のスキーマ（レスポンス用）
 export const UserLocationSchema = z.object({
   id: z.number().openapi({ example: 1 }),

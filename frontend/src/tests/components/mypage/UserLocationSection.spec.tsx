@@ -3,13 +3,29 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { UserLocationSection } from '@/components/mypage/UserLocationSection';
-import { UserLocation, MAX_USER_LOCATIONS, LOCATION_LABELS } from '@/models/userLocation';
+import { UserLocation, LOCATION_LABELS } from '@/models/userLocation';
+import { DEFAULT_USER_LIMITS } from '@shared/user/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 // Google Maps APIのモック
 vi.mock('@react-google-maps/api', () => ({
   GoogleMap: ({ children }: { children: React.ReactNode }) => <div data-testid="google-map">{children}</div>,
   Marker: () => <div data-testid="map-marker" />,
+}));
+
+// useUserLimitsフックのモック（テスト用に上限を5件に設定）
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { ...DEFAULT_USER_LIMITS, maxUserLocations: 5 },
+    isLoading: false,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
+  }),
 }));
 
 // Geocodingフックのモック
@@ -64,6 +80,28 @@ const mockDeleteUserLocation = vi.fn().mockResolvedValue({ ok: true });
 describe('UserLocationSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserLimitsState.error = undefined;
+  });
+
+  describe('上限の取得に失敗している場合', () => {
+    it('追加ボタンが非活性になり、エラーと再試行ボタンが表示されること', () => {
+      mockUserLimitsState.error = new Error('取得失敗');
+
+      renderWithProviders(
+        <UserLocationSection
+          userLocationList={mockUserLocations}
+          postUserLocation={mockPostUserLocation}
+          updateUserLocation={mockUpdateUserLocation}
+          deleteUserLocation={mockDeleteUserLocation}
+        />,
+      );
+
+      expect(screen.getByRole('button', { name: /追加/ })).toBeDisabled();
+      expect(screen.getByTestId('limit-fetch-error')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+      expect(mockUserLimitsState.retry).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ========================================
@@ -93,7 +131,7 @@ describe('UserLocationSection', () => {
         />,
       );
 
-      expect(screen.getByText(`${mockUserLocations.length} / ${MAX_USER_LOCATIONS}`)).toBeInTheDocument();
+      expect(screen.getByText(`${mockUserLocations.length} / 5`)).toBeInTheDocument();
     });
 
     it('登録された地点の名前が表示される', () => {
@@ -427,8 +465,8 @@ describe('UserLocationSection', () => {
     });
 
     it('最大件数に達した場合は追加ボタンが無効化される', () => {
-      // 最大5件のモックデータを作成
-      const maxLocations: UserLocation[] = Array.from({ length: MAX_USER_LOCATIONS }, (_, i) => ({
+      // 最大5件のモックデータを作成（モックのmaxUserLocationsは5）
+      const maxLocations: UserLocation[] = Array.from({ length: 5 }, (_, i) => ({
         id: i + 1,
         userId: 'user_001',
         name: `地点${i + 1}`,

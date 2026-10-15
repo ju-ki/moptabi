@@ -106,6 +106,13 @@
       "when": 1790155491808,
       "tag": "0015_add_user_location_nearestStation",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791811631878,
+      "tag": "0016_add_user_limit",
+      "breakpoints": true
     }
   ]
 }

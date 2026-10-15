@@ -19,6 +19,14 @@ const { mockResetPlanningStore, mockAddDateWithDefaultLocation, mockSetFields, m
   }),
 );
 
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 6, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 vi.mock('@/lib/plan', () => ({
   useStoreForPlanning: () => ({
     startDate: '2026-06-01',
@@ -49,7 +57,7 @@ vi.mock('@/components/CreatePlanButton', () => ({
 }));
 
 vi.mock('@/components/DateRangePicker', () => ({
-  default: () => <div data-testid="date-range-picker" />,
+  default: ({ maxDays }: { maxDays?: number }) => <div data-testid="date-range-picker" data-max-days={maxDays} />,
 }));
 
 vi.mock('@/components/common/LimitDisplay', () => ({
@@ -96,6 +104,12 @@ describe('plan/create page', () => {
     unmount();
 
     expect(mockResetPlanningStore).toHaveBeenCalledTimes(1);
+  });
+
+  it('ユーザー別のプラン日数上限を日付選択に渡すこと', () => {
+    const { getByTestId } = render(<TravelPlanCreate />);
+
+    expect(getByTestId('date-range-picker').getAttribute('data-max-days')).toBe('6');
   });
 
   it('画面をマウントした際もプラン作成ストアを初期化すること', () => {
