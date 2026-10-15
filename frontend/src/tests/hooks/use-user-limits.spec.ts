@@ -63,6 +63,21 @@ describe('useUserLimits', () => {
     expect(result.current.isLoading).toBe(true);
   });
 
+  it('retryを呼ぶと上限を再取得すること (F-5b)', () => {
+    const mockMutate = vi.fn();
+    mockUseSWR.mockReturnValue({
+      data: undefined,
+      error: new Error('取得失敗'),
+      isLoading: false,
+      mutate: mockMutate,
+    } as any);
+
+    const { result } = renderHook(() => useUserLimits());
+    result.current.retry();
+
+    expect(mockMutate).toHaveBeenCalledTimes(1);
+  });
+
   it('取得エラー時はerrorが返る (F-5b)', async () => {
     const mockError = new Error('取得失敗');
     mockUseSWR.mockReturnValue({

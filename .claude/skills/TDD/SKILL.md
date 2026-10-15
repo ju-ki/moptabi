@@ -11,18 +11,22 @@ description: "Moptabi の Issue を実装して dev 向け PR を出すまでの
 - 機能が複数にまたがる場合はブランチを分け、それぞれ `feature<Issue番号>-something` のように命名する。
 
 ## 2. 計画ドキュメント
-`docs/tasks/No.<番号>/` に次の3点を作成し、作業ブランチにコミットする。
-- `実装計画.md`: 変更方針、対象ファイル、影響範囲
-- `処理フロー.md`: 変更後の処理の流れ
-- `動作確認手順.md`: 手動確認の手順と期待結果
+`docs/tasks/` 直下に次の3点を作成し、作業ブランチにコミットする（例: `docs/tasks/No.232_実装計画.md`）。
+- `No.<番号>_実装計画.md`: 変更方針、対象ファイル、影響範囲
+- `No.<番号>_処理フロー.md`: 変更後の処理の流れ
+- `No.<番号>_動作確認手順.md`: 手動確認の手順と期待結果
 
 ## 3. 実装（TDD）
 - 2までのレビューが完了後に実装を開始する。
 - 先に失敗するテストを書き、通る実装を加え、リファクタする。
-- コマンドは npm ではなく pnpm を使う。
+- パッケージマネージャーは各ディレクトリの CLAUDE.md の指定に従う（frontend は pnpm、backend は bun）。
 
 ## 4. 検証
-- `pnpm run lint` `pnpm run typecheck` `pnpm run test` , `bun run lint` `bun run typecheck` `bun run test` をすべて通す。
+- 検証前に次のガイドを読み、各ガイドの検証コマンドに従う。
+  - バックエンド: [backend/CLAUDE.md](../../../backend/CLAUDE.md)
+  - フロントエンド: [frontend/CLAUDE.md](../../../frontend/CLAUDE.md)
+- バックエンドは `backend/` 内で bun を使い、lint・test・typecheck をすべて通す。
+- フロントエンドは `frontend/` 内で pnpm を使い、lint・test・typecheck をすべて通す。
 - UI 変更がある場合は修正前後のスクリーンショットを撮り、PR に添付する。
 
 ## 5. PR

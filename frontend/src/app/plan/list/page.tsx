@@ -7,12 +7,13 @@ import { TripSearchForm } from '@/components/TripSearchForm';
 import { useFetcher } from '@/hooks/use-fetcher';
 import { TripListItem } from '@/models/trip';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
+import { LimitFetchError } from '@/components/common/LimitFetchError';
 import LoadingState from '@/components/common/LoadingState';
 import { useUserLimits } from '@/hooks/use-user-limits';
 
 export default function TripsPage() {
   const { getFetcher, isAuthenticated, isSessionLoading } = useFetcher();
-  const { limits } = useUserLimits();
+  const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
 
   // セッションが確立されている場合のみAPIリクエストを発行
   const shouldFetch = isAuthenticated && !isSessionLoading;
@@ -35,13 +36,17 @@ export default function TripsPage() {
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold">旅行プラン一覧</h1>
           {/* プラン数表示 */}
-          <LimitDisplay
-            current={tripCount}
-            limit={limits.maxPlans}
-            label=""
-            size="md"
-            data-testid="plan-count-display"
-          />
+          {limitsError ? (
+            <LimitFetchError onRetry={retryLimits} />
+          ) : (
+            <LimitDisplay
+              current={tripCount}
+              limit={limits.maxPlans}
+              label=""
+              size="md"
+              data-testid="plan-count-display"
+            />
+          )}
         </div>
         {/* TODO: 対応できていない機能のためコメントアウト */}
         {/* <TripSearchForm /> */}

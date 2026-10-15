@@ -6,6 +6,7 @@
       "Bash(pnpm run typecheck)",
       "Bash(pnpm run format:check)",
       "Bash(pnpm run prebuild *)",
+      "Bash(bun run test)",
       "Bash(bun run test *)",
       "Bash(bun run lint)",
       "Bash(bun run typecheck)",

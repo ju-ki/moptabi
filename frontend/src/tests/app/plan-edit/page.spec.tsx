@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import TravelEditPage from '@/app/plan/[id]/edit/page';
@@ -16,7 +16,7 @@ const { mockSetPlanningInfo, mockHandlePreprocessingPlanning, mockTripState } = 
 
 vi.mock('@/hooks/use-user-limits', () => ({
   useUserLimits: () => ({
-    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 6, maxUserLocations: 2 },
     isLoading: false,
     error: null,
   }),
@@ -74,7 +74,7 @@ vi.mock('@/components/CreatePlanButton', () => ({
 }));
 
 vi.mock('@/components/DateRangePicker', () => ({
-  default: () => <div data-testid="date-range-picker" />,
+  default: ({ maxDays }: { maxDays?: number }) => <div data-testid="date-range-picker" data-max-days={maxDays} />,
 }));
 
 vi.mock('@/components/common/LimitDisplay', () => ({
@@ -133,6 +133,21 @@ describe('plan/[id]/edit page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockTripState.trip = null;
+  });
+
+  it('ユーザー別のプラン日数上限を日付選択に渡すこと', async () => {
+    mockTripState.trip = {
+      title: '旅行',
+      startDate: '2026-06-01',
+      endDate: '2026-06-01',
+      plans: [createSavedPlan(3, [1, 3])],
+    };
+
+    await renderEditPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('date-range-picker').getAttribute('data-max-days')).toBe('6');
+    });
   });
 
   it('保存済みプランを読み込むと、使っている移動手段（徒歩・自転車・車）をチェック状態に復元すること', async () => {

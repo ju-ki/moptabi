@@ -13,6 +13,7 @@ import {
   upsertUser,
   createUserWithDetails,
   deleteUsersExcept,
+  user,
   userLimit,
 } from './db-helper';
 
@@ -357,13 +358,15 @@ describe('GET /api/auth - UserLimit自動作成', () => {
   const client = testClient(app) as any;
   const db = createDevDb(process.env.DATABASE_URL!);
 
-  beforeAll(async () => {
+  // 初回ログイン分岐を確実に通すため、関連データに加えて User 行も削除する
+  const deleteNewUser = async () => {
     await clearTestDataForUser(NEW_USER_ID);
-  });
+    await db.delete(user).where(eq(user.id, NEW_USER_ID));
+  };
 
-  afterAll(async () => {
-    await clearTestDataForUser(NEW_USER_ID);
-  });
+  beforeAll(deleteNewUser);
+
+  afterAll(deleteNewUser);
 
   it('初回ログイン時にUserLimitが既定値で作成される (B-4)', async () => {
     const response = await client.api.auth.$get(
@@ -385,7 +388,12 @@ describe('GET /api/auth - UserLimit自動作成', () => {
   });
 
   it('2回目以降のログインでUserLimitが重複作成されない (B-5)', async () => {
-    await client.api.auth.$get({}, { headers: { 'X-User-Id': NEW_USER_ID } });
+    // ファイル共通の beforeEach で User 行が削除されるため、このテスト内で初回・2回目のログインを行う
+    const firstResponse = await client.api.auth.$get({}, { headers: { 'X-User-Id': NEW_USER_ID } });
+    expect((await firstResponse.json()).status).toBe(201);
+
+    const secondResponse = await client.api.auth.$get({}, { headers: { 'X-User-Id': NEW_USER_ID } });
+    expect((await secondResponse.json()).status).toBe(200);
 
     const rows = await db.select().from(userLimit).where(eq(userLimit.userId, NEW_USER_ID));
     expect(rows.length).toBe(1);

@@ -2,6 +2,14 @@ import { buildLimitErrorMessage, LimitType } from '@shared/user/types';
 
 export type { LimitType };
 
+/**
+ * 上限の取得に失敗したときに、上限に依存する操作を止める際の固定文言
+ */
+export const LIMIT_FETCH_ERROR_MESSAGE = {
+  title: '上限を取得できませんでした',
+  description: '通信状況を確認し、再試行してください。',
+} as const;
+
 export const isWishlistLimitReached = (currentCount: number, limit: number): boolean => {
   return currentCount >= limit;
 };

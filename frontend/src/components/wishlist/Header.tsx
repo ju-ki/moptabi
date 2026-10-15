@@ -7,11 +7,12 @@ import { useUserLimits } from '@/hooks/use-user-limits';
 
 import WishlistCreateModal from './WishlistCreateModal';
 import { LimitDisplay } from '../common/LimitDisplay';
+import { LimitFetchError } from '../common/LimitFetchError';
 
 const WishlistHeader = () => {
   const wishlistStore = useWishlistStore();
   const currentCount = wishlistStore.wishlist?.length ?? 0;
-  const { limits } = useUserLimits();
+  const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
 
   return (
     <div>
@@ -23,13 +24,17 @@ const WishlistHeader = () => {
               行きたいリスト
             </h1>
             {/* 件数表示 */}
-            <LimitDisplay
-              current={currentCount}
-              limit={limits.maxWishlistSpots}
-              label=""
-              size="md"
-              data-testid="wishlist-count-display"
-            />
+            {limitsError ? (
+              <LimitFetchError onRetry={retryLimits} />
+            ) : (
+              <LimitDisplay
+                current={currentCount}
+                limit={limits.maxWishlistSpots}
+                label=""
+                size="md"
+                data-testid="wishlist-count-display"
+              />
+            )}
           </div>
           <div className="flex gap-2">
             <WishlistCreateModal />

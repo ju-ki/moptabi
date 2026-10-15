@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useStoreForPlanning } from '@/lib/plan';
 import { getDatesBetween, getActualSpotCount } from '@/lib/utils';
 import { TransportNodeType } from '@/types/plan';
-import { isPlanDaysLimitReached, getLimitErrorMessage } from '@/lib/limits';
+import { isPlanDaysLimitReached, getLimitErrorMessage, LIMIT_FETCH_ERROR_MESSAGE } from '@/lib/limits';
 import { useFetchTripDetail } from '@/hooks/use-trip';
 import { PLANNING_DIRTY_BLOCK_MESSAGE, PLANNING_ERROR_BLOCK_MESSAGE } from '@/data/constants';
 import { hasPlanningError } from '@/lib/planning';
@@ -26,7 +26,7 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
   const router = useRouter();
   const { toast } = useToast();
   const { postTrip, patchTrip } = useFetchTripDetail();
-  const { limits } = useUserLimits();
+  const { limits, error: limitsError } = useUserLimits();
 
   /**
    * 保存前にフォーム入力とdirty状態、プランニング結果のエラーを検証する。
@@ -84,6 +84,16 @@ const CreatePlanButton = ({ isEdit = false, tripId }: CreatePlanButtonProps) => 
         variant: 'destructive',
       });
       return 'error-blocked';
+    }
+
+    // 上限を取得できていない場合は、上限チェックができないため保存を止める
+    if (limitsError) {
+      toast({
+        title: LIMIT_FETCH_ERROR_MESSAGE.title,
+        description: LIMIT_FETCH_ERROR_MESSAGE.description,
+        variant: 'destructive',
+      });
+      return 'validation-error';
     }
 
     // プラン日数の上限チェック

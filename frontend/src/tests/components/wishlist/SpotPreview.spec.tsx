@@ -2,11 +2,19 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+import { LIMIT_FETCH_ERROR_MESSAGE } from '@/lib/limits';
+
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
 vi.mock('@/hooks/use-user-limits', () => ({
   useUserLimits: () => ({
     limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
     isLoading: false,
-    error: null,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
   }),
 }));
 
@@ -49,6 +57,33 @@ import SpotPreview from '@/components/wishlist/SpotPreview';
 describe('SpotPreview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserLimitsState.error = undefined;
+  });
+
+  describe('上限の取得に失敗している場合', () => {
+    it('行きたいリストに追加せず、エラーのトーストを出すこと', async () => {
+      mockUserLimitsState.error = new Error('取得失敗');
+      getSelectedSpot.mockReturnValue({
+        id: 's9',
+        location: { name: 'エラー時スポット', lat: 1, lng: 2 },
+        image: '/img.jpg',
+        rating: 4,
+        ratingCount: 1,
+        category: ['cafe'],
+        address: '住所',
+        url: '',
+      });
+      isAlreadyAddedWishlist.mockReturnValue(false);
+
+      render(<SpotPreview onBack={() => {}} />);
+
+      fireEvent.click(screen.getByText('行きたいリストに追加'));
+
+      await waitFor(() => {
+        expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: LIMIT_FETCH_ERROR_MESSAGE.title }));
+      });
+      expect(postWishlist).not.toHaveBeenCalled();
+    });
   });
 
   describe('初期表示', () => {

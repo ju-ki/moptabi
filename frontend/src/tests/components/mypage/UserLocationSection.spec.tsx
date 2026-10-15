@@ -14,11 +14,17 @@ vi.mock('@react-google-maps/api', () => ({
 }));
 
 // useUserLimitsフックのモック（テスト用に上限を5件に設定）
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
 vi.mock('@/hooks/use-user-limits', () => ({
   useUserLimits: () => ({
     limits: { ...DEFAULT_USER_LIMITS, maxUserLocations: 5 },
     isLoading: false,
-    error: null,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
   }),
 }));
 
@@ -74,6 +80,28 @@ const mockDeleteUserLocation = vi.fn().mockResolvedValue({ ok: true });
 describe('UserLocationSection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserLimitsState.error = undefined;
+  });
+
+  describe('上限の取得に失敗している場合', () => {
+    it('追加ボタンが非活性になり、エラーと再試行ボタンが表示されること', () => {
+      mockUserLimitsState.error = new Error('取得失敗');
+
+      renderWithProviders(
+        <UserLocationSection
+          userLocationList={mockUserLocations}
+          postUserLocation={mockPostUserLocation}
+          updateUserLocation={mockUpdateUserLocation}
+          deleteUserLocation={mockDeleteUserLocation}
+        />,
+      );
+
+      expect(screen.getByRole('button', { name: /追加/ })).toBeDisabled();
+      expect(screen.getByTestId('limit-fetch-error')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+      expect(mockUserLimitsState.retry).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ========================================

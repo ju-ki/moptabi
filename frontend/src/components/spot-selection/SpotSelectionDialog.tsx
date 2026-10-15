@@ -4,7 +4,12 @@ import React, { useState, useMemo } from 'react';
 import { AlertCircle, Asterisk, Heart, History, Search } from 'lucide-react';
 
 import { useStoreForPlanning } from '@/lib/plan';
-import { isSpotsPerDayLimitReached, getLimitErrorMessage, getRemainingCount } from '@/lib/limits';
+import {
+  isSpotsPerDayLimitReached,
+  getLimitErrorMessage,
+  getRemainingCount,
+  LIMIT_FETCH_ERROR_MESSAGE,
+} from '@/lib/limits';
 import { getActualSpotCount } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { ExtendSpotType, Spot } from '@/types/plan';
@@ -14,6 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { LimitDisplay } from '../common/LimitDisplay';
+import { LimitFetchError } from '../common/LimitFetchError';
 import GoogleSpotSearch from './GoogleSpotSearch';
 import WishlistSpotSearch from './WishlistSpotSearch';
 import VisitedSpotSearch from './VisitedSpotSearch';
@@ -26,7 +32,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const { setSpots, planErrors, plans } = useStoreForPlanning();
   const { toast } = useToast();
-  const { limits } = useUserLimits();
+  const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
 
   // 現在の日のスポット数を取得（出発地と目的地は除外）
   const currentSpotCount = useMemo(() => {
@@ -35,7 +41,7 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   }, [plans, date]);
 
   // 上限に達しているかチェック
-  const isLimitReached = isSpotsPerDayLimitReached(currentSpotCount, limits.maxSpotsPerDay);
+  const isLimitReached = !limitsError && isSpotsPerDayLimitReached(currentSpotCount, limits.maxSpotsPerDay);
   const remainingCount = getRemainingCount(currentSpotCount, limits.maxSpotsPerDay);
 
   // 選択済みスポットIDを取得
@@ -44,6 +50,16 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   }, [plans, date]);
 
   const handleSpotSelect = (spot: ExtendSpotType, isDeleted: boolean) => {
+    // 上限を取得できていない場合は追加を止める（削除は許可）
+    if (!isDeleted && limitsError) {
+      toast({
+        title: LIMIT_FETCH_ERROR_MESSAGE.title,
+        description: LIMIT_FETCH_ERROR_MESSAGE.description,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // 削除の場合は上限チェックをスキップ
     if (!isDeleted && isLimitReached) {
       toast({
@@ -71,7 +87,11 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
           <Asterisk className="text-red-500 h-4 w-4" />
         </div>
         {/* スポット数表示 */}
-        <LimitDisplay current={currentSpotCount} limit={limits.maxSpotsPerDay} label="本日のスポット" size="sm" />
+        {limitsError ? (
+          <LimitFetchError onRetry={retryLimits} />
+        ) : (
+          <LimitDisplay current={currentSpotCount} limit={limits.maxSpotsPerDay} label="本日のスポット" size="sm" />
+        )}
       </div>
 
       {planErrors[date]?.spots && <div className="text-sm text-red-600">{planErrors[date].spots}</div>}
@@ -87,13 +107,17 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
             <DialogTitle>観光地を検索</DialogTitle>
             <DialogDescription>
               {/* 上限表示とメッセージ */}
-              <LimitDisplay
-                current={currentSpotCount}
-                limit={limits.maxSpotsPerDay}
-                label="本日のスポット"
-                data-testid="spot-count-display"
-              />
-              {!isLimitReached && remainingCount <= 3 && (
+              {limitsError ? (
+                <LimitFetchError onRetry={retryLimits} />
+              ) : (
+                <LimitDisplay
+                  current={currentSpotCount}
+                  limit={limits.maxSpotsPerDay}
+                  label="本日のスポット"
+                  data-testid="spot-count-display"
+                />
+              )}
+              {!limitsError && !isLimitReached && remainingCount <= 3 && (
                 <span className="text-yellow-600 text-sm">あと{remainingCount}件追加できます</span>
               )}
             </DialogDescription>
