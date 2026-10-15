@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 
-import { APP_LIMITS } from '@/data/constants';
 import {
   isWishlistLimitReached,
   isPlanLimitReached,
@@ -10,88 +9,88 @@ import {
 } from '@/lib/limits';
 
 describe('上限チェックユーティリティ', () => {
-  describe('isWishlistLimitReached - 行きたいリスト上限チェック', () => {
-    it('上限未満の場合はfalseを返す', () => {
-      expect(isWishlistLimitReached(0)).toBe(false);
-      expect(isWishlistLimitReached(50)).toBe(false);
-      expect(isWishlistLimitReached(99)).toBe(false);
+  describe('isWishlistLimitReached - 行きたいリスト上限チェック (F-1)', () => {
+    it('current = limit − 1 の場合 false を返す', () => {
+      expect(isWishlistLimitReached(19, 20)).toBe(false);
     });
 
-    it('上限に達している場合はfalseを返す', () => {
-      expect(isWishlistLimitReached(APP_LIMITS.MAX_WISHLIST_SPOTS)).toBe(false);
+    it('current = limit の場合 true を返す（backendと一致）', () => {
+      expect(isWishlistLimitReached(20, 20)).toBe(true);
     });
 
-    it('上限を超えている場合もtrueを返す', () => {
-      expect(isWishlistLimitReached(APP_LIMITS.MAX_WISHLIST_SPOTS + 1)).toBe(true);
-    });
-  });
-
-  describe('isPlanLimitReached - プラン作成数上限チェック', () => {
-    it('上限未満の場合はfalseを返す', () => {
-      expect(isPlanLimitReached(0)).toBe(false);
-      expect(isPlanLimitReached(10)).toBe(false);
-      expect(isPlanLimitReached(19)).toBe(false);
+    it('current < limit の場合 false を返す', () => {
+      expect(isWishlistLimitReached(0, 20)).toBe(false);
+      expect(isWishlistLimitReached(10, 20)).toBe(false);
     });
 
-    it('上限に達している場合はfalseを返す', () => {
-      expect(isPlanLimitReached(APP_LIMITS.MAX_PLANS)).toBe(false);
-    });
-
-    it('上限を超えている場合もtrueを返す', () => {
-      expect(isPlanLimitReached(APP_LIMITS.MAX_PLANS + 1)).toBe(true);
+    it('current > limit の場合 true を返す', () => {
+      expect(isWishlistLimitReached(21, 20)).toBe(true);
     });
   });
 
-  describe('isSpotsPerDayLimitReached - 1日あたりスポット数上限チェック', () => {
-    it('上限未満の場合はfalseを返す', () => {
-      expect(isSpotsPerDayLimitReached(0)).toBe(false);
-      expect(isSpotsPerDayLimitReached(5)).toBe(false);
-      expect(isSpotsPerDayLimitReached(9)).toBe(false);
+  describe('isPlanLimitReached - プラン作成数上限チェック (F-1)', () => {
+    it('current = limit − 1 の場合 false を返す', () => {
+      expect(isPlanLimitReached(4, 5)).toBe(false);
     });
 
-    it('上限に達している場合はfalseを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY)).toBe(false);
-    });
-
-    it('上限を超えている場合もtrueを返す', () => {
-      expect(isSpotsPerDayLimitReached(APP_LIMITS.MAX_SPOTS_PER_DAY + 1)).toBe(true);
+    it('current = limit の場合 true を返す（backendと一致）', () => {
+      expect(isPlanLimitReached(5, 5)).toBe(true);
     });
   });
 
-  describe('isPlanDaysLimitReached - プラン日数上限チェック', () => {
-    it('上限未満の場合はfalseを返す', () => {
-      expect(isPlanDaysLimitReached(0)).toBe(false);
-      expect(isPlanDaysLimitReached(APP_LIMITS.MAX_PLAN_DAYS - 1)).toBe(false);
+  describe('isSpotsPerDayLimitReached - 1日あたりスポット数上限チェック (F-1)', () => {
+    it('current = limit − 1 の場合 false を返す', () => {
+      expect(isSpotsPerDayLimitReached(4, 5)).toBe(false);
     });
 
-    it('上限に達している場合はfalseを返す', () => {
-      expect(isPlanDaysLimitReached(APP_LIMITS.MAX_PLAN_DAYS)).toBe(false);
-    });
-
-    it('上限を超えている場合もtrueを返す', () => {
-      expect(isPlanDaysLimitReached(APP_LIMITS.MAX_PLAN_DAYS + 1)).toBe(true);
+    it('current = limit の場合 true を返す（backendと一致）', () => {
+      expect(isSpotsPerDayLimitReached(5, 5)).toBe(true);
     });
   });
 
-  describe('getLimitErrorMessage - エラーメッセージ取得', () => {
-    it('wishlistタイプのエラーメッセージを返す', () => {
-      expect(getLimitErrorMessage('wishlist')).toContain('行きたいリスト');
-      expect(getLimitErrorMessage('wishlist')).toContain(String(APP_LIMITS.MAX_WISHLIST_SPOTS));
+  describe('isPlanDaysLimitReached - プラン日数上限チェック (F-2)', () => {
+    it('days = limit の場合 false を返す', () => {
+      expect(isPlanDaysLimitReached(3, 3)).toBe(false);
     });
 
-    it('planタイプのエラーメッセージを返す', () => {
-      expect(getLimitErrorMessage('plan')).toContain('プラン');
-      expect(getLimitErrorMessage('plan')).toContain(String(APP_LIMITS.MAX_PLANS));
+    it('days = limit + 1 の場合 true を返す', () => {
+      expect(isPlanDaysLimitReached(4, 3)).toBe(true);
     });
 
-    it('spotsPerDayタイプのエラーメッセージを返す', () => {
-      expect(getLimitErrorMessage('spotsPerDay')).toContain('スポット');
-      expect(getLimitErrorMessage('spotsPerDay')).toContain(String(APP_LIMITS.MAX_SPOTS_PER_DAY));
+    it('days < limit の場合 false を返す', () => {
+      expect(isPlanDaysLimitReached(1, 3)).toBe(false);
+      expect(isPlanDaysLimitReached(2, 3)).toBe(false);
+    });
+  });
+
+  describe('getLimitErrorMessage - エラーメッセージ取得 (F-3)', () => {
+    it('渡した上限値がwishlistメッセージに含まれる', () => {
+      const msg = getLimitErrorMessage('wishlist', 20);
+      expect(msg).toContain('行きたいリスト');
+      expect(msg).toContain('20');
     });
 
-    it('planDaysタイプのエラーメッセージを返す', () => {
-      expect(getLimitErrorMessage('planDays')).toContain('日数');
-      expect(getLimitErrorMessage('planDays')).toContain(String(APP_LIMITS.MAX_PLAN_DAYS));
+    it('渡した上限値がplansメッセージに含まれる', () => {
+      const msg = getLimitErrorMessage('plans', 5);
+      expect(msg).toContain('プラン');
+      expect(msg).toContain('5');
+    });
+
+    it('渡した上限値がspotsPerDayメッセージに含まれる', () => {
+      const msg = getLimitErrorMessage('spotsPerDay', 5);
+      expect(msg).toContain('スポット');
+      expect(msg).toContain('5');
+    });
+
+    it('渡した上限値がplanDaysメッセージに含まれる', () => {
+      const msg = getLimitErrorMessage('planDays', 3);
+      expect(msg).toContain('日数');
+      expect(msg).toContain('3');
+    });
+
+    it('渡した上限値がuserLocationsメッセージに含まれる', () => {
+      const msg = getLimitErrorMessage('userLocations', 2);
+      expect(msg).toContain('2');
     });
   });
 });

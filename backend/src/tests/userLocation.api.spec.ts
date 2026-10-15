@@ -12,6 +12,7 @@ import {
   findUserLocationById,
   countUserLocations,
   findNearestStationByUserLocationId,
+  upsertUserLimit,
 } from './db-helper';
 
 // テスト用ユーザーID
@@ -234,8 +235,11 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       expect(data.nearestStation.stationType).toBe('TRAIN');
     });
 
-    it('最大5件まで登録できる', async () => {
-      // 5件登録
+    it('上限まで登録でき、上限到達後は400を返す (B-18)', async () => {
+      // 上限を5件に設定してテスト
+      await upsertUserLimit(TEST_USER_ID, { maxUserLocations: 5 });
+
+      // 5件登録できる
       for (let i = 0; i < 5; i++) {
         const response = await client.api['userLocation'].$post(
           {

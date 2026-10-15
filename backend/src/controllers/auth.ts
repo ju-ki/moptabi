@@ -7,6 +7,7 @@ import { getDbFromContext, user } from '@db/index';
 import { countWishListByUserId } from '@/services/wishlist';
 import { countPlanByUserId } from '@/services/trip';
 import { getDashboardStats } from '@/services/auth';
+import { createDefaultUserLimit } from '@/services/userLimit';
 import { calculatePagination } from '@/models/pagination';
 import { UserSortBy } from '@/models/user';
 import { getUserId } from '@/middleware/auth';
@@ -44,6 +45,8 @@ export const getAuthHandler: RouteHandler<typeof findExistingUserRoute> = async 
           createdAt: new Date().toISOString(),
         })
         .returning();
+
+      await createDefaultUserLimit(db, userId);
 
       return c.json({ status: 201, user: createdUser });
     }

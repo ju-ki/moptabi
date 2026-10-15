@@ -12,12 +12,14 @@ import {
   userNotification,
   notification,
   userLocation,
+  userLimit,
   planLocation,
   planLocationNearestStation,
   planSpotNearestStation,
   createDevDb,
   userLocationNearestStation,
 } from '@db';
+import { DEFAULT_USER_LIMITS, UserLimitType } from '@shared/user/types';
 
 // スキーマを再エクスポート
 export {
@@ -29,6 +31,7 @@ export {
   userNotification,
   notification,
   userLocation,
+  userLimit,
   planLocation,
   planLocationNearestStation,
   planSpotNearestStation,
@@ -66,6 +69,7 @@ export async function clearAllTestData(): Promise<void> {
     await db.delete(userNotification);
     await db.delete(notification);
     await db.delete(userLocation);
+    await db.delete(userLimit);
     // userは削除しない（テスト間で共有）
     // spot/spotMetaテーブルはNo.230対応で削除済み
   } catch (err) {
@@ -124,9 +128,30 @@ export async function clearUserTestData(userId: string, deleteSpots: boolean | s
     await db.delete(userNotification).where(eq(userNotification.userId, userId));
     await db.delete(userLocation).where(eq(userLocation.userId, userId));
     await db.delete(planLocation).where(eq(planLocation.userId, userId));
+    await db.delete(userLimit).where(eq(userLimit.userId, userId));
   } catch (err) {
     console.warn(`clearUserTestData: failed for user ${userId}:`, (err as Error).message);
   }
+}
+
+/**
+ * テスト用ユーザーの上限を設定（UPSERT）
+ */
+export async function upsertUserLimit(userId: string, partial: Partial<UserLimitType> = {}): Promise<void> {
+  const db = createDevDb(process.env.DATABASE_URL!);
+  const values = { ...DEFAULT_USER_LIMITS, ...partial };
+  await db
+    .insert(userLimit)
+    .values({
+      userId,
+      ...values,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .onConflictDoUpdate({
+      target: userLimit.userId,
+      set: { ...values, updatedAt: new Date().toISOString() },
+    });
 }
 
 /**
