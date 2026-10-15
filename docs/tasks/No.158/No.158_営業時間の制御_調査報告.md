@@ -124,7 +124,7 @@ checkOpeningStatus(periods: OpeningPeriod[] | undefined, date: string, stayStart
 
 ### 3.3 データ追加
 
-- `packages/shared-types/src/spot/schema.ts` の `SpotMetaSchema` に `openingPeriods`（optional）と `businessStatus`（optional）を追加。backend は保存しない（受け取らない）ので DB マイグレーションは不要。
+- `frontend/src/types/spot.ts` の `SpotMetaType`（frontend 専用の表示用型）と `frontend/src/types/plan.ts` の `ExtendSpotType` に `openingPeriods`（optional）と `businessStatus`（optional）を追加。backend には送らない値なので `packages/shared-types` は変更しない（`frontend/TYPE_GUIDE.md` の配置ルールに従う）。DB マイグレーションも不要。
 - `frontend/src/types/plan.ts` の `Spot` 型にも同フィールドを追加。
 - `convertPlaceToSpotMeta` と `searchSpots` の `placeToSpot` で `place.regularOpeningHours?.periods` を正規化して詰める。
 - `PLACE_DETAIL_FIELDS` に `businessStatus` を追加（`regularOpeningHours` を既に要求しているため請求 SKU は上がらない想定。実装時に料金表で再確認する）。
@@ -159,9 +159,9 @@ checkOpeningStatus(periods: OpeningPeriod[] | undefined, date: string, stayStart
 | ケース | 文言 |
 |---|---|
 | 定休日 | この日は定休日の可能性があります。公式サイト等で営業日をご確認ください。 |
-| 滞在時間が営業時間外 | 滞在予定（10:00〜12:00）が営業時間（11:00〜17:00）の外にかかっています。公式サイト等で営業時間をご確認ください。 |
+| 滞在時間が営業時間外 | 滞在予定（10:00〜12:00）に営業時間外の時間帯が含まれています（この日の営業時間: 11:00〜17:00）。公式サイト等で営業時間をご確認ください。 |
 | 休業中 / 閉業 | Google マップ上で「臨時休業中」/「閉業」と登録されています。公式サイト等で最新情報をご確認ください。 |
-| 共通の注記（アコーディオン内） | 営業時間は Google マップの情報です。祝日・季節営業・最終入場時刻は反映されていない場合があります。 |
+| 共通の注記（営業時間の表示箇所・警告文の末尾） | 営業時間は Google マップの情報です。祝日の営業は判定していません。季節営業や最終入場時刻も反映されていない場合があります。 |
 
 `url`（公式サイト）がある場合はメッセージ内に「公式サイトを開く」リンクを添える。
 
@@ -169,19 +169,19 @@ checkOpeningStatus(periods: OpeningPeriod[] | undefined, date: string, stayStart
 
 優先度の高い順。
 
-1. **閉業・臨時休業の警告（推奨・低コスト）**: `businessStatus` が `CLOSED_PERMANENTLY` / `CLOSED_TEMPORARILY` のスポットに警告を出す。既に `searchSpots` で取得しているのに捨てている情報で、定休日以上に旅行当日のがっかりに直結する。検索結果では閉業スポットをデフォルトで除外してもよい。
-2. **その日の営業時間をカードに 1 行表示**: 現在はアコーディオンを開かないと見えない。計画日の曜日の営業時間だけを常時表示すると、警告が出る前に自分で気づける。
-3. **祝日の注意喚起**: `regularOpeningHours` は祝日を考慮しない。計画日が祝日なら「祝日のため営業時間が異なる場合があります」を INFO で出す。祝日判定にはライブラリ（例: `@holiday-jp/holiday_jp`）の追加が必要なので要相談。
-4. **直近 7 日以内の計画は `currentOpeningHours` を利用**: Google の `currentOpeningHours` は今後 7 日分の臨時営業・祝日営業（`specialDays`）を反映している。週末にふらっと出かけるターゲット層には効果が大きい。フィールド追加のみで同じ SKU の想定。
-5. **営業時間に合わせた自動調整の提案（将来）**: 開店前に到着する場合「開店時刻 10:00 に合わせて滞在開始を遅らせる」ワンクリック提案。No.388 の `ArrivalTimeWarning` の改善提案 UI を流用できるが、プランニングの再計算が絡むため別 Issue 推奨。
-6. **画像の動的取得は別 Issue 化**: Issue コメントの画像課金の件は営業時間と論点が異なる（Photo API の単価・表示枚数の制御）ため分離を推奨。
+1. **【採用】閉業・臨時休業の警告**: `businessStatus` が `CLOSED_PERMANENTLY` / `CLOSED_TEMPORARILY` のスポットに警告を出す。既に `searchSpots` で取得しているのに捨てている情報で、定休日以上に旅行当日のがっかりに直結する。検索結果では閉業スポットをデフォルトで除外してもよい。
+2. **【採用】その日の営業時間をカードに 1 行表示**: 現在はアコーディオンを開かないと見えない。計画日の曜日の営業時間だけを常時表示すると、警告が出る前に自分で気づける。
+3. **【見送り】祝日の判定**: `regularOpeningHours` は祝日を考慮しない。祝日判定（ライブラリ追加）は今回は行わず、代わりに「祝日の営業は判定していません」を注記として常に表示する（3.4 の文言案）。
+4. **【今回は対象外】直近 7 日以内の計画は `currentOpeningHours` を利用**: 祝日判定を見送ったため、本 Issue には含めない。 Google の `currentOpeningHours` は今後 7 日分の臨時営業・祝日営業（`specialDays`）を反映している。週末にふらっと出かけるターゲット層には効果が大きい。フィールド追加のみで同じ SKU の想定。
+5. **【別 Issue 化: #450】営業時間に合わせた自動調整の提案**: 開店前に到着する場合「開店時刻 10:00 に合わせて滞在開始を遅らせる」ワンクリック提案。No.388 の `ArrivalTimeWarning` の改善提案 UI を流用できるが、プランニングの再計算が絡むため別 Issue 推奨。
+6. **【対応なし】画像の動的取得**: Issue コメントの画像課金の件は今回は扱わない。
 
 ## 5. 実装ステップと影響範囲
 
 | Step | 内容 | 主なファイル | 規模 |
 |---|---|---|---|
 | 0 | 設計書更新（フィルター粒度・警告表示・文言） | `docs/画面設計書.md`, `docs/pages/plan-create.md`, `plan-edit.md`, `plan-detail.md` | S |
-| 1 | 構造化データの追加と判定関数 + 単体テスト | `packages/shared-types/src/spot/schema.ts`, `frontend/src/lib/google-maps.ts`, `frontend/src/lib/plan.ts`, `frontend/src/lib/opening-hours.ts`(新規), `frontend/src/types/plan.ts`, `frontend/src/tests/lib/opening-hours.spec.ts`(新規) | M |
+| 1 | 構造化データの追加と判定関数 + 単体テスト | `frontend/src/types/spot.ts`, `frontend/src/lib/google-maps.ts`, `frontend/src/lib/plan.ts`, `frontend/src/lib/opening-hours.ts`(新規), `frontend/src/types/plan.ts`, `frontend/src/tests/lib/opening-hours.spec.ts`(新規) | M |
 | 2 | 要件 1: 検索カードのバッジ + 追加時トースト | `cards/*.tsx`, `SpotSelectionDialog.tsx` | S |
 | 3 | 要件 2: 検索フィルター | `GoogleSpotSearch.tsx`, `WishlistSpotSearch.tsx`, `VisitedSpotSearch.tsx` | S〜M |
 | 4 | 要件 3: プランニング警告 + カード強調 | `lib/planning.ts`, `data/constants.ts`, `PlanSpotSettingCard.tsx`, `SpotDetailCard.tsx` | M |
@@ -198,9 +198,20 @@ Step 1 が他の全ての前提。Step 2〜4 は独立しているので、CLAUD
 - **営業時間情報が無いスポット**（公園・神社など）が多い。UNKNOWN を警告扱いにすると警告だらけになるため、警告対象外を推奨。
 - **既存テストへの影響**: `SpotMetaType` にフィールドを追加するとテストのモックデータ（`frontend/src/tests/`、`backend/src/tests/`）は optional なので壊れない想定。
 
-## 7. 確認したいこと
+## 7. 決定事項（PR #437 のレビュー結果）
 
-1. **フィルターの粒度**: 「計画日に営業している（日単位）」でよいか。時間帯まで見る案は、追加前は滞在時間が未確定（デフォルト 1 時間の仮置き）なので日単位を推奨。
-2. **営業時間情報なしの扱い**: 警告なし・フィルターでは残す、でよいか（推奨）。
-3. **追加提案 1（閉業・臨時休業）を本 Issue に含めるか**: 低コストなので含めるのを推奨。
-4. **追加提案 3（祝日判定ライブラリの追加）を進めるか**。
+| 項目 | 決定 |
+|---|---|
+| 追加提案 1（閉業・臨時休業の警告） | 採用 |
+| 追加提案 2（その日の営業時間を 1 行表示） | 採用 |
+| 追加提案 3（祝日判定） | 見送り。祝日を判定していないことを注記で表示する |
+| 追加提案 5（自動調整） | 別 Issue（#450）で対応 |
+| 追加提案 6（画像の動的取得） | 対応しない |
+| 滞在時間外の文言 | 「〜の外にかかっています」を「営業時間外の時間帯が含まれています」に変更 |
+
+レビューで回答のなかった次の 2 点は、推奨案で進める。
+
+- フィルターの粒度は「計画日に営業しているか」の日単位とする。
+- 営業時間情報がないスポットには警告を出さず、フィルターでも除外しない。
+
+実装の詳細は [No.158_実装計画.md](./No.158_実装計画.md) を参照。
