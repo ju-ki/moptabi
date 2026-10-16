@@ -43,11 +43,19 @@ flowchart TD
   H -->|"なし"| H2["通常の番号ピン"]
   F --> I["pinLayers を lib/map-pin-layers から復元<br/>読めないときは両方 OFF"]
   I --> J{"行きたいリスト ON"}
-  J -->|"ON"| J1["WishlistPinLayer をマウント<br/>useWishlistSpots（Place Details、リスト側とキャッシュ共有）"]
+  J -->|"ON"| J1["WishlistPinLayer をマウント<br/>useWishlistSpots（ユーザー別上限の件数まで詳細取得、リスト側とキャッシュ共有）"]
   I --> K{"過去のスポット ON"}
-  K -->|"ON"| K1["VisitedPinLayer をマウント<br/>useVisitedSpots（同上）"]
-  J1 --> L{"計画日に休み"}
-  K1 --> L
+  K -->|"ON"| K1["VisitedPinLayer をマウント<br/>use-map-visited-pins"]
+  K1 --> M["spotId の一覧を取得<br/>/spots/visited（API 費用なし）"]
+  M --> N{"getCachedCoordinates(spotId)"}
+  N -->|"座標キャッシュあり"| N1["そのままピンにする<br/>API なし"]
+  N -->|"なし"| N2["最大20件まで fetchPlaceDetailsWithRetry"]
+  N2 --> N3{"残りがある"}
+  N3 -->|"ある"| N4["「位置を取得していないスポットが n 件」+「さらに表示」"]
+  N4 -. "さらに表示" .-> N2
+  J1 --> L{"計画日に休み<br/>詳細を取得済みのものだけ判定"}
+  N1 --> L
+  N2 --> L
   L -->|"休み かつ openOnPlanDate ON"| L1["描かない"]
   L -->|"休み かつ openOnPlanDate OFF"| L2["不透明度 0.4 で描く"]
   L -->|"営業 または 情報なし"| L3["通常どおり描く"]
@@ -85,7 +93,9 @@ flowchart TD
   G -->|"成功"| E
   G -->|"失敗"| G1["カードに「情報を取得できませんでした」"]
   E --> H["ExtendSpotType に変換<br/>openingPeriods / businessStatus を含む"]
-  A -->|"アプリ側のピン<br/>番号 / ハート / 過去"| I["持っているデータを使う<br/>API なし"]
+  A -->|"アプリ側のピン<br/>番号 / ハート / 過去"| I0{"詳細を取得済み"}
+  I0 -->|"済み"| I["持っているデータを使う<br/>API なし"]
+  I0 -->|"座標だけ"| C
   A -->|"地図の何もない所"| J["selectedSpot を解除"]
   H --> K["selectedSpot にセット → SelectedSpotCard"]
   I --> K
@@ -116,9 +126,11 @@ sequenceDiagram
   participant Store as プランのストア
   participant Map as MapSpotSearch
 
-  U->>Card: 計画に追加
+  Note over Card: 描画時点で limitsError または isLimitReached なら<br/>ボタンは disabled で押せない（UI 側の制御）
+  U->>Card: 計画に追加（ボタンが有効なときだけ）
   Card->>Dialog: onSpotSelect(setStartTimeAutomatically(spot, planSpots), false)
-  alt 上限取得失敗 または 上限到達
+  Note over Dialog: 呼び出し時点の limitsError / isLimitReached で再確認する<br/>（上限の再取得はしない。描画後に別の操作で上限に達した場合などに働く）
+  alt 呼び出し時点で上限取得失敗 または 上限到達
     Dialog-->>U: トーストで止める
   else 追加できる
     Dialog->>Store: setSpots(date, spot, false)

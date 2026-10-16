@@ -80,6 +80,7 @@
 | `frontend/src/hooks/spot-search/use-map-center-candidates.ts` | プランから中心の候補を組み立て、初期中心を決める | 2 |
 | `frontend/src/hooks/spot-search/use-map-poi-selection.ts` | POI クリック → `fetchPlaceDetailsWithRetry` → `ExtendSpotType` への変換 | 3 |
 | `frontend/src/lib/map-pin-layers.ts` | ピンの表示設定を localStorage に保存・読込（try/catch。読めないときは既定値） | 4 |
+| `frontend/src/hooks/spot-search/use-map-visited-pins.ts` | 過去のスポットの `spotId` 一覧を取り、座標キャッシュからピンを作る。キャッシュなしは1回20件まで詳細取得し、残り件数と「さらに表示」を返す | 4 |
 | テスト一式 | 下記「4. テスト」 | 各 Step |
 
 ### 更新
@@ -124,7 +125,11 @@
 
 ### Step 4: 行きたいリスト・過去のスポットのピン
 - `pinLayers` の初期値は両方 OFF。`lib/map-pin-layers.ts` で localStorage（キー `moptabi:map-pin-layers`）に保存し、次に開いたときに復元する。localStorage が使えない環境では既定値で動く。
-- ON のときだけ `useWishlistSpots` / `useVisitedSpots` を呼ぶ（条件付きにするため、各レイヤーを子コンポーネントに分けて ON のときだけマウントする）。リスト側で開いていればメモリキャッシュが効く。
+- 各レイヤーを子コンポーネントに分け、ON のときだけマウントする。
+- 行きたいリストは `useWishlistSpots` をそのまま使う（ユーザー別上限で件数が抑えられ、リスト側とメモリキャッシュを共有。休みの判定に詳細が要る）。
+- 過去のスポットは `useVisitedSpots` を使わない。全件の詳細を一度に取り、件数の上限もページングもないためである。代わりに `use-map-visited-pins` を使う。
+- `use-map-visited-pins` の流れ: `/spots/visited` で `spotId` の一覧を取る → `getCachedCoordinates` で座標があるものはそのままピンにする → ないものは最大 20 件ずつ `fetchPlaceDetailsWithRetry` で取得する → 残りは件数と「さらに表示」で出す。
+- ピンを押したときに詳細がなければ、そのスポットだけ `fetchPlaceDetailsWithRetry` で取る（メモリキャッシュあり）。座標キャッシュだけで描いたピンは、詳細を取るまで営業状況が分からないので通常の見た目で描く。
 - 計画日に休み（`hasOpeningWarning(checkOpeningStatus(...))`）のピンは不透明度 0.4 で描く。`openOnPlanDate` が ON のときは描かない（リスト側のフィルターと同じ状態）。
 - プランのスポットは `checkOpeningStatus({ ..., stayStart, stayEnd })` が `OUTSIDE_HOURS` などの警告なら番号ピンの横に「営業時間外」の印を付ける。
 
@@ -140,7 +145,8 @@
 | 2 | `tests/components/spot-selection/MapSpotSearch.spec.tsx` | 候補を押すと中心と基準名が変わる、住所入力で中心が変わる、ドラッグで「中心から」になる |
 | 3 | `tests/components/spot-selection/MapSpotSearch.spec.tsx` / `tests/components/spot-selection/map/SelectedSpotCard.spec.tsx` | POI クリックで詳細取得を1回だけ呼ぶ（同じ POI 2回目は呼ばない）、カードの1行表示、休みの表示、上限時に押せない、追加→「追加しました・取り消す」、取り消すで削除、追加済みは「選択解除」 |
 | 4 | `tests/lib/map-pin-layers.spec.ts` | 保存・復元、localStorage が例外を投げても既定値 |
-| 4 | `tests/components/spot-selection/MapSpotSearch.spec.tsx` | OFF のとき行きたいリスト/過去のフックが呼ばれない、休みのピンが薄い、フィルター ON で隠れる、営業時間外の印 |
+| 4 | `tests/hooks/use-map-visited-pins.spec.ts` | 座標キャッシュがあるものは詳細取得を呼ばない、キャッシュなしは20件で止まり残り件数を返す、「さらに表示」で次の20件 |
+| 4 | `tests/components/spot-selection/MapSpotSearch.spec.tsx` | OFF のとき一覧取得も詳細取得も呼ばれない、休みのピンが薄い、フィルター ON で隠れる、営業時間外の印 |
 
 - `@react-google-maps/api` は既存の spec（`GoogleSpotSearch.spec.tsx:49`）と同じモック方針で、`GoogleMap` の `onClick` / `onDragEnd` を呼び出せる形にする（地図 SDK を実行できないため。モックする理由をコメントに書く）。
 - `fetchPlaceDetailsWithRetry` はモックし、呼び出し回数で API 呼び出しを確認する。
@@ -149,6 +155,6 @@
 ## 5. 影響範囲とリスク
 
 - リスト側の3タブは中身を変えないが、フィルターの位置が変わるため既存テストの一部を移す。
-- 地図で探すで新たに発生する API 呼び出しは、POI クリック（Place Details、セッション内キャッシュあり）、住所入力（Geocoding）、行きたいリスト・過去のピンを ON にしたとき（Place Details、リスト側とキャッシュ共有）だけ。地図の表示自体は「地図で探す」を開いたときだけ読み込まれる。
+- 地図で探すで新たに発生する API 呼び出しは、POI クリック（Place Details、セッション内キャッシュあり）、住所入力（Geocoding）、行きたいリスト・過去のピンを ON にしたとき（行きたいリストはユーザー別上限の件数まで、過去のスポットは座標キャッシュがないものだけ1回最大20件の Place Details）だけ。地図の表示自体は「地図で探す」を開いたときだけ読み込まれる。
 - Google 標準の POI は縮尺によって表示されないことがあるため、候補選択時にズーム 15 に合わせる。利用者がズームを引いた場合は POI が消えるが、仕様として扱う。
 - スマホ全画面化は `max-sm:` のみで行い、PC の見た目は変えない。
