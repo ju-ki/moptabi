@@ -36,7 +36,7 @@ describe('planning.ts: メッセージ', () => {
       expect(overTimeIndex).toBeLessThan(longWalkIndex);
     });
 
-    it('優先順位0-8の全パターンでソートされる', () => {
+    it('優先順位0-9の全パターンでソートされる', () => {
       const sorted = sortPlanningMessages([
         {
           level: 'INFO',
@@ -80,6 +80,11 @@ describe('planning.ts: メッセージ', () => {
           message: 'スポットBの最寄駅が未設定のため、最寄駅を使わないルートで計算しました。',
         },
         {
+          level: 'WARNING',
+          segmentKey: `${PLANNING_MESSAGE_SEGMENT.OPENING_HOURS}:spot-1`,
+          message: '「スポット1」はこの日（火）が定休日の可能性があります。公式サイト等で営業日をご確認ください。',
+        },
+        {
           level: 'ERROR',
           segmentKey: PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW,
           message: '到着時刻が23:59を超えています。出発時間を早めるか、スポットや滞在時間を見直してください。',
@@ -87,7 +92,9 @@ describe('planning.ts: メッセージ', () => {
       ]);
 
       const priorities = sorted.map((message) => getPlanningMessagePriority(message));
-      expect(priorities).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+      expect(priorities).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+      // 営業時間の警告は到着時間超過の次に並ぶ（No.158）
+      expect(sorted[2].segmentKey.startsWith(PLANNING_MESSAGE_SEGMENT.OPENING_HOURS)).toBe(true);
       expect(sorted[0].level).toBe('ERROR');
     });
   });
@@ -107,7 +114,7 @@ describe('planning.ts: メッセージ', () => {
 
       const result = await executePlanning(params);
       expect(result.messages[0].segmentKey.startsWith(PLANNING_MESSAGE_SEGMENT.ROUTE_FETCH_FAILED)).toBe(true);
-      expect(getPlanningMessagePriority(result.messages[0])).toBe(2); // 2はROUTE_FETCH_FAILEDの優先度
+      expect(getPlanningMessagePriority(result.messages[0])).toBe(3); // 3はROUTE_FETCH_FAILEDの優先度
     });
 
     it('徒歩長距離が発生した場合はLONG_WALK_RECOMMENDATIONメッセージが表示される', async () => {
@@ -214,6 +221,67 @@ describe('planning.ts: メッセージ', () => {
       expect(messages).toHaveLength(1);
       expect(messages[0].message).toBe('起点名から目的地は徒歩で59分かかるため,最寄駅を推奨します');
       expect(messages[0].message.includes('0時間')).toBe(false);
+    });
+  });
+
+  describe('営業時間のメッセージ（No.158）', () => {
+    // createBaseParams の計画日 2026-04-28 は火曜日
+    const periodsEveryDay = (open: string, close: string, days = [0, 1, 2, 3, 4, 5, 6]) =>
+      days.map((day) => ({
+        open: { day, hour: Number(open.slice(0, 2)), minute: Number(open.slice(3)) },
+        close: { day, hour: Number(close.slice(0, 2)), minute: Number(close.slice(3)) },
+      }));
+
+    beforeEach(() => {
+      mockGetRoute.mockResolvedValue(createRouteResult('WALKING', 15, 500));
+    });
+
+    const findOpeningMessage = (messages: { segmentKey: string }[]) =>
+      messages.find((message) => message.segmentKey === `${PLANNING_MESSAGE_SEGMENT.OPENING_HOURS}:spot-1`);
+
+    it('計画日が定休日のスポットは定休日の警告を出す', async () => {
+      const params = createBaseParams();
+      params.spots[0].openingPeriods = periodsEveryDay('10:00', '17:00', [0, 1, 3, 4, 5, 6]);
+
+      const result = await executePlanning(params);
+
+      expect(findOpeningMessage(result.messages)).toEqual({
+        level: 'WARNING',
+        segmentKey: `${PLANNING_MESSAGE_SEGMENT.OPENING_HOURS}:spot-1`,
+        message: '「スポット1」はこの日（火）が定休日の可能性があります。公式サイト等で営業日をご確認ください。',
+      });
+    });
+
+    it('プランニング後の滞在時間が営業時間外にかかるときは営業時間外の警告を出す', async () => {
+      const params = createBaseParams();
+      params.spots[0].openingPeriods = periodsEveryDay('15:00', '17:00');
+
+      const result = await executePlanning(params);
+      const { stayStart, stayEnd } = result.updatedSpots[0];
+
+      expect(findOpeningMessage(result.messages)?.message).toBe(
+        `「スポット1」の滞在予定（${stayStart}〜${stayEnd}）に営業時間外の時間帯が含まれています（この日の営業時間: 15:00-17:00）。公式サイト等で営業時間をご確認ください。`,
+      );
+    });
+
+    it('閉業のスポットは閉業の警告を出す', async () => {
+      const params = createBaseParams();
+      params.spots[0].businessStatus = 'CLOSED_PERMANENTLY';
+
+      const result = await executePlanning(params);
+
+      expect(findOpeningMessage(result.messages)?.message).toBe(
+        '「スポット1」は Google マップ上で閉業と登録されています。公式サイト等で最新情報をご確認ください。',
+      );
+    });
+
+    it('営業時間内のスポット・営業時間情報がないスポットには警告を出さない', async () => {
+      const params = createBaseParams();
+      params.spots[0].openingPeriods = periodsEveryDay('00:00', '23:59');
+      expect(findOpeningMessage((await executePlanning(params)).messages)).toBeUndefined();
+
+      const noInfoParams = createBaseParams();
+      expect(findOpeningMessage((await executePlanning(noInfoParams)).messages)).toBeUndefined();
     });
   });
 });

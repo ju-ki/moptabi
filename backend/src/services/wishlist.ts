@@ -2,10 +2,11 @@ import { HTTPException } from 'hono/http-exception';
 import { Context } from 'hono';
 import { eq, and, count, lt, inArray } from 'drizzle-orm';
 import { AnyDbType, wishlist } from '@db';
+import { buildLimitErrorMessage } from '@shared/user/types';
 
 import { WishlistCreateSchema, WishlistUpdateSchema } from '@/models/wishlist';
-import { APP_LIMITS, LIMIT_ERROR_MESSAGES } from '@/constants/limits';
 import { getUserId } from '@/middleware/auth';
+import { getUserLimits } from '@/services/userLimit';
 
 export const getWishList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
@@ -29,11 +30,14 @@ export const getWishList = async (db: AnyDbType, c: Context) => {
 export const getWishListCount = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
-  const [result] = await db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId));
+  const [[result], limits] = await Promise.all([
+    db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId)),
+    getUserLimits(db, userId),
+  ]);
 
   return {
     count: result?.count ?? 0,
-    limit: APP_LIMITS.MAX_WISHLIST_SPOTS,
+    limit: limits.maxWishlistSpots,
   };
 };
 
@@ -41,10 +45,13 @@ export const createWishList = async (db: AnyDbType, c: Context) => {
   const userId = getUserId(c);
 
   // 上限チェック
-  const [countResult] = await db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId));
+  const [[countResult], limits] = await Promise.all([
+    db.select({ count: count() }).from(wishlist).where(eq(wishlist.userId, userId)),
+    getUserLimits(db, userId),
+  ]);
 
-  if ((countResult?.count ?? 0) >= APP_LIMITS.MAX_WISHLIST_SPOTS) {
-    throw new HTTPException(400, { message: LIMIT_ERROR_MESSAGES.WISHLIST_LIMIT_EXCEEDED });
+  if ((countResult?.count ?? 0) >= limits.maxWishlistSpots) {
+    throw new HTTPException(400, { message: buildLimitErrorMessage('wishlist', limits.maxWishlistSpots) });
   }
 
   const body = await c.req.json();

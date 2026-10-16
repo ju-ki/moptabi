@@ -28,9 +28,24 @@ const mockData = {
   searchResults: [] as any[],
   searchKeyword: '',
   highRating: false,
+  openOnPlanDate: false,
 };
 
 // Mock Google Maps
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
+  }),
+}));
+
 vi.mock('@react-google-maps/api', () => ({
   GoogleMap: ({ children, onLoad }: any) => {
     React.useEffect(() => {
@@ -124,6 +139,10 @@ vi.mock('@/store/planning/spotSearchStore', () => ({
     setHighRating: (value: boolean) => {
       mockData.highRating = value;
     },
+    openOnPlanDate: mockData.openOnPlanDate,
+    setOpenOnPlanDate: (value: boolean) => {
+      mockData.openOnPlanDate = value;
+    },
     selectedThemes: [],
     setSelectedThemes: vi.fn(),
     planSpotSelection: [],
@@ -202,10 +221,26 @@ describe('GoogleSpotSearch', () => {
     mockData.searchResults = [];
     mockData.searchKeyword = '';
     mockData.highRating = false;
+    mockData.openOnPlanDate = false;
+    mockUserLimitsState.error = undefined;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('上限の取得に失敗している場合', () => {
+    it('スポット数の代わりにエラーと再試行ボタンを表示すること', async () => {
+      mockUserLimitsState.error = new Error('取得失敗');
+
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+
+      expect(screen.getByTestId('limit-fetch-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('limit-display')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+      expect(mockUserLimitsState.retry).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('ダイアログの基本動作', () => {
@@ -620,6 +655,76 @@ describe('GoogleSpotSearch', () => {
 
       const activeTab = screen.getByRole('tab', { name: /Google検索/i });
       expect(activeTab).toHaveAttribute('aria-selected', 'true');
+    });
+  });
+
+  describe('計画日に営業しているスポットのみ（No.158）', () => {
+    // 2025-12-15 は月曜日。museum は月曜定休、closed は閉業、park は営業時間情報なし
+    const museumPeriods = [0, 2, 3, 4, 5, 6].map((day) => ({
+      open: { day, hour: 10, minute: 0 },
+      close: { day, hour: 17, minute: 0 },
+    }));
+    const spots = [
+      { id: 'museum', location: { name: '美術館', lat: 35.71, lng: 139.81 }, openingPeriods: museumPeriods },
+      {
+        id: 'closed',
+        location: { name: '閉業した店', lat: 35.72, lng: 139.82 },
+        businessStatus: 'CLOSED_PERMANENTLY',
+      },
+      { id: 'park', location: { name: '公園', lat: 35.73, lng: 139.83 } },
+    ];
+
+    const openTab = async () => {
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+      fireEvent.click(screen.getByRole('button', { name: /観光地を選択/ }));
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+    };
+
+    it('フィルターがオフのときは定休日・閉業のスポットにバッジを付けて表示すること', async () => {
+      mockData.searchResults = spots;
+      await openTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('google-spot-card-museum')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('google-spot-card-closed')).toBeInTheDocument();
+      expect(screen.getByTestId('google-spot-card-park')).toBeInTheDocument();
+      expect(screen.getAllByTestId('opening-status-badge').map((badge) => badge.textContent)).toEqual([
+        '定休日の可能性',
+        '閉業',
+      ]);
+    });
+
+    it('フィルターがオンのときは定休日・閉業のスポットを除外し、営業時間情報がないスポットは残すこと', async () => {
+      mockData.searchResults = spots;
+      mockData.openOnPlanDate = true;
+      await openTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('google-spot-card-park')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('google-spot-card-museum')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('google-spot-card-closed')).not.toBeInTheDocument();
+    });
+
+    it('フィルターで全件除外されたときは専用のメッセージを表示すること', async () => {
+      const closedSpots = spots.filter((spot) => spot.id !== 'park');
+      mockData.searchResults = closedSpots;
+      mockData.openOnPlanDate = true;
+      await openTab();
+
+      await waitFor(() => {
+        expect(screen.getByText('計画日に営業しているスポットが見つかりませんでした')).toBeInTheDocument();
+      });
+    });
+
+    it('チェックボックスを押すとフィルターの状態が切り替わること', async () => {
+      await openTab();
+
+      fireEvent.click(screen.getByRole('checkbox', { name: '計画日に営業しているスポットのみ' }));
+      expect(mockData.openOnPlanDate).toBe(true);
     });
   });
 });

@@ -6,6 +6,8 @@ import Image from 'next/image';
 import { ExtendSpotType } from '@/types/plan';
 import { calculateDuration } from '@/lib/algorithm';
 import { formatDurationAsHourMinute } from '@/lib/planning';
+import { checkOpeningStatus } from '@/lib/opening-hours';
+import { HolidayNote, OpeningHoursOfDay, OpeningStatusBadge } from '@/components/common/OpeningHoursInfo';
 
 import { placeTypeMap } from '../data/constants';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
@@ -14,9 +16,21 @@ import { NearestStationDetail } from './NearestStationDetail';
 
 interface SpotCardProps {
   spot: ExtendSpotType;
+  /** 計画日（営業時間の判定に使う。No.158） */
+  date?: string;
 }
 
-export function SpotInfoCard({ spot }: SpotCardProps) {
+export function SpotInfoCard({ spot, date }: SpotCardProps) {
+  // 営業時間の判定（No.158）。保存済みの滞在時間で判定する
+  const openingStatus = date
+    ? checkOpeningStatus({
+        openingPeriods: spot.openingPeriods,
+        businessStatus: spot.businessStatus,
+        date,
+        stayStart: spot.stayStart,
+        stayEnd: spot.stayEnd,
+      })
+    : undefined;
   const transportIcon = transportIcons[spot.transportMethod]?.icon ?? transportIcons.DEFAULT?.icon;
   const displayNearestStation = spot.nearestStation
     ? {
@@ -76,6 +90,7 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
               <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1 min-w-0">
                   <h3 className="text-lg font-bold text-gray-900 break-words sm:truncate">{spot.name}</h3>
+                  {openingStatus && <OpeningStatusBadge status={openingStatus} className="mt-1" />}
                   <p className="text-sm text-gray-600 line-clamp-1">{spot.catchphrase ?? ''}</p>
                 </div>
                 {/* カテゴリを3つまで表示 */}
@@ -117,6 +132,9 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
                 </div>
               )}
 
+              {/* 計画日の営業時間（No.158） */}
+              <OpeningHoursOfDay openingPeriods={spot.openingPeriods} date={date} className="mb-2" />
+
               <p className="text-sm text-gray-600 line-clamp-2">{spot.description}</p>
 
               {/* 外部URL */}
@@ -153,6 +171,7 @@ export function SpotInfoCard({ spot }: SpotCardProps) {
                             </li>
                           ))}
                         </ul>
+                        <HolidayNote className="mt-2" />
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>

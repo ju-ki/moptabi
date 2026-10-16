@@ -22,6 +22,7 @@ import {
 
 import { getRoute } from './plan';
 import { calcDistance } from './algorithm';
+import { buildOpeningStatusMessage, checkOpeningStatus } from './opening-hours';
 
 export type ArrivalWarning = {
   exceededMinutes: number;
@@ -1101,19 +1102,23 @@ async function runForwardPlanning(params: PlanningParams): Promise<{
     fromTarget.travelTime = segment.travelMinutes;
     fromTarget.transportMethodId = selectedMethodId;
     fromTarget.transportMethod = getTravelMethodName(selectedMethodId);
+    const isStationRoute = isStationTransportMethod(selectedMethodId);
     // 発車時間候補（scheduledDepartureTimes）はユーザーの入力のまま残し、計算結果だけを書き戻す
     if (segment.stationSegment && fromTarget.nearestStation) {
       fromTarget.nearestStation = {
         ...fromTarget.nearestStation,
         transitTime: segment.stationSegment.transitTime,
-        waitingTime: segment.stationSegment.waitingTime,
+        // 待ち時間は最寄駅経由を選んだ区間でだけ表示・保存する
+        waitingTime: isStationRoute ? segment.stationSegment.waitingTime : undefined,
         scheduledDepartureTime: segment.stationSegment.scheduledDepartureTime,
       };
+    } else if (fromTarget.nearestStation) {
+      // 片側だけ最寄駅がある区間では、前回の待ち時間を残さない
+      fromTarget.nearestStation = { ...fromTarget.nearestStation, waitingTime: undefined };
     }
 
     currentMinutes += segment.travelMinutes;
 
-    const isStationRoute = isStationTransportMethod(selectedMethodId);
     routes.push(
       buildRouteInfo({
         fromSpotId: fromSpot?.id ?? 'departure',
@@ -1268,6 +1273,35 @@ export function buildPreferredSelections(params: {
 }
 
 /**
+ * 計画日・滞在時間に対する営業時間の警告を作る（No.158）
+ * 判定できない・営業中のスポットはメッセージを出さない
+ */
+export function buildOpeningHoursMessages(date: string, spots: ExtendSpotType[]): PlanningMessage[] {
+  return spots.flatMap((spot) => {
+    const status = checkOpeningStatus({
+      openingPeriods: spot.openingPeriods,
+      businessStatus: spot.businessStatus,
+      date,
+      stayStart: spot.stayStart,
+      stayEnd: spot.stayEnd,
+    });
+    const message = buildOpeningStatusMessage(status, {
+      name: spot.name,
+      stayStart: spot.stayStart,
+      stayEnd: spot.stayEnd,
+    });
+    if (!message) return [];
+    return [
+      {
+        level: 'WARNING' as const,
+        message,
+        segmentKey: `${PLANNING_MESSAGE_SEGMENT.OPENING_HOURS}:${spot.id}`,
+      },
+    ];
+  });
+}
+
+/**
  * メインプランニング関数
  */
 export async function executePlanning(params: PlanningParams): Promise<PlanningResult> {
@@ -1331,6 +1365,9 @@ export async function executePlanning(params: PlanningParams): Promise<PlanningR
       segmentKey: PLANNING_MESSAGE_SEGMENT.EXTRA_TIME,
     });
   }
+
+  // 営業時間の警告（保存はブロックしない）
+  forwardResult.messages.push(...buildOpeningHoursMessages(params.date, forwardResult.updatedSpots));
 
   const result = {
     routes: forwardResult.routes,

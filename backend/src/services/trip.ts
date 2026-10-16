@@ -159,8 +159,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
 
   const tripData = result.data;
 
-  // 上限チェック
-  await validateLimit(transactionDb, userId, tripData);
+  // 上限チェック（更新時はプラン作成数チェックをスキップ）
+  await validateLimit(transactionDb, userId, tripData, { isUpdate: true });
 
   await transactionDb.transaction(async (tx) => {
     await tx
@@ -209,6 +209,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
             stationType: pn.departure.nearestStation?.stationType,
             transitTime: pn.departure.nearestStation?.transitTime,
             scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
+            waitingTime: pn.departure.nearestStation?.waitingTime ?? null,
             memo: pn.departure.nearestStation?.memo,
           })
           .onConflictDoUpdate({
@@ -218,6 +219,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
               stationType: pn.departure.nearestStation?.stationType,
               transitTime: pn.departure.nearestStation?.transitTime,
               scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
+              waitingTime: pn.departure.nearestStation?.waitingTime ?? null,
               memo: pn.departure.nearestStation?.memo,
             },
           });
@@ -260,6 +262,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
             stationType: pn.destination.nearestStation?.stationType,
             transitTime: pn.destination.nearestStation?.transitTime,
             scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
+            waitingTime: pn.destination.nearestStation?.waitingTime ?? null,
             memo: pn.destination.nearestStation?.memo,
           })
           .onConflictDoUpdate({
@@ -269,6 +272,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
               stationType: pn.destination.nearestStation?.stationType,
               transitTime: pn.destination.nearestStation?.transitTime,
               scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
+              waitingTime: pn.destination.nearestStation?.waitingTime ?? null,
               memo: pn.destination.nearestStation?.memo,
             },
           });
@@ -321,6 +325,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
               stationType: spot.nearestStation?.stationType,
               transitTime: spot.nearestStation?.transitTime ?? null,
               scheduledDepartureTime: spot.nearestStation?.scheduledDepartureTime ?? null,
+              waitingTime: spot.nearestStation?.waitingTime ?? null,
               memo: spot.nearestStation?.memo ?? null,
             })
             .onConflictDoUpdate({
@@ -330,6 +335,7 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
                 stationType: spot.nearestStation?.stationType,
                 transitTime: spot.nearestStation?.transitTime ?? null,
                 scheduledDepartureTime: spot.nearestStation?.scheduledDepartureTime ?? null,
+                waitingTime: spot.nearestStation?.waitingTime ?? null,
                 memo: spot.nearestStation?.memo ?? null,
               },
             });
@@ -527,6 +533,8 @@ const convertPlanSpotData = (rawPlanSpotData: PlanSpotWithNearestStations[]): Tr
             stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
             transitTime: nearestStation.transitTime ?? 0,
             scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
+            // 未設定（既存データ）は undefined にしてレスポンスに含めない
+            waitingTime: nearestStation.waitingTime ?? undefined,
             memo: nearestStation.memo ?? '',
           }
         : undefined,
@@ -555,6 +563,8 @@ const convertPlanLocationData = (rawPlanLocationData: PlanLocationWithNearestSta
             stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
             transitTime: nearestStation.transitTime ?? 0,
             scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
+            // 未設定（既存データ）は undefined にしてレスポンスに含めない
+            waitingTime: nearestStation.waitingTime ?? undefined,
             memo: nearestStation.memo ?? '',
           }
         : undefined,

@@ -5,8 +5,7 @@ import { getDbFromContext, trip, getPostgresDb } from '@db';
 
 import { getUserId } from '@/middleware/auth';
 import { createTrip, getTripDetailById, updateTrip } from '@/services/trip';
-
-import { APP_LIMITS } from '../constants/limits';
+import { getUserLimits } from '@/services/userLimit';
 
 export const getTripHandler = {
   // 全ての旅行計画を取得
@@ -109,12 +108,19 @@ export const getTripHandler = {
       throw new HTTPException(401, { message: 'Unauthorized error' });
     }
 
-    const [result] = await db.select({ count: count() }).from(trip).where(eq(trip.userId, userId));
+    const [result, limits] = await Promise.all([
+      db
+        .select({ count: count() })
+        .from(trip)
+        .where(eq(trip.userId, userId))
+        .then(([r]) => r),
+      getUserLimits(db, userId),
+    ]);
 
     return c.json(
       {
         count: result?.count ?? 0,
-        limit: APP_LIMITS.MAX_PLANS,
+        limit: limits.maxPlans,
       },
       200,
     );

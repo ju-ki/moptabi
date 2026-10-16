@@ -5,10 +5,13 @@
       "Bash(pnpm run lint)",
       "Bash(pnpm run typecheck)",
       "Bash(pnpm run format:check)",
+      "Bash(pnpm run prebuild *)",
       "Bash(bun run test)",
+      "Bash(bun run test *)",
       "Bash(bun run lint)",
       "Bash(bun run typecheck)",
       "Bash(bun run format:check)",
+      "Bash(bun run prebuild *)",
       "Bash(gh repo view *)",
       "Bash(gh pr list *)",
       "Bash(gh pr view *)",
@@ -21,7 +24,9 @@
       "Bash(python3 -c \" import sys,json d=json.load\\(sys.stdin\\) print\\('Title:', d['title']\\) print\\('State:', d['state']\\) \")",
       "Bash(python3 -c \" import sys,json d=json.load\\(sys.stdin\\) threads = d.get\\('reviewThreads', []\\) print\\(f'Total threads: {len\\(threads\\)}'\\) for i, t in enumerate\\(threads\\): print\\(f'\\\\n--- Thread {i+1} ---'\\) print\\('isResolved:', t.get\\('isResolved'\\)\\) for c in t.get\\('comments', []\\)[:2]: print\\('Author:', c.get\\('author', {}\\).get\\('login'\\)\\) print\\('Body:', c.get\\('body', ''\\)[:500]\\) print\\('Path:', c.get\\('path'\\)\\) print\\('Line:', c.get\\('line'\\)\\) \")",
       "Bash(gh api *)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(git pull *)",
+      "Bash(bun run db:push:test *)"
     ],
     "deny": [
       "Read(./.env)",

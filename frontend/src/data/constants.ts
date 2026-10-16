@@ -6,21 +6,6 @@ import {
   TravelModeType,
 } from '@/types/plan';
 
-/**
- * アプリケーション全体の上限設定
- * レイアウト崩れやAPI制限対策のための制限値
- */
-export const APP_LIMITS = {
-  /** 行きたいリストの最大登録数 */
-  MAX_WISHLIST_SPOTS: 100,
-  /** プランの最大作成数 */
-  MAX_PLANS: 20,
-  /** 1日あたりの最大スポット数 */
-  MAX_SPOTS_PER_DAY: 10,
-  /** プランの最大日数 */
-  MAX_PLAN_DAYS: 7,
-} as const;
-
 export const defaultLocation: Coordination = {
   id: 'default-location',
   lat: 35.6813,
@@ -70,6 +55,7 @@ export const PLANNING_ERROR_BLOCK_MESSAGE = {
 export const PLANNING_MESSAGE_SEGMENT = {
   DAY_OVERFLOW: 'DAY_OVERFLOW',
   OVER_TIME: 'OVER_TIME',
+  OPENING_HOURS: 'OPENING_HOURS',
   EXTRA_TIME: 'EXTRA_TIME',
   ROUTE_FETCH_FAILED: 'ROUTE_FETCH_FAILED',
   ROUTE_FALLBACK_WALKING: 'ROUTE_FALLBACK_WALKING',
@@ -83,13 +69,14 @@ export const PLANNING_MESSAGE_SEGMENT = {
 export const PLANNING_MESSAGE_PRIORITY: Record<string, number> = {
   [PLANNING_MESSAGE_SEGMENT.DAY_OVERFLOW]: 0,
   [PLANNING_MESSAGE_SEGMENT.OVER_TIME]: 1,
-  [PLANNING_MESSAGE_SEGMENT.ROUTE_FETCH_FAILED]: 2,
-  [PLANNING_MESSAGE_SEGMENT.ROUTE_FALLBACK_WALKING]: 3,
-  [PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED]: 4,
-  [PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_EMPTY]: 5,
-  [PLANNING_MESSAGE_SEGMENT.NEAREST_STATION_ONE_SIDE]: 6,
-  [PLANNING_MESSAGE_SEGMENT.LONG_WALK_RECOMMENDATION]: 7,
-  [PLANNING_MESSAGE_SEGMENT.EXTRA_TIME]: 8,
+  [PLANNING_MESSAGE_SEGMENT.OPENING_HOURS]: 2,
+  [PLANNING_MESSAGE_SEGMENT.ROUTE_FETCH_FAILED]: 3,
+  [PLANNING_MESSAGE_SEGMENT.ROUTE_FALLBACK_WALKING]: 4,
+  [PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_ADJUSTED]: 5,
+  [PLANNING_MESSAGE_SEGMENT.DEPARTURE_CANDIDATE_EMPTY]: 6,
+  [PLANNING_MESSAGE_SEGMENT.NEAREST_STATION_ONE_SIDE]: 7,
+  [PLANNING_MESSAGE_SEGMENT.LONG_WALK_RECOMMENDATION]: 8,
+  [PLANNING_MESSAGE_SEGMENT.EXTRA_TIME]: 9,
 };
 
 export const DEFAULT_DEPARTURE_AND_DESTINATION: ExtendPlanLocationType = {
@@ -497,3 +484,30 @@ export const prefectureCenters: Record<string, Coordination> = {
 };
 
 export const prefectures = Object.keys(prefectureCenters);
+
+/**
+ * 営業時間の判定（No.158）で表示する文言
+ * :name などのプレースホルダーは lib/opening-hours.ts の buildOpeningStatusMessage で差し込む
+ */
+export const OPENING_HOURS_MESSAGE = {
+  CLOSED_DAY: '「:name」はこの日（:weekday）が定休日の可能性があります。公式サイト等で営業日をご確認ください。',
+  OUTSIDE_HOURS:
+    '「:name」の滞在予定（:stayStart〜:stayEnd）に営業時間外の時間帯が含まれています（この日の営業時間: :hours）。公式サイト等で営業時間をご確認ください。',
+  CLOSED_TEMPORARILY:
+    '「:name」は Google マップ上で臨時休業中と登録されています。公式サイト等で最新情報をご確認ください。',
+  CLOSED_PERMANENTLY: '「:name」は Google マップ上で閉業と登録されています。公式サイト等で最新情報をご確認ください。',
+  HOLIDAY_NOTE:
+    '営業時間は Google マップの情報です。祝日の営業は判定していません。季節営業や最終入場時刻も反映されていない場合があります。',
+  TOAST_TITLE: '営業日をご確認ください',
+  FILTER_LABEL: '計画日に営業しているスポットのみ',
+  FILTER_EMPTY: '計画日に営業しているスポットが見つかりませんでした',
+  OFFICIAL_SITE_LINK: '公式サイトを開く',
+} as const;
+
+/** 営業時間の判定結果ごとのバッジ文言（表示しない判定結果は含めない） */
+export const OPENING_STATUS_BADGE_LABEL: Partial<Record<string, string>> = {
+  CLOSED_PERMANENTLY: '閉業',
+  CLOSED_TEMPORARILY: '臨時休業中',
+  CLOSED_DAY: '定休日の可能性',
+  OUTSIDE_HOURS: '営業時間外の可能性',
+};

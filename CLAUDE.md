@@ -84,6 +84,8 @@ make restart  # Full restart
 - ブランチ名はfeaturexxx(issue番号)とする
 - 複数機能に跨るまたは規模多くなる場合はまず大本となるfeaturexxxブランチをリモートで作成する
 - その後大本のfeaturexxxからブランチを切り、featurexxx-somethingという命名でブランチを作成する(CI上でfeaturexxxブランチに向いたPRが作成)
+- 既存PRへの指摘対応は、そのPRのheadブランチ(featurexxx)に直接コミットしてpushし、別のPRは作成しない
+- 作業環境から別のブランチ名(claude/...など)を指定されても、このブランチ戦略を優先する
 
 ## Documentation & Planning
 

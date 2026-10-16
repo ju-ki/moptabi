@@ -25,7 +25,16 @@ const mockData = {
   searchResults: [] as any[],
   searchKeyword: '',
   highRating: false,
+  openOnPlanDate: false,
 };
+
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: null,
+  }),
+}));
 
 // Mock Google Maps
 vi.mock('@react-google-maps/api', () => ({
@@ -120,6 +129,10 @@ vi.mock('@/store/planning/spotSearchStore', () => ({
     setHighRating: (value: boolean) => {
       mockData.highRating = value;
     },
+    openOnPlanDate: mockData.openOnPlanDate,
+    setOpenOnPlanDate: (value: boolean) => {
+      mockData.openOnPlanDate = value;
+    },
     selectedThemes: [],
     setSelectedThemes: vi.fn(),
     planSpotSelection: [],
@@ -191,6 +204,7 @@ describe('VisitedSpotSearch', () => {
     mockData.searchResults = [];
     mockData.searchKeyword = '';
     mockData.highRating = false;
+    mockData.openOnPlanDate = false;
   });
 
   afterEach(() => {
@@ -382,6 +396,78 @@ describe('VisitedSpotSearch', () => {
       await waitFor(() => {
         expect(mockSetSpots).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('計画日に営業しているスポットのみ（No.158）', () => {
+    // 2025-12-15 は月曜日。museum は月曜定休、closed は閉業、park は営業時間情報なし
+    const museumPeriods = [0, 2, 3, 4, 5, 6].map((day) => ({
+      open: { day, hour: 10, minute: 0 },
+      close: { day, hour: 17, minute: 0 },
+    }));
+    const spots = [
+      { id: 'museum', location: { name: '美術館', lat: 35.71, lng: 139.81 }, openingPeriods: museumPeriods },
+      {
+        id: 'closed',
+        location: { name: '閉業した店', lat: 35.72, lng: 139.82 },
+        businessStatus: 'CLOSED_PERMANENTLY',
+      },
+      { id: 'park', location: { name: '公園', lat: 35.73, lng: 139.83 } },
+    ];
+
+    const openTab = async () => {
+      renderWithSWR(<SpotSelection date="2025-12-15" />);
+      fireEvent.click(screen.getByRole('button', { name: /観光地を選択/ }));
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+      const tab = screen.getByRole('tab', { name: /過去のスポット/i });
+      await clickRadixTab(tab);
+    };
+
+    it('フィルターがオフのときは定休日・閉業のスポットにバッジを付けて表示すること', async () => {
+      mockData.visited = { spots, isLoading: false, error: null };
+      await openTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('visited-spot-card-museum')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('visited-spot-card-closed')).toBeInTheDocument();
+      expect(screen.getByTestId('visited-spot-card-park')).toBeInTheDocument();
+      expect(screen.getAllByTestId('opening-status-badge').map((badge) => badge.textContent)).toEqual([
+        '定休日の可能性',
+        '閉業',
+      ]);
+    });
+
+    it('フィルターがオンのときは定休日・閉業のスポットを除外し、営業時間情報がないスポットは残すこと', async () => {
+      mockData.visited = { spots, isLoading: false, error: null };
+      mockData.openOnPlanDate = true;
+      await openTab();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('visited-spot-card-park')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('visited-spot-card-museum')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('visited-spot-card-closed')).not.toBeInTheDocument();
+    });
+
+    it('フィルターで全件除外されたときは専用のメッセージを表示すること', async () => {
+      const closedSpots = spots.filter((spot) => spot.id !== 'park');
+      mockData.visited = { spots: closedSpots, isLoading: false, error: null };
+      mockData.openOnPlanDate = true;
+      await openTab();
+
+      await waitFor(() => {
+        expect(screen.getByText('計画日に営業しているスポットが見つかりませんでした')).toBeInTheDocument();
+      });
+    });
+
+    it('チェックボックスを押すとフィルターの状態が切り替わること', async () => {
+      await openTab();
+
+      fireEvent.click(screen.getByRole('checkbox', { name: '計画日に営業しているスポットのみ' }));
+      expect(mockData.openOnPlanDate).toBe(true);
     });
   });
 });
