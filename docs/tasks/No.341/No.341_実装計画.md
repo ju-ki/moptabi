@@ -11,10 +11,10 @@
 
 作業が中断したときは、ここのチェックが付いていない最初の項目から再開する。チェックは作業ブランチへのコミットと一緒に更新する。
 
-- [ ] Step 0: 設計書の更新（`feature341`）
-  - [ ] `docs/SpotSelection_コンポーネント設計書.md`
-  - [ ] `docs/pages/plan-create.md` / `plan-edit.md` の SpotSelection 節
-  - [ ] `docs/画面設計書.md` のスポット検索機能
+- [x] Step 0: 設計書の更新（`feature341`）
+  - [x] `docs/SpotSelection_コンポーネント設計書.md`
+  - [x] `docs/pages/plan-create.md` / `plan-edit.md` の SpotSelection 節
+  - [x] `docs/画面設計書.md` のスポット検索機能
 - [ ] Step 1: ダイアログの2段構成と小改善（`feature341-layout`）
   - [ ] `spotSearchStore` に `searchMode` と日付切替時のリセット（P-5）
   - [ ] `SpotSelectionDialog` の切替とスマホ全画面化
