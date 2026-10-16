@@ -21,12 +21,12 @@
   - [x] 「計画日に営業」フィルターをリスト側の1か所に集約
   - [x] 検索半径の円を控えめに（P-6）
   - [x] lint / typecheck / test を通して push
-- [ ] Step 2: 地図の土台と中心点（`feature341-map`）
-  - [ ] `lib/geo.ts` に距離計算と表示用の整形
-  - [ ] `use-map-center-candidates.ts`（中心の候補）
-  - [ ] `MapSpotSearch` の地図・出発地/目的地・プランのスポットのピン
-  - [ ] 中心の候補チップ（PC）/ 住所欄の候補リスト（スマホ）と住所入力
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 2: 地図の土台と中心点（`feature341-map`）
+  - [x] `lib/geo.ts` に距離計算と表示用の整形
+  - [x] `use-map-center-candidates.ts`（中心の候補）
+  - [x] `MapSpotSearch` の地図・出発地/目的地・プランのスポットのピン
+  - [x] 中心の候補チップ（PC）/ 住所欄の候補リスト（スマホ）と住所入力
+  - [x] lint / typecheck / test を通して push
 - [ ] Step 3: POI の選択と追加（`feature341-map`）
   - [ ] POI クリックで詳細取得（既存 `fetchPlaceDetailsWithRetry`）
   - [ ] 選択中スポットのカード（距離・営業状況・上限）

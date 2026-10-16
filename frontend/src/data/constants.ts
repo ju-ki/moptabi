@@ -511,3 +511,17 @@ export const OPENING_STATUS_BADGE_LABEL: Partial<Record<string, string>> = {
   CLOSED_DAY: '定休日の可能性',
   OUTSIDE_HOURS: '営業時間外の可能性',
 };
+
+/** 地図で探すで中心を移したときのズーム（街歩きの縮尺。Google の POI が見える。No.341） */
+export const MAP_FOCUS_ZOOM = 15;
+
+/** 地図で探す（No.341）で表示する文言 */
+export const MAP_SEARCH_MESSAGE = {
+  CENTER_HEADING: '中心にする場所',
+  CURRENT_LOCATION: '現在地',
+  CURRENT_LOCATION_ERROR: '現在地を取得できませんでした。位置情報の利用を許可しているかご確認ください。',
+  CURRENT_LOCATION_UNSUPPORTED: 'このブラウザは位置情報に対応していません',
+  ADDRESS_LABEL: '住所・地名で移動',
+  ADDRESS_PLACEHOLDER: '住所・地名を入力',
+  MAP_CENTER_NAME: '中心',
+} as const;

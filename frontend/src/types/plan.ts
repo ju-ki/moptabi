@@ -149,3 +149,18 @@ export type TravelModeTypeForDisplay = Partial<{
     label: string;
   };
 }>;
+
+/** スポットの探し方（No.341）。list: 既存の3タブ / map: 地図で探す */
+export type SpotSearchMode = 'list' | 'map';
+
+export type MapCenterCandidateKind = 'departure' | 'destination' | 'spot' | 'other-day-spot' | 'default';
+
+/** 地図で探すの中心の候補（No.341）。label は候補の表示名で、距離表示の基準名にも使う */
+export type MapCenterCandidate = {
+  id: string;
+  kind: MapCenterCandidateKind;
+  label: string;
+  name: string;
+  lat: number;
+  lng: number;
+};

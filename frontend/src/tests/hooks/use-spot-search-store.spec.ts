@@ -135,3 +135,25 @@ describe('useSpotSearchStore — syncSearchDate（No.341 P-5）', () => {
     expect(result.current.planSpotSelection).toEqual(['spot-1']);
   });
 });
+
+describe('useSpotSearchStore — 地図で探すの中心（No.341）', () => {
+  beforeEach(() => {
+    act(() => useSpotSearchStore.setState({ mapCenter: null, mapCenterLabel: null, searchDate: null }));
+  });
+
+  it('setMapCenter で中心と基準名を更新できる', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.setMapCenter({ id: 'a', name: '清水寺', lat: 35, lng: 135 }, '① 清水寺'));
+    expect(result.current.mapCenter).toEqual({ id: 'a', name: '清水寺', lat: 35, lng: 135 });
+    expect(result.current.mapCenterLabel).toBe('① 清水寺');
+  });
+
+  it('前回と違う日付で開くと中心をリセットする', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    act(() => result.current.setMapCenter({ id: 'a', name: '清水寺', lat: 35, lng: 135 }, '① 清水寺'));
+    act(() => result.current.syncSearchDate('2026-10-18'));
+    expect(result.current.mapCenter).toBeNull();
+    expect(result.current.mapCenterLabel).toBeNull();
+  });
+});

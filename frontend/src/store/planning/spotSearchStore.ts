@@ -2,10 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
 
-import { Coordination, Spot } from '@/types/plan';
-
-/** スポットの探し方（No.341）。list: 既存の3タブ / map: 地図で探す */
-export type SpotSearchMode = 'list' | 'map';
+import { Coordination, Spot, SpotSearchMode } from '@/types/plan';
 
 interface SpotSearchState {
   // 探し方。ダイアログを閉じても残し、次に開いたときも同じ探し方にする（No.341）
@@ -44,7 +41,10 @@ interface SpotSearchState {
 
   // 検索結果
   searchResults: Spot[];
-  mapCenter: Coordination;
+  // 地図で探すの中心。null のときは初期中心（目的地 → 出発地 → 東京駅）を使う（No.341）
+  mapCenter: Coordination | null;
+  // 距離表示の基準名（「{基準名}から」）。地図のドラッグ・住所検索のあとは null（「中心から」）（No.341）
+  mapCenterLabel: string | null;
   filteredWishlistSpot: Spot[]; // ウィッシュリストからのフィルタ済みスポット
   filteredVisitedSpot: Spot[]; // 訪問済みリストからのフィルタ済みスポット
 
@@ -78,7 +78,7 @@ interface SpotSearchState {
   setSearchResults: (results: Spot[]) => void;
   setFilteredWishlistSpot: (spots: Spot[]) => void;
   setFilteredVisitedSpot: (spots: Spot[]) => void;
-  setMapCenter: (center: Coordination) => void;
+  setMapCenter: (center: Coordination | null, label: string | null) => void;
   setMapSelectOpen: (open: boolean) => void;
   setSelectedSpot: (spot: Spot | null) => void;
   setSelectedThemes: (themes: string[]) => void;
@@ -111,7 +111,8 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       searchResults: [],
       filteredWishlistSpot: [],
       filteredVisitedSpot: [],
-      mapCenter: defaultCenter,
+      mapCenter: null,
+      mapCenterLabel: null,
       mapSelectOpen: false,
       selectedSpot: null,
 
@@ -146,6 +147,9 @@ export const useSpotSearchStore = create<SpotSearchState>()(
           if (state.searchDate === date) return;
           state.searchDate = date;
           state.planSpotSelection = [];
+          // 日付が変わったら地図の中心もその日の初期中心に戻す（No.341）
+          state.mapCenter = null;
+          state.mapCenterLabel = null;
         });
       },
 
@@ -196,9 +200,10 @@ export const useSpotSearchStore = create<SpotSearchState>()(
         });
       },
 
-      setMapCenter: (center) => {
+      setMapCenter: (center, label) => {
         set((state) => {
           state.mapCenter = center;
+          state.mapCenterLabel = label;
         });
       },
 

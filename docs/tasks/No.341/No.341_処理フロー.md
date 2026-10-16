@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TD
   A["SpotSelectionDialog を開く<br/>date"] --> B{"date が前回と違う"}
-  B -->|"違う"| C["clearPlanSpotSelection<br/>P-5"]
+  B -->|"違う"| C["syncSearchDate<br/>プランの地点選択（P-5）と地図の中心をリセット"]
   B -->|"同じ"| D["useUserLimits<br/>limits / limitsError"]
   C --> D
   D --> E{"spotSearchStore.searchMode"}

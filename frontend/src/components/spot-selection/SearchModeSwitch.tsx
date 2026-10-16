@@ -3,7 +3,8 @@
 import { List, Map } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { SpotSearchMode, useSpotSearchStore } from '@/store/planning/spotSearchStore';
+import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
+import { SpotSearchMode } from '@/types/plan';
 
 const MODES: { value: SpotSearchMode; label: string; Icon: typeof List }[] = [
   { value: 'list', label: 'リストで探す', Icon: List },
