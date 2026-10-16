@@ -9,6 +9,8 @@ type NearestStationDisplay = {
   walkingTime?: number;
   transitTime?: number;
   scheduledDepartureTime?: string;
+  /** 駅到着から発車までの待ち時間（分）。未設定なら表示しない */
+  waitingTime?: number;
   memo?: string;
 };
 
@@ -55,6 +57,14 @@ export function NearestStationDetail({ nearestStation, className }: NearestStati
           >
             <span className="font-medium text-gray-700">徒歩{nearestStation.walkingTime ?? '-'}分</span>
           </span>
+          {typeof nearestStation.waitingTime === 'number' && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"
+              data-testid="nearest-station-waiting-time"
+            >
+              <span className="font-medium text-gray-700">待ち {nearestStation.waitingTime}分</span>
+            </span>
+          )}
           {departureTime !== '' && (
             <span
               className="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1"

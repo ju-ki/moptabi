@@ -63,4 +63,22 @@ describe('DepartureInfoCard', () => {
 
     expect(screen.queryByTestId('nearest-station-memo')).not.toBeInTheDocument();
   });
+
+  it.each([
+    [12, '待ち 12分'],
+    [0, '待ち 0分'],
+  ])('待ち時間が %i 分のとき「%s」を表示する（No.375）', (waitingTime, expected) => {
+    const departure = createDeparture();
+    render(
+      <DepartureInfoCard departure={{ ...departure, nearestStation: { ...departure.nearestStation!, waitingTime } }} />,
+    );
+
+    expect(screen.getByTestId('nearest-station-waiting-time')).toHaveTextContent(expected);
+  });
+
+  it('待ち時間が未設定のときは表示しない（No.375）', () => {
+    render(<DepartureInfoCard departure={createDeparture()} />);
+
+    expect(screen.queryByTestId('nearest-station-waiting-time')).not.toBeInTheDocument();
+  });
 });

@@ -831,6 +831,114 @@ describe('旅行計画サービス', () => {
     });
   });
 
+  // --- 最寄駅での待ち時間（waitingTime）テスト ---
+  describe('最寄駅の待ち時間（waitingTime）', () => {
+    // 旅行計画の作成数の上限に当たらないよう、テストごとにデータを消す
+    beforeEach(async () => {
+      await clearAllTestData();
+      await createTestUser('trip_service', 'ADMIN');
+    });
+
+    /**
+     * 出発地: 5分、スポット1: 0分、スポット2・目的地: 未設定 の待ち時間を持つプランデータを作る
+     */
+    const createPlansWithWaitingTime = () => {
+      const plans = structuredClone(mockPlanDataWithNearestStation);
+      const [firstPlan] = plans;
+      if (!firstPlan.departure.nearestStation || !firstPlan.spots[0].nearestStation) {
+        throw new Error('nearestStationが設定されていることを前提としているため、テストデータを確認してください。');
+      }
+      firstPlan.departure.nearestStation.waitingTime = 5;
+      firstPlan.spots[0].nearestStation.waitingTime = 0;
+      return plans;
+    };
+
+    const createTripWithWaitingTime = async () => {
+      const res = await client.api.trips.create.$post(
+        { json: { ...structuredClone(mockTripData), plans: createPlansWithWaitingTime() } },
+        { headers: createAuthHeaders('trip_service') },
+      );
+      expect(res.status).toBe(201);
+      return (await res.json()) as { id: number };
+    };
+
+    const findStoredWaitingTimes = async (tripId: number) => {
+      const [firstPlan] = await db.select().from(plan).where(eq(plan.tripId, tripId)).orderBy(plan.date);
+      const locations = await db.select().from(planLocation).where(eq(planLocation.planId, firstPlan.id));
+      const departure = locations.find((l) => l.locationType === 'DEPARTURE');
+      const destination = locations.find((l) => l.locationType === 'DESTINATION');
+      const spots = await db.select().from(planSpot).where(eq(planSpot.planId, firstPlan.id)).orderBy(planSpot.order);
+      const [departureStation] = await db
+        .select()
+        .from(planLocationNearestStation)
+        .where(eq(planLocationNearestStation.planLocationId, departure!.id));
+      const [destinationStation] = await db
+        .select()
+        .from(planLocationNearestStation)
+        .where(eq(planLocationNearestStation.planLocationId, destination!.id));
+      const [spot1Station] = await db
+        .select()
+        .from(planSpotNearestStation)
+        .where(eq(planSpotNearestStation.planSpotId, spots[0].id));
+      const [spot2Station] = await db
+        .select()
+        .from(planSpotNearestStation)
+        .where(eq(planSpotNearestStation.planSpotId, spots[1].id));
+      return {
+        departure: departureStation?.waitingTime,
+        spot1: spot1Station?.waitingTime,
+        spot2: spot2Station?.waitingTime,
+        destination: destinationStation?.waitingTime,
+      };
+    };
+
+    it('作成時に待ち時間が保存され、0分も保存されること', async () => {
+      const created = await createTripWithWaitingTime();
+
+      expect(await findStoredWaitingTimes(created.id)).toEqual({
+        departure: 5,
+        spot1: 0,
+        spot2: null,
+        destination: null,
+      });
+    });
+
+    it('詳細取得で待ち時間を返し、未設定のときは返さないこと', async () => {
+      const created = await createTripWithWaitingTime();
+
+      const res = await client.api.trips[created.id].$get({}, { headers: createAuthHeaders('trip_service') });
+      expect(res.status).toBe(200);
+      const tripDetail = await res.json();
+      const [firstPlan] = tripDetail.plans;
+
+      expect(firstPlan.departure.nearestStation.waitingTime).toBe(5);
+      expect(firstPlan.spots[0].nearestStation.waitingTime).toBe(0);
+      expect(firstPlan.spots[1].nearestStation).not.toHaveProperty('waitingTime');
+      expect(firstPlan.destination.nearestStation).not.toHaveProperty('waitingTime');
+    });
+
+    it('更新時に待ち時間が上書きされ、未設定にすると null になること', async () => {
+      const created = await createTripWithWaitingTime();
+      const plans = createPlansWithWaitingTime();
+      plans[0].departure.nearestStation!.waitingTime = 12;
+      delete plans[0].spots[0].nearestStation!.waitingTime;
+      plans[0].destination.nearestStation!.waitingTime = 3;
+
+      const res = await client.api.trips[created.id].$patch(
+        { json: { ...structuredClone(mockTripData), id: created.id, plans } },
+        { headers: createAuthHeaders('trip_service') },
+      );
+      expect(res.status).toBe(200);
+
+      expect(await findStoredWaitingTimes(created.id)).toEqual({
+        departure: 12,
+        spot1: null,
+        spot2: null,
+        destination: 3,
+      });
+    });
+  });
+
   // --- PlanLocationNearestStation テスト（出発地・目的地の最寄駅） ---
   describe('PlanLocationNearestStation', () => {
     it('PlanLocationNearestStation テーブルへの insert/select が動作すること', async () => {

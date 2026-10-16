@@ -257,6 +257,8 @@ export const planSpotNearestStation = pgTable(
     stationType: stationType().notNull(),
     transitTime: integer(),
     scheduledDepartureTime: varchar({ length: 5 }),
+    // 駅到着から発車までの待ち時間（分）。最寄駅経由を選んだ区間だけ値が入る
+    waitingTime: integer(),
     memo: text(),
   },
   (table) => [
@@ -286,6 +288,8 @@ export const planLocationNearestStation = pgTable(
     stationType: stationType().notNull(),
     transitTime: integer(),
     scheduledDepartureTime: varchar({ length: 5 }),
+    // 駅到着から発車までの待ち時間（分）。最寄駅経由を選んだ区間だけ値が入る
+    waitingTime: integer(),
     memo: text(),
   },
   (table) => [

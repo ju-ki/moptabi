@@ -1,5 +1,5 @@
 import React from 'react';
-import { FootprintsIcon, Train } from 'lucide-react';
+import { FootprintsIcon, Hourglass, Train } from 'lucide-react';
 
 import { ExtendNearestStationType } from '@/types/plan';
 
@@ -7,7 +7,7 @@ import { ExtendNearestStationType } from '@/types/plan';
  * 最寄駅経由のルート概要を表示するコンポーネント
  * 表示内容:
  * - 前スポットから最寄駅までの移動手段と所要時間と距離
- * - 最寄駅での乗り換え情報（乗車駅、降車駅、乗車時間、発車時間）
+ * - 最寄駅での乗り換え情報（乗車駅、降車駅、待ち時間、乗車時間、発車時間）
  * - 最寄駅から目的地までの移動手段と所要時間と距離
  * - 路線メモ
  * 使用箇所:
@@ -43,6 +43,20 @@ const RouteSummaryNearestStation = ({
             <span className="font-medium text-orange-600 truncate">{originNearestStation.name}</span>
           </div>
         </div>
+
+        {/* 乗車駅での待ち時間（0分も表示し、未設定なら出さない） */}
+        {typeof originNearestStation.waitingTime === 'number' && (
+          <div className="relative">
+            <div className="absolute -left-[13px] sm:-left-[21px] w-2 sm:w-3 h-2 sm:h-3 bg-gray-300 rounded-full" />
+            <div
+              className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+              data-testid="route-summary-waiting-time"
+            >
+              <Hourglass className="w-3 sm:w-4 h-3 sm:h-4 text-gray-500 flex-shrink-0" />
+              <span className="text-gray-600">待ち {originNearestStation.waitingTime}分</span>
+            </div>
+          </div>
+        )}
 
         {/* 電車/バスでの移動 */}
         <div className="relative">
