@@ -27,11 +27,11 @@
   - [x] `MapSpotSearch` の地図・出発地/目的地・プランのスポットのピン
   - [x] 中心の候補チップ（PC）/ 住所欄の候補リスト（スマホ）と住所入力
   - [x] lint / typecheck / test を通して push
-- [ ] Step 3: POI の選択と追加（`feature341-map`）
-  - [ ] POI クリックで詳細取得（既存 `fetchPlaceDetailsWithRetry`）
-  - [ ] 選択中スポットのカード（距離・営業状況・上限）
-  - [ ] 追加・取り消し・選択解除
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 3: POI の選択と追加（`feature341-map`）
+  - [x] POI クリックで詳細取得（既存 `fetchPlaceDetailsWithRetry`）
+  - [x] 選択中スポットのカード（距離・営業状況・上限）
+  - [x] 追加・取り消し・選択解除
+  - [x] lint / typecheck / test を通して push
 - [ ] Step 4: 行きたいリスト・過去のスポットのピン（`feature341-map`）
   - [ ] 表示するピンの切替と記憶
   - [ ] 休みのピンを薄く / 隠す、営業時間外の印
