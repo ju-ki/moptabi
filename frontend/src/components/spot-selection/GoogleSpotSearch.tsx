@@ -23,8 +23,6 @@ import { Coordination } from '@/types/plan';
 import { isOpenOnPlanDate } from '@/lib/opening-hours';
 import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 
-import { OpenOnPlanDateFilter } from './OpenOnPlanDateFilter';
-
 type CenterMode = 'current-location' | 'plan-location';
 
 type PlanPoint = { id: string; name: string; lat: number; lng: number };
@@ -322,7 +320,6 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
       </Button>
 
       {/* 検索結果 */}
-      <OpenOnPlanDateFilter />
       <SearchResultsView
         spots={convertToExtendSpotType(visibleResults)}
         selectedSpotIds={selectedSpotIds}

@@ -15,12 +15,12 @@
   - [x] `docs/SpotSelection_コンポーネント設計書.md`
   - [x] `docs/pages/plan-create.md` / `plan-edit.md` の SpotSelection 節
   - [x] `docs/画面設計書.md` のスポット検索機能
-- [ ] Step 1: ダイアログの2段構成と小改善（`feature341-layout`）
-  - [ ] `spotSearchStore` に `searchMode` と日付切替時のリセット（P-5）
-  - [ ] `SpotSelectionDialog` の切替とスマホ全画面化
-  - [ ] 「計画日に営業」フィルターをリスト側の1か所に集約
-  - [ ] 検索半径の円を控えめに（P-6）
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 1: ダイアログの2段構成と小改善（`feature341-layout`）
+  - [x] `spotSearchStore` に `searchMode` と日付切替時のリセット（P-5）
+  - [x] `SpotSelectionDialog` の切替とスマホ全画面化
+  - [x] 「計画日に営業」フィルターをリスト側の1か所に集約
+  - [x] 検索半径の円を控えめに（P-6）
+  - [x] lint / typecheck / test を通して push
 - [ ] Step 2: 地図の土台と中心点（`feature341-map`）
   - [ ] `lib/geo.ts` に距離計算と表示用の整形
   - [ ] `use-map-center-candidates.ts`（中心の候補）

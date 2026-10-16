@@ -16,6 +16,7 @@ import { ExtendSpotType, Spot } from '@/types/plan';
 import { useUserLimits } from '@/hooks/use-user-limits';
 import { buildOpeningStatusMessage, checkOpeningStatus } from '@/lib/opening-hours';
 import { OPENING_HOURS_MESSAGE } from '@/data/constants';
+import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -25,6 +26,9 @@ import { LimitFetchError } from '../common/LimitFetchError';
 import GoogleSpotSearch from './GoogleSpotSearch';
 import WishlistSpotSearch from './WishlistSpotSearch';
 import VisitedSpotSearch from './VisitedSpotSearch';
+import MapSpotSearch from './MapSpotSearch';
+import { OpenOnPlanDateFilter } from './OpenOnPlanDateFilter';
+import { SearchModeSwitch } from './SearchModeSwitch';
 
 type SpotSelectionDialogProps = {
   date: string;
@@ -35,6 +39,13 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
   const { setSpots, planErrors, plans } = useStoreForPlanning();
   const { toast } = useToast();
   const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
+  const { searchMode, syncSearchDate } = useSpotSearchStore();
+
+  const handleOpenChange = (open: boolean) => {
+    // 前回と違う日付で開いたときは、プランの地点選択をリセットする（No.341 P-5）
+    if (open) syncSearchDate(date);
+    setIsOpen(open);
+  };
 
   // 現在の日のスポット数を取得（出発地と目的地は除外）
   const currentSpotCount = useMemo(() => {
@@ -110,14 +121,14 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
       </div>
 
       {planErrors[date]?.spots && <div className="text-sm text-red-600">{planErrors[date].spots}</div>}
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
           <Button variant={'outline'} id="spot-search" role="button">
             <span>観光地を選択</span>
             <Search className="ml-2 h-4 w-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto max-sm:h-dvh max-sm:max-h-dvh max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4">
           <DialogHeader>
             <DialogTitle>観光地を検索</DialogTitle>
             <DialogDescription>
@@ -149,35 +160,51 @@ const SpotSelectionDialog = ({ date }: SpotSelectionDialogProps) => {
             </div>
           )}
 
-          {/* タブ切り替え */}
-          <Tabs defaultValue="google" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="google" role="tab">
-                <Search className="mr-2 h-4 w-4" />
-                Google検索
-              </TabsTrigger>
-              <TabsTrigger value="wishlist" role="tab">
-                <Heart className="mr-2 h-4 w-4" />
-                行きたいリスト
-              </TabsTrigger>
-              <TabsTrigger value="visited" role="tab">
-                <History className="mr-2 h-4 w-4" />
-                過去のスポット
-              </TabsTrigger>
-            </TabsList>
+          {/* 探し方の切替（No.341） */}
+          <SearchModeSwitch />
 
-            <TabsContent value="google" className="mt-4" data-testid="google-search-form">
-              <GoogleSpotSearch date={date} selectedSpotIds={selectedSpotIds} onSpotSelect={handleSpotSelect} />
-            </TabsContent>
+          {searchMode === 'map' ? (
+            <MapSpotSearch
+              date={date}
+              selectedSpotIds={selectedSpotIds}
+              onSpotSelect={handleSpotSelect}
+              isLimitReached={isLimitReached}
+              limitsError={!!limitsError}
+            />
+          ) : (
+            <div className="space-y-3">
+              {/* 3タブ共通のフィルターは1か所に置く（No.158 / No.341） */}
+              <OpenOnPlanDateFilter />
+              <Tabs defaultValue="google" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="google" role="tab">
+                    <Search className="mr-2 h-4 w-4" />
+                    Google検索
+                  </TabsTrigger>
+                  <TabsTrigger value="wishlist" role="tab">
+                    <Heart className="mr-2 h-4 w-4" />
+                    行きたいリスト
+                  </TabsTrigger>
+                  <TabsTrigger value="visited" role="tab">
+                    <History className="mr-2 h-4 w-4" />
+                    過去のスポット
+                  </TabsTrigger>
+                </TabsList>
 
-            <TabsContent value="wishlist" className="mt-4" data-testid="wishlist-content">
-              <WishlistSpotSearch date={date} selectedSpotIds={selectedSpotIds} onSpotSelect={handleSpotSelect} />
-            </TabsContent>
+                <TabsContent value="google" className="mt-4" data-testid="google-search-form">
+                  <GoogleSpotSearch date={date} selectedSpotIds={selectedSpotIds} onSpotSelect={handleSpotSelect} />
+                </TabsContent>
 
-            <TabsContent value="visited" className="mt-4" data-testid="visited-content">
-              <VisitedSpotSearch date={date} selectedSpotIds={selectedSpotIds} onSpotSelect={handleSpotSelect} />
-            </TabsContent>
-          </Tabs>
+                <TabsContent value="wishlist" className="mt-4" data-testid="wishlist-content">
+                  <WishlistSpotSearch date={date} selectedSpotIds={selectedSpotIds} onSpotSelect={handleSpotSelect} />
+                </TabsContent>
+
+                <TabsContent value="visited" className="mt-4" data-testid="visited-content">
+                  <VisitedSpotSearch date={date} selectedSpotIds={selectedSpotIds} onSpotSelect={handleSpotSelect} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

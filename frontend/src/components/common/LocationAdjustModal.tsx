@@ -13,12 +13,13 @@ const containerStyle = {
   height: '100%',
 };
 
+// 地図の POI が読めるよう、枠線を中心にして塗りは薄くする（No.341 P-6）
 const circleOptions = {
   strokeColor: '#FF0000',
   strokeOpacity: 0.8,
   strokeWeight: 2,
   fillColor: '#FF0000',
-  fillOpacity: 0.35,
+  fillOpacity: 0.08,
   clickable: false,
   draggable: false,
   editable: false,

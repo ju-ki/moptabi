@@ -4,7 +4,15 @@ import { devtools } from 'zustand/middleware';
 
 import { Coordination, Spot } from '@/types/plan';
 
+/** スポットの探し方（No.341）。list: 既存の3タブ / map: 地図で探す */
+export type SpotSearchMode = 'list' | 'map';
+
 interface SpotSearchState {
+  // 探し方。ダイアログを閉じても残し、次に開いたときも同じ探し方にする（No.341）
+  searchMode: SpotSearchMode;
+  // 最後にダイアログを開いた計画日。日付が変わったらプランの地点選択をリセットする（No.341 P-5）
+  searchDate: string | null;
+
   // 検索条件
   searchCenter: Coordination | undefined;
   searchRadius: number[];
@@ -59,6 +67,8 @@ interface SpotSearchState {
   setVisitedSortOrder: (order: 'asc' | 'desc') => void;
 
   // アクション
+  setSearchMode: (mode: SpotSearchMode) => void;
+  syncSearchDate: (date: string) => void;
   setSearchCenter: (center: Coordination | undefined) => void;
   setSearchRadius: (radius: number[]) => void;
   setSearchCategories: (categoryId: string) => void; // トグル動作
@@ -88,6 +98,8 @@ export const useSpotSearchStore = create<SpotSearchState>()(
   immer(
     devtools((set, get) => ({
       // 初期値（wishlistStore と同様のパターン）
+      searchMode: 'list',
+      searchDate: null,
       searchCenter: defaultCenter,
       searchRadius: [5],
       searchCategories: [],
@@ -123,6 +135,20 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       },
 
       // アクション
+      setSearchMode: (mode) => {
+        set((state) => {
+          state.searchMode = mode;
+        });
+      },
+
+      syncSearchDate: (date) => {
+        set((state) => {
+          if (state.searchDate === date) return;
+          state.searchDate = date;
+          state.planSpotSelection = [];
+        });
+      },
+
       setSearchCenter: (center) => {
         set((state) => {
           state.searchCenter = center;
