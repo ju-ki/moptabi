@@ -26,7 +26,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A["MapSpotSearch をマウント"] --> B["use-map-center-candidates(date)<br/>出発地 / 目的地 / その日のスポット ①② /<br/>他の日のスポット / 現在地（押下時に取得）"]
+  A["MapSpotSearch をマウント"] --> B["use-map-center-candidates(date)<br/>出発地 / 目的地 / その日のスポット ①② / 他の日のスポット<br/>（現在地は MapCenterPicker で押下時に取得）"]
   B --> C{"mapCenter が既にある"}
   C -->|"ある"| E["その中心で表示"]
   C -->|"ない"| D{"初期中心"}

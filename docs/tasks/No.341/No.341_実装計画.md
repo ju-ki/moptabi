@@ -32,11 +32,20 @@
   - [x] 選択中スポットのカード（距離・営業状況・上限）
   - [x] 追加・取り消し・選択解除
   - [x] lint / typecheck / test を通して push
-- [ ] Step 4: 行きたいリスト・過去のスポットのピン（`feature341-map`）
-  - [ ] 表示するピンの切替と記憶
-  - [ ] 休みのピンを薄く / 隠す、営業時間外の印
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 4: 行きたいリスト・過去のスポットのピン（`feature341-map`）
+  - [x] 表示するピンの切替と記憶
+  - [x] 休みのピンを薄く / 隠す、営業時間外の印
+  - [x] lint / typecheck / test を通して push
 - [ ] 動作確認（[No.341_動作確認手順.md](./No.341_動作確認手順.md)）とスクリーンショット
+
+### 実装時に計画から変えた点
+
+- 現在地は `use-map-center-candidates` ではなく `MapCenterPicker` で押したときに取得する（候補の組み立てとブラウザ API を分けるため）。
+- 日付が変わったときは `syncSearchDate` で、プランの地点選択（P-5）に加えて地図の中心も初期中心に戻す（前の日の中心が残らないように）。
+- 行きたいリストのピンは `map/WishlistPinLayer.tsx` に分け、ON のときだけマウントする。
+- プランのスポットの警告の印は、番号ピンのラベルを「2!」（橙）にし、ツールチップに「営業時間外」を付ける。
+- `SelectedSpotCard` のテストは `MapSpotSearch.spec.tsx` にまとめた（カードの表示は地図の操作と合わせて確認するため）。
+- 中心の候補・`MapPinLayers`・`MapVisitedPin` などの型は `types/plan.ts` に置いた（TYPE_GUIDE に合わせ、複数ファイルで使う型を集約）。
 
 ## 1. スコープ
 

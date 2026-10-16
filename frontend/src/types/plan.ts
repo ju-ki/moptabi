@@ -164,3 +164,17 @@ export type MapCenterCandidate = {
   lat: number;
   lng: number;
 };
+
+/** 地図で探すで表示するピンの種類（No.341） */
+export type MapPinLayers = {
+  wishlist: boolean;
+  visited: boolean;
+};
+
+/** 地図で探すの過去のスポットのピン（No.341）。spot は詳細を取得するまで null */
+export type MapVisitedPin = {
+  spotId: string;
+  lat: number;
+  lng: number;
+  spot: ExtendSpotType | null;
+};

@@ -535,4 +535,12 @@ export const MAP_SEARCH_MESSAGE = {
   LIMIT_REACHED: '本日のスポット数が上限に達しています。追加するには既存のスポットを削除してください。',
   FETCH_ERROR: '情報を取得できませんでした',
   LOADING: 'スポットの情報を読み込んでいます',
+  PIN_HEADING: '表示するピン',
+  PIN_BUTTON: 'ピン（:count）',
+  PIN_WISHLIST: '行きたいリスト',
+  PIN_VISITED: '過去のスポット',
+  PIN_HIDE_CLOSED: '計画日に休みのピンを隠す',
+  PIN_VISITED_REMAINING: '位置を取得していないスポットが :count 件',
+  PIN_LOAD_MORE: 'さらに表示',
+  OPENING_WARNING_MARK: '営業時間外',
 } as const;

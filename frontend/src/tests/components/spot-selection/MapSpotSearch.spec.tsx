@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import MapSpotSearch from '@/components/spot-selection/MapSpotSearch';
 import { useStoreForPlanning } from '@/lib/plan';
 import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
-import { ExtendPlanLocationType, ExtendSpotType, TravelPlanType } from '@/types/plan';
+import { ExtendPlanLocationType, ExtendSpotType, MapVisitedPin, Spot, TravelPlanType } from '@/types/plan';
 
 /**
  * 地図で探す（No.341）を検証する
@@ -25,7 +25,14 @@ type MockMarkerProps = {
   opacity?: number;
 };
 
-const { mapProps, mapInstance, mockSearchByAddress, mockFetchPlaceDetails } = vi.hoisted(() => ({
+const {
+  mapProps,
+  mapInstance,
+  mockSearchByAddress,
+  mockFetchPlaceDetails,
+  mockUseWishlistSpots,
+  mockUseMapVisitedPins,
+} = vi.hoisted(() => ({
   mapProps: { current: {} as MockMapProps },
   mapInstance: {
     panTo: vi.fn(),
@@ -34,6 +41,8 @@ const { mapProps, mapInstance, mockSearchByAddress, mockFetchPlaceDetails } = vi
   },
   mockSearchByAddress: vi.fn(),
   mockFetchPlaceDetails: vi.fn(),
+  mockUseWishlistSpots: vi.fn(),
+  mockUseMapVisitedPins: vi.fn(),
 }));
 
 // 地図 SDK はテスト環境で実行できないため、props を取り出して操作できる部品に置き換える
@@ -66,6 +75,14 @@ vi.mock('@/hooks/use-geocoding', () => ({
 // Places API はテスト環境で呼べないため、呼び出し回数を確認できる関数に置き換える
 vi.mock('@/lib/place-fetcher', () => ({
   fetchPlaceDetailsWithRetry: mockFetchPlaceDetails,
+}));
+
+// 行きたいリスト・過去のスポットは API とセッションに依存するため、取得結果を差し替える（取得処理自体は各フックの spec で検証）
+vi.mock('@/hooks/spot-search/use-wishlist-spots', () => ({
+  useWishlistSpots: mockUseWishlistSpots,
+}));
+vi.mock('@/hooks/spot-search/use-map-visited-pins', () => ({
+  useMapVisitedPins: mockUseMapVisitedPins,
 }));
 
 // 2026-10-17 は土曜日
@@ -119,6 +136,15 @@ const createPlan = (overrides: Partial<TravelPlanType> = {}): TravelPlanType => 
   ...overrides,
 });
 
+const mockVisitedPins = { pins: [] as MapVisitedPin[], remainingCount: 0, loadMore: vi.fn(), isLoading: false };
+
+const setDefaultLayerMocks = () => {
+  mockUseWishlistSpots.mockReturnValue({ spots: [], isLoading: false, error: null });
+  mockVisitedPins.pins = [];
+  mockVisitedPins.remainingCount = 0;
+  mockUseMapVisitedPins.mockImplementation(() => mockVisitedPins);
+};
+
 const renderMap = (props: Partial<React.ComponentProps<typeof MapSpotSearch>> = {}) =>
   render(
     <MapSpotSearch
@@ -139,6 +165,9 @@ const markerLabels = () => screen.getAllByTestId('map-marker').map((marker) => m
 describe('MapSpotSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setDefaultLayerMocks();
+    localStorage.clear();
+    useSpotSearchStore.setState({ pinLayers: { wishlist: false, visited: false }, openOnPlanDate: false });
     useStoreForPlanning.setState({ plans: [createPlan()] });
     useSpotSearchStore.setState({ mapCenter: null, mapCenterLabel: null });
   });
@@ -248,6 +277,9 @@ describe('MapSpotSearch — POI の選択と追加', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    setDefaultLayerMocks();
+    localStorage.clear();
+    useSpotSearchStore.setState({ pinLayers: { wishlist: false, visited: false }, openOnPlanDate: false });
     useStoreForPlanning.setState({ plans: [createPlan()] });
     useSpotSearchStore.setState({ mapCenter: null, mapCenterLabel: null });
     mockFetchPlaceDetails.mockResolvedValue({ data: yasakaMeta, hasError: false });
@@ -373,5 +405,146 @@ describe('MapSpotSearch — POI の選択と追加', () => {
     expect(await screen.findByTestId('opening-status-badge')).toHaveTextContent('定休日の可能性');
     expect(screen.getByTestId('selected-spot-summary-sp')).toHaveTextContent('土曜は休みの可能性');
     expect(screen.getByRole('button', { name: '計画に追加' })).toBeEnabled();
+  });
+});
+
+describe('MapSpotSearch — 行きたいリスト・過去のスポットのピン', () => {
+  // 日・火〜金のみ営業（月・土が休み）
+  const weekdayPeriods = [0, 2, 3, 4, 5].map((day) => ({
+    open: { day, hour: 10, minute: 0 },
+    close: { day, hour: 17, minute: 0 },
+  }));
+  const wishlistSpot = (id: string, overrides: Partial<Spot> = {}): Spot =>
+    ({
+      id,
+      location: { id, name: id, lat: 35.0, lng: 135.77 },
+      rating: 4.2,
+      ...overrides,
+    }) as Spot;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setDefaultLayerMocks();
+    localStorage.clear();
+    useSpotSearchStore.setState({
+      mapCenter: null,
+      mapCenterLabel: null,
+      pinLayers: { wishlist: false, visited: false },
+      openOnPlanDate: false,
+    });
+    useStoreForPlanning.setState({ plans: [createPlan()] });
+  });
+
+  it('初めて開いたときはピンを出さず、行きたいリスト・過去のスポットの取得も始めないこと', () => {
+    renderMap();
+
+    expect(mockUseWishlistSpots).not.toHaveBeenCalled();
+    expect(mockUseMapVisitedPins).toHaveBeenLastCalledWith(false);
+    expect(markerLabels()).toEqual(['S', 'G', '1', '2']);
+  });
+
+  it('行きたいリストを ON にするとハートのピンが出て、ON の状態を保存すること', () => {
+    mockUseWishlistSpots.mockReturnValue({ spots: [wishlistSpot('heart-1')], isLoading: false, error: null });
+    renderMap();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: '行きたいリスト' }));
+
+    expect(markerLabels()).toContain('♥');
+    expect(JSON.parse(localStorage.getItem('moptabi:map-pin-layers') ?? '{}')).toEqual({
+      wishlist: true,
+      visited: false,
+    });
+  });
+
+  it('保存した ON の状態を次に開いたときに復元すること', () => {
+    localStorage.setItem('moptabi:map-pin-layers', JSON.stringify({ wishlist: false, visited: true }));
+
+    renderMap();
+
+    expect(mockUseMapVisitedPins).toHaveBeenLastCalledWith(true);
+    expect(screen.getByRole('checkbox', { name: '過去のスポット' })).toBeChecked();
+  });
+
+  it('計画日に休みのピンは薄く表示し、「計画日に休みのピンを隠す」を ON にすると描かないこと', () => {
+    // 2026-10-17（土）に休み
+    const saturdayClosed = weekdayPeriods;
+    mockUseWishlistSpots.mockReturnValue({
+      spots: [wishlistSpot('closed', { openingPeriods: saturdayClosed }), wishlistSpot('open')],
+      isLoading: false,
+      error: null,
+    });
+    useSpotSearchStore.setState({ pinLayers: { wishlist: true, visited: false } });
+    localStorage.setItem('moptabi:map-pin-layers', JSON.stringify({ wishlist: true, visited: false }));
+    renderMap();
+
+    expect(screen.getByTitle('closed')).toHaveAttribute('data-opacity', '0.4');
+    expect(screen.getByTitle('open')).toHaveAttribute('data-opacity', '1');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: '計画日に休みのピンを隠す' }));
+
+    expect(screen.queryByTitle('closed')).not.toBeInTheDocument();
+    expect(useSpotSearchStore.getState().openOnPlanDate).toBe(true);
+  });
+
+  it('プランに入っているスポットは行きたいリストのピンを重ねないこと', () => {
+    mockUseWishlistSpots.mockReturnValue({ spots: [wishlistSpot('kiyomizu')], isLoading: false, error: null });
+    localStorage.setItem('moptabi:map-pin-layers', JSON.stringify({ wishlist: true, visited: false }));
+
+    renderMap({ selectedSpotIds: ['kiyomizu', 'inari'] });
+
+    expect(markerLabels()).not.toContain('♥');
+  });
+
+  it('滞在時間が営業時間外になるプランのスポットのピンに印を付けること', () => {
+    const periods = [0, 1, 2, 3, 4, 5, 6].map((day) => ({
+      open: { day, hour: 10, minute: 0 },
+      close: { day, hour: 17, minute: 0 },
+    }));
+    useStoreForPlanning.setState({
+      plans: [
+        createPlan({
+          spots: [
+            createSpot({ openingPeriods: periods }),
+            createSpot({
+              id: 'inari',
+              name: '伏見稲荷大社',
+              stayStart: '08:00',
+              stayEnd: '09:00',
+              openingPeriods: periods,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    renderMap();
+
+    expect(markerLabels()).toEqual(['S', 'G', '1', '2!']);
+    expect(screen.getByTitle('② 伏見稲荷大社（営業時間外）')).toBeInTheDocument();
+  });
+
+  it('座標だけの過去のスポットのピンを押すと、そのスポットだけ詳細を取得すること', async () => {
+    mockFetchPlaceDetails.mockResolvedValue({ data: { ...yasakaMeta, spotId: 'visited-1' }, hasError: false });
+    mockVisitedPins.pins = [{ spotId: 'visited-1', lat: 35.0, lng: 135.77, spot: null }];
+    localStorage.setItem('moptabi:map-pin-layers', JSON.stringify({ wishlist: false, visited: true }));
+    renderMap();
+
+    const visitedMarker = screen.getAllByTestId('map-marker').find((marker) => marker.dataset.label === '✓');
+    await act(async () => {
+      fireEvent.click(visitedMarker as HTMLElement);
+    });
+
+    expect(mockFetchPlaceDetails).toHaveBeenCalledWith('visited-1');
+    expect(await screen.findByText('八坂神社')).toBeInTheDocument();
+  });
+
+  it('位置を取得していない過去のスポットがあるときは件数と「さらに表示」を出すこと', () => {
+    mockVisitedPins.remainingCount = 5;
+    localStorage.setItem('moptabi:map-pin-layers', JSON.stringify({ wishlist: false, visited: true }));
+    renderMap();
+
+    expect(screen.getByText('位置を取得していないスポットが 5 件')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'さらに表示' }));
+    expect(mockVisitedPins.loadMore).toHaveBeenCalled();
   });
 });

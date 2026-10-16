@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
 
-import { Coordination, Spot, SpotSearchMode } from '@/types/plan';
+import { Coordination, MapPinLayers, Spot, SpotSearchMode } from '@/types/plan';
 
 interface SpotSearchState {
   // 探し方。ダイアログを閉じても残し、次に開いたときも同じ探し方にする（No.341）
@@ -45,6 +45,8 @@ interface SpotSearchState {
   mapCenter: Coordination | null;
   // 距離表示の基準名（「{基準名}から」）。地図のドラッグ・住所検索のあとは null（「中心から」）（No.341）
   mapCenterLabel: string | null;
+  // 地図で探すで表示するピン。localStorage（lib/map-pin-layers）から復元する（No.341）
+  pinLayers: MapPinLayers;
   filteredWishlistSpot: Spot[]; // ウィッシュリストからのフィルタ済みスポット
   filteredVisitedSpot: Spot[]; // 訪問済みリストからのフィルタ済みスポット
 
@@ -79,6 +81,7 @@ interface SpotSearchState {
   setFilteredWishlistSpot: (spots: Spot[]) => void;
   setFilteredVisitedSpot: (spots: Spot[]) => void;
   setMapCenter: (center: Coordination | null, label: string | null) => void;
+  setPinLayers: (layers: MapPinLayers) => void;
   setMapSelectOpen: (open: boolean) => void;
   setSelectedSpot: (spot: Spot | null) => void;
   setSelectedThemes: (themes: string[]) => void;
@@ -113,6 +116,7 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       filteredVisitedSpot: [],
       mapCenter: null,
       mapCenterLabel: null,
+      pinLayers: { wishlist: false, visited: false },
       mapSelectOpen: false,
       selectedSpot: null,
 
@@ -204,6 +208,12 @@ export const useSpotSearchStore = create<SpotSearchState>()(
         set((state) => {
           state.mapCenter = center;
           state.mapCenterLabel = label;
+        });
+      },
+
+      setPinLayers: (layers) => {
+        set((state) => {
+          state.pinLayers = layers;
         });
       },
 
