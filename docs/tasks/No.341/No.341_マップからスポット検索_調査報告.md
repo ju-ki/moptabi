@@ -88,7 +88,7 @@
 5. エリア検索（Nearby Search）・テーマチップ・キーワードは地図タブに置かない（Google検索タブで行う）。
 
 - 変更範囲:
-  - 新規: `components/spot-selection/MapSpotSearch.tsx`, `hooks/spot-search/use-search-center.ts`, `lib/plan.ts` に `fetchPlaceById()`（POI 詳細取得）
+  - 新規: `components/spot-selection/MapSpotSearch.tsx`, `hooks/spot-search/use-search-center.ts`, （POI 詳細取得は既存の `lib/place-fetcher.ts:130` `fetchPlaceDetailsWithRetry` を再利用するため新規関数は不要。7-1 参照）
   - 更新: `SpotSelectionDialog.tsx`（タブ追加、`grid-cols-4`）, `GoogleSpotSearch.tsx`（中心点ロジックをフックに置き換え）, `spotSearchStore.ts`（未使用の `mapCenter` / `mapSelectOpen` を整理し、地図用の状態を追加）
   - テスト: `tests/components/spot-selection/MapSpotSearch.spec.tsx`, `tests/hooks/use-search-center.spec.ts`, `tests/lib/geo.spec.ts` 拡張
   - バックエンド・DB の変更なし
@@ -194,8 +194,8 @@
 │ 都道府県 [京都府 ▼]   │     ⓢ          ♥                       │
 │ ─────────────────    │          ①        ●POI                 │
 │ 表示するピン          │     ♥        ②         ⓖ               │
-│ ☑ 行きたいリスト ♥    │                                        │
-│ ☑ 過去のスポット ●    │                                        │
+│ ☐ 行きたいリスト ♥    │                                        │
+│ ☐ 過去のスポット ●    │                                        │
 │ ─────────────────    │                                        │
 │ 選択中のスポット      │                                        │
 │ ┌──────────────────┐ │                                        │
@@ -218,7 +218,7 @@
 | その日に登録済みのスポット | `currentPlan.spots` | なし |
 | 他の日に登録済みのスポット | `plans[].spots`（複数日のプラン向け） | なし |
 | 現在地 | `useCurrentLocation`（ボタン押下時に取得） | なし |
-| 都道府県の中心 | `data/constants.ts:449` の `prefectureCenters`（既存、行きたいリストのエリア検索で使用中）。目的地の都道府県を初期選択にする | なし |
+| 都道府県の中心 | `data/constants.ts:436` の `prefectureCenters`（既存、行きたいリストのエリア検索で使用中）。目的地の都道府県を初期選択にする | なし |
 
 - 初期中心は「目的地 → 出発地 → 目的地の都道府県 → 東京駅」の順で最初に取れたもの。
 - 候補を選んだら地図を移動するだけで、検索 API は呼ばない。
@@ -230,8 +230,8 @@
 |---|---|---|---|
 | 出発地・目的地 | S / G のラベル付き | 何もしない | なし |
 | プランに追加済みのスポット | 訪問順の番号付き（青） | カード表示、「選択解除」 | なし |
-| 行きたいリスト | ハート（赤） | カード表示、「計画に追加」 | なし（DB） |
-| 過去のスポット | 丸（グレー） | カード表示、「計画に追加」 | なし（DB） |
+| 行きたいリスト | ハート（赤） | カード表示、「計画に追加」 | スポットごとに Place Details（7-4 参照） |
+| 過去のスポット | 丸（グレー） | カード表示、「計画に追加」 | スポットごとに Place Details（7-4 参照） |
 | Google 標準の POI | Google の地図アイコン | `fetchFields` で詳細取得 → カード表示、「計画に追加」 | 1クリック1件 |
 
 - 行きたいリスト・過去のスポットは既存の取得処理（`WishlistSpotSearch` / `VisitedSpotSearch` が使うフック）を再利用し、絞り込みは行わず全件をピン表示する。
@@ -266,3 +266,47 @@
 | 2段構成（推奨） | 上記 | 探し方の違いが明確。タブが増えてもスマホで窮屈にならない |
 | 4タブ並列 | Google検索 / 行きたいリスト / 過去 / 地図 | 変更は最小だが、スマホでタブ文言が入りきらない |
 | 地図を常時表示＋リストを横に | 全タブで地図とリストを分割表示 | 既存の `SearchResultsView` の分割表示と重複し、スマホで成り立たない |
+
+## 7. #158（営業時間の制御）・ユーザー別上限を踏まえたブラッシュアップ（2026-10-16 追記）
+
+dev に入った #158（PR #437 ほか）と、ユーザー別の上限（`useUserLimits`）を前提に、地図で探す・2段構成の設計を見直した。
+
+### 7-1. POI クリック時の詳細取得は既存の取得処理を使う
+- `lib/place-fetcher.ts:130` の `fetchPlaceDetailsWithRetry(placeId)` が既にあり、セッション中のメモリキャッシュ、3回リトライ、緯度経度の localStorage キャッシュ（規約上許される30日）を持っている。
+- 取得 fields（`lib/google-maps.ts:88` `PLACE_DETAIL_FIELDS`）に #158 で `businessStatus` が追加され、戻り値に `openingPeriods` / `businessStatus` が入る。
+- 地図で探すの POI クリックはこれをそのまま使う。同じ POI を何度押しても2回目以降は API を呼ばない。取得処理を新しく作る必要はない（`fetchPlaceById` も `lib/google-maps.ts:105` に既にある）。
+
+### 7-2. 選択中のスポットカードに計画日の営業状況を出す
+- カードに `SpotOpeningSummary`（`components/common/OpeningHoursInfo.tsx:92`）を `planDate` 付きで置き、「定休日」「臨時休業」「閉業」と計画日の営業時間を表示する。祝日は判定しないため `HolidayNote` も添える。
+- 地図の上部（PC は左パネル上部）に「計画日: 10/18(土)」を出し、どの日の営業状況かを分かるようにする（`getWeekdayLabel` を使う）。
+- 定休日などでも追加は止めない（#158 の方針と同じ）。追加後のトーストは 7-3 の仕組みでそのまま出る。
+
+### 7-3. 追加は必ず `SpotSelectionDialog` の `handleSpotSelect` を通す
+- `SpotSelectionDialog.tsx:54` の `handleSpotSelect` に、ユーザー別上限のチェック（上限取得失敗時は追加を止める）と、定休日などの確認トースト（`:85`）が入った。
+- `MapSpotSearch` も他のタブと同じく `onSpotSelect` props で受け取り、独自に `setSpots` を呼ばない。開始時刻は `GoogleSpotSearch` と同じく `setStartTimeAutomatically` で入れる。
+- 上限に達しているときは、カードの「計画に追加」を押せない状態にして理由を出す（押してからトーストで弾かれるより分かりやすい）。
+
+### 7-4. 行きたいリスト・過去のスポットのピンは無料ではない（6-4 の訂正）
+- `useWishlistSpots` / `useVisitedSpots` は、DB から取った各スポットについて `fetchPlaceDetailsWithRetry` で詳細を取っている（`hooks/spot-search/use-wishlist-spots.ts` 内の `Promise.all`）。ピン表示にも同じ取得が必要になる。
+- 費用を抑えるため次のようにする。
+  - ピンの表示切替は**初期 OFF**。ON にしたときだけ取得する。
+  - リストで探すの各タブと同じフックを使うので、既にリスト側で開いていればメモリキャッシュに乗っていて追加の呼び出しはない。
+  - 行きたいリストの件数はユーザー別上限（既定 20 件）までなので、最大でもその件数分で止まる。
+- 6-3 の「API 費用なし」は出発地・目的地・登録スポット・現在地・都道府県の候補には当てはまる（いずれもプランのデータか定数）。
+
+### 7-5. 「計画日に営業しているスポットのみ」フィルターの置き場所
+- 今は `OpenOnPlanDateFilter` が3タブそれぞれに置かれている（`GoogleSpotSearch.tsx:325`, `WishlistSpotSearch.tsx:153`, `VisitedSpotSearch.tsx:185`）。状態はストアで共有済み。
+- 2段構成にするときは、「リストで探す」の2段目タブの上に1か所だけ置く形にまとめる。地図で探すでは、ON のときに行きたいリスト・過去のスポットのピンから計画日に休みのものを隠す（`isOpenOnPlanDate` を使う）。Google 標準の POI はアプリ側で描画していないので隠せない（クリック後のカードで分かる）。
+
+### 7-6. ピンで営業状況を見分ける
+- 行きたいリスト・過去のスポットのピンは、計画日に休み（`hasOpeningWarning` が true）のとき薄く表示する。フィルターを OFF にしていても一目で分かる。
+- プランに追加済みのスポットは、滞在時間が営業時間外（`OUTSIDE_HOURS`）なら番号ピンに警告の印を付ける。プランニング画面の警告（#158）と同じ判定を使う。
+
+### 7-7. 実装範囲への反映
+| ブランチ | 追加・変更する内容 |
+|---|---|
+| `feature341-layout` | 7-5 のフィルター集約（既存テストの置き場所も移す） |
+| `feature341-map` | 7-1〜7-4、7-6 |
+
+コストと工数への影響: 詳細取得・営業判定・上限チェックはすべて既存の処理を使うため、6章の見積もりより新規コードは減る。増えるのは、ピンの薄表示とカードの営業状況表示のテストくらい。
+
