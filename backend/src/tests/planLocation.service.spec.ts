@@ -423,8 +423,6 @@ describe('🧪 PlanLocationサービス層テスト', () => {
 
       const row = await findPlanLocationById(result.id);
       if (!row) throw new Error('作成した地点が見つかりません');
-      expect(row.latitude).toBeNull();
-      expect(row.longitude).toBeNull();
       expect(row.encryptedData).toMatch(/^v1:/);
       const secret = await decryptPlanLocationSecret(getLocationCipher(), row);
       expect(secret.latitude).toBe(35.6895);
@@ -433,14 +431,6 @@ describe('🧪 PlanLocationサービス層テスト', () => {
       const candidates = await getPlanLocationCandidates(db, TEST_USER_ID);
       expect(candidates.history[0].latitude).toBe(35.6895);
       expect(candidates.history[0].longitude).toBe(139.6917);
-    });
-
-    it('一括変換前の平文データも候補一覧に表示できる', async () => {
-      await createUserLocation({ userId: TEST_USER_ID, name: '実家', latitude: 34.7, longitude: 135.5, label: '実家' });
-
-      const candidates = await getPlanLocationCandidates(db, TEST_USER_ID);
-      expect(candidates.favorites[0].latitude).toBe(34.7);
-      expect(candidates.favorites[0].label).toBe('実家');
     });
   });
 });

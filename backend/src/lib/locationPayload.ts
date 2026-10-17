@@ -1,7 +1,7 @@
 /**
  * UserLocation / PlanLocation / 最寄駅 の秘匿項目を暗号化・復号するヘルパー
  * - 書き込み: 秘匿項目をまとめて暗号化し、encryptedData / encryptedPlaceId に保存する
- * - 読み出し: encryptedData があれば復号し、無ければ平文カラムを使う（No.168 フェーズ1の移行期間のみ）
+ * - 読み出し: encryptedData / encryptedPlaceId を復号する
  */
 import { z } from 'zod';
 
@@ -23,23 +23,12 @@ const PlanLocationSecretSchema = z.object({
 });
 export type PlanLocationSecret = z.infer<typeof PlanLocationSecretSchema>;
 
-type UserLocationRow = {
-  encryptedData: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  label: string | null;
-};
-
-type PlanLocationRow = {
-  encryptedData: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  travelTime: number | null;
+type EncryptedLocationRow = {
+  encryptedData: string;
 };
 
 type NearestStationRow = {
-  encryptedPlaceId: string | null;
-  placeId: string | null;
+  encryptedPlaceId: string;
 };
 
 const parseSecret = async <T>(cipher: LocationCipher, encrypted: string, schema: z.ZodType<T>): Promise<T> => {
@@ -59,14 +48,8 @@ export const encryptUserLocationSecret = (cipher: LocationCipher, secret: UserLo
 
 export const decryptUserLocationSecret = async (
   cipher: LocationCipher,
-  row: UserLocationRow,
-): Promise<UserLocationSecret> => {
-  if (row.encryptedData) {
-    return parseSecret(cipher, row.encryptedData, UserLocationSecretSchema);
-  }
-  // 一括変換前の平文データ
-  return { latitude: row.latitude ?? 0, longitude: row.longitude ?? 0, label: row.label ?? null };
-};
+  row: EncryptedLocationRow,
+): Promise<UserLocationSecret> => parseSecret(cipher, row.encryptedData, UserLocationSecretSchema);
 
 export const encryptPlanLocationSecret = (cipher: LocationCipher, secret: PlanLocationSecret) =>
   cipher.encryptJson<PlanLocationSecret>({
@@ -78,26 +61,10 @@ export const encryptPlanLocationSecret = (cipher: LocationCipher, secret: PlanLo
 
 export const decryptPlanLocationSecret = async (
   cipher: LocationCipher,
-  row: PlanLocationRow,
-): Promise<PlanLocationSecret & { isEncrypted: boolean }> => {
-  if (row.encryptedData) {
-    return { ...(await parseSecret(cipher, row.encryptedData, PlanLocationSecretSchema)), isEncrypted: true };
-  }
-  // 一括変換前の平文データ
-  return {
-    latitude: row.latitude ?? 0,
-    longitude: row.longitude ?? 0,
-    travelTime: row.travelTime ?? 0,
-    isEncrypted: false,
-  };
-};
+  row: EncryptedLocationRow,
+): Promise<PlanLocationSecret> => parseSecret(cipher, row.encryptedData, PlanLocationSecretSchema);
 
 export const encryptPlaceId = (cipher: LocationCipher, placeId: string) => cipher.encryptText(placeId);
 
-export const decryptPlaceId = async (cipher: LocationCipher, row: NearestStationRow): Promise<string> => {
-  if (row.encryptedPlaceId) {
-    return cipher.decryptText(row.encryptedPlaceId);
-  }
-  // 一括変換前の平文データ
-  return row.placeId ?? '';
-};
+export const decryptPlaceId = (cipher: LocationCipher, row: NearestStationRow): Promise<string> =>
+  cipher.decryptText(row.encryptedPlaceId);

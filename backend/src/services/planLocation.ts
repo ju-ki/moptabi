@@ -43,7 +43,7 @@ export async function toPlanLocationResponse(cipher: LocationCipher, row: InferS
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { encryptedData, ...rest } = row;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { isEncrypted, lastSpotId, ...secret } = await decryptPlanLocationSecret(cipher, row);
+  const { lastSpotId, ...secret } = await decryptPlanLocationSecret(cipher, row);
   return { ...rest, ...secret };
 }
 
@@ -70,8 +70,6 @@ export async function createPlanLocation(
         travelTime: data.travelTime ?? 0,
         lastSpotId,
       }),
-      // 平文カラムは使わない（default 0 が入らないように明示する）
-      travelTime: null,
       time: data.time,
       locationType: data.locationType,
       transportMethodId: data.transportMethodId,
@@ -236,10 +234,6 @@ export async function createOrUpdatePlanLocation(
           travelTime: existingSecret.travelTime,
           lastSpotId: existingSecret.lastSpotId,
         }),
-        // 平文カラムは使わない（一括変換前のデータもここで暗号化に置き換える）
-        latitude: null,
-        longitude: null,
-        travelTime: null,
         time: data.time ?? defaultTimeByLocationType(data.locationType),
         updatedAt: new Date().toISOString(),
       })
@@ -260,7 +254,6 @@ export async function createOrUpdatePlanLocation(
         longitude: data.longitude,
         travelTime: 0,
       }),
-      travelTime: null,
       time: data.time ?? defaultTimeByLocationType(data.locationType),
       locationType: data.locationType,
       planId: data.planId,

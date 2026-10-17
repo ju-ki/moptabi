@@ -21,6 +21,9 @@ import {
 } from '@db';
 import { DEFAULT_USER_LIMITS, UserLimitType } from '@shared/user/types';
 
+import { getLocationCipher } from '@/lib/locationCipher';
+import { encryptPlaceId, encryptPlanLocationSecret, encryptUserLocationSecret } from '@/lib/locationPayload';
+
 // スキーマを再エクスポート
 export {
   user,
@@ -614,14 +617,17 @@ export async function createUserLocation(data: {
   } | null;
 }) {
   const db = createDevDb(process.env.DATABASE_URL!);
+  const cipher = getLocationCipher();
   const [created] = await db
     .insert(userLocation)
     .values({
       userId: data.userId,
       name: data.name,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      label: data.label ?? null,
+      encryptedData: await encryptUserLocationSecret(cipher, {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        label: data.label ?? null,
+      }),
       usageCount: data.usageCount ?? 0,
       isDefault: data.isDefault ?? false,
     })
@@ -629,7 +635,7 @@ export async function createUserLocation(data: {
   if (data.nearestStation) {
     await db.insert(userLocationNearestStation).values({
       userLocationId: created.id,
-      placeId: data.nearestStation.placeId,
+      encryptedPlaceId: await encryptPlaceId(cipher, data.nearestStation.placeId),
       stationType: data.nearestStation.stationType,
     });
   }
@@ -688,19 +694,20 @@ export async function createPlanLocation(data: {
   planId: number;
   travelTime?: number;
 }) {
-  // 平文カラムに直接保存する（No.168 の一括変換前の形式。暗号化された行は API 経由で作る）
   const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(planLocation)
     .values({
       userId: data.userId,
       name: data.name,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      encryptedData: await encryptPlanLocationSecret(getLocationCipher(), {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        travelTime: data.travelTime ?? 0,
+      }),
       time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
       planId: data.planId,
-      travelTime: data.travelTime ?? 0,
     })
     .returning();
   return created;

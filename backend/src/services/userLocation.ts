@@ -176,10 +176,6 @@ export const updateUserLocation = async (db: AnyDbType, c: Context) => {
         longitude: userLocationData.longitude ?? existingSecret.longitude,
         label: userLocationData.label ?? existingSecret.label,
       }),
-      // 平文カラムは使わない（一括変換前のデータもここで暗号化に置き換える）
-      latitude: null,
-      longitude: null,
-      label: null,
       isDefault: userLocationData.isDefault ?? existingUserLocation.isDefault,
     })
     .where(and(eq(userLocation.id, userLocationId)))
@@ -197,7 +193,6 @@ export const updateUserLocation = async (db: AnyDbType, c: Context) => {
       .onConflictDoUpdate({
         target: [userLocationNearestStation.userLocationId],
         set: {
-          placeId: null,
           encryptedPlaceId,
           stationType: userLocationData.nearestStation.stationType,
         },

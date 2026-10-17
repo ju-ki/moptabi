@@ -228,10 +228,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
             longitude: pn.departure.longitude,
             travelTime: pn.departure.travelTime,
           }),
-          // 平文カラムは使わない（一括変換前のデータもここで暗号化に置き換える）
-          latitude: null,
-          longitude: null,
-          travelTime: null,
           time: pn.departure.time,
           transportMethodId: pn.departure.transportMethodId,
         })
@@ -262,7 +258,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
           .onConflictDoUpdate({
             target: [planLocationNearestStation.planLocationId],
             set: {
-              placeId: null,
               encryptedPlaceId,
               stationType: pn.departure.nearestStation?.stationType,
               transitTime: pn.departure.nearestStation?.transitTime,
@@ -290,9 +285,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
             travelTime: requestDestination.travelTime,
             lastSpotId,
           }),
-          latitude: null,
-          longitude: null,
-          travelTime: null,
           time: requestDestination.time,
           transportMethodId: requestDestination.transportMethodId,
         })
@@ -323,7 +315,6 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
           .onConflictDoUpdate({
             target: [planLocationNearestStation.planLocationId],
             set: {
-              placeId: null,
               encryptedPlaceId,
               stationType: pn.destination.nearestStation?.stationType,
               transitTime: pn.destination.nearestStation?.transitTime,
@@ -552,8 +543,8 @@ export const getTripDetailById = async (db: AnyDbType, tripId: number, userId: s
     const departure = await convertPlanLocationData(cipher, departureLocation);
     const destination = await convertPlanLocationData(cipher, destinationLocation);
 
-    // 暗号化済みの目的地は「最後のスポット → 目的地」の移動時間を持っているので、最後のスポットに戻す（No.168）
-    if (destination.isEncrypted && spots.length > 0) {
+    // 目的地は「最後のスポット → 目的地」の移動時間を持っているので、最後のスポットに戻す（No.168）
+    if (spots.length > 0) {
       const lastSpot =
         spots.find((spot) => spot.id === destination.lastSpotId) ??
         spots.reduce((last, spot) => (spot.order >= last.order ? spot : last), spots[0]);
@@ -616,12 +607,11 @@ const convertPlanSpotData = (rawPlanSpotData: PlanSpotWithNearestStations[]): Tr
 const convertPlanLocationData = async (
   cipher: LocationCipher,
   planLocation: PlanLocationWithNearestStation,
-): Promise<{ location: PlanLocationType; isEncrypted: boolean; lastSpotId?: string }> => {
+): Promise<{ location: PlanLocationType; lastSpotId?: string }> => {
   const nearestStation = planLocation.nearestStation?.[0];
-  const { isEncrypted, lastSpotId, ...secret } = await decryptPlanLocationSecret(cipher, planLocation);
+  const { lastSpotId, ...secret } = await decryptPlanLocationSecret(cipher, planLocation);
 
   return {
-    isEncrypted,
     lastSpotId,
     location: {
       name: planLocation.name,

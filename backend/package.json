@@ -24,7 +24,6 @@
     "db:push:test": "drizzle-kit push --config=./drizzle-test.config.ts",
     "db:push:staging": "drizzle-kit push --config=./drizzle-staging.config.ts",
     "db:reset:test": "bun run src/tests/reset-test-db.ts",
-    "db:encrypt-locations": "bun run src/scripts/encrypt-locations.ts",
     "prepare": "husky",
     "prebuild": "bunx tsc -p ../packages/shared-types/tsconfig.json",
     "build": "bunx tsc -p tsconfig.json"
