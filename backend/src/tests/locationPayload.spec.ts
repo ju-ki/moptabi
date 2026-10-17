@@ -34,38 +34,20 @@ describe('locationPayload', () => {
         label: '自宅',
       });
 
-      const secret = await decryptUserLocationSecret(cipher, {
-        encryptedData,
-        latitude: null,
-        longitude: null,
-        label: null,
-      });
+      const secret = await decryptUserLocationSecret(cipher, { encryptedData });
 
       expect(secret).toEqual({ latitude: 35.1, longitude: 139.2, label: '自宅' });
-    });
-
-    it('暗号化カラムが無い場合は平文カラムの値を使う（一括変換前のデータ）', async () => {
-      const secret = await decryptUserLocationSecret(cipher, {
-        encryptedData: null,
-        latitude: 34.7,
-        longitude: 135.5,
-        label: '実家',
-      });
-
-      expect(secret).toEqual({ latitude: 34.7, longitude: 135.5, label: '実家' });
     });
 
     it('想定と違う形のJSONは復号エラーにする', async () => {
       const encryptedData = await cipher.encryptJson({ foo: 'bar' });
 
-      await expect(
-        decryptUserLocationSecret(cipher, { encryptedData, latitude: null, longitude: null, label: null }),
-      ).rejects.toThrow(LocationCipherError);
+      await expect(decryptUserLocationSecret(cipher, { encryptedData })).rejects.toThrow(LocationCipherError);
     });
   });
 
   describe('PlanLocation', () => {
-    it('暗号化した値を復号でき、暗号化済みであることが分かる', async () => {
+    it('暗号化した値を復号できる', async () => {
       const encryptedData = await encryptPlanLocationSecret(cipher, {
         latitude: 35.1,
         longitude: 139.2,
@@ -73,40 +55,22 @@ describe('locationPayload', () => {
         lastSpotId: 'spot_1',
       });
 
-      const secret = await decryptPlanLocationSecret(cipher, {
-        encryptedData,
-        latitude: null,
-        longitude: null,
-        travelTime: null,
-      });
+      const secret = await decryptPlanLocationSecret(cipher, { encryptedData });
 
       expect(secret).toEqual({
         latitude: 35.1,
         longitude: 139.2,
         travelTime: 20,
         lastSpotId: 'spot_1',
-        isEncrypted: true,
       });
-    });
-
-    it('暗号化カラムが無い場合は平文カラムの値を使う（一括変換前のデータ）', async () => {
-      const secret = await decryptPlanLocationSecret(cipher, {
-        encryptedData: null,
-        latitude: 34.7,
-        longitude: 135.5,
-        travelTime: 15,
-      });
-
-      expect(secret).toEqual({ latitude: 34.7, longitude: 135.5, travelTime: 15, isEncrypted: false });
     });
   });
 
   describe('最寄駅', () => {
-    it('暗号化したplaceIdを復号でき、無い場合は平文カラムを使う', async () => {
+    it('暗号化したplaceIdを復号できる', async () => {
       const encryptedPlaceId = await encryptPlaceId(cipher, 'station_1');
 
-      expect(await decryptPlaceId(cipher, { encryptedPlaceId, placeId: null })).toBe('station_1');
-      expect(await decryptPlaceId(cipher, { encryptedPlaceId: null, placeId: 'legacy' })).toBe('legacy');
+      expect(await decryptPlaceId(cipher, { encryptedPlaceId })).toBe('station_1');
     });
   });
 });

@@ -4,7 +4,12 @@ import { TripSchema } from '@shared/trip/schema';
 
 import { createDevDb } from '@/db';
 import { getLocationCipher } from '@/lib/locationCipher';
-import { decryptPlaceId, decryptPlanLocationSecret } from '@/lib/locationPayload';
+import {
+  decryptPlaceId,
+  decryptPlanLocationSecret,
+  encryptPlaceId,
+  encryptPlanLocationSecret,
+} from '@/lib/locationPayload';
 
 import app from '..';
 import {
@@ -106,7 +111,6 @@ describe('旅行計画サービス', () => {
 
       // 出発地の移動情報（移動時間は暗号化して保存される）
       expect(departure.transportMethodId).toBe(mockPlanDataWithNearestStation[0].departure.transportMethodId);
-      expect(departure.travelTime).toBeNull();
       expect(departureSecret.travelTime).toBe(mockPlanDataWithNearestStation[0].departure.travelTime);
 
       // スポットの移動情報（最後のスポットの移動時間は目的地側に移して 0 で保存される）
@@ -118,7 +122,6 @@ describe('旅行計画サービス', () => {
 
       // 目的地の移動情報（最後のスポット → 目的地の移動時間を暗号化して持つ）
       expect(destination.transportMethodId).toBe(mockPlanDataWithNearestStation[0].destination.transportMethodId);
-      expect(destination.travelTime).toBeNull();
       expect(destinationSecret.travelTime).toBe(lastRequestSpot.travelTime);
 
       const createdLocationStations = await db
@@ -151,7 +154,6 @@ describe('旅行計画サービス', () => {
       }
 
       // 出発地の最寄駅情報（placeId は暗号化して保存される）
-      expect(createdLocationStations[0]?.placeId).toBeNull();
       expect(await decryptPlaceId(cipher, createdLocationStations[0])).toBe(
         mockPlanDataWithNearestStation[0].departure.nearestStation.placeId,
       );
@@ -188,7 +190,6 @@ describe('旅行計画サービス', () => {
 
       // 目的地の最寄駅情報
       expect(createdDestinationStations.length).toBe(1);
-      expect(createdDestinationStations[0]?.placeId).toBeNull();
       expect(await decryptPlaceId(cipher, createdDestinationStations[0])).toBe(
         mockPlanDataWithNearestStation[0].destination.nearestStation.placeId,
       );
@@ -1006,8 +1007,11 @@ describe('旅行計画サービス', () => {
         .values({
           userId: TEST_USER_ID,
           name: 'テスト出発地',
-          latitude: 35.6762,
-          longitude: 139.7674,
+          encryptedData: await encryptPlanLocationSecret(getLocationCipher(), {
+            latitude: 35.6762,
+            longitude: 139.7674,
+            travelTime: 0,
+          }),
           time: '09:00',
           locationType: 'DEPARTURE',
           planId: newPlanId,
@@ -1021,7 +1025,7 @@ describe('旅行計画サービス', () => {
         .insert(planLocationNearestStation)
         .values({
           planLocationId: departurePlanLocationId,
-          placeId: 'ChIJ0zcn2rqL0-sRVQk5YvqcRas', // 仮の Google Place ID
+          encryptedPlaceId: await encryptPlaceId(getLocationCipher(), 'ChIJ0zcn2rqL0-sRVQk5YvqcRas'), // 仮の Google Place ID
           stationType: 'TRAIN',
           transitTime: 7,
           scheduledDepartureTime: '09:05',
@@ -1030,7 +1034,7 @@ describe('旅行計画サービス', () => {
         .returning();
 
       expect(createdNearestStation.length).toBe(1);
-      expect(createdNearestStation[0].placeId).toBe('ChIJ0zcn2rqL0-sRVQk5YvqcRas');
+      expect(await decryptPlaceId(getLocationCipher(), createdNearestStation[0])).toBe('ChIJ0zcn2rqL0-sRVQk5YvqcRas');
       expect(createdNearestStation[0].stationType).toBe('TRAIN');
       expect(createdNearestStation[0].transitTime).toBe(7);
       expect(createdNearestStation[0].scheduledDepartureTime).toBe('09:05');
@@ -1043,7 +1047,7 @@ describe('旅行計画サービス', () => {
         .where(eq(planLocationNearestStation.planLocationId, departurePlanLocationId));
 
       expect(retrievedNearestStation.length).toBe(1);
-      expect(retrievedNearestStation[0]?.placeId).toBe('ChIJ0zcn2rqL0-sRVQk5YvqcRas');
+      expect(await decryptPlaceId(getLocationCipher(), retrievedNearestStation[0])).toBe('ChIJ0zcn2rqL0-sRVQk5YvqcRas');
       expect(retrievedNearestStation[0]?.stationType).toBe('TRAIN');
       expect(retrievedNearestStation[0]?.transitTime).toBe(7);
       expect(retrievedNearestStation[0]?.scheduledDepartureTime).toBe('09:05');
@@ -1368,9 +1372,6 @@ describe('旅行計画サービス', () => {
       const locations = await db.select().from(planLocation).where(eq(planLocation.planId, createdPlan.id));
 
       for (const location of locations) {
-        expect(location.latitude).toBeNull();
-        expect(location.longitude).toBeNull();
-        expect(location.travelTime).toBeNull();
         expect(location.encryptedData).toMatch(/^v1:/);
       }
       const spots = await db.select().from(planSpot).where(eq(planSpot.planId, createdPlan.id));

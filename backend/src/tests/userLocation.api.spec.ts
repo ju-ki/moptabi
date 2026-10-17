@@ -648,21 +648,17 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       nearestStation: { placeId: 'station_secret', stationType: 'TRAIN' },
     };
 
-    it('登録時は座標・ラベル・最寄駅を暗号化して保存し、平文カラムには何も入れない', async () => {
+    it('登録時は座標・ラベル・最寄駅を暗号化して保存する', async () => {
       const response = await client.api['userLocation'].$post({ json: stationData }, { headers: getAuthHeaders() });
       expect(response.status).toBe(201);
       const data = await response.json();
 
       const row = await findUserLocationById(data.id);
-      expect(row?.latitude).toBeNull();
-      expect(row?.longitude).toBeNull();
-      expect(row?.label).toBeNull();
       expect(row?.encryptedData).toMatch(/^v1:/);
       expect(row?.encryptedData).not.toContain('35.6895');
       expect(row?.encryptedData).not.toContain('自宅');
 
       const station = await findNearestStationByUserLocationId(data.id);
-      expect(station?.placeId).toBeNull();
       expect(station?.encryptedPlaceId).toMatch(/^v1:/);
 
       // 復号すると登録した値に戻る
@@ -704,40 +700,6 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
       expect(data.latitude).toBe(35.6895);
       expect(data.longitude).toBe(139.6917);
       expect(data.label).toBe('自宅');
-    });
-
-    it('一括変換前の平文データも読み出せ、更新すると暗号化に置き換わる', async () => {
-      // 平文カラムに直接保存されたデータ（No.168 以前の形式）
-      const legacy = await createUserLocation({
-        userId: TEST_USER_ID,
-        name: '実家',
-        latitude: 34.7,
-        longitude: 135.5,
-        label: '実家',
-        nearestStation: { placeId: 'legacy_station', stationType: 'TRAIN' },
-      });
-
-      const listResponse = await client.api['userLocation'].$get({}, { headers: getAuthHeaders() });
-      const list = await listResponse.json();
-      expect(list[0].latitude).toBe(34.7);
-      expect(list[0].label).toBe('実家');
-      expect(list[0].nearestStation.placeId).toBe('legacy_station');
-
-      await client.api['userLocation'][':id'].$patch(
-        {
-          param: { id: String(legacy.id) },
-          json: { name: '実家', nearestStation: { placeId: 'legacy_station', stationType: 'TRAIN' } },
-        },
-        { headers: getAuthHeaders() },
-      );
-
-      const row = await findUserLocationById(legacy.id);
-      expect(row?.latitude).toBeNull();
-      expect(row?.label).toBeNull();
-      expect(row?.encryptedData).toMatch(/^v1:/);
-      const station = await findNearestStationByUserLocationId(legacy.id);
-      expect(station?.placeId).toBeNull();
-      expect(station?.encryptedPlaceId).toMatch(/^v1:/);
     });
   });
 });

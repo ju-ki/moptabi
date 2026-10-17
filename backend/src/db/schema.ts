@@ -8,7 +8,6 @@ import {
   serial,
   uniqueIndex,
   boolean,
-  doublePrecision,
   pgEnum,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -99,13 +98,9 @@ export const userLocation = pgTable(
   {
     id: serial().primaryKey().notNull(),
     userId: varchar({ length: 255 }).notNull(),
-    // 平文の座標・ラベル: No.168 で encryptedData に移行。一括変換後に削除する
-    latitude: doublePrecision(),
-    longitude: doublePrecision(),
     name: varchar({ length: 255 }),
-    label: varchar({ length: 255 }),
     // 座標・ラベルを暗号化したJSON（v1:IV:暗号文）
-    encryptedData: text(),
+    encryptedData: text().notNull(),
     usageCount: integer().default(0).notNull(),
     isDefault: boolean().default(false).notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
@@ -131,10 +126,8 @@ export const userLocationNearestStation = pgTable(
   {
     id: serial().primaryKey().notNull(),
     userLocationId: integer().notNull(),
-    // 平文の最寄駅: No.168 で encryptedPlaceId に移行。一括変換後に削除する
-    placeId: text(),
     // 最寄駅のPlace IDを暗号化した文字列（v1:IV:暗号文）
-    encryptedPlaceId: text(),
+    encryptedPlaceId: text().notNull(),
     stationType: stationType().notNull(),
   },
   (table) => [
@@ -290,10 +283,8 @@ export const planLocationNearestStation = pgTable(
   {
     id: serial().primaryKey().notNull(),
     planLocationId: integer().notNull(),
-    // 平文の最寄駅: No.168 で encryptedPlaceId に移行。一括変換後に削除する
-    placeId: text(),
     // 最寄駅のPlace IDを暗号化した文字列（v1:IV:暗号文）
-    encryptedPlaceId: text(),
+    encryptedPlaceId: text().notNull(),
     stationType: stationType().notNull(),
     transitTime: integer(),
     scheduledDepartureTime: varchar({ length: 5 }),
@@ -336,9 +327,6 @@ export const planLocation = pgTable(
     userId: varchar({ length: 255 }).notNull(),
     // 地点の名前: 任意で設定、未入力の場合は「日付_出発地」など
     name: varchar({ length: 100 }).notNull(),
-    // 位置情報（平文）: No.168 で encryptedData に移行。一括変換後に削除する
-    latitude: doublePrecision(),
-    longitude: doublePrecision(),
     // 出発時間または到着時間（HH:MM）
     time: varchar('time', { length: 5 }).notNull(),
     // 地点の種別: DEPARTURE（出発地）またはDESTINATION（目的地）
@@ -347,9 +335,8 @@ export const planLocation = pgTable(
     planId: integer().notNull(),
     // 次の地点への移動情報
     transportMethodId: integer().notNull().default(0), // 目的地は0になる
-    travelTime: integer().default(0), // 平文: No.168 で encryptedData に移行。一括変換後に削除する
     // 座標・移動時間を暗号化したJSON（v1:IV:暗号文）。目的地の行は最後のスポットから目的地までの移動時間を持つ
-    encryptedData: text(),
+    encryptedData: text().notNull(),
     createdAt: timestamp({ precision: 3, mode: 'string' })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
