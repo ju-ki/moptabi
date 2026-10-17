@@ -72,10 +72,13 @@ jobs:
       - name: Upload backend secrets
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          STAGING_LOCATION_ENCRYPTION_KEY: ${{ secrets.STAGING_LOCATION_ENCRYPTION_KEY }}
         run: |
           set -euo pipefail
           secrets_file="$(mktemp)"
           printf 'DATABASE_URL=%s\n' "$STAGING_DATABASE_URL" > "$secrets_file"
+          # 地点情報の暗号化鍵（No.168）
+          printf 'LOCATION_ENCRYPTION_KEY=%s\n' "$STAGING_LOCATION_ENCRYPTION_KEY" >> "$secrets_file"
           bunx wrangler secret bulk "$secrets_file" \
             --config wrangler.toml \
             --name "${{ steps.meta.outputs.worker_name }}"

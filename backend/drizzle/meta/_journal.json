@@ -120,6 +120,13 @@
       "when": 1792054994424,
       "tag": "0017_add_nearest_station_waiting_time",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792205648924,
+      "tag": "0018_encrypt_location",
+      "breakpoints": true
     }
   ]
 }

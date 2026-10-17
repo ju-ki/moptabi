@@ -2,6 +2,8 @@ import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'vitest';
 
 import { getPlanLocationCandidates, createOrUpdatePlanLocation, deletePlanLocation } from '@/services/planLocation';
 import { createDevDb } from '@/db';
+import { getLocationCipher } from '@/lib/locationCipher';
+import { decryptPlanLocationSecret } from '@/lib/locationPayload';
 
 import {
   connectDb,
@@ -398,6 +400,47 @@ describe('🧪 PlanLocationサービス層テスト', () => {
       // 削除されていないことを確認
       const found = await findPlanLocationById(created.id);
       expect(found).not.toBeNull();
+    });
+  });
+
+  // ========================================
+  // 座標の暗号化（No.168）
+  // ========================================
+  describe('座標の暗号化', () => {
+    it('作成した地点は座標を暗号化して保存し、戻り値と候補一覧では復号した値を返す', async () => {
+      const trip1 = await createTrip({ title: '暗号化', userId: TEST_USER_ID });
+      const plan1 = await createPlan({ tripId: trip1.id, date: '2024-01-01' });
+
+      const result = await createOrUpdatePlanLocation(db, TEST_USER_ID, {
+        name: '自宅',
+        latitude: 35.6895,
+        longitude: 139.6917,
+        locationType: 'DEPARTURE' as const,
+        planId: plan1.id,
+      });
+      expect(result.latitude).toBe(35.6895);
+      expect(result).not.toHaveProperty('encryptedData');
+
+      const row = await findPlanLocationById(result.id);
+      if (!row) throw new Error('作成した地点が見つかりません');
+      expect(row.latitude).toBeNull();
+      expect(row.longitude).toBeNull();
+      expect(row.encryptedData).toMatch(/^v1:/);
+      const secret = await decryptPlanLocationSecret(getLocationCipher(), row);
+      expect(secret.latitude).toBe(35.6895);
+      expect(secret.longitude).toBe(139.6917);
+
+      const candidates = await getPlanLocationCandidates(db, TEST_USER_ID);
+      expect(candidates.history[0].latitude).toBe(35.6895);
+      expect(candidates.history[0].longitude).toBe(139.6917);
+    });
+
+    it('一括変換前の平文データも候補一覧に表示できる', async () => {
+      await createUserLocation({ userId: TEST_USER_ID, name: '実家', latitude: 34.7, longitude: 135.5, label: '実家' });
+
+      const candidates = await getPlanLocationCandidates(db, TEST_USER_ID);
+      expect(candidates.favorites[0].latitude).toBe(34.7);
+      expect(candidates.favorites[0].label).toBe('実家');
     });
   });
 });

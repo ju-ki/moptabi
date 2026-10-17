@@ -686,7 +686,9 @@ export async function createPlanLocation(data: {
   locationType: 'DEPARTURE' | 'DESTINATION' | 'SPOT';
   usageCount?: number;
   planId: number;
+  travelTime?: number;
 }) {
+  // 平文カラムに直接保存する（No.168 の一括変換前の形式。暗号化された行は API 経由で作る）
   const db = createDevDb(process.env.DATABASE_URL!);
   const [created] = await db
     .insert(planLocation)
@@ -698,6 +700,7 @@ export async function createPlanLocation(data: {
       time: data.time ?? (data.locationType === 'DESTINATION' ? '18:00' : '09:00'),
       locationType: data.locationType,
       planId: data.planId,
+      travelTime: data.travelTime ?? 0,
     })
     .returning();
   return created;

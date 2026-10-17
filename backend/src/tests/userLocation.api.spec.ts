@@ -1,6 +1,9 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'vitest';
 import { testClient } from 'hono/testing';
 
+import { getLocationCipher } from '@/lib/locationCipher';
+import { decryptPlaceId, decryptUserLocationSecret } from '@/lib/locationPayload';
+
 import app from '..';
 import {
   connectDb,
@@ -633,6 +636,108 @@ describe('🧾 ユーザーお気に入り地点APIテスト', () => {
 
       const nearestStation = await findNearestStationByUserLocationId(created.id);
       expect(nearestStation).toBeNull();
+    });
+  });
+
+  // ========================================
+  // 座標・ラベル・最寄駅の暗号化（No.168）
+  // ========================================
+  describe('座標・ラベル・最寄駅の暗号化', () => {
+    const stationData = {
+      ...mockUserLocationData,
+      nearestStation: { placeId: 'station_secret', stationType: 'TRAIN' },
+    };
+
+    it('登録時は座標・ラベル・最寄駅を暗号化して保存し、平文カラムには何も入れない', async () => {
+      const response = await client.api['userLocation'].$post({ json: stationData }, { headers: getAuthHeaders() });
+      expect(response.status).toBe(201);
+      const data = await response.json();
+
+      const row = await findUserLocationById(data.id);
+      expect(row?.latitude).toBeNull();
+      expect(row?.longitude).toBeNull();
+      expect(row?.label).toBeNull();
+      expect(row?.encryptedData).toMatch(/^v1:/);
+      expect(row?.encryptedData).not.toContain('35.6895');
+      expect(row?.encryptedData).not.toContain('自宅');
+
+      const station = await findNearestStationByUserLocationId(data.id);
+      expect(station?.placeId).toBeNull();
+      expect(station?.encryptedPlaceId).toMatch(/^v1:/);
+
+      // 復号すると登録した値に戻る
+      const cipher = getLocationCipher();
+      if (!row || !station) throw new Error('登録した地点が見つかりません');
+      expect(await decryptUserLocationSecret(cipher, row)).toEqual({
+        latitude: 35.6895,
+        longitude: 139.6917,
+        label: '自宅',
+      });
+      expect(await decryptPlaceId(cipher, station)).toBe('station_secret');
+    });
+
+    it('レスポンスには復号した値を返し、暗号化カラムは含めない', async () => {
+      await client.api['userLocation'].$post({ json: stationData }, { headers: getAuthHeaders() });
+
+      const response = await client.api['userLocation'].$get({}, { headers: getAuthHeaders() });
+      const data = await response.json();
+      expect(data[0].latitude).toBe(35.6895);
+      expect(data[0].longitude).toBe(139.6917);
+      expect(data[0].label).toBe('自宅');
+      expect(data[0].nearestStation.placeId).toBe('station_secret');
+      expect(data[0]).not.toHaveProperty('encryptedData');
+      expect(data[0].nearestStation).not.toHaveProperty('encryptedPlaceId');
+    });
+
+    it('名前だけ更新した場合も座標・ラベルは変わらない', async () => {
+      const created = await (
+        await client.api['userLocation'].$post({ json: stationData }, { headers: getAuthHeaders() })
+      ).json();
+
+      const response = await client.api['userLocation'][':id'].$patch(
+        { param: { id: String(created.id) }, json: { name: '自宅（新）' } },
+        { headers: getAuthHeaders() },
+      );
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.name).toBe('自宅（新）');
+      expect(data.latitude).toBe(35.6895);
+      expect(data.longitude).toBe(139.6917);
+      expect(data.label).toBe('自宅');
+    });
+
+    it('一括変換前の平文データも読み出せ、更新すると暗号化に置き換わる', async () => {
+      // 平文カラムに直接保存されたデータ（No.168 以前の形式）
+      const legacy = await createUserLocation({
+        userId: TEST_USER_ID,
+        name: '実家',
+        latitude: 34.7,
+        longitude: 135.5,
+        label: '実家',
+        nearestStation: { placeId: 'legacy_station', stationType: 'TRAIN' },
+      });
+
+      const listResponse = await client.api['userLocation'].$get({}, { headers: getAuthHeaders() });
+      const list = await listResponse.json();
+      expect(list[0].latitude).toBe(34.7);
+      expect(list[0].label).toBe('実家');
+      expect(list[0].nearestStation.placeId).toBe('legacy_station');
+
+      await client.api['userLocation'][':id'].$patch(
+        {
+          param: { id: String(legacy.id) },
+          json: { name: '実家', nearestStation: { placeId: 'legacy_station', stationType: 'TRAIN' } },
+        },
+        { headers: getAuthHeaders() },
+      );
+
+      const row = await findUserLocationById(legacy.id);
+      expect(row?.latitude).toBeNull();
+      expect(row?.label).toBeNull();
+      expect(row?.encryptedData).toMatch(/^v1:/);
+      const station = await findNearestStationByUserLocationId(legacy.id);
+      expect(station?.placeId).toBeNull();
+      expect(station?.encryptedPlaceId).toMatch(/^v1:/);
     });
   });
 });

@@ -104,6 +104,8 @@ jobs:
             echo "CLERK_PUBLISHABLE_KEY=__DUMMY_CLERK_PUBLISHABLE__" >> .env.test
           fi
           echo "NODE_ENV=test" >> .env.test
+          # 地点情報の暗号化鍵（No.168）。テスト用に実行ごとに生成する
+          echo "LOCATION_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env.test
 
       - name: Install dependencies
         run: bun install
@@ -148,6 +150,8 @@ jobs:
             echo "CLERK_PUBLISHABLE_KEY=__DUMMY_CLERK_PUBLISHABLE__" >> .env.test
           fi
           echo "NODE_ENV=test" >> .env.test
+          # 地点情報の暗号化鍵（No.168）。テスト用に実行ごとに生成する
+          echo "LOCATION_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> .env.test
 
       - name: Wait for Postgres to be ready
         run: |
