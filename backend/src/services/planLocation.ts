@@ -1,9 +1,18 @@
-import { eq, and, desc, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, asc, sql, InferSelectModel } from 'drizzle-orm';
+import { HTTPException } from 'hono/http-exception';
 import { PlanLocationType } from '@shared/planlocation/types';
 
 import { plan, planLocation, planLocationNearestStation, trip, userLocation, userLocationNearestStation } from '@/db';
 import type { AnyDbType } from '@/db';
 import { CreatePlanLocationType, LocationType } from '@/models/planLocation';
+import { getLocationCipher, LocationCipher } from '@/lib/locationCipher';
+import {
+  decryptPlaceId,
+  decryptPlanLocationSecret,
+  decryptUserLocationSecret,
+  encryptPlaceId,
+  encryptPlanLocationSecret,
+} from '@/lib/locationPayload';
 
 function hasSelect(value: unknown): value is AnyDbType {
   return !!value && typeof value === 'object' && 'select' in (value as Record<string, unknown>);
@@ -26,26 +35,53 @@ function defaultTimeByLocationType(locationType: LocationType): string {
 
 type DbLike = Pick<AnyDbType, 'select' | 'insert' | 'update' | 'delete' | 'query'>;
 
-export async function createPlanLocation(db: DbLike, planId: number, userId: string, data: PlanLocationType) {
+/**
+ * PlanLocationの行を復号し、従来と同じ形（座標・移動時間を含む）に変換する
+ * 暗号化カラムはレスポンスに含めない
+ */
+export async function toPlanLocationResponse(cipher: LocationCipher, row: InferSelectModel<typeof planLocation>) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { encryptedData, ...rest } = row;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { isEncrypted, lastSpotId, ...secret } = await decryptPlanLocationSecret(cipher, row);
+  return { ...rest, ...secret };
+}
+
+/**
+ * @param lastSpotId 目的地の場合のみ: 移動時間を移し替えた元の最後のスポットID（trip.ts の moveLastSpotTravelTimeToDestination）
+ */
+export async function createPlanLocation(
+  db: DbLike,
+  planId: number,
+  userId: string,
+  data: PlanLocationType,
+  lastSpotId?: string,
+) {
+  const cipher = getLocationCipher();
   const [newPlanLocation] = await db
     .insert(planLocation)
     .values({
       planId: planId,
       userId: userId,
       name: data.name,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      encryptedData: await encryptPlanLocationSecret(cipher, {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        travelTime: data.travelTime ?? 0,
+        lastSpotId,
+      }),
+      // 平文カラムは使わない（default 0 が入らないように明示する）
+      travelTime: null,
       time: data.time,
       locationType: data.locationType,
       transportMethodId: data.transportMethodId,
-      travelTime: data.travelTime,
     })
     .returning();
 
   if (data.nearestStation?.placeId && data.nearestStation?.stationType) {
     await db.insert(planLocationNearestStation).values({
       planLocationId: newPlanLocation.id,
-      placeId: data.nearestStation.placeId,
+      encryptedPlaceId: await encryptPlaceId(cipher, data.nearestStation.placeId),
       stationType: data.nearestStation.stationType,
       transitTime: data.nearestStation.transitTime ?? null,
       scheduledDepartureTime: data.nearestStation.scheduledDepartureTime ?? null,
@@ -112,37 +148,49 @@ export async function getPlanLocationCandidates(
     .orderBy(asc(planLocation.id))
     .limit(limit);
 
-  // レスポンス形式に変換
+  // レスポンス形式に変換（座標・ラベル・最寄駅は復号する）
+  const cipher = getLocationCipher();
   return {
-    favorites: favorites.map((fav) => ({
-      planLocationId: null,
-      userLocationId: fav.UserLocation.id,
-      name: fav.UserLocation.name,
-      latitude: fav.UserLocation.latitude,
-      longitude: fav.UserLocation.longitude,
-      label: fav.UserLocation.label,
-      usageCount: fav.UserLocation.usageCount,
-      isDefault: fav.UserLocation.isDefault,
-      nearestStation: fav.UserLocationNearestStation
-        ? {
-            placeId: fav.UserLocationNearestStation.placeId,
-            stationType: fav.UserLocationNearestStation.stationType,
-          }
-        : null,
-      locationType: 'BOTH' as const,
-    })),
-    history: history.map((hist) => ({
-      planLocationId: hist.PlanLocation.id,
-      userLocationId: null,
-      name: hist.PlanLocation.name,
-      latitude: hist.PlanLocation.latitude,
-      longitude: hist.PlanLocation.longitude,
-      label: '',
-      usageCount: 0,
-      isDefault: false,
-      locationType: hist.PlanLocation.locationType,
-      planName: hist.Trip?.title || '',
-    })),
+    favorites: await Promise.all(
+      favorites.map(async (fav) => {
+        const secret = await decryptUserLocationSecret(cipher, fav.UserLocation);
+        const station = fav.UserLocationNearestStation;
+        return {
+          planLocationId: null,
+          userLocationId: fav.UserLocation.id,
+          name: fav.UserLocation.name,
+          latitude: secret.latitude,
+          longitude: secret.longitude,
+          label: secret.label,
+          usageCount: fav.UserLocation.usageCount,
+          isDefault: fav.UserLocation.isDefault,
+          nearestStation: station
+            ? {
+                placeId: await decryptPlaceId(cipher, station),
+                stationType: station.stationType,
+              }
+            : null,
+          locationType: 'BOTH' as const,
+        };
+      }),
+    ),
+    history: await Promise.all(
+      history.map(async (hist) => {
+        const secret = await decryptPlanLocationSecret(cipher, hist.PlanLocation);
+        return {
+          planLocationId: hist.PlanLocation.id,
+          userLocationId: null,
+          name: hist.PlanLocation.name,
+          latitude: secret.latitude,
+          longitude: secret.longitude,
+          label: '',
+          usageCount: 0,
+          isDefault: false,
+          locationType: hist.PlanLocation.locationType,
+          planName: hist.Trip?.title || '',
+        };
+      }),
+    ),
   };
 }
 
@@ -164,19 +212,40 @@ export async function createOrUpdatePlanLocation(
     ? (maybeData as CreatePlanLocationType)
     : (userIdOrData as CreatePlanLocationType);
 
+  const cipher = getLocationCipher();
+
   if (data.planLocationId) {
+    const [existing] = await database
+      .select()
+      .from(planLocation)
+      .where(and(eq(planLocation.id, data.planLocationId), eq(planLocation.userId, userId)))
+      .limit(1);
+    if (!existing) {
+      throw new HTTPException(404, { message: '指定されたIDが存在しないか、更新権限がありません' });
+    }
+    // 移動時間はこのAPIでは変更しないため、既存の値（復号したもの）を引き継ぐ
+    const existingSecret = await decryptPlanLocationSecret(cipher, existing);
+
     const [updated] = await database
       .update(planLocation)
       .set({
         name: data.name,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        encryptedData: await encryptPlanLocationSecret(cipher, {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          travelTime: existingSecret.travelTime,
+          lastSpotId: existingSecret.lastSpotId,
+        }),
+        // 平文カラムは使わない（一括変換前のデータもここで暗号化に置き換える）
+        latitude: null,
+        longitude: null,
+        travelTime: null,
         time: data.time ?? defaultTimeByLocationType(data.locationType),
         updatedAt: new Date().toISOString(),
       })
       .where(and(eq(planLocation.id, data.planLocationId), eq(planLocation.userId, userId)))
       .returning();
-    return updated;
+    return toPlanLocationResponse(cipher, updated);
   }
   // 新規作成
   const defaultName = data.name || generateDefaultName(data.locationType);
@@ -186,8 +255,12 @@ export async function createOrUpdatePlanLocation(
     .values({
       userId,
       name: defaultName,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      encryptedData: await encryptPlanLocationSecret(cipher, {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        travelTime: 0,
+      }),
+      travelTime: null,
       time: data.time ?? defaultTimeByLocationType(data.locationType),
       locationType: data.locationType,
       planId: data.planId,
@@ -202,7 +275,7 @@ export async function createOrUpdatePlanLocation(
       .where(and(eq(userLocation.id, data.userLocationId), eq(userLocation.userId, userId)));
   }
 
-  return created;
+  return toPlanLocationResponse(cipher, created);
 }
 
 /**
@@ -226,5 +299,5 @@ export async function deletePlanLocation(database: AnyDbType, userIdOrId: string
 
   const [deleted] = await database.delete(planLocation).where(eq(planLocation.id, id)).returning();
 
-  return deleted;
+  return toPlanLocationResponse(getLocationCipher(), deleted);
 }

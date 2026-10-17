@@ -463,3 +463,7 @@
 保存するのは `placeId` と `stationType` のみで、表示時にフロントエンドがGoogle Places APIから都度取得する。
 
 対象テーブル: `PlanSpotNearestStation`, `PlanLocationNearestStation`, `UserLocationNearestStation`
+
+## 地点情報の暗号化（No.168）
+
+お気に入り地点・出発地・目的地の座標、ラベル、移動時間、最寄駅の Place ID はバックエンドで暗号化して DB に保存する。API のリクエスト・レスポンスの形は変わらず、レスポンスには復号した値を返す。

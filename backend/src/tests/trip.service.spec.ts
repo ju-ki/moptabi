@@ -3,6 +3,8 @@ import { testClient } from 'hono/testing';
 import { TripSchema } from '@shared/trip/schema';
 
 import { createDevDb } from '@/db';
+import { getLocationCipher } from '@/lib/locationCipher';
+import { decryptPlaceId, decryptPlanLocationSecret } from '@/lib/locationPayload';
 
 import app from '..';
 import {
@@ -93,19 +95,31 @@ describe('旅行計画サービス', () => {
       const departure = createdPlanLocations.find((l) => l.locationType === 'DEPARTURE');
       const destination = createdPlanLocations.find((l) => l.locationType === 'DESTINATION');
       const createdPlanSpots = await db.select().from(planSpot).where(eq(planSpot.planId, createdPlans[0].id));
-      expect(departure).toBeDefined();
-      expect(destination).toBeDefined();
-      // 出発地の移動情報
-      expect(departure?.transportMethodId).toBe(mockPlanDataWithNearestStation[0].departure.transportMethodId);
-      expect(departure?.travelTime).toBe(mockPlanDataWithNearestStation[0].departure.travelTime);
+      if (!departure || !destination) {
+        throw new Error('出発地・目的地が作成されていません');
+      }
+      const cipher = getLocationCipher();
+      const departureSecret = await decryptPlanLocationSecret(cipher, departure);
+      const destinationSecret = await decryptPlanLocationSecret(cipher, destination);
+      const requestSpots = mockPlanDataWithNearestStation[0].spots;
+      const lastRequestSpot = requestSpots.reduce((last, s) => (s.order > last.order ? s : last), requestSpots[0]);
 
-      // スポット1の移動情報
-      expect(createdPlanSpots[0].transportMethodId).toBe(mockPlanDataWithNearestStation[0].spots[0].transportMethodId);
-      expect(createdPlanSpots[0].travelTime).toBe(mockPlanDataWithNearestStation[0].spots[0].travelTime);
+      // 出発地の移動情報（移動時間は暗号化して保存される）
+      expect(departure.transportMethodId).toBe(mockPlanDataWithNearestStation[0].departure.transportMethodId);
+      expect(departure.travelTime).toBeNull();
+      expect(departureSecret.travelTime).toBe(mockPlanDataWithNearestStation[0].departure.travelTime);
 
-      // 目的地の移動情報
-      expect(destination?.transportMethodId).toBe(mockPlanDataWithNearestStation[0].destination.transportMethodId);
-      expect(destination?.travelTime).toBe(mockPlanDataWithNearestStation[0].destination.travelTime);
+      // スポットの移動情報（最後のスポットの移動時間は目的地側に移して 0 で保存される）
+      for (const requestSpot of requestSpots) {
+        const createdSpot = createdPlanSpots.find((s) => s.spotId === requestSpot.id);
+        expect(createdSpot?.transportMethodId).toBe(requestSpot.transportMethodId);
+        expect(createdSpot?.travelTime).toBe(requestSpot === lastRequestSpot ? 0 : requestSpot.travelTime);
+      }
+
+      // 目的地の移動情報（最後のスポット → 目的地の移動時間を暗号化して持つ）
+      expect(destination.transportMethodId).toBe(mockPlanDataWithNearestStation[0].destination.transportMethodId);
+      expect(destination.travelTime).toBeNull();
+      expect(destinationSecret.travelTime).toBe(lastRequestSpot.travelTime);
 
       const createdLocationStations = await db
         .select()
@@ -136,8 +150,9 @@ describe('旅行計画サービス', () => {
         throw new Error('nearestStationが設定されていることを前提としているため、テストデータを確認してください。');
       }
 
-      // 出発地の最寄駅情報
-      expect(createdLocationStations[0]?.placeId).toBe(
+      // 出発地の最寄駅情報（placeId は暗号化して保存される）
+      expect(createdLocationStations[0]?.placeId).toBeNull();
+      expect(await decryptPlaceId(cipher, createdLocationStations[0])).toBe(
         mockPlanDataWithNearestStation[0].departure.nearestStation.placeId,
       );
       expect(createdLocationStations[0]?.stationType).toBe(
@@ -173,7 +188,8 @@ describe('旅行計画サービス', () => {
 
       // 目的地の最寄駅情報
       expect(createdDestinationStations.length).toBe(1);
-      expect(createdDestinationStations[0]?.placeId).toBe(
+      expect(createdDestinationStations[0]?.placeId).toBeNull();
+      expect(await decryptPlaceId(cipher, createdDestinationStations[0])).toBe(
         mockPlanDataWithNearestStation[0].destination.nearestStation.placeId,
       );
       expect(createdDestinationStations[0]?.stationType).toBe(
@@ -1297,6 +1313,104 @@ describe('旅行計画サービス', () => {
       expect(stats.totalPlans).toBe(4);
       expect(stats.planIncreaseFromLastMonth).toBe(4);
       expect(stats.averageDatePerUserPlan).toBeCloseTo(2);
+    });
+  });
+
+  describe('出発地・目的地の暗号化と最後のスポットの移動時間（No.168）', () => {
+    beforeEach(async () => {
+      // プラン作成数の上限に当たらないよう、テストごとにデータを消す
+      await clearAllTestData();
+      await createTestUser('trip_service', 'ADMIN');
+    });
+
+    const buildPlans = () => {
+      const plans = structuredClone(mockPlanData);
+      plans[0].spots = [
+        { ...plans[0].spots[0], id: spotId('enc_first'), order: 1, travelTime: 11 },
+        { ...plans[0].spots[0], id: spotId('enc_last'), order: 2, travelTime: 22 },
+      ];
+      plans[0].departure.travelTime = 7;
+      plans[0].destination.travelTime = 0;
+      return plans;
+    };
+
+    it('作成後に取得すると、座標・移動時間が送った値のまま返る', async () => {
+      const created = await (
+        await client.api.trips.create.$post(
+          { json: { ...structuredClone(mockTripData), plans: buildPlans() } },
+          { headers: createAuthHeaders('trip_service') },
+        )
+      ).json();
+
+      const res = await client.api.trips[created.id].$get({}, { headers: createAuthHeaders('trip_service') });
+      const detail = await res.json();
+      const firstPlan = detail.plans.find((p: { date: string }) => p.date === '2024-01-01');
+
+      expect(firstPlan.departure.latitude).toBe(mockPlanData[0].departure.latitude);
+      expect(firstPlan.departure.longitude).toBe(mockPlanData[0].departure.longitude);
+      expect(firstPlan.departure.travelTime).toBe(7);
+      expect(firstPlan.destination.latitude).toBe(mockPlanData[0].destination.latitude);
+      expect(firstPlan.destination.travelTime).toBe(0);
+      const travelTimes = Object.fromEntries(
+        firstPlan.spots.map((s: { id: string; travelTime: number }) => [s.id, s.travelTime]),
+      );
+      expect(travelTimes).toEqual({ [spotId('enc_first')]: 11, [spotId('enc_last')]: 22 });
+    });
+
+    it('DBには座標・移動時間を平文で保存しない', async () => {
+      const created = await (
+        await client.api.trips.create.$post(
+          { json: { ...structuredClone(mockTripData), plans: buildPlans() } },
+          { headers: createAuthHeaders('trip_service') },
+        )
+      ).json();
+      const [createdPlan] = await db.select().from(plan).where(eq(plan.tripId, created.id));
+      const locations = await db.select().from(planLocation).where(eq(planLocation.planId, createdPlan.id));
+
+      for (const location of locations) {
+        expect(location.latitude).toBeNull();
+        expect(location.longitude).toBeNull();
+        expect(location.travelTime).toBeNull();
+        expect(location.encryptedData).toMatch(/^v1:/);
+      }
+      const spots = await db.select().from(planSpot).where(eq(planSpot.planId, createdPlan.id));
+      expect(spots.find((s) => s.spotId === spotId('enc_last'))?.travelTime).toBe(0);
+      expect(spots.find((s) => s.spotId === spotId('enc_first'))?.travelTime).toBe(11);
+    });
+
+    it('スポットの順番を入れ替えて更新すると、新しい最後のスポットの移動時間が目的地側に移る', async () => {
+      const created = await (
+        await client.api.trips.create.$post(
+          { json: { ...structuredClone(mockTripData), plans: buildPlans() } },
+          { headers: createAuthHeaders('trip_service') },
+        )
+      ).json();
+
+      const updatedPlans = buildPlans();
+      updatedPlans[0].spots = [
+        { ...updatedPlans[0].spots[0], order: 2, travelTime: 33 },
+        { ...updatedPlans[0].spots[1], order: 1, travelTime: 44 },
+      ];
+      const patchRes = await client.api.trips[created.id].$patch(
+        { json: { ...structuredClone(mockTripData), plans: updatedPlans } },
+        { headers: createAuthHeaders('trip_service') },
+      );
+      expect(patchRes.status).toBe(200);
+
+      const [createdPlan] = await db.select().from(plan).where(eq(plan.tripId, created.id));
+      const spots = await db.select().from(planSpot).where(eq(planSpot.planId, createdPlan.id));
+      expect(spots.find((s) => s.spotId === spotId('enc_first'))?.travelTime).toBe(0);
+      expect(spots.find((s) => s.spotId === spotId('enc_last'))?.travelTime).toBe(44);
+
+      const detail = await (
+        await client.api.trips[created.id].$get({}, { headers: createAuthHeaders('trip_service') })
+      ).json();
+      const firstPlan = detail.plans.find((p: { date: string }) => p.date === '2024-01-01');
+      const travelTimes = Object.fromEntries(
+        firstPlan.spots.map((s: { id: string; travelTime: number }) => [s.id, s.travelTime]),
+      );
+      expect(travelTimes).toEqual({ [spotId('enc_first')]: 33, [spotId('enc_last')]: 44 });
+      expect(firstPlan.destination.travelTime).toBe(0);
     });
   });
 });

@@ -11,6 +11,13 @@ import { StationTypeSchema } from '@shared/transports/schema';
 
 import { LOCATION_TYPE } from '@/models/planLocation';
 import { getUserId } from '@/middleware/auth';
+import { getLocationCipher, LocationCipher } from '@/lib/locationCipher';
+import {
+  decryptPlaceId,
+  decryptPlanLocationSecret,
+  encryptPlaceId,
+  encryptPlanLocationSecret,
+} from '@/lib/locationPayload';
 
 import { createPlanLocation } from './planLocation';
 import { createPlanSpot } from './spot';
@@ -35,6 +42,27 @@ type PlanWithRelations = InferSelectModel<typeof plan> & {
 // Tripとその配下のPlan（drizzleのwith句で取得した結果の型）
 type TripWithRelations = InferSelectModel<typeof trip> & {
   plans: PlanWithRelations[];
+};
+
+/**
+ * 最後のスポット（orderが最大。同じorderなら配列の後ろ）から目的地までの移動時間を、目的地側に移し替える
+ * - 目的地の移動時間は暗号化して保存するため、PlanSpot には 0 を保存する（No.168）
+ * - 読み出し時に戻せるよう、移し替え元のスポットIDも目的地に持たせる
+ * - スポットが無い場合は目的地の移動時間をそのまま使う
+ */
+export const moveLastSpotTravelTimeToDestination = <S extends { id: string; order: number; travelTime: number }>(
+  spots: S[],
+  destination: PlanLocationType,
+): { spots: S[]; destination: PlanLocationType; lastSpotId?: string } => {
+  if (spots.length === 0) {
+    return { spots, destination };
+  }
+  const lastSpot = spots.reduce((last, spot) => (spot.order >= last.order ? spot : last), spots[0]);
+  return {
+    spots: spots.map((spot) => (spot === lastSpot ? { ...spot, travelTime: 0 } : spot)),
+    destination: { ...destination, travelTime: lastSpot.travelTime },
+    lastSpotId: lastSpot.id,
+  };
 };
 
 export const createTrip = async (db: AnyDbType, c: Context) => {
@@ -82,13 +110,18 @@ export const createTrip = async (db: AnyDbType, c: Context) => {
         })
         .returning();
 
+      const { spots, destination, lastSpotId } = moveLastSpotTravelTimeToDestination(
+        planData.spots,
+        planData.destination,
+      );
+
       // PlanSpotsを作成
-      await createPlanSpot(tx, newPlan.id, planData.spots);
+      await createPlanSpot(tx, newPlan.id, spots);
 
       // 出発地の情報を登録する
       await createPlanLocation(tx, newPlan.id, userId, planData.departure);
       // 目的地の情報を登録する
-      await createPlanLocation(tx, newPlan.id, userId, planData.destination);
+      await createPlanLocation(tx, newPlan.id, userId, destination, lastSpotId);
     }
     return newTrip.id;
   });
@@ -162,6 +195,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
   // 上限チェック（更新時はプラン作成数チェックをスキップ）
   await validateLimit(transactionDb, userId, tripData, { isUpdate: true });
 
+  const cipher = getLocationCipher();
+
   await transactionDb.transaction(async (tx) => {
     await tx
       .update(trip)
@@ -178,16 +213,27 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
       if (currentPlanData.length === 0) {
         continue;
       }
+      const {
+        spots: requestSpots,
+        destination: requestDestination,
+        lastSpotId,
+      } = moveLastSpotTravelTimeToDestination(pn.spots, pn.destination);
       // 出発地の更新
       const [updatedPlanDepartureLocation] = await tx
         .update(planLocation)
         .set({
           name: pn.departure.name,
-          latitude: pn.departure.latitude,
-          longitude: pn.departure.longitude,
+          encryptedData: await encryptPlanLocationSecret(cipher, {
+            latitude: pn.departure.latitude,
+            longitude: pn.departure.longitude,
+            travelTime: pn.departure.travelTime,
+          }),
+          // 平文カラムは使わない（一括変換前のデータもここで暗号化に置き換える）
+          latitude: null,
+          longitude: null,
+          travelTime: null,
           time: pn.departure.time,
           transportMethodId: pn.departure.transportMethodId,
-          travelTime: pn.departure.travelTime,
         })
         .where(
           and(eq(planLocation.planId, currentPlanData[0].id), eq(planLocation.locationType, LOCATION_TYPE.DEPARTURE)),
@@ -201,11 +247,12 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
 
       if (pn.departure.nearestStation?.placeId) {
         // 出発地の最寄駅情報を更新
+        const encryptedPlaceId = await encryptPlaceId(cipher, pn.departure.nearestStation.placeId);
         await tx
           .insert(planLocationNearestStation)
           .values({
             planLocationId: updatedPlanDepartureLocation.id,
-            placeId: pn.departure.nearestStation?.placeId,
+            encryptedPlaceId,
             stationType: pn.departure.nearestStation?.stationType,
             transitTime: pn.departure.nearestStation?.transitTime,
             scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
@@ -215,7 +262,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
           .onConflictDoUpdate({
             target: [planLocationNearestStation.planLocationId],
             set: {
-              placeId: pn.departure.nearestStation?.placeId,
+              placeId: null,
+              encryptedPlaceId,
               stationType: pn.departure.nearestStation?.stationType,
               transitTime: pn.departure.nearestStation?.transitTime,
               scheduledDepartureTime: pn.departure.nearestStation?.scheduledDepartureTime,
@@ -235,12 +283,18 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
       const [updatedPlanDestinationLocation] = await tx
         .update(planLocation)
         .set({
-          name: pn.destination.name,
-          latitude: pn.destination.latitude,
-          longitude: pn.destination.longitude,
-          time: pn.destination.time,
-          transportMethodId: pn.destination.transportMethodId,
-          travelTime: pn.destination.travelTime,
+          name: requestDestination.name,
+          encryptedData: await encryptPlanLocationSecret(cipher, {
+            latitude: requestDestination.latitude,
+            longitude: requestDestination.longitude,
+            travelTime: requestDestination.travelTime,
+            lastSpotId,
+          }),
+          latitude: null,
+          longitude: null,
+          travelTime: null,
+          time: requestDestination.time,
+          transportMethodId: requestDestination.transportMethodId,
         })
         .where(
           and(eq(planLocation.planId, currentPlanData[0].id), eq(planLocation.locationType, LOCATION_TYPE.DESTINATION)),
@@ -254,11 +308,12 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
 
       // 出発地の最寄駅情報を更新
       if (pn.destination.nearestStation?.placeId) {
+        const encryptedPlaceId = await encryptPlaceId(cipher, pn.destination.nearestStation.placeId);
         await tx
           .insert(planLocationNearestStation)
           .values({
             planLocationId: updatedPlanDestinationLocation.id,
-            placeId: pn.destination.nearestStation?.placeId,
+            encryptedPlaceId,
             stationType: pn.destination.nearestStation?.stationType,
             transitTime: pn.destination.nearestStation?.transitTime,
             scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
@@ -268,7 +323,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
           .onConflictDoUpdate({
             target: [planLocationNearestStation.planLocationId],
             set: {
-              placeId: pn.destination.nearestStation?.placeId,
+              placeId: null,
+              encryptedPlaceId,
               stationType: pn.destination.nearestStation?.stationType,
               transitTime: pn.destination.nearestStation?.transitTime,
               scheduledDepartureTime: pn.destination.nearestStation?.scheduledDepartureTime,
@@ -285,8 +341,8 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
       }
 
       // スポットの確認
-      const requestSpotIds = pn.spots.map((s) => s.id);
-      for (const spot of pn.spots) {
+      const requestSpotIds = requestSpots.map((s) => s.id);
+      for (const spot of requestSpots) {
         // スポットのupsertを行う（upsertした行を取得してそのidを後続処理で使う）
         const [upsertedPlanSpot] = await tx
           .insert(planSpot)
@@ -393,13 +449,18 @@ export const updateTrip = async (transactionDb: AnyDbType, c: Context) => {
         })
         .returning();
 
+      const { spots, destination, lastSpotId } = moveLastSpotTravelTimeToDestination(
+        planData.spots,
+        planData.destination,
+      );
+
       // スポット情報を登録する
-      await createPlanSpot(tx, newPlan.id, planData.spots);
+      await createPlanSpot(tx, newPlan.id, spots);
 
       // 出発地の情報を登録する
       await createPlanLocation(tx, newPlan.id, userId, planData.departure);
       // 目的地の情報を登録する
-      await createPlanLocation(tx, newPlan.id, userId, planData.destination);
+      await createPlanLocation(tx, newPlan.id, userId, destination, lastSpotId);
     }
   });
   return { id: tripId };
@@ -475,6 +536,7 @@ export const getTripDetailById = async (db: AnyDbType, tripId: number, userId: s
   const response: TripType = {
     ...convertTripData(targetTrip),
   };
+  const cipher = getLocationCipher();
 
   for (const plan of targetTrip.plans) {
     const departureLocation = plan.planLocations.find((pl) => pl.locationType === LOCATION_TYPE.DEPARTURE);
@@ -486,16 +548,25 @@ export const getTripDetailById = async (db: AnyDbType, tripId: number, userId: s
       throw new HTTPException(500, { message: 'Destination planLocation not found' });
     }
 
+    const spots = convertPlanSpotData(plan.planSpots);
+    const departure = await convertPlanLocationData(cipher, departureLocation);
+    const destination = await convertPlanLocationData(cipher, destinationLocation);
+
+    // 暗号化済みの目的地は「最後のスポット → 目的地」の移動時間を持っているので、最後のスポットに戻す（No.168）
+    if (destination.isEncrypted && spots.length > 0) {
+      const lastSpot =
+        spots.find((spot) => spot.id === destination.lastSpotId) ??
+        spots.reduce((last, spot) => (spot.order >= last.order ? spot : last), spots[0]);
+      lastSpot.travelTime = destination.location.travelTime;
+      destination.location.travelTime = 0;
+    }
+
     response.plans.push({
       date: plan.date,
       memo: plan.memo ?? '',
-      spots: convertPlanSpotData(plan.planSpots),
-      departure: {
-        ...convertPlanLocationData([departureLocation])[0],
-      },
-      destination: {
-        ...convertPlanLocationData([destinationLocation])[0],
-      },
+      spots,
+      departure: departure.location,
+      destination: destination.location,
     });
   }
 
@@ -542,24 +613,30 @@ const convertPlanSpotData = (rawPlanSpotData: PlanSpotWithNearestStations[]): Tr
   });
 };
 
-const convertPlanLocationData = (rawPlanLocationData: PlanLocationWithNearestStation[]): PlanLocationType[] => {
-  return rawPlanLocationData.map((planLocation) => {
-    const nearestStation = planLocation.nearestStation?.[0];
+const convertPlanLocationData = async (
+  cipher: LocationCipher,
+  planLocation: PlanLocationWithNearestStation,
+): Promise<{ location: PlanLocationType; isEncrypted: boolean; lastSpotId?: string }> => {
+  const nearestStation = planLocation.nearestStation?.[0];
+  const { isEncrypted, lastSpotId, ...secret } = await decryptPlanLocationSecret(cipher, planLocation);
 
-    return {
+  return {
+    isEncrypted,
+    lastSpotId,
+    location: {
       name: planLocation.name,
-      latitude: planLocation.latitude,
-      longitude: planLocation.longitude,
+      latitude: secret.latitude,
+      longitude: secret.longitude,
       planId: planLocation.planId,
       time: planLocation.time,
       locationType: planLocation.locationType,
-      travelTime: planLocation.travelTime,
+      travelTime: secret.travelTime,
       transportMethodId: planLocation.transportMethodId,
       transportMethod: TransportMethodIdMapping[planLocation.transportMethodId ?? 0],
       nearestStation: nearestStation
         ? {
             planSpotId: undefined,
-            placeId: nearestStation.placeId,
+            placeId: await decryptPlaceId(cipher, nearestStation),
             stationType: nearestStation.stationType ?? StationTypeSchema.enum.OTHER,
             transitTime: nearestStation.transitTime ?? 0,
             scheduledDepartureTime: nearestStation.scheduledDepartureTime ?? '',
@@ -568,6 +645,6 @@ const convertPlanLocationData = (rawPlanLocationData: PlanLocationWithNearestSta
             memo: nearestStation.memo ?? '',
           }
         : undefined,
-    };
-  });
+    },
+  };
 };
