@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { calcMidpoint } from '@/lib/geo';
+import { calcDistanceKm, calcMidpoint, formatDistance } from '@/lib/geo';
 import type { Coordination } from '@/types/plan';
 
 const makeCoord = (id: string, name: string, lat: number, lng: number): Coordination => ({
@@ -59,5 +59,28 @@ describe('calcMidpoint', () => {
       expect(result.lat).toBeCloseTo(35.1918, 2);
       expect(result.lng).toBeCloseTo(137.6315, 2);
     });
+  });
+});
+
+describe('calcDistanceKm（No.341）', () => {
+  it('同じ地点は 0km', () => {
+    const point = makeCoord('a', '東京駅', 35.6812, 139.7671);
+    expect(calcDistanceKm(point, point)).toBe(0);
+  });
+
+  it('東京駅と大阪駅の直線距離は約 400km', () => {
+    const tokyo = makeCoord('tokyo', '東京駅', 35.6812, 139.7671);
+    const osaka = makeCoord('osaka', '大阪駅', 34.7024, 135.4959);
+    expect(calcDistanceKm(tokyo, osaka)).toBeCloseTo(403.5, 0);
+  });
+});
+
+describe('formatDistance（No.341）', () => {
+  it('1km 未満は m で表示する', () => {
+    expect(formatDistance(0.95)).toBe('950m');
+  });
+
+  it('1km 以上は小数1桁の km で表示する', () => {
+    expect(formatDistance(1.234)).toBe('1.2km');
   });
 });

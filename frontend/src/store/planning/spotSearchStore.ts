@@ -2,9 +2,14 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { devtools } from 'zustand/middleware';
 
-import { Coordination, Spot } from '@/types/plan';
+import { Coordination, MapPinLayers, Spot, SpotSearchMode } from '@/types/plan';
 
 interface SpotSearchState {
+  // 探し方。ダイアログを閉じても残し、次に開いたときも同じ探し方にする（No.341）
+  searchMode: SpotSearchMode;
+  // 最後にダイアログを開いた計画日。日付が変わったらプランの地点選択をリセットする（No.341 P-5）
+  searchDate: string | null;
+
   // 検索条件
   searchCenter: Coordination | undefined;
   searchRadius: number[];
@@ -36,7 +41,12 @@ interface SpotSearchState {
 
   // 検索結果
   searchResults: Spot[];
-  mapCenter: Coordination;
+  // 地図で探すの中心。null のときは初期中心（目的地 → 出発地 → 東京駅）を使う（No.341）
+  mapCenter: Coordination | null;
+  // 距離表示の基準名（「{基準名}から」）。地図のドラッグ・住所検索のあとは null（「中心から」）（No.341）
+  mapCenterLabel: string | null;
+  // 地図で探すで表示するピン。localStorage（lib/map-pin-layers）から復元する（No.341）
+  pinLayers: MapPinLayers;
   filteredWishlistSpot: Spot[]; // ウィッシュリストからのフィルタ済みスポット
   filteredVisitedSpot: Spot[]; // 訪問済みリストからのフィルタ済みスポット
 
@@ -59,6 +69,8 @@ interface SpotSearchState {
   setVisitedSortOrder: (order: 'asc' | 'desc') => void;
 
   // アクション
+  setSearchMode: (mode: SpotSearchMode) => void;
+  syncSearchDate: (date: string) => void;
   setSearchCenter: (center: Coordination | undefined) => void;
   setSearchRadius: (radius: number[]) => void;
   setSearchCategories: (categoryId: string) => void; // トグル動作
@@ -68,7 +80,8 @@ interface SpotSearchState {
   setSearchResults: (results: Spot[]) => void;
   setFilteredWishlistSpot: (spots: Spot[]) => void;
   setFilteredVisitedSpot: (spots: Spot[]) => void;
-  setMapCenter: (center: Coordination) => void;
+  setMapCenter: (center: Coordination | null, label: string | null) => void;
+  setPinLayers: (layers: MapPinLayers) => void;
   setMapSelectOpen: (open: boolean) => void;
   setSelectedSpot: (spot: Spot | null) => void;
   setSelectedThemes: (themes: string[]) => void;
@@ -88,6 +101,8 @@ export const useSpotSearchStore = create<SpotSearchState>()(
   immer(
     devtools((set, get) => ({
       // 初期値（wishlistStore と同様のパターン）
+      searchMode: 'list',
+      searchDate: null,
       searchCenter: defaultCenter,
       searchRadius: [5],
       searchCategories: [],
@@ -99,7 +114,9 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       searchResults: [],
       filteredWishlistSpot: [],
       filteredVisitedSpot: [],
-      mapCenter: defaultCenter,
+      mapCenter: null,
+      mapCenterLabel: null,
+      pinLayers: { wishlist: false, visited: false },
       mapSelectOpen: false,
       selectedSpot: null,
 
@@ -123,6 +140,23 @@ export const useSpotSearchStore = create<SpotSearchState>()(
       },
 
       // アクション
+      setSearchMode: (mode) => {
+        set((state) => {
+          state.searchMode = mode;
+        });
+      },
+
+      syncSearchDate: (date) => {
+        set((state) => {
+          if (state.searchDate === date) return;
+          state.searchDate = date;
+          state.planSpotSelection = [];
+          // 日付が変わったら地図の中心もその日の初期中心に戻す（No.341）
+          state.mapCenter = null;
+          state.mapCenterLabel = null;
+        });
+      },
+
       setSearchCenter: (center) => {
         set((state) => {
           state.searchCenter = center;
@@ -170,9 +204,16 @@ export const useSpotSearchStore = create<SpotSearchState>()(
         });
       },
 
-      setMapCenter: (center) => {
+      setMapCenter: (center, label) => {
         set((state) => {
           state.mapCenter = center;
+          state.mapCenterLabel = label;
+        });
+      },
+
+      setPinLayers: (layers) => {
+        set((state) => {
+          state.pinLayers = layers;
         });
       },
 

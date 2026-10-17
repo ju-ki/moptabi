@@ -12,8 +12,6 @@ import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
 import { isOpenOnPlanDate } from '@/lib/opening-hours';
 import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 
-import { OpenOnPlanDateFilter } from './OpenOnPlanDateFilter';
-
 type WishlistSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
@@ -150,7 +148,6 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
       </div>
 
       {/* 検索結果 */}
-      <OpenOnPlanDateFilter />
       <SearchResultsView
         spots={convertToExtendSpotType(visibleSpots)}
         selectedSpotIds={selectedSpotIds}
