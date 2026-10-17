@@ -31,6 +31,7 @@ export async function createPlanSpot(db: DbLike, planId: number, spotsData: Trip
         stationType: nearestStationData.stationType,
         transitTime: nearestStationData.transitTime ?? null,
         scheduledDepartureTime: nearestStationData.scheduledDepartureTime ?? null,
+        waitingTime: nearestStationData.waitingTime ?? null,
         memo: nearestStationData.memo ?? null,
       });
     }

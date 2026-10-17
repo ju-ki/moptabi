@@ -78,3 +78,82 @@ describe('useSpotSearchStore — planSpotSelection', () => {
     expect(result.current.planSpotSelection).toEqual([]);
   });
 });
+
+describe('useSpotSearchStore — openOnPlanDate（No.158）', () => {
+  it('初期値は false である', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    expect(result.current.openOnPlanDate).toBe(false);
+  });
+
+  it('setOpenOnPlanDate で切り替えられ、resetFilters で false に戻る', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.setOpenOnPlanDate(true));
+    expect(result.current.openOnPlanDate).toBe(true);
+    act(() => result.current.resetFilters());
+    expect(result.current.openOnPlanDate).toBe(false);
+  });
+});
+
+describe('useSpotSearchStore — searchMode（No.341）', () => {
+  beforeEach(() => {
+    act(() => useSpotSearchStore.setState({ searchMode: 'list' }));
+  });
+
+  it('初期値は list である', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    expect(result.current.searchMode).toBe('list');
+  });
+
+  it('setSearchMode で切り替えられ、resetFilters では戻らない（最後に使った探し方を残す）', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.setSearchMode('map'));
+    expect(result.current.searchMode).toBe('map');
+    act(() => result.current.resetFilters());
+    expect(result.current.searchMode).toBe('map');
+  });
+});
+
+describe('useSpotSearchStore — syncSearchDate（No.341 P-5）', () => {
+  beforeEach(() => {
+    act(() => useSpotSearchStore.setState({ searchDate: null }));
+  });
+
+  it('前回と違う日付ならプランの地点選択を空にする', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    act(() => result.current.togglePlanSpotSelection('spot-1'));
+    act(() => result.current.syncSearchDate('2026-10-18'));
+    expect(result.current.planSpotSelection).toEqual([]);
+    expect(result.current.searchDate).toBe('2026-10-18');
+  });
+
+  it('前回と同じ日付なら選択を残す', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    act(() => result.current.togglePlanSpotSelection('spot-1'));
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    expect(result.current.planSpotSelection).toEqual(['spot-1']);
+  });
+});
+
+describe('useSpotSearchStore — 地図で探すの中心（No.341）', () => {
+  beforeEach(() => {
+    act(() => useSpotSearchStore.setState({ mapCenter: null, mapCenterLabel: null, searchDate: null }));
+  });
+
+  it('setMapCenter で中心と基準名を更新できる', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.setMapCenter({ id: 'a', name: '清水寺', lat: 35, lng: 135 }, '① 清水寺'));
+    expect(result.current.mapCenter).toEqual({ id: 'a', name: '清水寺', lat: 35, lng: 135 });
+    expect(result.current.mapCenterLabel).toBe('① 清水寺');
+  });
+
+  it('前回と違う日付で開くと中心をリセットする', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    act(() => result.current.setMapCenter({ id: 'a', name: '清水寺', lat: 35, lng: 135 }, '① 清水寺'));
+    act(() => result.current.syncSearchDate('2026-10-18'));
+    expect(result.current.mapCenter).toBeNull();
+    expect(result.current.mapCenterLabel).toBeNull();
+  });
+});

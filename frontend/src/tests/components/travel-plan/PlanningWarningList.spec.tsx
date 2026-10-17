@@ -105,4 +105,30 @@ describe('PlanningWarningList', () => {
 
     expect(screen.queryByTestId('planning-save-blocked')).not.toBeInTheDocument();
   });
+
+  it('営業時間の警告をスポットごとに警告として並べること（No.158）', () => {
+    mockGetPlanningResult.mockReturnValue({
+      messages: [
+        {
+          level: 'WARNING',
+          segmentKey: 'OPENING_HOURS:spot-1',
+          message: '「浅草寺」はこの日（月）が定休日の可能性があります。公式サイト等で営業日をご確認ください。',
+        },
+        {
+          level: 'WARNING',
+          segmentKey: 'OPENING_HOURS:spot-2',
+          message: '「東京タワー」は Google マップ上で閉業と登録されています。公式サイト等で最新情報をご確認ください。',
+        },
+      ],
+    });
+
+    render(<PlanningWarningList date={date} />);
+
+    const warnings = screen.getAllByTestId('planning-message-warning');
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]).toHaveTextContent('「浅草寺」はこの日（月）が定休日の可能性があります。');
+    expect(warnings[1]).toHaveTextContent('「東京タワー」は Google マップ上で閉業と登録されています。');
+    // 営業時間の警告は保存をブロックしない
+    expect(screen.queryByTestId('planning-save-blocked')).not.toBeInTheDocument();
+  });
 });

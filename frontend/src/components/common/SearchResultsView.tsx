@@ -19,6 +19,8 @@ interface SearchResultsViewProps {
   onSpotClick?: (spot: ExtendSpotType) => void;
   /** カードの種類（google: Google検索, wishlist: 行きたいリスト, visited: 過去のスポット） */
   cardType?: CardType;
+  /** 計画日（YYYY-MM-DD）。カードで営業時間を判定するために渡す（No.158） */
+  planDate?: string;
 }
 
 export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
@@ -26,6 +28,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
   selectedSpotIds = [],
   onSpotClick,
   cardType = 'google',
+  planDate,
 }) => {
   const defaultCenter = { lat: 35.681236, lng: 139.767125 };
   const firstWithLocation = spots.find((s) => s.latitude != null && s.longitude != null);
@@ -168,6 +171,7 @@ export const SearchResultsView: React.FC<SearchResultsViewProps> = ({
                             onSpotClick={onSpotClick}
                             isSpotSelected={isSpotSelected}
                             viewMode={viewMode}
+                            planDate={planDate}
                           />
                         );
                       })}

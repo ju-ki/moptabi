@@ -3,6 +3,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import WishlistHeader from '@/components/wishlist/Header';
 
+// 上限取得エラー時の挙動を検証するため、エラー状態をテストごとに切り替えられるようにする
+const { mockUserLimitsState } = vi.hoisted(() => ({
+  mockUserLimitsState: { error: undefined as Error | undefined, retry: vi.fn() },
+}));
+
+vi.mock('@/hooks/use-user-limits', () => ({
+  useUserLimits: () => ({
+    limits: { maxWishlistSpots: 20, maxPlans: 5, maxSpotsPerDay: 5, maxPlanDays: 3, maxUserLocations: 2 },
+    isLoading: false,
+    error: mockUserLimitsState.error,
+    retry: mockUserLimitsState.retry,
+  }),
+}));
+
 // Prepare mocks for the zustand store used by Header
 const setViewModeMock = vi.fn();
 const setPriorityFilterMock = vi.fn();
@@ -30,6 +44,21 @@ describe('Header', () => {
     vi.clearAllMocks();
     getViewModeMock.mockReturnValue('list');
     getFilteredTypeMock.mockReturnValue('all');
+    mockUserLimitsState.error = undefined;
+  });
+
+  describe('上限の取得に失敗している場合', () => {
+    it('件数表示の代わりにエラーと再試行ボタンを表示し、再試行で再取得すること', () => {
+      mockUserLimitsState.error = new Error('取得失敗');
+
+      render(<WishlistHeader />);
+
+      expect(screen.getByTestId('limit-fetch-error')).toBeDefined();
+      expect(screen.queryByTestId('limit-display')).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: '再試行' }));
+      expect(mockUserLimitsState.retry).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('初期表示', () => {

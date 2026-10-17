@@ -139,4 +139,44 @@ describe('RouteSummaryNearestStation', () => {
     expect(screen.getByText(`徒歩 ${destinationNearestStation.walkingTime}分`)).toBeInTheDocument();
     expect(screen.getByText(`${originNearestStation.memo}`)).toBeInTheDocument();
   });
+
+  describe('待ち時間の表示（No.375）', () => {
+    const createStation = (waitingTime?: number): ExtendNearestStationType => ({
+      placeId: 'origin-station',
+      name: '出発駅',
+      latitude: 35.6895,
+      longitude: 139.6917,
+      stationType: 'TRAIN' as StationType,
+      walkingTime: 5,
+      transitTime: 15,
+      waitingTime,
+    });
+
+    it.each([
+      [3, '待ち 3分'],
+      [0, '待ち 0分'],
+    ])('待ち時間が %i 分のとき「%s」を表示する', (waitingTime, expected) => {
+      render(
+        <RouteSummaryNearestStation
+          originNearestStation={createStation(waitingTime)}
+          destinationNearestStation={createStation()}
+          activeDepartureTime="08:20"
+        />,
+      );
+
+      expect(screen.getByTestId('route-summary-waiting-time')).toHaveTextContent(expected);
+    });
+
+    it('待ち時間が未設定のときは表示しない', () => {
+      render(
+        <RouteSummaryNearestStation
+          originNearestStation={createStation()}
+          destinationNearestStation={createStation()}
+          activeDepartureTime="08:20"
+        />,
+      );
+
+      expect(screen.queryByTestId('route-summary-waiting-time')).not.toBeInTheDocument();
+    });
+  });
 });

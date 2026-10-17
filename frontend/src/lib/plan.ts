@@ -19,6 +19,7 @@ import { DEFAULT_ARRIVAL_TIME, DEFAULT_DEPARTURE_AND_DESTINATION, DEFAULT_DEPART
 
 import { getPrefectures } from './algorithm';
 import { formatOpeningHours } from './google-maps';
+import { normalizeBusinessStatus, normalizeOpeningPeriods } from './opening-hours';
 import { getDatesBetween } from './utils';
 import { hasDirtyDepartureAndDestinationChange, hasDirtySpotChange, PlanningInfo, PlanningResult } from './planning';
 
@@ -806,6 +807,8 @@ export async function searchSpots(params: SearchSpotByCategoryParams): Promise<S
     address: place.formattedAddress ?? '',
     ratingCount: place.userRatingCount ?? 0,
     regularOpeningHours: formatOpeningHours(place.regularOpeningHours?.periods ?? null),
+    openingPeriods: normalizeOpeningPeriods(place.regularOpeningHours?.periods),
+    businessStatus: normalizeBusinessStatus(place.businessStatus),
     order: 1,
   });
 

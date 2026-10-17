@@ -9,8 +9,9 @@ import { useWishlistSpots } from '@/hooks/spot-search/use-wishlist-spots';
 import { prefectures } from '@/data/constants';
 import { ExtendSpotType, Spot } from '@/types/plan';
 import { useSpotSearchStore } from '@/store/planning/spotSearchStore';
+import { isOpenOnPlanDate } from '@/lib/opening-hours';
+import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 
-// TODO: dateは営業時間のフィルターで使用予定
 type WishlistSpotSearchProps = {
   date: string;
   selectedSpotIds: string[];
@@ -43,6 +44,11 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
       order: 0,
     }));
   };
+
+  // 計画日に営業しているスポットのみ表示する（No.158）
+  const visibleSpots = spotSearchStore.openOnPlanDate
+    ? (spots ?? []).filter((spot) => isOpenOnPlanDate(spot, date))
+    : (spots ?? []);
 
   const handleSpotClick = (spot: ExtendSpotType) => {
     const isSelected = selectedSpotIds.includes(spot.id);
@@ -143,14 +149,18 @@ export function WishlistSpotSearch({ date, selectedSpotIds, onSpotSelect }: Wish
 
       {/* 検索結果 */}
       <SearchResultsView
-        spots={convertToExtendSpotType(spots)}
+        spots={convertToExtendSpotType(visibleSpots)}
         selectedSpotIds={selectedSpotIds}
         onSpotClick={handleSpotClick}
+        planDate={date}
         cardType="wishlist"
       />
 
       {spots.length === 0 && !isLoading && (
         <div className="text-center text-gray-500 py-8">行きたいリストにスポットが登録されていません</div>
+      )}
+      {spots.length > 0 && visibleSpots.length === 0 && (
+        <div className="text-center text-gray-500 py-8">{OPENING_HOURS_MESSAGE.FILTER_EMPTY}</div>
       )}
     </div>
   );

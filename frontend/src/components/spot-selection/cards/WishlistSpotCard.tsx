@@ -4,6 +4,7 @@ import Image from 'next/image';
 import React, { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { SpotOpeningSummary } from '@/components/common/OpeningHoursInfo';
 import { ExtendSpotType } from '@/types/plan';
 import { formatTimeDate } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -18,9 +19,17 @@ interface WishlistSpotCardProps {
   onSpotClick?: (spot: ExtendSpotType) => void;
   isSpotSelected: (spotId: string) => boolean;
   viewMode?: 'list' | 'split' | 'map';
+  /** 計画日（YYYY-MM-DD）。営業時間の判定に使う（No.158） */
+  planDate?: string;
 }
 
-const WishlistSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list' }: WishlistSpotCardProps) => {
+const WishlistSpotCard = ({
+  place,
+  onSpotClick,
+  isSpotSelected,
+  viewMode = 'list',
+  planDate,
+}: WishlistSpotCardProps) => {
   const [hoveredPlaceId, setHoveredPlaceId] = useState<string | null>(null);
 
   const handleClickSpot = (spot: ExtendSpotType) => {
@@ -118,6 +127,9 @@ const WishlistSpotCard = ({ place, onSpotClick, isSpotSelected, viewMode = 'list
                 </div>
               )}
             </div>
+
+            {/* 営業時間（No.158） */}
+            <SpotOpeningSummary spot={place} planDate={planDate} className={isSplitMode ? 'mt-1.5' : 'mt-2'} />
 
             {/* カテゴリ */}
             {place.categories && place.categories.length > 0 && (

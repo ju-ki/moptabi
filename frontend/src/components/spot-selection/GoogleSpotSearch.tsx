@@ -20,6 +20,8 @@ import { setStartTimeAutomatically } from '@/lib/algorithm';
 import { calcMidpoint } from '@/lib/geo';
 import { useCurrentLocation } from '@/hooks/spot-search/use-current-location';
 import { Coordination } from '@/types/plan';
+import { isOpenOnPlanDate } from '@/lib/opening-hours';
+import { OPENING_HOURS_MESSAGE } from '@/data/constants';
 
 type CenterMode = 'current-location' | 'plan-location';
 
@@ -65,6 +67,7 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
     setSearchResults,
     highRating,
     setHighRating,
+    openOnPlanDate,
     selectedThemes,
     setSelectedThemes,
     planSpotSelection,
@@ -160,6 +163,9 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
       setIsSearching(false);
     }
   };
+
+  // 計画日に営業しているスポットのみ表示する（No.158）
+  const visibleResults = openOnPlanDate ? searchResults.filter((spot) => isOpenOnPlanDate(spot, date)) : searchResults;
 
   const handleSpotClick = (spot: ExtendSpotType) => {
     const isSelected = selectedSpotIds.includes(spot.id);
@@ -315,12 +321,16 @@ export function GoogleSpotSearch({ date, selectedSpotIds, onSpotSelect }: Google
 
       {/* 検索結果 */}
       <SearchResultsView
-        spots={convertToExtendSpotType(searchResults)}
+        spots={convertToExtendSpotType(visibleResults)}
         selectedSpotIds={selectedSpotIds}
         onSpotClick={handleSpotClick}
+        planDate={date}
       />
       {searchResults.length === 0 && !isSearching && (
         <div className="text-center text-gray-500 py-8">検索結果がありません</div>
+      )}
+      {searchResults.length > 0 && visibleResults.length === 0 && (
+        <div className="text-center text-gray-500 py-8">{OPENING_HOURS_MESSAGE.FILTER_EMPTY}</div>
       )}
     </div>
   );

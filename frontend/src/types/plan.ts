@@ -6,6 +6,7 @@ import { TripType } from '@shared/trip/types';
 import { AlternativeRouteInfo } from '@/lib/planning';
 import type { CoordinationType } from '@/models/plan';
 import { placeTypeMap } from '@/data/constants';
+import type { OpeningInfo } from '@/types/spot';
 
 export type Coordination = CoordinationType;
 
@@ -75,6 +76,8 @@ export type Spot = {
   address?: string;
   ratingCount?: number;
   regularOpeningHours?: OpeningHoursType;
+  openingPeriods?: OpeningInfo['openingPeriods']; // 営業時間の判定用
+  businessStatus?: OpeningInfo['businessStatus']; // 営業状況（閉業・臨時休業の判定用）
   nearestStation?: ExtendNearestStationType; // 最寄駅
   routeToNext?: SpotRouteDraft;
   alternateRoutes?: AlternativeRouteInfo[]; // 代替ルートの候補
@@ -90,7 +93,8 @@ export type Spot = {
 };
 
 export type ExtendSpotType = TripSpotType &
-  SpotMetaType & {
+  SpotMetaType &
+  OpeningInfo & {
     routeToNext?: SpotRouteDraft;
     nearestStation?: ExtendNearestStationType;
     alternateRoutes?: AlternativeRouteInfo[];
@@ -145,3 +149,32 @@ export type TravelModeTypeForDisplay = Partial<{
     label: string;
   };
 }>;
+
+/** スポットの探し方（No.341）。list: 既存の3タブ / map: 地図で探す */
+export type SpotSearchMode = 'list' | 'map';
+
+export type MapCenterCandidateKind = 'departure' | 'destination' | 'spot' | 'other-day-spot' | 'default';
+
+/** 地図で探すの中心の候補（No.341）。label は候補の表示名で、距離表示の基準名にも使う */
+export type MapCenterCandidate = {
+  id: string;
+  kind: MapCenterCandidateKind;
+  label: string;
+  name: string;
+  lat: number;
+  lng: number;
+};
+
+/** 地図で探すで表示するピンの種類（No.341） */
+export type MapPinLayers = {
+  wishlist: boolean;
+  visited: boolean;
+};
+
+/** 地図で探すの過去のスポットのピン（No.341）。spot は詳細を取得するまで null */
+export type MapVisitedPin = {
+  spotId: string;
+  lat: number;
+  lng: number;
+  spot: ExtendSpotType | null;
+};

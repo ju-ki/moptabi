@@ -225,6 +225,49 @@ describe('planning.ts: 最寄駅経由の時間計算', () => {
     });
   });
 
+  describe('待ち時間（waitingTime）の書き戻し（No.375）', () => {
+    it('最寄駅経由を選んだ区間では待ち時間を書き戻す', async () => {
+      setupDeterministicRouteMock();
+      const params = createTwoSpotParams(30);
+      params.departure.nearestStation = createStation('dep-station', { scheduledDepartureTimes: ['09:30'] });
+      params.spots[0].nearestStation = createStation('spot1-station');
+
+      const result = await executePlanning(params);
+
+      // 09:00 出発 + 徒歩10分 → 駅到着 09:10、09:30 発で待ち20分
+      expect(result.updatedDeparture.transportMethodId).toBe(4);
+      expect(result.updatedDeparture.nearestStation?.waitingTime).toBe(20);
+    });
+
+    it('最寄駅経由以外を選んだ区間では、前回の待ち時間を残さない', async () => {
+      setupDeterministicRouteMock();
+      const params = createTwoSpotParams(30);
+      params.preferredTransportMethodIds = { DEPARTURE_TO_FIRST_SPOT: 1 };
+      params.departure.nearestStation = createStation('dep-station', {
+        scheduledDepartureTimes: ['09:30'],
+        waitingTime: 20,
+      });
+      params.spots[0].nearestStation = createStation('spot1-station');
+
+      const result = await executePlanning(params);
+
+      expect(result.updatedDeparture.transportMethodId).toBe(1);
+      expect(result.updatedDeparture.nearestStation).toBeDefined();
+      expect(result.updatedDeparture.nearestStation?.waitingTime).toBeUndefined();
+    });
+
+    it('片側だけ最寄駅がある区間では、前回の待ち時間を残さない', async () => {
+      setupDeterministicRouteMock();
+      const params = createTwoSpotParams(30);
+      params.departure.nearestStation = createStation('dep-station', { waitingTime: 20 });
+
+      const result = await executePlanning(params);
+
+      expect(result.updatedDeparture.transportMethodId).not.toBe(4);
+      expect(result.updatedDeparture.nearestStation?.waitingTime).toBeUndefined();
+    });
+  });
+
   describe('片側だけ最寄駅がある区間（B9）', () => {
     it('警告を出し、同じ区間の長距離徒歩メッセージは出さない', async () => {
       setupDeterministicRouteMock();

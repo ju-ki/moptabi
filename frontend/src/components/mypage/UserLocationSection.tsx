@@ -21,10 +21,11 @@ import { GoogleMap, Marker } from '@react-google-maps/api';
 import {
   UserLocation,
   LOCATION_LABELS,
-  MAX_USER_LOCATIONS,
   CreateUserLocationRequest,
   UpdateUserLocationRequest,
 } from '@/models/userLocation';
+import { useUserLimits } from '@/hooks/use-user-limits';
+import { LimitFetchError } from '@/components/common/LimitFetchError';
 import { useGeocoding } from '@/hooks/use-geocoding';
 import { cn } from '@/lib/utils';
 import { searchNearestStation } from '@/lib/google-maps';
@@ -64,6 +65,7 @@ export function UserLocationSection({
   updateUserLocation: (updatedUserLocation: UpdateUserLocationRequest) => Promise<Response>;
   deleteUserLocation: (id: number) => Promise<Response>;
 }) {
+  const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
   const firstWithLocation = userLocationList?.find((s) => s.isDefault);
   const mapCenter = firstWithLocation
     ? { lat: firstWithLocation.latitude, lng: firstWithLocation.longitude }
@@ -178,7 +180,8 @@ export function UserLocationSection({
     setSelectedLocation(null);
   }
 
-  const canAddMore = locations.length < MAX_USER_LOCATIONS;
+  // 上限を取得できていない場合は追加させない
+  const canAddMore = !limitsError && locations.length < limits.maxUserLocations;
 
   return (
     <Card>
@@ -197,9 +200,13 @@ export function UserLocationSection({
                   <p>プラン作成時の入力が1タップで完了します。</p>
                 </TooltipContent>
               </Tooltip>
-              <Badge variant="outline" className="ml-2">
-                {locations.length} / {MAX_USER_LOCATIONS}
-              </Badge>
+              {limitsError ? (
+                <LimitFetchError onRetry={retryLimits} className="ml-2" />
+              ) : (
+                <Badge variant="outline" className="ml-2">
+                  {locations.length} / {limits.maxUserLocations}
+                </Badge>
+              )}
             </CardTitle>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

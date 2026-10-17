@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatOpeningHours } from '@/lib/google-maps';
+import { convertPlaceToSpotMeta, formatOpeningHours, PLACE_DETAIL_FIELDS } from '@/lib/google-maps';
 
 describe('営業時間取得ユーティリティ', () => {
   describe('extractOpeningHours', () => {
@@ -87,5 +87,43 @@ describe('営業時間取得ユーティリティ', () => {
     expect(result.length).toEqual(1);
     expect(result[0].day).toEqual('全');
     expect(result[0].hours).toEqual('24時間営業');
+  });
+});
+
+describe('convertPlaceToSpotMeta の営業時間データ（No.158）', () => {
+  // google.maps.places.Place はテスト環境で生成できないため、変換に使うプロパティだけを持つオブジェクトで代用する
+  const createPlace = (overrides: Record<string, unknown>) =>
+    ({
+      displayName: '美術館',
+      location: { lat: () => 35.0, lng: () => 139.0 },
+      ...overrides,
+    }) as unknown as google.maps.places.Place;
+
+  it('判定用の営業時間と営業状況を返すこと', () => {
+    const place = createPlace({
+      regularOpeningHours: {
+        periods: [{ open: { day: 2, hour: 10, minute: 0 }, close: { day: 2, hour: 17, minute: 0 } }],
+      },
+      businessStatus: 'CLOSED_TEMPORARILY',
+    });
+
+    const meta = convertPlaceToSpotMeta(place, 'place-1');
+
+    expect(meta.openingPeriods).toEqual([
+      { open: { day: 2, hour: 10, minute: 0 }, close: { day: 2, hour: 17, minute: 0 } },
+    ]);
+    expect(meta.businessStatus).toBe('CLOSED_TEMPORARILY');
+    expect(meta.openingHours).toEqual([{ day: '火', hours: '10:00-17:00' }]);
+  });
+
+  it('営業時間・営業状況が取得できないときは undefined を返すこと', () => {
+    const meta = convertPlaceToSpotMeta(createPlace({}), 'place-1');
+
+    expect(meta.openingPeriods).toBeUndefined();
+    expect(meta.businessStatus).toBeUndefined();
+  });
+
+  it('Place Details の取得フィールドに businessStatus を含むこと', () => {
+    expect(PLACE_DETAIL_FIELDS).toContain('businessStatus');
   });
 });

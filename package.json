@@ -15,6 +15,6 @@
   },
   "devDependencies": {
     "husky": "^8.0.0",
-    "zod": "4.3.6"
+    "zod": "^3.23.8"
   }
 }

@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PlanningComp from '@/components/PlanningComp';
 import CreatePlanButton from '@/components/CreatePlanButton';
 import { LimitDisplay } from '@/components/common/LimitDisplay';
-import { APP_LIMITS } from '@/data/constants';
+import { LimitFetchError } from '@/components/common/LimitFetchError';
 import DateRangePicker from '@/components/DateRangePicker';
+import { useUserLimits } from '@/hooks/use-user-limits';
 import { usePlanLocationCandidates } from '@/hooks/use-plan-location';
 import { buildDepartureFromCandidate, buildDestinationFromCandidate } from '@/lib/plan-location';
 import { TransportNodeType } from '@/types/plan';
@@ -24,6 +25,7 @@ import { TransportNodeType } from '@/types/plan';
  */
 const TravelPlanCreate = () => {
   const fields = useStoreForPlanning();
+  const { limits, error: limitsError, retry: retryLimits } = useUserLimits();
   const { candidates: departureCandidates, isLoading: isDepartureCandidatesLoading } = usePlanLocationCandidates(
     TransportNodeType.DEPARTURE,
   );
@@ -104,15 +106,20 @@ const TravelPlanCreate = () => {
                   <Asterisk className="text-red-500" />
                 </div>
                 {/* 日数表示 */}
-                {fields.startDate && fields.endDate && (
-                  <LimitDisplay
-                    current={getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).length}
-                    limit={APP_LIMITS.MAX_PLAN_DAYS}
-                    label="旅行日数"
-                    unit="日"
-                    size="sm"
-                    data-testid="plan-days-display"
-                  />
+                {limitsError ? (
+                  <LimitFetchError onRetry={retryLimits} />
+                ) : (
+                  fields.startDate &&
+                  fields.endDate && (
+                    <LimitDisplay
+                      current={getDatesBetween(new Date(fields.startDate), new Date(fields.endDate)).length}
+                      limit={limits.maxPlanDays}
+                      label="旅行日数"
+                      unit="日"
+                      size="sm"
+                      data-testid="plan-days-display"
+                    />
+                  )
                 )}
               </div>
               <DateRangePicker
@@ -120,6 +127,7 @@ const TravelPlanCreate = () => {
                 endDate={fields.endDate}
                 onDateChange={fields.setRangeDate}
                 onDeletePlanData={fields.deletePlanInfo}
+                maxDays={limits.maxPlanDays}
               />
               <div className="my-1">
                 {fields.errors.startDate && <span className="text-red-500">{fields.errors.startDate.toString()}</span>}

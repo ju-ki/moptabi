@@ -9,6 +9,7 @@ import {
   notification,
   wishlist,
   userLocation,
+  userLimit,
   planLocation,
   planSpotNearestStation,
   planLocationNearestStation,
@@ -58,12 +59,23 @@ export const userNotificationRelations = relations(userNotification, ({ one }) =
   }),
 }));
 
-export const userRelations = relations(user, ({ many }) => ({
+export const userRelations = relations(user, ({ many, one }) => ({
   userNotifications: many(userNotification),
   trips: many(trip),
   wishlists: many(wishlist),
   userLocations: many(userLocation),
   planLocations: many(planLocation),
+  limit: one(userLimit, {
+    fields: [user.id],
+    references: [userLimit.userId],
+  }),
+}));
+
+export const userLimitRelations = relations(userLimit, ({ one }) => ({
+  user: one(user, {
+    fields: [userLimit.userId],
+    references: [user.id],
+  }),
 }));
 
 export const notificationRelations = relations(notification, ({ many }) => ({

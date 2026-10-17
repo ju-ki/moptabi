@@ -49,6 +49,7 @@ export async function createPlanLocation(db: DbLike, planId: number, userId: str
       stationType: data.nearestStation.stationType,
       transitTime: data.nearestStation.transitTime ?? null,
       scheduledDepartureTime: data.nearestStation.scheduledDepartureTime ?? null,
+      waitingTime: data.nearestStation.waitingTime ?? null,
       memo: data.nearestStation.memo ?? null,
     });
   }
