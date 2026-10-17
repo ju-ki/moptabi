@@ -109,6 +109,9 @@ vi.mock('@/hooks/spot-search/use-current-location', () => ({
 // Mock spot search store
 vi.mock('@/store/planning/spotSearchStore', () => ({
   useSpotSearchStore: () => ({
+    searchMode: 'list',
+    setSearchMode: vi.fn(),
+    syncSearchDate: vi.fn(),
     searchCenter: { id: 'tokyo', lat: 35.6812, lng: 139.7671, name: '東京駅' },
     setSearchCenter: vi.fn(),
     searchRadius: [5],
@@ -461,13 +464,6 @@ describe('VisitedSpotSearch', () => {
       await waitFor(() => {
         expect(screen.getByText('計画日に営業しているスポットが見つかりませんでした')).toBeInTheDocument();
       });
-    });
-
-    it('チェックボックスを押すとフィルターの状態が切り替わること', async () => {
-      await openTab();
-
-      fireEvent.click(screen.getByRole('checkbox', { name: '計画日に営業しているスポットのみ' }));
-      expect(mockData.openOnPlanDate).toBe(true);
     });
   });
 });

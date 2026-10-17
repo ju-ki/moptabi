@@ -93,3 +93,45 @@ describe('useSpotSearchStore — openOnPlanDate（No.158）', () => {
     expect(result.current.openOnPlanDate).toBe(false);
   });
 });
+
+describe('useSpotSearchStore — searchMode（No.341）', () => {
+  beforeEach(() => {
+    act(() => useSpotSearchStore.setState({ searchMode: 'list' }));
+  });
+
+  it('初期値は list である', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    expect(result.current.searchMode).toBe('list');
+  });
+
+  it('setSearchMode で切り替えられ、resetFilters では戻らない（最後に使った探し方を残す）', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.setSearchMode('map'));
+    expect(result.current.searchMode).toBe('map');
+    act(() => result.current.resetFilters());
+    expect(result.current.searchMode).toBe('map');
+  });
+});
+
+describe('useSpotSearchStore — syncSearchDate（No.341 P-5）', () => {
+  beforeEach(() => {
+    act(() => useSpotSearchStore.setState({ searchDate: null }));
+  });
+
+  it('前回と違う日付ならプランの地点選択を空にする', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    act(() => result.current.togglePlanSpotSelection('spot-1'));
+    act(() => result.current.syncSearchDate('2026-10-18'));
+    expect(result.current.planSpotSelection).toEqual([]);
+    expect(result.current.searchDate).toBe('2026-10-18');
+  });
+
+  it('前回と同じ日付なら選択を残す', () => {
+    const { result } = renderHook(() => useSpotSearchStore());
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    act(() => result.current.togglePlanSpotSelection('spot-1'));
+    act(() => result.current.syncSearchDate('2026-10-17'));
+    expect(result.current.planSpotSelection).toEqual(['spot-1']);
+  });
+});
