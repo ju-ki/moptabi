@@ -42,6 +42,7 @@ import {
 import { notificationHandler } from './controllers/notification';
 import { requireAuth, optionalAuth } from './middleware/auth';
 import { postgresDbLifecycle } from './middleware/db';
+import { configureLocationEncryptionKey } from './lib/locationCipher';
 import { userLocationHandler } from './controllers/userLocation';
 import {
   createUserLocationRoute,
@@ -65,6 +66,8 @@ type Bindings = {
   NODE_ENV?: string;
   ALLOWED_ORIGINS?: string;
   ALLOWED_ORIGIN_SUFFIXES?: string;
+  // 地点情報（座標など）の暗号化鍵（32バイトをbase64にしたもの）
+  LOCATION_ENCRYPTION_KEY?: string;
 };
 
 const app = new OpenAPIHono<{ Bindings: Bindings }>().basePath('/api');
@@ -134,6 +137,12 @@ app.use('*', async (c, next) => {
 
 // getPostgresDb がリクエスト内で作成した接続プールをレスポンス後に閉じる
 app.use('*', postgresDbLifecycle);
+
+// Cloudflare Workers の env に設定された地点情報の暗号化鍵を使う（ローカルは process.env）
+app.use('*', async (c, next) => {
+  configureLocationEncryptionKey(c.env?.LOCATION_ENCRYPTION_KEY);
+  await next();
+});
 
 // OPTIONSリクエスト（プリフライト）に明示的に対応
 app.options('*', (c) => {

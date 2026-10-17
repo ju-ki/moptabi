@@ -140,12 +140,13 @@ User (1)
 | userId | VARCHAR(255) | NOT NULL, FK | ユーザーID |
 | planId | INTEGER | NOT NULL, FK | プランID |
 | name | VARCHAR(100) | NOT NULL | 地点名 |
-| latitude | DOUBLE PRECISION | NOT NULL | 緯度 |
-| longitude | DOUBLE PRECISION | NOT NULL | 経度 |
+| latitude | DOUBLE PRECISION | NULL | 緯度（平文。No.168 で encryptedData に移行し、一括変換後に削除） |
+| longitude | DOUBLE PRECISION | NULL | 経度（同上） |
+| encryptedData | TEXT | NULL | 緯度・経度・移動時間を暗号化した JSON（`v1:IV:暗号文`）。目的地の行は「最後のスポット → 目的地」の移動時間と、その元のスポットID（`lastSpotId`）を持つ |
 | time | VARCHAR(5) | NOT NULL | 出発時間または到着時間（HH:MM）。DEPARTURE なら出発時間、DESTINATION なら到着時間 |
 | locationType | LocationType | NOT NULL | 地点種別（DEPARTURE / DESTINATION） |
 | transportMethodId | INTEGER | NOT NULL, DEFAULT 0 | 次の地点への移動手段ID（目的地は0） |
-| travelTime | INTEGER | NOT NULL, DEFAULT 0 | 次の地点への移動時間（分単位。目的地は0） |
+| travelTime | INTEGER | NULL, DEFAULT 0 | 移動時間（平文。No.168 で encryptedData に移行し、一括変換後に削除） |
 | createdAt | TIMESTAMP | DEFAULT NOW() | 作成日時 |
 | updatedAt | TIMESTAMP | DEFAULT NOW() | 更新日時 |
 
@@ -166,7 +167,8 @@ User (1)
 |---------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | ID |
 | planLocationId | INTEGER | NOT NULL, FK, UNIQUE | PlanLocation ID（1地点1最寄駅） |
-| placeId | TEXT | NOT NULL | 最寄駅のGoogle Place ID |
+| placeId | TEXT | NULL | 最寄駅のGoogle Place ID（平文。No.168 で encryptedPlaceId に移行し、一括変換後に削除） |
+| encryptedPlaceId | TEXT | NULL | 最寄駅のGoogle Place IDを暗号化した文字列（`v1:IV:暗号文`） |
 | stationType | StationType | NOT NULL | 駅種別（BUS / TRAIN / OTHER） |
 | transitTime | INTEGER | NULL | 最寄駅間の移動時間（分単位）。下記注記の「歩行時間」とは別 |
 | scheduledDepartureTime | VARCHAR(5) | NULL | 予定出発時刻（HH:MM） |
@@ -187,10 +189,11 @@ User (1)
 |---------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | ID |
 | userId | VARCHAR(255) | NOT NULL, FK | ユーザーID |
-| latitude | DOUBLE PRECISION | NOT NULL | 緯度 |
-| longitude | DOUBLE PRECISION | NOT NULL | 経度 |
+| latitude | DOUBLE PRECISION | NULL | 緯度（平文。No.168 で encryptedData に移行し、一括変換後に削除） |
+| longitude | DOUBLE PRECISION | NULL | 経度（同上） |
 | name | VARCHAR(255) | NULL | 地点名 |
-| label | VARCHAR(255) | NULL | ラベル（自宅・職場など） |
+| label | VARCHAR(255) | NULL | ラベル（同上） |
+| encryptedData | TEXT | NULL | 緯度・経度・ラベルを暗号化した JSON（`v1:IV:暗号文`） |
 | usageCount | INTEGER | NOT NULL, DEFAULT 0 | 利用回数 |
 | isDefault | BOOLEAN | NOT NULL, DEFAULT false | デフォルト地点フラグ |
 | createdAt | TIMESTAMP | DEFAULT NOW() | 作成日時 |
@@ -209,7 +212,8 @@ User (1)
 |---------|---------|------|------|
 | id | SERIAL | PRIMARY KEY | ID |
 | userLocationId | INTEGER | NOT NULL, FK, UNIQUE | UserLocation ID（1地点1最寄駅） |
-| placeId | TEXT | NOT NULL | 最寄駅のGoogle Place ID |
+| placeId | TEXT | NULL | 最寄駅のGoogle Place ID（平文。No.168 で encryptedPlaceId に移行し、一括変換後に削除） |
+| encryptedPlaceId | TEXT | NULL | 最寄駅のGoogle Place IDを暗号化した文字列（`v1:IV:暗号文`） |
 | stationType | StationType | NOT NULL | 駅種別（BUS / TRAIN / OTHER） |
 
 **リレーション**:
@@ -364,3 +368,4 @@ User (1)
 3. **CASCADE DELETE**: 親レコード削除時に関連する子レコードも自動削除され、孤立データを防止
 4. **移動情報の内包**: 移動手段・移動時間はPlanSpot/PlanLocationのカラムとして管理（目的地となるレコードは0）
 5. **正規化**: 適切な正規化によりデータの整合性を保証
+6. **地点情報の暗号化（No.168）**: UserLocation / PlanLocation の座標・ラベル・移動時間と、その最寄駅の Place ID は、バックエンドで AES-256-GCM により暗号化して保存する（鍵は環境変数 `LOCATION_ENCRYPTION_KEY`）。最後のスポットから目的地までの移動時間は目的地の PlanLocation 側に移して暗号化し、PlanSpot には 0 を保存する。API のレスポンスは復号した値を従来と同じ形で返す
