@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TD
   A["SpotSelectionDialog を開く<br/>date"] --> B{"date が前回と違う"}
-  B -->|"違う"| C["clearPlanSpotSelection<br/>P-5"]
+  B -->|"違う"| C["syncSearchDate<br/>プランの地点選択（P-5）と地図の中心をリセット"]
   B -->|"同じ"| D["useUserLimits<br/>limits / limitsError"]
   C --> D
   D --> E{"spotSearchStore.searchMode"}
@@ -26,7 +26,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  A["MapSpotSearch をマウント"] --> B["use-map-center-candidates(date)<br/>出発地 / 目的地 / その日のスポット ①② /<br/>他の日のスポット / 現在地（押下時に取得）"]
+  A["MapSpotSearch をマウント"] --> B["use-map-center-candidates(date)<br/>出発地 / 目的地 / その日のスポット ①② / 他の日のスポット<br/>（現在地は MapCenterPicker で押下時に取得）"]
   B --> C{"mapCenter が既にある"}
   C -->|"ある"| E["その中心で表示"]
   C -->|"ない"| D{"初期中心"}

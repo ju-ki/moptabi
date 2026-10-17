@@ -511,3 +511,36 @@ export const OPENING_STATUS_BADGE_LABEL: Partial<Record<string, string>> = {
   CLOSED_DAY: '定休日の可能性',
   OUTSIDE_HOURS: '営業時間外の可能性',
 };
+
+/** 地図で探すで中心を移したときのズーム（街歩きの縮尺。Google の POI が見える。No.341） */
+export const MAP_FOCUS_ZOOM = 15;
+
+/** 地図で探す（No.341）で表示する文言 */
+export const MAP_SEARCH_MESSAGE = {
+  CENTER_HEADING: '中心にする場所',
+  CURRENT_LOCATION: '現在地',
+  CURRENT_LOCATION_ERROR: '現在地を取得できませんでした。位置情報の利用を許可しているかご確認ください。',
+  CURRENT_LOCATION_UNSUPPORTED: 'このブラウザは位置情報に対応していません',
+  ADDRESS_LABEL: '住所・地名で移動',
+  ADDRESS_PLACEHOLDER: '住所・地名を入力',
+  MAP_CENTER_NAME: '中心',
+  DISTANCE_FROM: ':basisから:distance',
+  DISTANCE_FROM_PC: ':basisから約:distance',
+  CLOSED_DAY_SHORT: ':weekday曜は休みの可能性',
+  ADD: '計画に追加',
+  REMOVE: '選択解除',
+  ADDED: '追加しました',
+  UNDO: '取り消す',
+  CLOSE: '閉じる',
+  LIMIT_REACHED: '本日のスポット数が上限に達しています。追加するには既存のスポットを削除してください。',
+  FETCH_ERROR: '情報を取得できませんでした',
+  LOADING: 'スポットの情報を読み込んでいます',
+  PIN_HEADING: '表示するピン',
+  PIN_BUTTON: 'ピン（:count）',
+  PIN_WISHLIST: '行きたいリスト',
+  PIN_VISITED: '過去のスポット',
+  PIN_HIDE_CLOSED: '計画日に休みのピンを隠す',
+  PIN_VISITED_REMAINING: '位置を取得していないスポットが :count 件',
+  PIN_LOAD_MORE: 'さらに表示',
+  OPENING_WARNING_MARK: '営業時間外',
+} as const;

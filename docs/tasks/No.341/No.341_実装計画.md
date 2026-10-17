@@ -21,22 +21,31 @@
   - [x] 「計画日に営業」フィルターをリスト側の1か所に集約
   - [x] 検索半径の円を控えめに（P-6）
   - [x] lint / typecheck / test を通して push
-- [ ] Step 2: 地図の土台と中心点（`feature341-map`）
-  - [ ] `lib/geo.ts` に距離計算と表示用の整形
-  - [ ] `use-map-center-candidates.ts`（中心の候補）
-  - [ ] `MapSpotSearch` の地図・出発地/目的地・プランのスポットのピン
-  - [ ] 中心の候補チップ（PC）/ 住所欄の候補リスト（スマホ）と住所入力
-  - [ ] lint / typecheck / test を通して push
-- [ ] Step 3: POI の選択と追加（`feature341-map`）
-  - [ ] POI クリックで詳細取得（既存 `fetchPlaceDetailsWithRetry`）
-  - [ ] 選択中スポットのカード（距離・営業状況・上限）
-  - [ ] 追加・取り消し・選択解除
-  - [ ] lint / typecheck / test を通して push
-- [ ] Step 4: 行きたいリスト・過去のスポットのピン（`feature341-map`）
-  - [ ] 表示するピンの切替と記憶
-  - [ ] 休みのピンを薄く / 隠す、営業時間外の印
-  - [ ] lint / typecheck / test を通して push
+- [x] Step 2: 地図の土台と中心点（`feature341-map`）
+  - [x] `lib/geo.ts` に距離計算と表示用の整形
+  - [x] `use-map-center-candidates.ts`（中心の候補）
+  - [x] `MapSpotSearch` の地図・出発地/目的地・プランのスポットのピン
+  - [x] 中心の候補チップ（PC）/ 住所欄の候補リスト（スマホ）と住所入力
+  - [x] lint / typecheck / test を通して push
+- [x] Step 3: POI の選択と追加（`feature341-map`）
+  - [x] POI クリックで詳細取得（既存 `fetchPlaceDetailsWithRetry`）
+  - [x] 選択中スポットのカード（距離・営業状況・上限）
+  - [x] 追加・取り消し・選択解除
+  - [x] lint / typecheck / test を通して push
+- [x] Step 4: 行きたいリスト・過去のスポットのピン（`feature341-map`）
+  - [x] 表示するピンの切替と記憶
+  - [x] 休みのピンを薄く / 隠す、営業時間外の印
+  - [x] lint / typecheck / test を通して push
 - [ ] 動作確認（[No.341_動作確認手順.md](./No.341_動作確認手順.md)）とスクリーンショット
+
+### 実装時に計画から変えた点
+
+- 現在地は `use-map-center-candidates` ではなく `MapCenterPicker` で押したときに取得する（候補の組み立てとブラウザ API を分けるため）。
+- 日付が変わったときは `syncSearchDate` で、プランの地点選択（P-5）に加えて地図の中心も初期中心に戻す（前の日の中心が残らないように）。
+- 行きたいリストのピンは `map/WishlistPinLayer.tsx` に分け、ON のときだけマウントする。
+- プランのスポットの警告の印は、番号ピンのラベルを「2!」（橙）にし、ツールチップに「営業時間外」を付ける。
+- `SelectedSpotCard` のテストは `MapSpotSearch.spec.tsx` にまとめた（カードの表示は地図の操作と合わせて確認するため）。
+- 中心の候補・`MapPinLayers`・`MapVisitedPin` などの型は `types/plan.ts` に置いた（TYPE_GUIDE に合わせ、複数ファイルで使う型を集約）。
 
 ## 1. スコープ
 
